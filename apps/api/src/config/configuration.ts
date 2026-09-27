@@ -13,6 +13,8 @@ export interface AppConfig {
     platformSecret: string;
   };
   trustlessWork: { apiUrl: string; apiKey: string };
+  /** Wallets and logins for users without a Stellar wallet of their own. */
+  pollar: { serverUrl: string; secretKey: string };
 }
 
 const REQUIRED = [
@@ -24,6 +26,9 @@ const REQUIRED = [
   'USDC_ISSUER',
   'STELLAR_PLATFORM_SECRET',
 ] as const;
+
+/** Pollar's backend API. Secret-key routes only. */
+const DEFAULT_POLLAR_SERVER = 'https://server.api.pollar.xyz';
 
 const DEFAULT_HORIZON: Record<StellarNetwork, string> = {
   testnet: 'https://horizon-testnet.stellar.org',
@@ -66,6 +71,14 @@ export default (): AppConfig => {
     trustlessWork: {
       apiUrl: (process.env.TRUSTLESS_WORK_API_URL as string).replace(/\/+$/, ''),
       apiKey: process.env.TRUSTLESS_WORK_API_KEY as string,
+    },
+    pollar: {
+      serverUrl: (process.env.POLLAR_SERVER_URL ?? DEFAULT_POLLAR_SERVER).replace(
+        /\/+$/,
+        '',
+      ),
+      // Optional: without it Pocket only accepts wallet sign-ins.
+      secretKey: process.env.POLLAR_SECRET_KEY ?? '',
     },
   };
 };

@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { PollarModule } from '../pollar/pollar.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { WalletChallengeService } from './wallet-challenge.service';
 
 @Module({
   imports: [
+    PollarModule,
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],

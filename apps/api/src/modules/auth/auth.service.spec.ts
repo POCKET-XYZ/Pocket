@@ -1,11 +1,31 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
+import type { PollarClient, PollarSession } from '../pollar/pollar.client';
 import { AuthService } from './auth.service';
 import type { WalletChallengeService } from './wallet-challenge.service';
 
 const ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
+const OTHER_ADDRESS = 'GA47WBBZ3HFSAXVT4BIMU4TQGJCLQWCWP4LJDGAQW36HV2KL2HXLFQV3';
+
+function makeSession(overrides: Partial<PollarSession> = {}): PollarSession {
+  return {
+    userId: 'usr_pollar_1',
+    stellarAddress: ADDRESS,
+    custody: 'internal',
+    provider: 'google',
+    email: 'founder@example.com',
+    funded: true,
+    network: 'testnet',
+    ...overrides,
+  };
+}
 
 function makeUser(overrides: Partial<User> = {}): User {
   return {
@@ -13,6 +33,11 @@ function makeUser(overrides: Partial<User> = {}): User {
     stellarAddress: ADDRESS,
     role: 'startup',
     verificationStatus: 'not_submitted',
+    walletCustody: 'external',
+    walletProvider: null,
+    pollarUserId: null,
+    email: null,
+    walletFundedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -22,16 +47,33 @@ function makeUser(overrides: Partial<User> = {}): User {
 describe('AuthService', () => {
   const jwt = new JwtService({ secret: 'test-secret' });
   let challenges: { verify: jest.Mock; consume: jest.Mock };
-  let prisma: { user: { findUnique: jest.Mock; create: jest.Mock } };
+  let prisma: {
+    user: {
+      findUnique: jest.Mock;
+      findFirst: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+    };
+  };
+  let pollar: { enabled: boolean; verifyToken: jest.Mock };
   let service: AuthService;
 
   beforeEach(() => {
     challenges = { verify: jest.fn().mockResolvedValue(true), consume: jest.fn() };
-    prisma = { user: { findUnique: jest.fn(), create: jest.fn() } };
+    prisma = {
+      user: {
+        findUnique: jest.fn(),
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+    };
+    pollar = { enabled: true, verifyToken: jest.fn().mockResolvedValue(makeSession()) };
     service = new AuthService(
       prisma as unknown as PrismaService,
       jwt,
       challenges as unknown as WalletChallengeService,
+      pollar as unknown as PollarClient,
     );
   });
 
@@ -87,6 +129,102 @@ describe('AuthService', () => {
       sub: user.id,
       role: 'startup',
       stellarAddress: ADDRESS,
+    });
+  });
+
+  describe('loginWithPollar', () => {
+    it('creates the account from the wallet Pollar reports', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      prisma.user.create.mockImplementation(({ data }: { data: Partial<User> }) =>
+        Promise.resolve(makeUser(data)),
+      );
+
+      const result = await service.loginWithPollar({
+        accessToken: 'pollar-token',
+        role: 'specialist',
+      });
+
+      expect(prisma.user.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          stellarAddress: ADDRESS,
+          role: 'specialist',
+          walletCustody: 'pollar',
+          walletProvider: 'google',
+          pollarUserId: 'usr_pollar_1',
+          email: 'founder@example.com',
+        }),
+      });
+      expect(result.isNewUser).toBe(true);
+      // No challenge is signed on this path.
+      expect(challenges.verify).not.toHaveBeenCalled();
+    });
+
+    it('asks for a role the first time, like the wallet login does', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      await expect(
+        service.loginWithPollar({ accessToken: 'pollar-token' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('records a connected wallet as the user own', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      prisma.user.create.mockImplementation(({ data }: { data: Partial<User> }) =>
+        Promise.resolve(makeUser(data)),
+      );
+      pollar.verifyToken.mockResolvedValue(
+        makeSession({ custody: 'external', provider: 'freighter-native', email: undefined }),
+      );
+
+      const result = await service.loginWithPollar({
+        accessToken: 'pollar-token',
+        role: 'startup',
+      });
+
+      expect(result.user.walletCustody).toBe('external');
+      expect(result.user.email).toBeNull();
+    });
+
+    it('refuses a passkey smart account, which cannot hold an escrow role', async () => {
+      pollar.verifyToken.mockResolvedValue(
+        makeSession({
+          custody: 'smart',
+          stellarAddress: 'CDPO6BSXSJFJOPIIBHQOPLPKTQ5TYTBAQ6ACISDL3YLDHMGATZEOBE4I',
+        }),
+      );
+      await expect(
+        service.loginWithPollar({ accessToken: 'pollar-token', role: 'startup' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('refuses to move a Pocket account to another wallet', async () => {
+      prisma.user.findFirst.mockResolvedValue(
+        makeUser({ stellarAddress: OTHER_ADDRESS, pollarUserId: 'usr_pollar_1' }),
+      );
+      await expect(
+        service.loginWithPollar({ accessToken: 'pollar-token' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('keeps the date the wallet came alive on Stellar', async () => {
+      const fundedAt = new Date('2026-09-20T10:00:00.000Z');
+      const user = makeUser({ walletCustody: 'pollar', walletFundedAt: fundedAt });
+      prisma.user.findFirst.mockResolvedValue(user);
+      prisma.user.update.mockResolvedValue(user);
+
+      await service.loginWithPollar({ accessToken: 'pollar-token' });
+
+      const data = prisma.user.update.mock.calls[0][0].data as Partial<User>;
+      expect(data.walletFundedAt).toBeUndefined();
+    });
+
+    it('is refused when Pollar is not configured', async () => {
+      pollar.enabled = false;
+      await expect(
+        service.loginWithPollar({ accessToken: 'pollar-token' }),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+      expect(pollar.verifyToken).not.toHaveBeenCalled();
     });
   });
 });
