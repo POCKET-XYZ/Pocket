@@ -4,7 +4,7 @@ Pocket is a marketplace web application with an integration layer to Trustless W
 
 ## Guiding principle
 
-Build the marketplace and its rules; buy everything else. Identity checks start as a manual review by managers, wallets belong to the users, and escrow is provided as a service.
+Build the marketplace and its rules; buy everything else. Identity checks start as a manual review by managers, wallets belong to the users whether they brought one or Pollar created it, and escrow is provided as a service.
 
 ## Components
 
@@ -17,17 +17,17 @@ Build the marketplace and its rules; buy everything else. Identity checks start 
        ▼                                 ▼
 ┌──────────────┐                   ┌──────────────┐   Soroban   ┌──────────────┐
 │ User wallet  │                   │Trustless Work│ ──────────▶ │   Stellar    │
-│    (SWK)     │                   │     API      │             │   network    │
+│ SWK or Pollar│                   │     API      │             │   network    │
 └──────────────┘                   └──────────────┘             └──────────────┘
 ```
 
 | Component          | Responsibility                                                                                                                  |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| **Web client**     | Marketplace UI, profiles, hiring flow, manager panel and wallet connection through Stellar Wallets Kit.                         |
+| **Web client**     | Marketplace UI, profiles, hiring flow, manager panel, and the two sign-in doors: Stellar Wallets Kit and Pollar.                |
 | **Pocket API**     | Users, roles, verification, profiles, hiring state and escrow orchestration. Source of truth for off-chain state.               |
 | **Postgres**       | Relational state. On-chain references (escrow contract ids, transaction hashes) are stored next to the entities they belong to. |
 | **Trustless Work** | Deploys and operates the escrow contracts. Write endpoints return unsigned XDR.                                                 |
-| **User wallet**    | Signs every operation that belongs to its owner: sign-in, USDC trustline, funding, approvals and disputes.                      |
+| **User wallet**    | Signs every operation that belongs to its owner: sign-in, USDC trustline, funding, approvals and disputes. Either an extension the user installed or a wallet held through [Pollar](pollar.md). |
 
 ## Non-custodial by design
 
@@ -43,7 +43,8 @@ apps/api/src/
 ├── config/        Typed configuration and env validation
 ├── prisma/        Prisma client as a global Nest module
 └── modules/
-    ├── auth/          Wallet challenge and JWT sign-in
+    ├── auth/          Wallet challenge, Pollar sessions and JWT sign-in
+    ├── pollar/        Pollar sessions and wallet activation
     ├── users/         The signed-in user
     ├── verification/  Manual KYC/KYB submissions
     ├── manager/       Verification queue for managers
