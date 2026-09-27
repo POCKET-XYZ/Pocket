@@ -30,13 +30,34 @@ enum VerificationStatus {
   rejected
 }
 
+// Who holds the key of the wallet, which decides what it can sign.
+enum WalletCustody {
+  // A wallet the user holds themselves (Freighter, xBull, Lobstr...). It signs
+  // any transaction, escrow operations included.
+  external
+  // A wallet that only signs through Pollar: the ones Pollar keeps for social
+  // and email logins, and passkey smart accounts. They pay and receive, but
+  // they cannot sign an escrow operation.
+  pollar
+}
+
 // A user IS their Stellar wallet: they sign in by signing a challenge with it
-// and the same address takes their role in every escrow they join.
+// or through Pollar, and the same address takes their role in every escrow
+// they join.
 model User {
   id                 String             @id @default(uuid()) @db.Uuid
   stellarAddress     String             @unique @map("stellar_address")
   role               UserRole
   verificationStatus VerificationStatus @default(not_submitted) @map("verification_status")
+  walletCustody      WalletCustody      @default(external) @map("wallet_custody")
+  // Which wallet or login created the address: freighter, google, email...
+  walletProvider     String?            @map("wallet_provider")
+  // Pollar's own user id, when the account was created through Pollar.
+  pollarUserId       String?            @unique @map("pollar_user_id")
+  // Email Pollar verified during login. Empty for wallet sign-ins.
+  email              String?
+  // When Pocket asked Pollar to put the XLM reserve on the wallet.
+  walletFundedAt     DateTime?          @map("wallet_funded_at")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 

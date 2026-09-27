@@ -24,6 +24,17 @@ export const VerificationStatus = {
 export type VerificationStatus =
   (typeof VerificationStatus)[keyof typeof VerificationStatus];
 
+/**
+ * Who holds the key of the wallet, which decides what it can sign. A wallet the
+ * user connected signs anything; one that signs through Pollar pays and
+ * receives, and signs escrow steps through Pollar's signer.
+ */
+export const WalletCustody = {
+  External: 'external',
+  Pollar: 'pollar',
+} as const;
+export type WalletCustody = (typeof WalletCustody)[keyof typeof WalletCustody];
+
 /** Service areas a specialist can offer and a startup can hire for. */
 export const ServiceCategory = {
   Growth: 'growth',

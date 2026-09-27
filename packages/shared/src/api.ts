@@ -10,6 +10,7 @@ import type {
   StartupStage,
   UserRole,
   VerificationStatus,
+  WalletCustody,
 } from './enums';
 
 /** ISO-8601 timestamp as serialized by the API. */
@@ -20,6 +21,12 @@ export interface User {
   stellarAddress: string;
   role: UserRole;
   verificationStatus: VerificationStatus;
+  /** Whether the wallet is the user's own or one they use through Pollar. */
+  walletCustody: WalletCustody;
+  /** Which wallet or login created the address: freighter, google, email... */
+  walletProvider: string | null;
+  /** Email verified by Pollar during login. Absent for wallet sign-ins. */
+  email: string | null;
   createdAt: IsoDate;
   updatedAt: IsoDate;
 }
@@ -43,6 +50,14 @@ export type SignUpRole = Exclude<UserRole, 'manager'>;
 export interface LoginRequest {
   stellarAddress: string;
   signedXdr: string;
+  /** Required on the first login, when the account is created. */
+  role?: SignUpRole;
+}
+
+/** Sign in with a Pollar session instead of a wallet signature. */
+export interface PollarLoginRequest {
+  /** Access token the Pollar SDK issued in the browser. */
+  accessToken: string;
   /** Required on the first login, when the account is created. */
   role?: SignUpRole;
 }
