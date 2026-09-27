@@ -1,7 +1,7 @@
 'use client';
 
 import type { SignUpRole, User } from '@pocket/shared';
-import { BriefcaseBusinessIcon, RocketIcon, WalletIcon } from 'lucide-react';
+import { BriefcaseBusinessIcon, MailIcon, RocketIcon, WalletIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -40,7 +40,17 @@ function homeFor(user: User): string {
 }
 
 export default function ConnectPage() {
-  const { status, user, pendingSignUp, signIn, chooseRole, cancelSignUp } = useAuth();
+  const {
+    status,
+    user,
+    pendingSignUp,
+    signIn,
+    signInWithPollar,
+    pollarAvailable,
+    pollarError,
+    chooseRole,
+    cancelSignUp,
+  } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [role, setRole] = useState<SignUpRole | null>(null);
@@ -48,6 +58,12 @@ export default function ConnectPage() {
   useEffect(() => {
     if (status === 'signed-in' && user) router.replace(homeFor(user));
   }, [status, user, router]);
+
+  // Pollar signs the user in through its own modal, so a failure on the way
+  // back has no button to report to.
+  useEffect(() => {
+    if (pollarError) toast.error(errorMessage(pollarError));
+  }, [pollarError]);
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -65,7 +81,7 @@ export default function ConnectPage() {
       <div className="mx-auto max-w-3xl">
         <PageHeader
           title="Create your account"
-          description="Your wallet is your account. Choose how you will use Pocket. This cannot be changed later."
+          description="Choose how you will use Pocket. Your wallet is your account, and this cannot be changed later."
         />
         <div className="grid gap-4 md:grid-cols-2">
           {ROLES.map((option) => (
@@ -107,19 +123,60 @@ export default function ConnectPage() {
       <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-navy text-yellow">
         <WalletIcon className="size-8" />
       </div>
-      <h1 className="mt-6 text-3xl font-bold text-navy">Connect your Stellar wallet</h1>
+      <h1 className="mt-6 text-3xl font-bold text-navy">Sign in to Pocket</h1>
       <p className="mt-3 text-muted-foreground">
-        Sign in with Freighter, xBull, Lobstr, Albedo or another Stellar wallet. You sign
-        a message to prove the wallet is yours. It costs nothing and moves no funds.
+        Your Stellar wallet is your account. Bring your own, or let Pocket create one for
+        you. Either way you keep control of your money: every payment is signed by your
+        wallet and Pocket never holds your funds.
       </p>
-      <Button
-        size="lg"
-        className="mt-8 h-11 px-6"
-        disabled={busy}
-        onClick={() => run(signIn)}
-      >
-        {busy ? 'Waiting for your wallet...' : 'Connect wallet'}
-      </Button>
+
+      {pollarAvailable ? (
+        <div className="mt-8 space-y-3 text-left">
+          <button
+            type="button"
+            onClick={signInWithPollar}
+            className="flex w-full items-start gap-4 rounded-2xl border-2 border-border bg-card p-5 text-left transition hover:border-celeste"
+          >
+            <MailIcon className="mt-1 size-6 shrink-0 text-navy" />
+            <span>
+              <span className="block font-heading text-lg font-semibold text-navy">
+                Continue with email, Google or GitHub
+              </span>
+              <span className="mt-1 block text-sm text-muted-foreground">
+                Recommended if you are new to crypto. You get a Stellar wallet ready to
+                receive USDC, with no extension to install, no seed phrase and no network
+                fees to pay.
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => run(signIn)}
+            className="flex w-full items-start gap-4 rounded-2xl border-2 border-border bg-card p-5 text-left transition hover:border-celeste disabled:opacity-60"
+          >
+            <WalletIcon className="mt-1 size-6 shrink-0 text-navy" />
+            <span>
+              <span className="block font-heading text-lg font-semibold text-navy">
+                {busy ? 'Waiting for your wallet...' : 'Connect my Stellar wallet'}
+              </span>
+              <span className="mt-1 block text-sm text-muted-foreground">
+                Freighter, xBull, Lobstr, Albedo and others. You sign a message to prove
+                the wallet is yours. It costs nothing and moves no funds.
+              </span>
+            </span>
+          </button>
+        </div>
+      ) : (
+        <Button
+          size="lg"
+          className="mt-8 h-11 px-6"
+          disabled={busy}
+          onClick={() => run(signIn)}
+        >
+          {busy ? 'Waiting for your wallet...' : 'Connect wallet'}
+        </Button>
+      )}
     </div>
   );
 }

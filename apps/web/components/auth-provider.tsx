@@ -8,19 +8,24 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
+import { usePollarSession } from '@/components/pollar-session';
 import { ApiError, api, getToken, setToken, subscribeToken } from '@/lib/api';
 import { connectWallet, signXdr } from '@/lib/wallet';
 
 type Status = 'loading' | 'signed-out' | 'signed-in';
 
-/** The first sign-in of a new wallet: signed, waiting for the user to pick a role. */
-interface PendingSignUp {
-  stellarAddress: string;
-  signedXdr: string;
-}
+/**
+ * The first sign-in of a new wallet, waiting for the user to pick a role. A
+ * wallet sign-in keeps its signature so the wallet is not asked twice; a Pollar
+ * sign-in only needs the session, which is already open.
+ */
+type PendingSignUp =
+  | { via: 'wallet'; stellarAddress: string; signedXdr: string }
+  | { via: 'pollar'; stellarAddress: string };
 
 interface AuthContextValue {
   status: Status;
@@ -28,6 +33,12 @@ interface AuthContextValue {
   pendingSignUp: PendingSignUp | null;
   /** Connect a wallet and sign the login challenge. */
   signIn: () => Promise<void>;
+  /** Open Pollar's login: social, email or a wallet, with no challenge to sign. */
+  signInWithPollar: () => void;
+  /** Whether Pollar sign-in is available in this deployment. */
+  pollarAvailable: boolean;
+  /** What went wrong while turning a Pollar session into a Pocket one. */
+  pollarError: unknown;
   /** Finish a first sign-in by choosing startup or specialist. */
   chooseRole: (role: SignUpRole) => Promise<void>;
   cancelSignUp: () => void;
@@ -41,7 +52,11 @@ const ME = ['auth', 'me'] as const;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
+  const pollar = usePollarSession();
   const [pendingSignUp, setPendingSignUp] = useState<PendingSignUp | null>(null);
+  // A failure while picking up a Pollar session has no click to report to, so it
+  // is kept here for the connect screen to show.
+  const [pollarError, setPollarError] = useState<unknown>(null);
   // The token lives in localStorage: undefined while rendering on the server.
   const token = useSyncExternalStore(subscribeToken, getToken, () => undefined);
 
@@ -108,31 +123,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       // A wallet Pocket has never seen: ask for the role, then resend the same signature.
       if (error instanceof ApiError && error.code === 'ROLE_REQUIRED') {
-        setPendingSignUp({ stellarAddress: address, signedXdr });
+        setPendingSignUp({ via: 'wallet', stellarAddress: address, signedXdr });
         return;
       }
       throw error;
     }
   }, [finishLogin]);
 
+  /**
+   * Turn the open Pollar session into a Pocket one. Pollar already proved who
+   * the user is, so this only trades its token for Pocket's.
+   */
+  const loginWithPollar = useCallback(
+    async (role?: SignUpRole) => {
+      const accessToken = pollar.getAccessToken();
+      if (!accessToken || !pollar.address) return;
+      try {
+        finishLogin(
+          await api<LoginResponse>('/auth/pollar', {
+            method: 'POST',
+            body: { accessToken, ...(role ? { role } : {}) },
+          }),
+        );
+      } catch (error) {
+        // An account Pocket has never seen: ask for the role and come back.
+        if (error instanceof ApiError && error.code === 'ROLE_REQUIRED') {
+          setPendingSignUp({ via: 'pollar', stellarAddress: pollar.address });
+          return;
+        }
+        throw error;
+      }
+    },
+    [pollar, finishLogin],
+  );
+
+  // Pollar signs the user in through its own modal, so the session appears
+  // without Pocket asking. Pick it up once, as soon as Pollar confirms it.
+  const claimed = useRef(false);
+  useEffect(() => {
+    if (!pollar.ready || token || pendingSignUp) return;
+    if (claimed.current) return;
+    claimed.current = true;
+    void loginWithPollar().catch((error: unknown) => {
+      claimed.current = false;
+      setPollarError(error);
+    });
+  }, [pollar.ready, token, pendingSignUp, loginWithPollar]);
+
   const chooseRole = useCallback(
     async (role: SignUpRole) => {
       if (!pendingSignUp) return;
+      if (pendingSignUp.via === 'pollar') {
+        await loginWithPollar(role);
+        return;
+      }
       finishLogin(
         await api<LoginResponse>('/auth/login', {
           method: 'POST',
-          body: { ...pendingSignUp, role },
+          body: {
+            stellarAddress: pendingSignUp.stellarAddress,
+            signedXdr: pendingSignUp.signedXdr,
+            role,
+          },
         }),
       );
     },
-    [pendingSignUp, finishLogin],
+    [pendingSignUp, finishLogin, loginWithPollar],
   );
 
   const signOut = useCallback(() => {
     setToken(null);
     setPendingSignUp(null);
+    setPollarError(null);
+    claimed.current = false;
+    if (pollar.ready) pollar.signOut();
     queryClient.clear();
-  }, [queryClient]);
+  }, [queryClient, pollar]);
 
   const refreshUser = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ME });
@@ -144,12 +210,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: status === 'signed-in' ? (me.data ?? null) : null,
       pendingSignUp,
       signIn,
+      signInWithPollar: pollar.openLogin,
+      pollarAvailable: pollar.available,
+      pollarError,
       chooseRole,
-      cancelSignUp: () => setPendingSignUp(null),
+      cancelSignUp: () => {
+        setPendingSignUp(null);
+        if (pollar.ready) pollar.signOut();
+      },
       signOut,
       refreshUser,
     }),
-    [status, me.data, pendingSignUp, signIn, chooseRole, signOut, refreshUser],
+    [
+      status,
+      me.data,
+      pendingSignUp,
+      signIn,
+      pollar,
+      pollarError,
+      chooseRole,
+      signOut,
+      refreshUser,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
