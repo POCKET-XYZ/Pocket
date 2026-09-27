@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { PrismaService } from '../../prisma/prisma.service';
+import type { PollarWalletsService } from '../pollar/pollar-wallets.service';
 import { ManagerService } from './manager.service';
 
 describe('ManagerService', () => {
@@ -12,6 +13,7 @@ describe('ManagerService', () => {
     user: { update: jest.Mock };
     $transaction: jest.Mock;
   };
+  let wallets: { activate: jest.Mock };
   let service: ManagerService;
 
   beforeEach(() => {
@@ -24,7 +26,11 @@ describe('ManagerService', () => {
       user: { update: jest.fn() },
       $transaction: jest.fn(async (ops: unknown[]) => ops),
     };
-    service = new ManagerService(prisma as unknown as PrismaService);
+    wallets = { activate: jest.fn().mockResolvedValue(true) };
+    service = new ManagerService(
+      prisma as unknown as PrismaService,
+      wallets as unknown as PollarWalletsService,
+    );
   });
 
   it('lists pending requests oldest first by default', async () => {
@@ -45,6 +51,7 @@ describe('ManagerService', () => {
     });
     prisma.verificationRequest.update.mockReturnValue({
       id: 'req-1',
+      userId: 'user-1',
       status: 'approved',
     });
 
@@ -64,6 +71,8 @@ describe('ManagerService', () => {
       where: { id: 'user-1' },
       data: { verificationStatus: 'approved' },
     });
+    // The approval is the business event that activates a Pollar wallet.
+    expect(wallets.activate).toHaveBeenCalledWith('user-1');
   });
 
   it('refuses to reject without a reason', async () => {
@@ -90,6 +99,8 @@ describe('ManagerService', () => {
       where: { id: 'user-1' },
       data: { verificationStatus: 'rejected' },
     });
+    // Nothing is paid for an account that was turned down.
+    expect(wallets.activate).not.toHaveBeenCalled();
   });
 
   it('fails when the request does not exist', async () => {

@@ -1,11 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { VerificationRequest, VerificationStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PollarWalletsService } from '../pollar/pollar-wallets.service';
 
 /** Verification queue operations. Only managers reach these. */
 @Injectable()
 export class ManagerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly wallets: PollarWalletsService,
+  ) {}
 
   /** Review queue, oldest first so nobody waits forever. */
   list(status: VerificationStatus = 'pending') {
@@ -18,9 +22,15 @@ export class ManagerService {
     });
   }
 
-  /** Approve a pending request: the user can operate on the marketplace. */
-  approve(requestId: string, managerId: string, note?: string) {
-    return this.decide(requestId, managerId, 'approved', note);
+  /**
+   * Approve a pending request: the user can operate on the marketplace. An
+   * approval is also the business event that activates a Pollar wallet, so the
+   * user finds it ready to receive USDC.
+   */
+  async approve(requestId: string, managerId: string, note?: string) {
+    const reviewed = await this.decide(requestId, managerId, 'approved', note);
+    await this.wallets.activate(reviewed.userId);
+    return reviewed;
   }
 
   /** Reject a pending request. The note explains what to fix before resubmitting. */
