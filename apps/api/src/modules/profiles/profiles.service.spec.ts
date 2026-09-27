@@ -77,7 +77,8 @@ describe('ProfilesService', () => {
   });
 
   it('asks for a LinkedIn or a portfolio', async () => {
-    const { linkedinUrl, ...withoutLinks } = SPECIALIST_DTO;
+    const withoutLinks: Partial<SpecialistProfileDto> = { ...SPECIALIST_DTO };
+    delete withoutLinks.linkedinUrl;
     await expect(
       service.saveSpecialist(SPECIALIST, withoutLinks as SpecialistProfileDto),
     ).rejects.toBeInstanceOf(BadRequestException);
