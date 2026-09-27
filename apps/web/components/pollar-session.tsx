@@ -29,9 +29,8 @@ export interface PollarSession {
   openLogin: () => void;
   signOut: () => void;
   /**
-   * Sign a transaction with the Pollar wallet and return the signed XDR. Pollar
-   * pays the network fee when the app sponsors the operation, and the signed
-   * transaction comes back wrapped in a fee bump.
+   * Sign a transaction with the Pollar wallet and return the signed XDR, ready
+   * for Pocket to broadcast through Trustless Work.
    */
   signXdr: (xdr: string) => Promise<string>;
   /** What the wallet holds, or null until it is loaded. */
@@ -100,7 +99,6 @@ function PollarSessionBridge({ children }: { children: React.ReactNode }) {
     openReceiveModal,
     openTxHistoryModal,
     openRampModal,
-    signTx,
     walletBalance,
     refreshWalletBalance,
   } = usePollar();
@@ -112,7 +110,12 @@ function PollarSessionBridge({ children }: { children: React.ReactNode }) {
 
   const signXdr = useCallback(
     async (xdr: string) => {
-      const outcome = await signTx(xdr);
+      // Sponsorship is turned down on purpose. With it, Pollar answers with the
+      // signed transaction wrapped in a fee bump paid by the app, and Trustless
+      // Work refuses a fee bump on its send endpoint with "Bad request". The
+      // wallet pays its own fee instead, which is a fraction of a cent and comes
+      // out of the XLM Pollar gives every new wallet.
+      const outcome = await getClient().signTx(xdr, { skipSponsorship: true });
       if (outcome.status !== 'signed') {
         throw new Error(
           outcome.message ?? outcome.details ?? 'Pollar could not sign this transaction',
@@ -120,7 +123,7 @@ function PollarSessionBridge({ children }: { children: React.ReactNode }) {
       }
       return outcome.signedXdr;
     },
-    [signTx],
+    [getClient],
   );
 
   const value = useMemo<PollarSession>(
