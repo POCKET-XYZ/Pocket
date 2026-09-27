@@ -1,0 +1,152 @@
+'use client';
+
+import { PollarProvider as PollarSdkProvider, usePollar } from '@pollar/react';
+import '@pollar/react/styles.css';
+import { createContext, useCallback, useContext, useMemo } from 'react';
+
+/** How the wallet of a Pollar session is held. */
+export type PollarCustody = 'internal' | 'external' | 'smart';
+
+export interface PollarSession {
+  /** Whether Pocket was built with a Pollar key at all. */
+  available: boolean;
+  /** A session that can sign: logged in and confirmed by Pollar's server. */
+  ready: boolean;
+  address: string | null;
+  custody: PollarCustody | null;
+  /** google, github, email, freighter-native... */
+  provider: string | null;
+  /** Read at call time: the token is refreshed behind our back. */
+  getAccessToken: () => string | null;
+  /** Open Pollar's login modal: social, email or a wallet. */
+  openLogin: () => void;
+  signOut: () => void;
+  /**
+   * Sign a transaction with the Pollar wallet and return the signed XDR. Pollar
+   * pays the network fee when the app sponsors the operation, and the signed
+   * transaction comes back wrapped in a fee bump.
+   */
+  signXdr: (xdr: string) => Promise<string>;
+  /** Pollar's own screens: balances, address with QR, history, fiat ramp. */
+  openBalance: () => void;
+  openReceive: () => void;
+  openHistory: () => void;
+  openRamp: () => void;
+}
+
+const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_POLLAR_PUBLISHABLE_KEY;
+const NETWORK =
+  process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'mainnet' ? 'mainnet' : 'testnet';
+
+/** What the app sees when Pocket runs without a Pollar key. */
+const UNAVAILABLE: PollarSession = {
+  available: false,
+  ready: false,
+  address: null,
+  custody: null,
+  provider: null,
+  getAccessToken: () => null,
+  openLogin: () => {},
+  signOut: () => {},
+  signXdr: () =>
+    Promise.reject(new Error('Pollar is not configured in this deployment')),
+  openBalance: () => {},
+  openReceive: () => {},
+  openHistory: () => {},
+  openRamp: () => {},
+};
+
+const PollarSessionContext = createContext<PollarSession>(UNAVAILABLE);
+
+/**
+ * Pollar's SDK, mounted once around the app. Without a publishable key the tree
+ * renders untouched and Pocket only offers wallet sign-in, so a deployment
+ * without Pollar keeps working.
+ */
+export function PollarSessionProvider({ children }: { children: React.ReactNode }) {
+  if (!PUBLISHABLE_KEY) return <>{children}</>;
+
+  return (
+    <PollarSdkProvider client={{ apiKey: PUBLISHABLE_KEY, stellarNetwork: NETWORK }}>
+      <PollarSessionBridge>{children}</PollarSessionBridge>
+    </PollarSdkProvider>
+  );
+}
+
+function PollarSessionBridge({ children }: { children: React.ReactNode }) {
+  const {
+    wallet,
+    verified,
+    isAuthenticated,
+    getClient,
+    logout,
+    openLoginModal,
+    openWalletBalanceModal,
+    openReceiveModal,
+    openTxHistoryModal,
+    openRampModal,
+    signTx,
+  } = usePollar();
+
+  const getAccessToken = useCallback(() => {
+    const state = getClient().getAuthState();
+    return state.step === 'authenticated' ? state.session.token.accessToken : null;
+  }, [getClient]);
+
+  const signXdr = useCallback(
+    async (xdr: string) => {
+      const outcome = await signTx(xdr);
+      if (outcome.status !== 'signed') {
+        throw new Error(
+          outcome.message ?? outcome.details ?? 'Pollar could not sign this transaction',
+        );
+      }
+      return outcome.signedXdr;
+    },
+    [signTx],
+  );
+
+  const value = useMemo<PollarSession>(
+    () => ({
+      available: true,
+      // Signing is gated on `verified`: a session restored from storage is only
+      // a guess until Pollar's server confirms it.
+      ready: Boolean(isAuthenticated && verified && wallet?.address),
+      address: wallet?.address ?? null,
+      custody: (wallet?.custody as PollarCustody | undefined) ?? null,
+      provider: wallet?.provider ?? null,
+      getAccessToken,
+      openLogin: openLoginModal,
+      signOut: logout,
+      signXdr,
+      openBalance: openWalletBalanceModal,
+      openReceive: openReceiveModal,
+      openHistory: openTxHistoryModal,
+      openRamp: openRampModal,
+    }),
+    [
+      isAuthenticated,
+      verified,
+      wallet?.address,
+      wallet?.custody,
+      wallet?.provider,
+      getAccessToken,
+      openLoginModal,
+      logout,
+      signXdr,
+      openWalletBalanceModal,
+      openReceiveModal,
+      openTxHistoryModal,
+      openRampModal,
+    ],
+  );
+
+  return (
+    <PollarSessionContext.Provider value={value}>{children}</PollarSessionContext.Provider>
+  );
+}
+
+/** The Pollar session, safe to call anywhere: it reports itself unavailable. */
+export function usePollarSession(): PollarSession {
+  return useContext(PollarSessionContext);
+}

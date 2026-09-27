@@ -13,6 +13,8 @@
   "dependencies": {
     "@creit-tech/stellar-wallets-kit": "npm:@jsr/creit-tech__stellar-wallets-kit@^2.6.0",
     "@pocket/shared": "workspace:*",
+    "@pollar/core": "0.11.3",
+    "@pollar/react": "0.11.3",
     "@tanstack/react-query": "^5.103.2",
     "@tanstack/react-query-devtools": "^5.103.2",
     "@trustless-work/blocks": "^1.2.5",

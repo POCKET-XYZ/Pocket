@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Fredoka, Inter } from 'next/font/google';
 import { AuthProvider } from '@/components/auth-provider';
+import { PollarSessionProvider } from '@/components/pollar-session';
 import { SiteHeader } from '@/components/site-header';
 import { ReactQueryClientProvider } from '@/components/tw-blocks/providers/ReactQueryClientProvider';
 import { WalletProvider } from '@/components/tw-blocks/providers/WalletProvider';
@@ -33,13 +34,15 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       <body className="flex min-h-full flex-col">
         <ReactQueryClientProvider>
           <WalletProvider>
-            <AuthProvider>
-              <SiteHeader />
-              <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:px-6">
-                {children}
-              </main>
-              <Toaster theme="light" richColors position="top-center" />
-            </AuthProvider>
+            <PollarSessionProvider>
+              <AuthProvider>
+                <SiteHeader />
+                <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:px-6">
+                  {children}
+                </main>
+                <Toaster theme="light" richColors position="top-center" />
+              </AuthProvider>
+            </PollarSessionProvider>
           </WalletProvider>
         </ReactQueryClientProvider>
       </body>
