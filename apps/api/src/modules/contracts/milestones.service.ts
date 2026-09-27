@@ -108,7 +108,7 @@ export class MilestonesService {
     }
     // Checked again: the other party may have disputed it since it was prepared.
     await this.requireApprovableOnChain(milestone);
-    await this.escrow.submitApprove(
+    const operation = await this.escrow.submitApprove(
       milestone.contractId,
       milestoneId,
       signedXdr,
@@ -121,7 +121,15 @@ export class MilestonesService {
         'approved',
       ))
     ) {
-      throw new ConflictException('The approval does not show on chain yet. Try again');
+      // Same as a dispute: the chain refuses a second approval, so freeing the
+      // step is safe and is what lets the startup try again.
+      await this.escrow.discard(
+        operation.txHash,
+        'The escrow does not show the milestone as approved',
+      );
+      throw new ConflictException(
+        'The approval did not reach the escrow. Check your wallet and try again',
+      );
     }
     await this.prisma.milestone.update({
       where: { id: milestoneId },

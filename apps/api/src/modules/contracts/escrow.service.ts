@@ -238,6 +238,16 @@ export class EscrowService {
     return milestone?.flags?.[flag] === true;
   }
 
+  /**
+   * Forget an operation the escrow does not show. Trustless Work answers its
+   * send endpoint as soon as the network takes the transaction, which is not
+   * the same as the operation having happened, so a step that left no trace on
+   * chain has to be freed or the user could never try it again.
+   */
+  async discard(txHash: string, reason: string): Promise<void> {
+    await this.operations.markFailed(txHash, new Error(reason));
+  }
+
   /** Every flag of a milestone as the chain shows it now, in one read. */
   async milestoneFlags(
     contract: Pick<Contract, 'escrowId'>,

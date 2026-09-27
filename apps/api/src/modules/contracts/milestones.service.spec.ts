@@ -57,6 +57,7 @@ describe('MilestonesService', () => {
     prepareApprove: jest.Mock;
     submitApprove: jest.Mock;
     milestoneHas: jest.Mock;
+    discard: jest.Mock;
     milestoneFlags: jest.Mock;
     release: jest.Mock;
   };
@@ -86,8 +87,9 @@ describe('MilestonesService', () => {
     };
     escrow = {
       prepareApprove: jest.fn().mockResolvedValue({ operationId: 'op-1' }),
-      submitApprove: jest.fn(),
+      submitApprove: jest.fn().mockResolvedValue({ txHash: 'hash-1' }),
       milestoneHas: jest.fn(),
+      discard: jest.fn(),
       // Nothing set on chain yet: the milestone can be approved.
       milestoneFlags: jest.fn().mockResolvedValue({}),
       release: jest.fn(),
@@ -229,6 +231,8 @@ describe('MilestonesService', () => {
       ).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.milestone.update).not.toHaveBeenCalled();
       expect(escrow.release).not.toHaveBeenCalled();
+      // The step is freed, or the startup could never approve again.
+      expect(escrow.discard).toHaveBeenCalledWith('hash-1', expect.any(String));
     });
 
     it('refuses the specialist', async () => {

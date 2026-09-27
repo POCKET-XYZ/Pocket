@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import type { PrismaService } from '../../prisma/prisma.service';
@@ -10,6 +14,11 @@ const startup: AuthUser = {
   sub: 'startup-1',
   role: 'startup',
   stellarAddress: 'GSTARTUP',
+};
+const specialist: AuthUser = {
+  sub: 'specialist-1',
+  role: 'specialist',
+  stellarAddress: 'GSPECIALIST',
 };
 const outsider: AuthUser = {
   sub: 'other-1',
@@ -70,7 +79,9 @@ describe('DisputesService', () => {
   };
   let escrow: {
     prepareDispute: jest.Mock;
+    submitDispute: jest.Mock;
     milestoneHas: jest.Mock;
+    discard: jest.Mock;
     resolve: jest.Mock;
   };
   let milestones: { load: jest.Mock; completeIfDone: jest.Mock };
@@ -91,7 +102,9 @@ describe('DisputesService', () => {
     };
     escrow = {
       prepareDispute: jest.fn(),
+      submitDispute: jest.fn().mockResolvedValue({ txHash: 'hash-1' }),
       milestoneHas: jest.fn(),
+      discard: jest.fn(),
       resolve: jest.fn(),
     };
     milestones = { load: jest.fn(), completeIfDone: jest.fn() };
@@ -131,6 +144,53 @@ describe('DisputesService', () => {
       await expect(service.prepareOpen(outsider, 'milestone-1')).rejects.toBeInstanceOf(
         ForbiddenException,
       );
+    });
+  });
+
+  describe('open', () => {
+    beforeEach(() => {
+      milestones.load.mockResolvedValue({
+        id: 'milestone-1',
+        contractId: 'contract-1',
+        status: 'delivered',
+        position: 1,
+        contract,
+      });
+    });
+
+    it('records the dispute once the escrow shows it', async () => {
+      escrow.milestoneHas.mockResolvedValue(true);
+      prisma.dispute.create.mockResolvedValue({ id: 'dispute-1' });
+
+      const dispute = await service.open(specialist, 'milestone-1', {
+        signedXdr: 'signed',
+        reason: 'The report never arrived',
+      });
+
+      expect(dispute).toEqual({ id: 'dispute-1' });
+      expect(prisma.milestone.update).toHaveBeenCalledWith({
+        where: { id: 'milestone-1' },
+        data: { status: 'disputed' },
+      });
+      expect(escrow.discard).not.toHaveBeenCalled();
+    });
+
+    it('frees the step when the escrow does not show the dispute', async () => {
+      // Trustless Work answers as soon as the network takes the transaction, so
+      // a transaction that then failed would otherwise block the milestone for
+      // good: its step is claimed and the dispute never opens.
+      escrow.milestoneHas.mockResolvedValue(false);
+
+      await expect(
+        service.open(specialist, 'milestone-1', {
+          signedXdr: 'signed',
+          reason: 'The report never arrived',
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      expect(escrow.discard).toHaveBeenCalledWith('hash-1', expect.any(String));
+      expect(prisma.dispute.create).not.toHaveBeenCalled();
+      expect(prisma.milestone.update).not.toHaveBeenCalled();
     });
   });
 

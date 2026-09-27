@@ -41,7 +41,7 @@ export class DisputesService {
    */
   async open(user: AuthUser, milestoneId: string, dto: OpenDisputeDto) {
     const milestone = await this.disputableMilestone(user, milestoneId);
-    await this.escrow.submitDispute(
+    const operation = await this.escrow.submitDispute(
       milestone.contractId,
       milestoneId,
       dto.signedXdr,
@@ -54,7 +54,16 @@ export class DisputesService {
         'disputed',
       ))
     ) {
-      throw new ConflictException('The dispute does not show on chain yet. Try again');
+      // The escrow refuses a second dispute on its own, so freeing the step
+      // cannot open two, and without freeing it the milestone could never be
+      // disputed again.
+      await this.escrow.discard(
+        operation.txHash,
+        'The escrow does not show the milestone as disputed',
+      );
+      throw new ConflictException(
+        'The dispute did not reach the escrow. Check your wallet and try again',
+      );
     }
 
     const [dispute] = await this.prisma.$transaction([
