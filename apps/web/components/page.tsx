@@ -16,8 +16,10 @@ export function PageHeader({
     <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div>
         <h1 className="text-3xl font-bold text-navy md:text-4xl">{title}</h1>
+        {/* A div, not a paragraph: pages pass whole elements in here, and an
+            avatar or a badge inside a <p> is invalid HTML. */}
         {description ? (
-          <p className="mt-2 max-w-2xl text-muted-foreground">{description}</p>
+          <div className="mt-2 max-w-2xl text-muted-foreground">{description}</div>
         ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
