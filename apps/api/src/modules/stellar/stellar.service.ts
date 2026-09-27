@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import {
   Asset,
   BASE_FEE,
+  FeeBumpTransaction,
   Horizon,
   Keypair,
   Networks,
@@ -65,7 +66,12 @@ export class StellarService implements OnApplicationBootstrap {
 
   /** Transaction hash in hex. Signatures do not change it. */
   hashOf(xdr: string): string {
-    const hash = TransactionBuilder.fromXDR(xdr, this.networkPassphrase).hash();
+    const tx = TransactionBuilder.fromXDR(xdr, this.networkPassphrase);
+    // A wallet that sponsors fees returns the signed transaction wrapped in a
+    // fee bump. What identifies the operation is the transaction inside it,
+    // which is the one Pocket prepared and hashed.
+    const inner = tx instanceof FeeBumpTransaction ? tx.innerTransaction : tx;
+    const hash = inner.hash();
     return Buffer.from(hash).toString('hex');
   }
 
