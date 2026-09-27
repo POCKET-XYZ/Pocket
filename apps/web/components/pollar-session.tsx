@@ -7,6 +7,13 @@ import { createContext, useCallback, useContext, useMemo } from 'react';
 /** How the wallet of a Pollar session is held. */
 export type PollarCustody = 'internal' | 'external' | 'smart';
 
+/** One asset the wallet holds, as Pollar reports it. */
+export interface PollarBalance {
+  code: string;
+  /** Decimal string, or null while Pollar has no answer for it. */
+  balance: string | null;
+}
+
 export interface PollarSession {
   /** Whether Pocket was built with a Pollar key at all. */
   available: boolean;
@@ -27,6 +34,11 @@ export interface PollarSession {
    * transaction comes back wrapped in a fee bump.
    */
   signXdr: (xdr: string) => Promise<string>;
+  /** What the wallet holds, or null until it is loaded. */
+  balances: PollarBalance[] | null;
+  balancesLoading: boolean;
+  /** Load or reload the balances. */
+  refreshBalances: () => Promise<void>;
   /** Pollar's own screens: balances, address with QR, history, fiat ramp. */
   openBalance: () => void;
   openReceive: () => void;
@@ -48,6 +60,9 @@ const UNAVAILABLE: PollarSession = {
   getAccessToken: () => null,
   openLogin: () => {},
   signOut: () => {},
+  balances: null,
+  balancesLoading: false,
+  refreshBalances: () => Promise.resolve(),
   signXdr: () =>
     Promise.reject(new Error('Pollar is not configured in this deployment')),
   openBalance: () => {},
@@ -86,6 +101,8 @@ function PollarSessionBridge({ children }: { children: React.ReactNode }) {
     openTxHistoryModal,
     openRampModal,
     signTx,
+    walletBalance,
+    refreshWalletBalance,
   } = usePollar();
 
   const getAccessToken = useCallback(() => {
@@ -119,6 +136,15 @@ function PollarSessionBridge({ children }: { children: React.ReactNode }) {
       openLogin: openLoginModal,
       signOut: logout,
       signXdr,
+      balances:
+        walletBalance.step === 'loaded'
+          ? walletBalance.data.balances.map((asset) => ({
+              code: asset.code,
+              balance: asset.balance,
+            }))
+          : null,
+      balancesLoading: walletBalance.step === 'loading',
+      refreshBalances: refreshWalletBalance,
       openBalance: openWalletBalanceModal,
       openReceive: openReceiveModal,
       openHistory: openTxHistoryModal,
@@ -134,6 +160,8 @@ function PollarSessionBridge({ children }: { children: React.ReactNode }) {
       openLoginModal,
       logout,
       signXdr,
+      walletBalance,
+      refreshWalletBalance,
       openWalletBalanceModal,
       openReceiveModal,
       openTxHistoryModal,

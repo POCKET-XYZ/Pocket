@@ -5,16 +5,108 @@ import {
   ArrowDownToLineIcon,
   ArrowLeftRightIcon,
   CopyIcon,
+  EyeIcon,
+  EyeOffIcon,
   HistoryIcon,
+  RefreshCwIcon,
   WalletIcon,
 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/page';
-import { usePollarSession } from '@/components/pollar-session';
+import { usePollarSession, type PollarSession } from '@/components/pollar-session';
 import { RequireAuth } from '@/components/require-auth';
 import { UsdcStatus } from '@/components/usdc-status';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+/**
+ * What the wallet holds, hidden the way a password field hides itself: someone
+ * checking a contract on a shared screen should not have to show their balance
+ * to everyone in the room.
+ */
+function BalanceCard({ pollar }: { pollar: PollarSession }) {
+  const [shown, setShown] = useState(false);
+  // Load once. The session object changes identity on every balance update, so
+  // depending on it would ask Pollar again for the answer it just gave.
+  const asked = useRef(false);
+  const { refreshBalances } = pollar;
+
+  useEffect(() => {
+    if (asked.current) return;
+    asked.current = true;
+    void refreshBalances();
+  }, [refreshBalances]);
+
+  const balances = (pollar.balances ?? []).filter((asset) => asset.balance !== null);
+  const usdc = balances.find((asset) => asset.code === 'USDC');
+  const rest = balances.filter((asset) => asset !== usdc);
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardTitle>Balance</CardTitle>
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={shown ? 'Hide balance' : 'Show balance'}
+            onClick={() => setShown((was) => !was)}
+          >
+            {shown ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Refresh balance"
+            disabled={pollar.balancesLoading}
+            onClick={() => void pollar.refreshBalances()}
+          >
+            <RefreshCwIcon
+              className={`size-4 ${pollar.balancesLoading ? 'animate-spin' : ''}`}
+            />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <button
+          type="button"
+          onClick={() => setShown((was) => !was)}
+          className="block text-left"
+          title={shown ? 'Click to hide' : 'Click to show'}
+        >
+          <span className="font-heading text-3xl font-semibold text-navy">
+            {pollar.balances === null && pollar.balancesLoading
+              ? 'Loading...'
+              : shown
+                ? `${amount(usdc?.balance)} USDC`
+                : '•••••• USDC'}
+          </span>
+        </button>
+        {rest.length > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {rest
+              .map((asset) => `${shown ? amount(asset.balance) : '••••'} ${asset.code}`)
+              .join(' · ')}
+          </p>
+        ) : null}
+        <p className="text-xs text-muted-foreground">
+          {shown
+            ? 'Click the amount to hide it again.'
+            : 'Click the amount to show it. Nobody else sees it either way.'}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Two decimals is what people read; the chain keeps all seven. */
+function amount(value: string | null | undefined): string {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed)
+    ? parsed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '0.00';
+}
 
 /** How the wallet was created, in words the user recognizes. */
 const PROVIDER_NAMES: Record<string, string> = {
@@ -85,6 +177,8 @@ function WalletView({ user }: { user: User }) {
           </div>
         </CardContent>
       </Card>
+
+      {throughPollar ? <BalanceCard pollar={pollar} /> : null}
 
       <UsdcStatus user={user} showReady />
 
