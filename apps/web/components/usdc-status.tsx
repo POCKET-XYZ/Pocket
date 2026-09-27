@@ -1,6 +1,6 @@
 'use client';
 
-import type { User } from '@pocket/shared';
+import type { User, WalletStatus } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2Icon } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,14 +10,21 @@ import { useSigner } from '@/components/use-signer';
 import { api, errorMessage } from '@/lib/api';
 import { isWalletDismissed, prepareSignSubmit } from '@/lib/wallet';
 
-export type UsdcReadiness = 'ready' | 'no_account' | 'no_trustline';
+export type UsdcReadiness = WalletStatus['usdc'];
 
 const IS_TESTNET = process.env.NEXT_PUBLIC_STELLAR_NETWORK !== 'mainnet';
+
+/**
+ * XLM under which the wallet is about to run out of network fees. A step of an
+ * escrow costs a fraction of a cent, so this is still dozens of signatures
+ * away from empty: the warning has to arrive before the failure does.
+ */
+const LOW_FEE_XLM = 0.02;
 
 export function useUsdcStatus(enabled = true) {
   return useQuery({
     queryKey: ['wallet', 'usdc'],
-    queryFn: () => api<{ address: string; usdc: UsdcReadiness }>('/wallet/usdc'),
+    queryFn: () => api<WalletStatus>('/wallet/usdc'),
     enabled,
     staleTime: 10_000,
   });
@@ -55,6 +62,36 @@ export function UsdcStatus({
   });
 
   if (!status.data) return null;
+
+  const outOfFees =
+    status.data.xlmForFees !== null && Number(status.data.xlmForFees) < LOW_FEE_XLM;
+
+  // Nothing can be signed without it, so this comes before the USDC notices.
+  if (outOfFees) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Your wallet is running out of XLM for network fees</AlertTitle>
+        <AlertDescription>
+          <p>
+            Every escrow step you sign pays a small fee in XLM, and your wallet has{' '}
+            {status.data.xlmForFees} left. Top it up before funding, approving or
+            disputing, or those steps will fail.
+          </p>
+          {IS_TESTNET ? (
+            <Button asChild size="sm" variant="outline" className="mt-3">
+              <a
+                href={`https://friendbot.stellar.org?addr=${user.stellarAddress}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Get free testnet XLM
+              </a>
+            </Button>
+          ) : null}
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   if (status.data.usdc === 'ready') {
     return showReady ? (

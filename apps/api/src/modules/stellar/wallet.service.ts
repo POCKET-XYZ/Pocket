@@ -18,11 +18,18 @@ export class WalletService {
     private readonly operations: ChainOperationsService,
   ) {}
 
-  async usdcStatus(user: AuthUser): Promise<{ address: string; usdc: UsdcReadiness }> {
-    return {
-      address: user.stellarAddress,
-      usdc: await this.stellar.usdcReadiness(user.stellarAddress),
-    };
+  /**
+   * What the wallet still needs before it can take part in an escrow: trusting
+   * USDC, and some XLM to pay the network fee of each step it signs.
+   */
+  async usdcStatus(
+    user: AuthUser,
+  ): Promise<{ address: string; usdc: UsdcReadiness; xlmForFees: string | null }> {
+    const [usdc, xlmForFees] = await Promise.all([
+      this.stellar.usdcReadiness(user.stellarAddress),
+      this.stellar.spendableXlm(user.stellarAddress),
+    ]);
+    return { address: user.stellarAddress, usdc, xlmForFees };
   }
 
   async prepareTrustline(user: AuthUser): Promise<PreparedTransaction> {

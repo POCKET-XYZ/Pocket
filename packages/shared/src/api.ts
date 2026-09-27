@@ -68,6 +68,18 @@ export interface LoginResponse {
   isNewUser: boolean;
 }
 
+/** What a wallet still needs before it can take part in an escrow. */
+export interface WalletStatus {
+  address: string;
+  /** Whether the wallet exists on Stellar and trusts USDC. */
+  usdc: 'ready' | 'no_account' | 'no_trustline';
+  /**
+   * XLM the wallet can spend on network fees, or null when the account is not
+   * on the network yet. Every escrow step its owner signs pays a small fee.
+   */
+  xlmForFees: string | null;
+}
+
 /** Error codes the API returns in the `code` field of a 4xx body. */
 export const ApiErrorCode = {
   RoleRequired: 'ROLE_REQUIRED',

@@ -16,6 +16,12 @@ import {
 /** Whether an address can receive USDC. */
 export type UsdcReadiness = 'ready' | 'no_account' | 'no_trustline';
 
+/**
+ * Stellar's reserve per account entry, in XLM. A network parameter rather than
+ * a constant of ours: it has changed before and could change again.
+ */
+const BASE_RESERVE_XLM = '0.5';
+
 /** How long a user has to sign a transaction Pocket prepared for them. */
 const SIGNING_WINDOW_SECONDS = 300;
 
@@ -116,6 +122,38 @@ export class StellarService implements OnApplicationBootstrap {
       if (!line) return null;
       const locked = 'selling_liabilities' in line ? line.selling_liabilities : '0';
       return new Prisma.Decimal(line.balance).minus(locked).toFixed(7);
+    } catch (error) {
+      if (error instanceof NotFoundError) return null;
+      throw error;
+    }
+  }
+
+  /**
+   * XLM the account can spend, which is what pays the network fee of every
+   * escrow step. Stellar locks part of the balance as the account's reserve,
+   * and what is sponsored by somebody else does not count against it, so this
+   * reads the reserve Horizon reports rather than assuming one.
+   */
+  async spendableXlm(address: string): Promise<string | null> {
+    try {
+      const account = await this.horizon.loadAccount(address);
+      const native = account.balances.find((balance) => balance.asset_type === 'native');
+      if (!native) return null;
+      // Stellar's minimum balance, as the network computes it: two base
+      // entries, plus every subentry, plus what this account sponsors for
+      // others, minus what somebody else sponsors for it.
+      const entries =
+        2 +
+        account.subentry_count +
+        (account.num_sponsoring ?? 0) -
+        (account.num_sponsored ?? 0);
+      const reserve = new Prisma.Decimal(BASE_RESERVE_XLM).times(Math.max(entries, 0));
+      const locked =
+        'selling_liabilities' in native
+          ? new Prisma.Decimal(native.selling_liabilities)
+          : new Prisma.Decimal(0);
+      const spendable = new Prisma.Decimal(native.balance).minus(reserve).minus(locked);
+      return spendable.isNegative() ? '0' : spendable.toFixed(7);
     } catch (error) {
       if (error instanceof NotFoundError) return null;
       throw error;
