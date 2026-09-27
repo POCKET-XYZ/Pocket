@@ -6,6 +6,7 @@ import { CheckCircle2Icon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useSigner } from '@/components/use-signer';
 import { api, errorMessage } from '@/lib/api';
 import { isWalletDismissed, prepareSignSubmit } from '@/lib/wallet';
 
@@ -35,11 +36,12 @@ export function UsdcStatus({
 }) {
   const queryClient = useQueryClient();
   const status = useUsdcStatus();
+  const signer = useSigner();
 
   const enable = useMutation({
     mutationFn: () =>
       prepareSignSubmit(
-        user.stellarAddress,
+        signer.sign,
         '/wallet/usdc-trustline/prepare',
         '/wallet/usdc-trustline/submit',
       ),
@@ -82,6 +84,19 @@ export function UsdcStatus({
   }
 
   if (status.data.usdc === 'no_account') {
+    // A wallet Pocket created through Pollar is activated when a manager
+    // approves the account, so there is nothing for the user to do but wait.
+    if (user.walletCustody === 'pollar') {
+      return (
+        <Alert className="border-yellow bg-yellow/15">
+          <AlertTitle>Your wallet is being activated</AlertTitle>
+          <AlertDescription>
+            Pocket puts your wallet on the Stellar network once your account is approved.
+            It takes a few seconds, and you do not need to pay anything.
+          </AlertDescription>
+        </Alert>
+      );
+    }
     return (
       <Alert variant="destructive">
         <AlertTitle>Your wallet is not active on Stellar yet</AlertTitle>
@@ -109,7 +124,10 @@ export function UsdcStatus({
       <AlertDescription>
         <p>
           Your wallet has to trust USDC before it can fund an escrow or receive a payment.
-          It is a one-time signature.
+          It is a one-time step
+          {user.walletCustody === 'pollar'
+            ? ', and Pocket covers its cost.'
+            : ', and it costs a small network fee.'}
         </p>
         <Button
           size="sm"
@@ -117,7 +135,7 @@ export function UsdcStatus({
           disabled={enable.isPending}
           onClick={() => enable.mutate()}
         >
-          {enable.isPending ? 'Waiting for your wallet...' : 'Enable USDC'}
+          {enable.isPending ? 'Enabling...' : 'Enable USDC'}
         </Button>
       </AlertDescription>
     </Alert>

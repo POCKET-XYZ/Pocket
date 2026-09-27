@@ -62,18 +62,24 @@ export interface PreparedTransaction {
 }
 
 /**
- * The non-custodial loop every money step follows: the API prepares the
- * transaction, the user's wallet signs it, and the API broadcasts it and
- * checks the result on chain.
+ * Signs a transaction with whichever wallet the user signed in with. Use
+ * `useSigner()` to get one instead of picking a wallet by hand.
+ */
+export type SignXdr = (xdr: string, networkPassphrase?: string) => Promise<string>;
+
+/**
+ * The loop every money step follows: the API prepares the transaction, the
+ * user's wallet signs it, and the API broadcasts it and checks the result on
+ * chain. Pocket never holds a key, whoever signs.
  */
 export async function prepareSignSubmit<T>(
-  address: string,
+  sign: SignXdr,
   preparePath: string,
   submitPath: string,
   extra: Record<string, unknown> = {},
 ): Promise<T> {
   const prepared = await api<PreparedTransaction>(preparePath, { method: 'POST' });
-  const signedXdr = await signXdr(prepared.xdr, address, prepared.networkPassphrase);
+  const signedXdr = await sign(prepared.xdr, prepared.networkPassphrase);
   return api<T>(submitPath, { method: 'POST', body: { signedXdr, ...extra } });
 }
 

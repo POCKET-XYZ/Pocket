@@ -28,6 +28,7 @@ import {
 import { ApiError, api } from '@/lib/api';
 import { dateTime, explorerContract, explorerTx, shortAddress, usdc } from '@/lib/format';
 import { useContractAction } from '@/lib/use-contract-action';
+import { useSigner } from '@/components/use-signer';
 import { prepareSignSubmit } from '@/lib/wallet';
 
 const OPERATION_LABELS: Record<ChainOperationKind, string> = {
@@ -178,6 +179,7 @@ function Contract({ user }: { user: User }) {
 function NextStep({ contract, user }: { contract: ContractDetail; user: User }) {
   const isStartup = user.id === contract.startupId;
   const isSpecialist = user.id === contract.specialistId;
+  const signer = useSigner();
 
   const accept = useContractAction(
     contract.id,
@@ -193,7 +195,7 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
     contract.id,
     () =>
       prepareSignSubmit(
-        user.stellarAddress,
+        signer.sign,
         `/contracts/${contract.id}/fund/prepare`,
         `/contracts/${contract.id}/fund/submit`,
       ),

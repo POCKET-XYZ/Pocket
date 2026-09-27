@@ -22,7 +22,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { api } from '@/lib/api';
 import { date, dateTime, usdc } from '@/lib/format';
 import { useContractAction } from '@/lib/use-contract-action';
-import { prepareSignSubmit, signXdr, type PreparedTransaction } from '@/lib/wallet';
+import { useSigner } from '@/components/use-signer';
+import { prepareSignSubmit, type PreparedTransaction } from '@/lib/wallet';
 
 type MilestoneWithHistory = ContractDetail['milestones'][number];
 
@@ -43,12 +44,13 @@ export function MilestoneCard({
   const active = contract.status === 'active';
   const openDispute = milestone.disputes.find((dispute) => dispute.status === 'open');
   const lastDispute: Dispute | undefined = milestone.disputes.at(-1);
+  const signer = useSigner();
 
   const approve = useContractAction(
     contract.id,
     () =>
       prepareSignSubmit(
-        user.stellarAddress,
+        signer.sign,
         `/milestones/${milestone.id}/approve/prepare`,
         `/milestones/${milestone.id}/approve/submit`,
       ),
@@ -176,11 +178,7 @@ export function MilestoneCard({
           {active &&
           (isStartup || isSpecialist) &&
           DISPUTABLE.includes(milestone.status) ? (
-            <OpenDisputeDialog
-              contractId={contract.id}
-              milestoneId={milestone.id}
-              address={user.stellarAddress}
-            />
+            <OpenDisputeDialog contractId={contract.id} milestoneId={milestone.id} />
           ) : null}
 
           {openDispute ? (
@@ -307,13 +305,12 @@ function RequestChangesDialog({
 function OpenDisputeDialog({
   contractId,
   milestoneId,
-  address,
 }: {
   contractId: string;
   milestoneId: string;
-  address: string;
 }) {
   const [open, setOpen] = useState(false);
+  const signer = useSigner();
   // The reason travels with the signed transaction, so this does not use prepareSignSubmit.
   const dispute = useContractAction(
     contractId,
@@ -322,7 +319,7 @@ function OpenDisputeDialog({
         `/milestones/${milestoneId}/dispute/prepare`,
         { method: 'POST' },
       );
-      const signedXdr = await signXdr(prepared.xdr, address, prepared.networkPassphrase);
+      const signedXdr = await signer.sign(prepared.xdr, prepared.networkPassphrase);
       return api(`/milestones/${milestoneId}/dispute`, {
         method: 'POST',
         body: { signedXdr, reason },
