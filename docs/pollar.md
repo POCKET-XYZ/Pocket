@@ -25,15 +25,20 @@ API prepares      →  Trustless Work returns an unsigned transaction
                      Pocket stores its hash against the step
 
 wallet signs      →  extension            or   Pollar (POST /tx/sign)
-                     signed XDR                signed XDR, wrapped in a fee bump
+                     signed XDR                signed XDR
 
 API broadcasts    →  the signed XDR goes to Trustless Work, which sends it
                      Pocket only accepts a transaction it prepared, once
+
+API confirms      →  the escrow is read back from the chain; a step with no
+                     trace there is released so it can be tried again
 ```
 
-Pollar returns the signature wrapped in a **fee bump** when the app sponsors the operation, so its own account pays the network fee. A fee bump has a different hash than the transaction inside it, so `StellarService.hashOf` reads the inner transaction: the step is identified by what Pocket prepared, not by who paid for it.
+**Sponsorship is turned down on purpose.** Pollar's `signTx` takes `skipSponsorship`, and Pocket passes it. Left on, Pollar answers with the signed transaction wrapped in a **fee bump** paid by the app's gas wallet, and Trustless Work refuses a fee bump on `/helper/send-transaction`: the same dispute sent both ways answers `400 Bad request` wrapped and `201 SUCCESS` plain. The wallet pays its own fee instead, around 0.0014 XLM for a dispute, out of the XLM Pollar gives every new wallet.
 
-For this to work, the Pollar dashboard needs **Treasury → Sponsorship → Sponsor all contracts** turned on. Every escrow is a contract deployed for that engagement, so a per-contract rule cannot be written ahead of time.
+`StellarService.hashOf` still reads through a fee bump to the transaction inside it. Nothing sends one today, but a wallet that sponsors would break the check that a signed transaction is the one Pocket prepared, and the step is identified by what was prepared rather than by who paid for it.
+
+A last point that is not specific to Pollar: `send-transaction` answers as soon as the network takes the transaction, which is not the same as the operation having happened. Every step is confirmed by reading the escrow back, and one the chain does not show is released rather than left claimed.
 
 ## Deferred activation
 
@@ -49,7 +54,7 @@ The call is idempotent: a wallet that is already funded answers `409`, which cou
 | Web   | `NEXT_PUBLIC_POLLAR_PUBLISHABLE_KEY`                       | Opens the login modal and signs. Safe in the browser.              |
 | Dashboard | Build → Domains                                        | The app's origin, or the SDK is refused with `ORIGIN_NOT_ALLOWED`. |
 | Dashboard | Treasury → Tokens & Trustlines: USDC                   | The trustline every new wallet is born with.                       |
-| Dashboard | Treasury → Sponsorship: contracts, trustlines, USDC    | Who pays the network fees.                                         |
-| Dashboard | Treasury → Account Funding                             | The XLM that pays for new wallets.                                 |
+| Dashboard | Treasury → Sponsorship: trustlines and USDC transfers  | Who pays those network fees.                                       |
+| Dashboard | Treasury → Account Funding: a starting XLM balance     | What each wallet pays its own escrow fees with. 1 XLM is plenty.   |
 
 Keys are network specific (`pub_testnet_` / `sec_testnet_`), and a session from the wrong network is refused at sign-in.
