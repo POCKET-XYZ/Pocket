@@ -113,7 +113,7 @@ export function SiteHeader() {
             </DropdownMenu>
           ) : status === 'signed-out' ? (
             <Button asChild className="bg-yellow text-navy hover:bg-yellow/85">
-              <Link href="/connect">Connect wallet</Link>
+              <Link href="/connect">Sign in</Link>
             </Button>
           ) : null}
         </div>

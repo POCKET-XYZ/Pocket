@@ -36,9 +36,9 @@ export function RequireAuth({
 
   if (!user) {
     return (
-      <EmptyState title="Connect your wallet to continue">
+      <EmptyState title="Sign in to continue">
         <Button asChild className="mt-4">
-          <Link href="/connect">Connect wallet</Link>
+          <Link href="/connect">Sign in</Link>
         </Button>
       </EmptyState>
     );

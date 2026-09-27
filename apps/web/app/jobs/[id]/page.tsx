@@ -146,7 +146,7 @@ export default function JobPage() {
             </CardHeader>
             <CardContent>
               <Button asChild className="w-full">
-                <Link href="/connect">Connect wallet</Link>
+                <Link href="/connect">Sign in to apply</Link>
               </Button>
             </CardContent>
           </Card>
