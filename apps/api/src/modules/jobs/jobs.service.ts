@@ -68,6 +68,7 @@ export class JobsService {
     const where: Prisma.JobWhereInput = {
       status: 'open',
       ...(query.category ? { category: query.category } : {}),
+      ...(query.startupId ? { startupId: query.startupId } : {}),
       ...(search
         ? {
             OR: [

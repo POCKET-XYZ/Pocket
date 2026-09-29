@@ -5,6 +5,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { Verified } from '../../common/decorators/verified.decorator';
 import type { AuthUser } from '../../common/types/auth';
 import { BrowseSpecialistsDto } from './dto/browse-specialists.dto';
+import { BrowseStartupsDto } from './dto/browse-startups.dto';
 import { SpecialistProfileDto } from './dto/specialist-profile.dto';
 import { StartupProfileDto } from './dto/startup-profile.dto';
 import { ProfilesService } from './profiles.service';
@@ -40,6 +41,13 @@ export class ProfilesController {
   @Get('specialists')
   browseSpecialists(@Query() query: BrowseSpecialistsDto) {
     return this.profiles.browseSpecialists(query);
+  }
+
+  /** Directory of approved startups, so specialists can see who is hiring. */
+  @Public()
+  @Get('startups')
+  browseStartups(@Query() query: BrowseStartupsDto) {
+    return this.profiles.browseStartups(query);
   }
 
   /** Public profile of an approved user. */

@@ -8,6 +8,7 @@ import { Prisma, type SpecialistProfile, type StartupProfile } from '@prisma/cli
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BrowseSpecialistsDto } from './dto/browse-specialists.dto';
+import { BrowseStartupsDto } from './dto/browse-startups.dto';
 import { SpecialistProfileDto } from './dto/specialist-profile.dto';
 import { StartupProfileDto } from './dto/startup-profile.dto';
 
@@ -35,9 +36,11 @@ export class ProfilesService {
     if (user.role !== 'specialist') {
       throw new ForbiddenException('Only specialists have a specialist profile');
     }
-    if (!dto.linkedinUrl && !dto.portfolioUrl) {
+    if (!dto.linkedinUrl && !dto.portfolioUrl && !dto.cvUrl) {
       // A profile nobody can check is worth nothing to a startup choosing.
-      throw new BadRequestException('Add your LinkedIn or your portfolio, at least one');
+      throw new BadRequestException(
+        'Add your LinkedIn, your portfolio or your CV, at least one',
+      );
     }
 
     // Case studies are stored as JSON: a link with the result it achieved.
@@ -64,6 +67,51 @@ export class ProfilesService {
       return this.prisma.specialistProfile.findUnique({ where: { userId: user.sub } });
     }
     return null;
+  }
+
+  /**
+   * Public directory of startups, so a specialist can see who is hiring before
+   * applying. Only approved accounts, like the specialist directory, and each
+   * one with how many jobs it has open right now.
+   */
+  async browseStartups(query: BrowseStartupsDto) {
+    const limit = query.limit ?? 20;
+    const offset = query.offset ?? 0;
+    const search = query.search?.trim();
+
+    const where: Prisma.StartupProfileWhereInput = {
+      user: { verificationStatus: 'approved' },
+      ...(search
+        ? {
+            OR: [
+              { companyName: { contains: search, mode: 'insensitive' } },
+              { oneLiner: { contains: search, mode: 'insensitive' } },
+              { sector: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const [profiles, total] = await this.prisma.$transaction([
+      this.prisma.startupProfile.findMany({
+        where,
+        orderBy: { updatedAt: 'desc' },
+        take: limit,
+        skip: offset,
+        include: {
+          user: {
+            select: { _count: { select: { jobs: { where: { status: 'open' } } } } },
+          },
+        },
+      }),
+      this.prisma.startupProfile.count({ where }),
+    ]);
+
+    const items = profiles.map(({ user, ...profile }) => ({
+      ...profile,
+      openJobs: user._count.jobs,
+    }));
+    return { items, total, limit, offset };
   }
 
   /**

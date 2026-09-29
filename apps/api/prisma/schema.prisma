@@ -194,6 +194,8 @@ model SpecialistProfile {
   minProjectBudget Decimal?          @map("min_project_budget") @db.Decimal(20, 7)
   portfolioUrl     String?           @map("portfolio_url")
   linkedinUrl      String?           @map("linkedin_url")
+  // A link to their CV (Drive, Dropbox, Notion...). Pocket stores no files.
+  cvUrl            String?           @map("cv_url")
   avatarUrl        String?           @map("avatar_url")
   location         String?
   createdAt        DateTime          @default(now()) @map("created_at")

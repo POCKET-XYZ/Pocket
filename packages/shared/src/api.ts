@@ -177,6 +177,8 @@ export interface SpecialistProfile {
   minProjectBudget?: string | null;
   portfolioUrl?: string | null;
   linkedinUrl?: string | null;
+  /** Link to the CV, e.g. a PDF on Google Drive. */
+  cvUrl?: string | null;
   avatarUrl?: string | null;
   location?: string | null;
   updatedAt: IsoDate;
@@ -189,6 +191,20 @@ export interface PublicProfile {
   stellarAddress: string;
   memberSince: IsoDate;
   profile: StartupProfile | SpecialistProfile;
+}
+
+/** A startup as the directory lists it. */
+export interface StartupListing extends StartupProfile {
+  /** Jobs it has open right now. */
+  openJobs: number;
+}
+
+/** GET /profiles/startups */
+export interface StartupDirectory {
+  items: StartupListing[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 /** GET /profiles/specialists */

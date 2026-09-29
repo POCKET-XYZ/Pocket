@@ -138,6 +138,11 @@ export class SpecialistProfileDto {
   @IsUrl()
   linkedinUrl?: string;
 
+  @ApiPropertyOptional({ description: 'Link to the CV, e.g. a PDF on Google Drive' })
+  @IsOptional()
+  @IsUrl()
+  cvUrl?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsUrl()

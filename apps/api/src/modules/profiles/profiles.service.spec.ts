@@ -34,7 +34,12 @@ const SPECIALIST_DTO = {
 
 describe('ProfilesService', () => {
   let prisma: {
-    startupProfile: { upsert: jest.Mock; findUnique: jest.Mock };
+    startupProfile: {
+      upsert: jest.Mock;
+      findUnique: jest.Mock;
+      findMany: jest.Mock;
+      count: jest.Mock;
+    };
     specialistProfile: {
       upsert: jest.Mock;
       findUnique: jest.Mock;
@@ -48,7 +53,12 @@ describe('ProfilesService', () => {
 
   beforeEach(() => {
     prisma = {
-      startupProfile: { upsert: jest.fn(), findUnique: jest.fn() },
+      startupProfile: {
+        upsert: jest.fn(),
+        findUnique: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+      },
       specialistProfile: {
         upsert: jest.fn(),
         findUnique: jest.fn(),
@@ -76,13 +86,42 @@ describe('ProfilesService', () => {
     );
   });
 
-  it('asks for a LinkedIn or a portfolio', async () => {
+  it('asks for a LinkedIn, a portfolio or a CV', async () => {
     const withoutLinks: Partial<SpecialistProfileDto> = { ...SPECIALIST_DTO };
     delete withoutLinks.linkedinUrl;
     await expect(
       service.saveSpecialist(SPECIALIST, withoutLinks as SpecialistProfileDto),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.specialistProfile.upsert).not.toHaveBeenCalled();
+  });
+
+  it('takes a CV as the only way to check a specialist', async () => {
+    const onlyCv: Partial<SpecialistProfileDto> = {
+      ...SPECIALIST_DTO,
+      cvUrl: 'https://drive.google.com/file/d/cv',
+    };
+    delete onlyCv.linkedinUrl;
+    await service.saveSpecialist(SPECIALIST, onlyCv as SpecialistProfileDto);
+    expect(prisma.specialistProfile.upsert).toHaveBeenCalled();
+  });
+
+  it('lists only approved startups, with how many jobs each has open', async () => {
+    prisma.startupProfile.findMany.mockResolvedValue([
+      { id: 'p-1', companyName: 'North Loop', user: { _count: { jobs: 2 } } },
+    ]);
+    prisma.startupProfile.count.mockResolvedValue(1);
+
+    const directory = await service.browseStartups({ search: 'loop' });
+
+    const query = prisma.startupProfile.findMany.mock.calls[0][0] as {
+      where: { user: unknown; OR: unknown[] };
+    };
+    expect(query.where.user).toEqual({ verificationStatus: 'approved' });
+    expect(query.where.OR).toHaveLength(3);
+    expect(directory.items).toEqual([
+      { id: 'p-1', companyName: 'North Loop', openJobs: 2 },
+    ]);
+    expect(directory.total).toBe(1);
   });
 
   it('does not let a startup save a specialist profile', async () => {
