@@ -1,4 +1,10 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RateLimiter } from '../../common/rate-limit/rate-limiter';
 
@@ -150,9 +156,10 @@ export class TrustlessWorkClient {
       contractId?: string;
     }>('POST', '/helper/send-transaction', { signedXdr });
     if (result.status && result.status !== 'SUCCESS') {
-      throw new ServiceUnavailableException(
-        `Trustless Work could not send the transaction: ${result.message ?? result.status}`,
+      this.logger.error(
+        `POST /helper/send-transaction -> ${result.status}: ${result.message ?? ''}`,
       );
+      throw publicError(result.message);
     }
     return { contractId: result.contractId };
   }
@@ -193,9 +200,7 @@ export class TrustlessWorkClient {
       this.logger.error(
         `${method} ${path} -> ${response.status}: ${JSON.stringify(payload)}`,
       );
-      const message =
-        typeof payload.message === 'string' ? payload.message : response.statusText;
-      throw new ServiceUnavailableException(`Trustless Work error: ${message}`);
+      throw publicError(typeof payload.message === 'string' ? payload.message : undefined);
     }
     return payload as T;
   }
@@ -258,4 +263,28 @@ export function retryDelayMs(retryAfter: string | null, attempt: number): number
       ? seconds * 1000
       : 1000 * 2 ** attempt;
   return Math.min(delay, MAX_RETRY_DELAY_MS);
+}
+
+/**
+ * What the user reads when Trustless Work refuses a step. Its own text can
+ * carry contract internals and addresses, so it only goes to the log; the
+ * cases a user can act on get a fixed sentence of Pocket's.
+ */
+const KNOWN_ERRORS: [RegExp, string][] = [
+  [/already in dispute/i, 'This milestone is already in dispute'],
+  [/insufficient|not enough|underfunded/i, 'The wallet does not have enough funds for this step'],
+  [/trustline/i, 'The wallet needs to accept USDC before this step'],
+  [/not found/i, 'This escrow was not found on Stellar'],
+];
+
+function publicError(message: string | undefined): HttpException {
+  const known = message && KNOWN_ERRORS.find(([pattern]) => pattern.test(message));
+  // The original text rides along as the cause, for the operation log.
+  const options = message ? { cause: new Error(message) } : undefined;
+  return known
+    ? new BadRequestException(known[1], options)
+    : new ServiceUnavailableException(
+        'The escrow service could not complete this step. Try again',
+        options,
+      );
 }

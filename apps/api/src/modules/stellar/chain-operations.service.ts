@@ -163,7 +163,7 @@ export class ChainOperationsService {
         status: 'failed',
         confirmedAt: null,
         stepKey: null,
-        error: error instanceof Error ? error.message : String(error),
+        error: describe(error),
       },
     });
   }
@@ -202,4 +202,12 @@ async function claimStep<T>(scope: OperationScope, claim: () => Promise<T>): Pro
 
 function isUniqueViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+}
+
+/** An error as the operation log keeps it, with the provider's own text. */
+function describe(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  return error.cause instanceof Error
+    ? `${error.message} (${error.cause.message})`
+    : error.message;
 }

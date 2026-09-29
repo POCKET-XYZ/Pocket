@@ -83,9 +83,20 @@ describe('TrustlessWorkClient', () => {
   it('does not retry other errors', async () => {
     fetchMock.mockResolvedValue(reply(400, { message: 'Escrow not found' }));
     await expect(client.fund('CESCROW', 'GSTARTUP', 10)).rejects.toThrow(
-      'Trustless Work error: Escrow not found',
+      'This escrow was not found on Stellar',
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not pass the text of Trustless Work to the user', async () => {
+    fetchMock.mockResolvedValue(
+      reply(500, { message: 'HostError: Error(Contract, #12) at GABC...XYZ /srv/tw/escrow.ts' }),
+    );
+    const error = await client.fund('CESCROW', 'GSTARTUP', 10).catch((e: Error) => e);
+    expect(error).toBeInstanceOf(ServiceUnavailableException);
+    expect((error as Error).message).toBe(
+      'The escrow service could not complete this step. Try again',
+    );
   });
 
   it('holds requests back once Pocket spent its own budget', async () => {
