@@ -120,6 +120,7 @@ model VerificationRequest {
 
   @@index([userId])
   @@index([status])
+  @@index([reviewedById])
   @@map("verification_requests")
 }
 
@@ -445,6 +446,8 @@ model Dispute {
 
   @@index([milestoneId])
   @@index([status])
+  @@index([openedById])
+  @@index([resolvedById])
   @@map("disputes")
 }
 
@@ -460,6 +463,7 @@ model DisputeEvidence {
   author  User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([disputeId])
+  @@index([authorId])
   @@map("dispute_evidence")
 }
 
@@ -515,5 +519,6 @@ model ChainOperation {
 
   @@index([contractId])
   @@index([milestoneId])
+  @@index([signerId])
   @@map("chain_operations")
 }
