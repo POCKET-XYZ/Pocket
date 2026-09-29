@@ -1,0 +1,9 @@
+# Public testnet addresses and contract ids in docs and fixtures are not secrets.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public Stellar addresses, contract ids and test fixtures"
+paths = [
+  '''apps/api/src/modules/stellar/__fixtures__/.*''',
+]
