@@ -7,6 +7,7 @@ import type { AuthUser } from '../../common/types/auth';
 import { ContractsService } from './contracts.service';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { SignedTransactionDto } from '../stellar/dto/signed-transaction.dto';
+import { ESCROW_RATE_LIMIT, RateLimit } from '../../common/rate-limit/rate-limit.decorator';
 
 @ApiTags('contracts')
 @ApiBearerAuth()
@@ -37,6 +38,7 @@ export class ContractsController {
   /** The specialist accepts the terms and the escrow is deployed. */
   @Roles('specialist')
   @Verified()
+  @RateLimit(ESCROW_RATE_LIMIT)
   @Post(':id/accept')
   accept(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.contracts.accept(user, id);
@@ -52,6 +54,7 @@ export class ContractsController {
   /** Funding transaction for the startup's wallet to sign. */
   @Roles('startup')
   @Verified()
+  @RateLimit(ESCROW_RATE_LIMIT)
   @Post(':id/fund/prepare')
   prepareFund(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.contracts.prepareFund(user, id);
@@ -59,6 +62,7 @@ export class ContractsController {
 
   @Roles('startup')
   @Verified()
+  @RateLimit(ESCROW_RATE_LIMIT)
   @Post(':id/fund/submit')
   submitFund(
     @CurrentUser() user: AuthUser,
@@ -71,6 +75,7 @@ export class ContractsController {
   /** Re-check the escrow balance when the deposit took a moment to show. */
   @Roles('startup')
   @Verified()
+  @RateLimit(ESCROW_RATE_LIMIT)
   @Post(':id/fund/sync')
   syncFunding(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.contracts.syncFunding(user, id);

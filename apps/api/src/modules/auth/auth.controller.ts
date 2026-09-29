@@ -6,9 +6,11 @@ import { LoginDto } from './dto/login.dto';
 import { PollarLoginDto } from './dto/pollar-login.dto';
 import { WalletChallengeService } from './wallet-challenge.service';
 import { Public } from '../../common/decorators/public.decorator';
+import { AUTH_RATE_LIMIT, RateLimit } from '../../common/rate-limit/rate-limit.decorator';
 
 @ApiTags('auth')
 @Public()
+@RateLimit(AUTH_RATE_LIMIT)
 @Controller('auth')
 export class AuthController {
   constructor(

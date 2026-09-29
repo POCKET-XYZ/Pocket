@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RateLimitGuard } from './common/guards/rate-limit.guard';
+import { RateLimiter } from './common/rate-limit/rate-limiter';
 import { RolesGuard } from './common/guards/roles.guard';
 import { VerifiedGuard } from './common/guards/verified.guard';
 import { HealthController } from './health.controller';
@@ -35,7 +37,11 @@ import configuration, { validateEnv } from './config/configuration';
   ],
   controllers: [HealthController],
   providers: [
+    { provide: RateLimiter, useValue: new RateLimiter() },
+    // Order matters: authentication first, so the limiter counts a signed-in
+    // user by account rather than by the IP they share with others.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: VerifiedGuard },
   ],

@@ -1,6 +1,10 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { retryDelayMs, TrustlessWorkClient } from './trustless-work.client';
+import {
+  retryDelayMs,
+  TRUSTLESS_WORK_BUDGET_PER_MINUTE,
+  TrustlessWorkClient,
+} from './trustless-work.client';
 
 /** The client with an instant sleep, recording how long it was asked to wait. */
 class TestClient extends TrustlessWorkClient {
@@ -82,6 +86,21 @@ describe('TrustlessWorkClient', () => {
       'Trustless Work error: Escrow not found',
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('holds requests back once Pocket spent its own budget', async () => {
+    // A fresh response each time: a body can only be read once.
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ unsignedTransaction: 'xdr' }), { status: 200 }),
+      ),
+    );
+    for (let i = 0; i < TRUSTLESS_WORK_BUDGET_PER_MINUTE; i++) {
+      await client.fund('C1', 'G1', 1);
+    }
+    await expect(client.fund('C1', 'G1', 1)).rejects.toThrow('busy right now');
+    // Held back before reaching Trustless Work.
+    expect(fetchMock).toHaveBeenCalledTimes(TRUSTLESS_WORK_BUDGET_PER_MINUTE);
   });
 
   describe('retryDelayMs', () => {

@@ -1,13 +1,19 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
+
+  // Behind the host's proxy every request would look like it came from the
+  // proxy. Trust exactly as many hops as sit in front of the API, and no more:
+  // trusting more lets a caller pick their own IP with X-Forwarded-For.
+  app.set('trust proxy', config.get<number>('trustProxyHops') ?? 0);
 
   app.use(helmet());
   app.setGlobalPrefix('api');

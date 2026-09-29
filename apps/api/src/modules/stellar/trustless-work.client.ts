@@ -1,5 +1,6 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { RateLimiter } from '../../common/rate-limit/rate-limiter';
 
 /** Roles of a multi-release escrow. Every role is a Stellar address. */
 export interface EscrowRoles {
@@ -73,6 +74,12 @@ export class TrustlessWorkClient {
   readonly deployerContractId: string;
   /** Where the protocol fee goes, which a release or resolution must name. */
   readonly feeAddress: string;
+  /**
+   * Pocket's own budget, below Trustless Work's 50 requests a minute. The per
+   * user limits keep one person from spending it; this keeps everyone together
+   * from reaching the provider's limit, where every step would start failing.
+   */
+  private readonly budget = new RateLimiter();
 
   constructor(config: ConfigService) {
     this.baseUrl = config.getOrThrow<string>('trustlessWork.apiUrl');
@@ -205,6 +212,12 @@ export class TrustlessWorkClient {
     body?: unknown,
   ): Promise<Response> {
     for (let attempt = 0; ; attempt++) {
+      if (this.budget.take('trustless-work', TRUSTLESS_WORK_BUDGET_PER_MINUTE, 60_000) > 0) {
+        this.logger.warn(`${method} ${path} held back: Pocket's Trustless Work budget is spent`);
+        throw new ServiceUnavailableException(
+          'Trustless Work is busy right now. Try again in a minute',
+        );
+      }
       const response = await fetch(`${this.baseUrl}${path}`, {
         method,
         headers: { 'content-type': 'application/json', 'x-api-key': this.apiKey },
@@ -228,6 +241,9 @@ export class TrustlessWorkClient {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
+
+/** Requests a minute Pocket allows itself, under Trustless Work's 50. */
+export const TRUSTLESS_WORK_BUDGET_PER_MINUTE = 40;
 
 /** Retries after a 429 before giving up. */
 const RATE_LIMIT_RETRIES = 3;
