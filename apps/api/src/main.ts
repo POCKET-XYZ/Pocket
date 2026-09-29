@@ -16,15 +16,19 @@ async function bootstrap() {
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Pocket API')
-    .setDescription(
-      'Marketplace for startups and growth specialists with escrow payments on Stellar',
-    )
-    .setVersion('0.1.0')
-    .addBearerAuth()
-    .build();
-  SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, swaggerConfig));
+  // The API map, with every route, DTO and role, is for us, not for whoever
+  // probes production.
+  if (process.env.NODE_ENV !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Pocket API')
+      .setDescription(
+        'Marketplace for startups and growth specialists with escrow payments on Stellar',
+      )
+      .setVersion('0.1.0')
+      .addBearerAuth()
+      .build();
+    SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, swaggerConfig));
+  }
 
   await app.listen(config.get<number>('port') ?? 3000);
 }
