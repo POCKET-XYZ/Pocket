@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 const PUBLIC_LINKS = [
   { href: '/jobs', label: 'Jobs' },
   { href: '/specialists', label: 'Specialists' },
+  { href: '/startups', label: 'Startups' },
 ];
 
 const ROLE_LINKS: Record<UserRole, { href: string; label: string }[]> = {

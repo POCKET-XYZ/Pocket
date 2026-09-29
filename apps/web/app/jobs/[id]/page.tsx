@@ -52,7 +52,7 @@ export default function JobPage() {
           description={
             data.startup ? (
               <Link
-                href={`/specialists/${data.startupId}`}
+                href={`/startups/${data.startupId}`}
                 className="inline-flex items-center gap-2 underline"
               >
                 <Avatar
