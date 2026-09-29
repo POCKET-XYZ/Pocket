@@ -7,6 +7,7 @@ import {
   signTransaction,
 } from '@/components/tw-blocks/wallet-kit/wallet-kit';
 import { api } from './api';
+import type { TxPurpose } from './tx-check';
 
 const NETWORK_NAMES: Record<string, string> = {
   'Public Global Stellar Network ; September 2015': 'Mainnet',
@@ -65,7 +66,11 @@ export interface PreparedTransaction {
  * Signs a transaction with whichever wallet the user signed in with. Use
  * `useSigner()` to get one instead of picking a wallet by hand.
  */
-export type SignXdr = (xdr: string, networkPassphrase?: string) => Promise<string>;
+export type SignXdr = (
+  xdr: string,
+  networkPassphrase: string | undefined,
+  purpose: TxPurpose,
+) => Promise<string>;
 
 /**
  * The loop every money step follows: the API prepares the transaction, the
@@ -74,12 +79,13 @@ export type SignXdr = (xdr: string, networkPassphrase?: string) => Promise<strin
  */
 export async function prepareSignSubmit<T>(
   sign: SignXdr,
+  purpose: TxPurpose,
   preparePath: string,
   submitPath: string,
   extra: Record<string, unknown> = {},
 ): Promise<T> {
   const prepared = await api<PreparedTransaction>(preparePath, { method: 'POST' });
-  const signedXdr = await sign(prepared.xdr, prepared.networkPassphrase);
+  const signedXdr = await sign(prepared.xdr, prepared.networkPassphrase, purpose);
   return api<T>(submitPath, { method: 'POST', body: { signedXdr, ...extra } });
 }
 

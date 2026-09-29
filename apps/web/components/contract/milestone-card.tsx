@@ -52,6 +52,7 @@ export function MilestoneCard({
     () =>
       prepareSignSubmit(
         signer.sign,
+        { kind: 'approve', escrowId: contract.escrowId },
         `/milestones/${milestone.id}/approve/prepare`,
         `/milestones/${milestone.id}/approve/submit`,
       ),
@@ -182,7 +183,11 @@ export function MilestoneCard({
           {active &&
           (isStartup || isSpecialist) &&
           DISPUTABLE.includes(milestone.status) ? (
-            <OpenDisputeDialog contractId={contract.id} milestoneId={milestone.id} />
+            <OpenDisputeDialog
+              contractId={contract.id}
+              escrowId={contract.escrowId}
+              milestoneId={milestone.id}
+            />
           ) : null}
 
           {openDispute ? (
@@ -308,9 +313,11 @@ function RequestChangesDialog({
 
 function OpenDisputeDialog({
   contractId,
+  escrowId,
   milestoneId,
 }: {
   contractId: string;
+  escrowId: string | null;
   milestoneId: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -323,7 +330,10 @@ function OpenDisputeDialog({
         `/milestones/${milestoneId}/dispute/prepare`,
         { method: 'POST' },
       );
-      const signedXdr = await signer.sign(prepared.xdr, prepared.networkPassphrase);
+      const signedXdr = await signer.sign(prepared.xdr, prepared.networkPassphrase, {
+        kind: 'dispute',
+        escrowId,
+      });
       return api(`/milestones/${milestoneId}/dispute`, {
         method: 'POST',
         body: { signedXdr, reason },
