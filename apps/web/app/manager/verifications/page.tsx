@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { api, errorMessage } from '@/lib/api';
 import { dateTime, shortAddress } from '@/lib/format';
+import { linkHost, safeHref } from '@/lib/links';
 
 type QueueStatus = 'pending' | 'approved' | 'rejected';
 
@@ -123,12 +124,12 @@ function RequestCard({ request }: { request: QueueItem }) {
             {links.map((link) => (
               <a
                 key={link.url}
-                href={link.url}
+                href={safeHref(link.url)}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 underline"
               >
-                {link.label} <ExternalLinkIcon className="size-3" />
+                {link.label} ({linkHost(link.url)}) <ExternalLinkIcon className="size-3" />
               </a>
             ))}
           </div>

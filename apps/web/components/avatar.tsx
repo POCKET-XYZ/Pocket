@@ -1,3 +1,5 @@
+import { safeHref } from '@/lib/links';
+
 /** A profile photo, or the first letter of the name when there is none. */
 export function Avatar({
   name,
@@ -8,12 +10,13 @@ export function Avatar({
   url?: string | null;
   size?: number;
 }) {
-  if (url) {
+  const src = safeHref(url);
+  if (src) {
     // Profile photos are arbitrary links, so a plain img avoids next/image domain rules.
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={url}
+        src={src}
         alt={name}
         width={size}
         height={size}

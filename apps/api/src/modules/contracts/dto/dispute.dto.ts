@@ -7,12 +7,12 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUrl,
   Length,
   MaxLength,
   Min,
   ValidateIf,
 } from 'class-validator';
+import { IsHttpsUrl } from '../../../common/decorators/is-https-url.decorator';
 
 /** The signed dispute transaction, with why the party is opening it. */
 export class OpenDisputeDto {
@@ -31,7 +31,7 @@ export class OpenDisputeDto {
 export class AddEvidenceDto {
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   url?: string;
 
   @ApiProperty()

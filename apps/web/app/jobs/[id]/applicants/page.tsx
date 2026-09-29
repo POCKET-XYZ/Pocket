@@ -11,6 +11,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { dateTime, usdc } from '@/lib/format';
+import { linkHost, safeHref } from '@/lib/links';
 
 export default function ApplicantsPage() {
   return <RequireAuth roles={['startup']}>{() => <Applicants />}</RequireAuth>;
@@ -68,13 +69,16 @@ function Applicants() {
                     <p className="mt-2 text-sm">
                       <span className="text-muted-foreground">Similar work: </span>
                       <a
-                        href={applicant.similarWorkUrl}
+                        href={safeHref(applicant.similarWorkUrl)}
                         target="_blank"
                         rel="noreferrer"
                         className="underline"
                       >
                         {applicant.similarWorkUrl}
-                      </a>
+                      </a>{' '}
+                      <span className="text-xs text-muted-foreground">
+                        ({linkHost(applicant.similarWorkUrl)})
+                      </span>
                     </p>
                   ) : null}
                   {applicant.needsFromStartup ? (

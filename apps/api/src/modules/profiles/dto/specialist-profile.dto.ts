@@ -10,17 +10,17 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUrl,
   Length,
   Max,
   Min,
   ValidateNested,
 } from 'class-validator';
+import { IsHttpsUrl } from '../../../common/decorators/is-https-url.decorator';
 
 /** A piece of past work: where to see it and what it achieved. */
 export class CaseStudyDto {
   @ApiProperty({ example: 'https://example.com/campaign' })
-  @IsUrl()
+  @IsHttpsUrl()
   url: string;
 
   @ApiProperty({
@@ -130,22 +130,22 @@ export class SpecialistProfileDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   portfolioUrl?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   linkedinUrl?: string;
 
   @ApiPropertyOptional({ description: 'Link to the CV, e.g. a PDF on Google Drive' })
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   cvUrl?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   avatarUrl?: string;
 
   @ApiPropertyOptional()

@@ -6,9 +6,9 @@ import {
   IsEnum,
   IsOptional,
   IsString,
-  IsUrl,
   Length,
 } from 'class-validator';
+import { IsHttpsUrl } from '../../../common/decorators/is-https-url.decorator';
 
 /** The fixed template every startup fills in. */
 export class StartupProfileDto {
@@ -38,12 +38,12 @@ export class StartupProfileDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   websiteUrl?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   logoUrl?: string;
 
   @ApiPropertyOptional({
