@@ -6,6 +6,9 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { WalletChallengeService } from './wallet-challenge.service';
 
+const JWT_ISSUER = 'pocket-api';
+const JWT_AUDIENCE = 'pocket-web';
+
 @Module({
   imports: [
     PollarModule,
@@ -14,7 +17,18 @@ import { WalletChallengeService } from './wallet-challenge.service';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>('jwt.secret'),
-        signOptions: { expiresIn: config.get('jwt.expiresIn') },
+        // Pinned, so a token is only ever read the way Pocket wrote it.
+        signOptions: {
+          expiresIn: config.get('jwt.expiresIn'),
+          algorithm: 'HS256',
+          issuer: JWT_ISSUER,
+          audience: JWT_AUDIENCE,
+        },
+        verifyOptions: {
+          algorithms: ['HS256'],
+          issuer: JWT_ISSUER,
+          audience: JWT_AUDIENCE,
+        },
       }),
     }),
   ],

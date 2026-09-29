@@ -38,6 +38,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     pollarUserId: null,
     email: null,
     walletFundedAt: null,
+    tokenVersion: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -55,6 +56,7 @@ describe('AuthService', () => {
       update: jest.Mock;
     };
   };
+
   let pollar: { enabled: boolean; verifyToken: jest.Mock };
   let service: AuthService;
 
@@ -142,6 +144,21 @@ describe('AuthService', () => {
       service.login({ stellarAddress: ADDRESS, signedXdr: 'x', role: 'startup' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('puts the session version in the token', async () => {
+    prisma.user.findUnique.mockResolvedValue(makeUser({ tokenVersion: 7 }));
+    const result = await service.login({ stellarAddress: ADDRESS, signedXdr: 'x' });
+    const claims = await jwt.verifyAsync<{ ver: number }>(result.accessToken);
+    expect(claims.ver).toBe(7);
+  });
+
+  it('ends every session when the user signs out', async () => {
+    await service.logout('user-1');
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { tokenVersion: { increment: 1 } },
+    });
   });
 
   describe('loginWithPollar', () => {

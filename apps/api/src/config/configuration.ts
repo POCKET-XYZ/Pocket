@@ -54,6 +54,12 @@ export function validateEnv(env: Record<string, unknown>): Record<string, unknow
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
+  // Anyone who knows the secret can sign themselves in as anybody, manager
+  // included: refuse to start with a short one or the example's placeholder.
+  const jwtSecret = String(env.JWT_SECRET);
+  if (jwtSecret.length < 32 || jwtSecret === 'change-me') {
+    throw new Error('JWT_SECRET must be a random value of at least 32 characters');
+  }
   const network = env.STELLAR_NETWORK ?? 'testnet';
   if (network !== 'testnet' && network !== 'mainnet') {
     throw new Error('STELLAR_NETWORK must be "testnet" or "mainnet"');
@@ -74,7 +80,8 @@ export default (): AppConfig => {
     database: { url: process.env.DATABASE_URL as string },
     jwt: {
       secret: process.env.JWT_SECRET as string,
-      expiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
+      // Short enough that a stolen token does not buy a week of access.
+      expiresIn: process.env.JWT_EXPIRES_IN ?? '12h',
     },
     stellar: {
       network,

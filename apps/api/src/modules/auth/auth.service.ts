@@ -126,11 +126,23 @@ export class AuthService {
     return { accessToken: await this.sign(user), user, isNewUser: false };
   }
 
+  /**
+   * End every session of the user, on every device: tokens issued before
+   * carry the old version and the guard refuses them.
+   */
+  async logout(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+  }
+
   private sign(user: User): Promise<string> {
     const payload: JwtPayload = {
       sub: user.id,
       role: user.role,
       stellarAddress: user.stellarAddress,
+      ver: user.tokenVersion,
     };
     return this.jwt.signAsync(payload);
   }

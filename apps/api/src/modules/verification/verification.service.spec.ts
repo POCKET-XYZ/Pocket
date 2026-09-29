@@ -21,6 +21,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     pollarUserId: null,
     email: null,
     walletFundedAt: null,
+    tokenVersion: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

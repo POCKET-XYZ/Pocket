@@ -192,6 +192,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback(() => {
+    // End the session on the server too, so a copy of the token stops working.
+    // Best effort: signing out locally must not wait for the network.
+    if (getToken()) void api('/auth/logout', { method: 'POST' }).catch(() => undefined);
     setToken(null);
     setPendingSignUp(null);
     setPollarError(null);

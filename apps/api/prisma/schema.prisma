@@ -58,6 +58,8 @@ model User {
   email              String?
   // When Pocket asked Pollar to put the XLM reserve on the wallet.
   walletFundedAt     DateTime?          @map("wallet_funded_at")
+  // Bumped to end every session at once: signing out, or an account taken over.
+  tokenVersion       Int                @default(0) @map("token_version")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
