@@ -44,7 +44,12 @@ Users' funds never touch Pocket: every deposit, approval and dispute is signed b
 
 - A Content Security Policy blocks scripts from other origins, plugins, `<base>` rewrites and posting forms away. `frame-ancestors 'none'` and `X-Frame-Options: DENY` stop Pocket from being framed to trick a click on *Approve*. A stricter policy runs in report-only mode to tighten `connect-src` later.
 - HSTS, `nosniff`, a strict referrer policy and a permissions policy on every page.
-- The Next.js image optimizer is off.
+- The Next.js image optimizer is off, on a patched Next.js (16.3.7).
+
+### Dependencies
+
+- CI fails on any high or critical advisory (`bun audit --audit-level=high`), scans the whole history for secrets (gitleaks) and runs every Monday even without commits. Dependabot opens weekly updates.
+- What `bun audit` still lists is below that bar and not reachable from Pocket: `uuid`, `stream-json` and `elliptic` come with the Solana and NEAR wallets inside Stellar Wallets Kit, and `js-yaml` with build tools.
 
 ### Database
 
@@ -105,6 +110,5 @@ Reset the database password in Supabase, update `DATABASE_URL` and `DIRECT_URL` 
 ## Hardening still open
 
 - **A second, offline key for the platform account**, so a leaked hot key can be removed without losing the account. `bun run stellar:cosigner` (in `apps/api`) adds it: generate the key offline, pass only its public key as `OFFLINE_SIGNER`, check the dry run, then add `--apply`. The server key keeps weight 1 and signs every escrow step; changing signers needs weight 2, which only the offline key has. Tested on a throwaway testnet account; run one release on testnet after applying it to the real account.
-- **Next.js 16.3.7 and dependency updates**, blocked while the npm registry was unreachable. The image optimizer, where the critical advisory lives, is already off.
 - **Error tracking** (Sentry or similar), filtering `authorization` headers and `signedXdr` bodies.
 - **An external audit** of the escrow flow, the platform key and both sign-in doors.
