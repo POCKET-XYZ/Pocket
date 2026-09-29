@@ -77,7 +77,7 @@ Act first, investigate after. Write down what you did and when.
 ### The platform key leaked, or `unrecorded_platform_operation` fired
 
 1. Stop the API so it signs nothing else.
-2. With the offline second key (see *Hardening still open*), remove the leaked key's weight from the platform account. Until that key exists: move the account's XLM to a safe account and set up a new platform account.
+2. With the offline key, set the leaked key's weight to 0 (`setOptions` with `masterWeight: 0`, signed only by the offline key). Until that key exists: move the account's XLM to a safe account and set up a new platform account.
 3. Look at every open escrow. Releases and dispute resolutions need the platform key, so money in escrow cannot move without it; check the account's history on Horizon for anything it signed.
 4. Generate a new key, add it as signer, update `STELLAR_PLATFORM_SECRET` and restart.
 5. Tell affected users what happened and what they need to do, if anything.
@@ -104,7 +104,7 @@ Reset the database password in Supabase, update `DATABASE_URL` and `DIRECT_URL` 
 
 ## Hardening still open
 
-- **A second, offline key for the platform account** (multisig), so a leaked hot key can be removed without losing the account.
+- **A second, offline key for the platform account**, so a leaked hot key can be removed without losing the account. `bun run stellar:cosigner` (in `apps/api`) adds it: generate the key offline, pass only its public key as `OFFLINE_SIGNER`, check the dry run, then add `--apply`. The server key keeps weight 1 and signs every escrow step; changing signers needs weight 2, which only the offline key has. Tested on a throwaway testnet account; run one release on testnet after applying it to the real account.
 - **Next.js 16.3.7 and dependency updates**, blocked while the npm registry was unreachable. The image optimizer, where the critical advisory lives, is already off.
 - **Error tracking** (Sentry or similar), filtering `authorization` headers and `signedXdr` bodies.
 - **An external audit** of the escrow flow, the platform key and both sign-in doors.
