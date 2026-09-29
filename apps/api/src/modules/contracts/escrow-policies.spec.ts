@@ -13,6 +13,8 @@ const ADDRESSES: PlatformAddresses = {
   deployer: 'CAZZOSFFNQQSDOLPPGN5BDITMNSLZITXW4S7V5ISM5EAB2THBD7F2AHR',
   twFee: 'GA6KH5VWPCHBOEF63X57SPX6T4H366YFFKKGCVDBTXT2N7JVL6PJCK7G',
   usdcContract: fixtures.usdcContractId,
+  escrowWasmHash: '5618791548edfc44074e4b79e5d1b29f5712ff98eead12d22fb4d7f04d4edbf2',
+  networkPassphrase: Networks.TESTNET,
 };
 const STRANGER = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
 const sign = (xdr: string, policy: ReturnType<typeof releasePolicy>) =>
@@ -28,6 +30,8 @@ describe('the escrow policies accept what Trustless Work really built', () => {
       milestoneAmounts: d.milestones.map((m) => m.amount),
     });
     expect(() => sign(d.envelopeXdr, policy)).not.toThrow();
+    // The address comes from the deployer and the salt: the real escrow's.
+    expect(policy.escrowAddress()).toBe(d.escrowId);
   });
 
   it('the release of a real milestone', () => {
@@ -67,6 +71,20 @@ describe('the escrow policies refuse a real transaction that is not what Pocket 
       milestoneAmounts: d.milestones.map((m) => m.amount),
     });
     expect(() => sign(d.envelopeXdr, policy)).toThrow('service provider');
+  });
+
+  it('a deploy of other code', () => {
+    const d = fixtures.deploy;
+    const policy = deployPolicy(
+      { ...ADDRESSES, escrowWasmHash: 'cd'.repeat(32) },
+      {
+        contractId: d.contractId,
+        startup: d.startup,
+        specialist: d.specialist,
+        milestoneAmounts: d.milestones.map((m) => m.amount),
+      },
+    );
+    expect(() => sign(d.envelopeXdr, policy)).toThrow('code other than');
   });
 
   it('a deploy with other amounts', () => {

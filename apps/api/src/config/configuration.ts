@@ -15,6 +15,8 @@ export interface AppConfig {
     platformSecret: string;
     /** Below this much XLM for fees the platform account raises an alert. */
     platformMinXlm: number;
+    /** Soroban RPC node escrows and transactions are read from. */
+    sorobanRpcUrl: string;
   };
   trustlessWork: {
     apiUrl: string;
@@ -23,6 +25,8 @@ export interface AppConfig {
     deployerContractId: string;
     /** Where Trustless Work's protocol fee goes on this network. */
     feeAddress: string;
+    /** Hash of the escrow code Trustless Work deploys; nothing else is deployed. */
+    escrowWasmHash: string;
   };
   /** Wallets and logins for users without a Stellar wallet of their own. */
   pollar: { serverUrl: string; secretKey: string };
@@ -40,10 +44,14 @@ const REQUIRED = [
   // platform key would sign whatever Trustless Work sends.
   'TRUSTLESS_WORK_DEPLOYER_CONTRACT_ID',
   'TRUSTLESS_WORK_FEE_ADDRESS',
+  'TRUSTLESS_WORK_ESCROW_WASM_HASH',
 ] as const;
 
 /** Pollar's backend API. Secret-key routes only. */
 const DEFAULT_POLLAR_SERVER = 'https://server.api.pollar.xyz';
+
+/** SDF's public RPC exists on testnet only; mainnet needs a provider. */
+const DEFAULT_SOROBAN_RPC = 'https://soroban-testnet.stellar.org';
 
 const DEFAULT_HORIZON: Record<StellarNetwork, string> = {
   testnet: 'https://horizon-testnet.stellar.org',
@@ -65,6 +73,12 @@ export function validateEnv(env: Record<string, unknown>): Record<string, unknow
   const network = env.STELLAR_NETWORK ?? 'testnet';
   if (network !== 'testnet' && network !== 'mainnet') {
     throw new Error('STELLAR_NETWORK must be "testnet" or "mainnet"');
+  }
+  if (network === 'mainnet' && !env.SOROBAN_RPC_URL) {
+    throw new Error('SOROBAN_RPC_URL is required on mainnet');
+  }
+  if (!/^[0-9a-f]{64}$/.test(String(env.TRUSTLESS_WORK_ESCROW_WASM_HASH))) {
+    throw new Error('TRUSTLESS_WORK_ESCROW_WASM_HASH must be 64 hex characters');
   }
   return env;
 }
@@ -91,12 +105,14 @@ export default (): AppConfig => {
       usdcIssuer: process.env.USDC_ISSUER as string,
       platformSecret: process.env.STELLAR_PLATFORM_SECRET as string,
       platformMinXlm: Number(process.env.PLATFORM_MIN_XLM ?? 20),
+      sorobanRpcUrl: process.env.SOROBAN_RPC_URL || DEFAULT_SOROBAN_RPC,
     },
     trustlessWork: {
       apiUrl: (process.env.TRUSTLESS_WORK_API_URL as string).replace(/\/+$/, ''),
       apiKey: process.env.TRUSTLESS_WORK_API_KEY as string,
       deployerContractId: process.env.TRUSTLESS_WORK_DEPLOYER_CONTRACT_ID as string,
       feeAddress: process.env.TRUSTLESS_WORK_FEE_ADDRESS as string,
+      escrowWasmHash: process.env.TRUSTLESS_WORK_ESCROW_WASM_HASH as string,
     },
     pollar: {
       serverUrl: (process.env.POLLAR_SERVER_URL ?? DEFAULT_POLLAR_SERVER).replace(

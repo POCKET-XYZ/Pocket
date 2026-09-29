@@ -80,6 +80,8 @@ export class TrustlessWorkClient {
   readonly deployerContractId: string;
   /** Where the protocol fee goes, which a release or resolution must name. */
   readonly feeAddress: string;
+  /** The escrow code a deploy must install, as a hex hash. */
+  readonly escrowWasmHash: string;
   /**
    * Pocket's own budget, below Trustless Work's 50 requests a minute. The per
    * user limits keep one person from spending it; this keeps everyone together
@@ -92,6 +94,7 @@ export class TrustlessWorkClient {
     this.apiKey = config.getOrThrow<string>('trustlessWork.apiKey');
     this.deployerContractId = config.getOrThrow<string>('trustlessWork.deployerContractId');
     this.feeAddress = config.getOrThrow<string>('trustlessWork.feeAddress');
+    this.escrowWasmHash = config.getOrThrow<string>('trustlessWork.escrowWasmHash');
   }
 
   deployMultiRelease(input: DeployEscrowInput): Promise<string> {
@@ -155,7 +158,8 @@ export class TrustlessWorkClient {
       message?: string;
       contractId?: string;
     }>('POST', '/helper/send-transaction', { signedXdr });
-    if (result.status && result.status !== 'SUCCESS') {
+    // Only an explicit SUCCESS counts; an answer without a status is not one.
+    if (result.status !== 'SUCCESS') {
       this.logger.error(
         `POST /helper/send-transaction -> ${result.status}: ${result.message ?? ''}`,
       );

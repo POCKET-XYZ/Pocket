@@ -61,6 +61,8 @@ export function assertPlatformTx(
   const tx = parsed;
 
   if (tx.source !== platformAddress) refuse('the source is not the platform');
+  const expiry = timeBoundProblem(tx);
+  if (expiry) refuse(expiry);
   if (Number(tx.fee) > policy.maxFeeStroops) refuse(`the fee ${tx.fee} is too high`);
   if (tx.operations.length !== 1) refuse('expected exactly one operation');
 
@@ -109,6 +111,23 @@ export function assertPlatformTx(
   }
 
   return tx;
+}
+
+/** The longest a transaction Pocket signs or hands to a user may stay valid. */
+export const MAX_VALIDITY_SECONDS = 900;
+
+/**
+ * Why a transaction's time bound is not acceptable, or null when it is. A
+ * transaction that never expires could be broadcast long after Pocket gave up
+ * on it and freed its step, and then land on top of the retry.
+ */
+export function timeBoundProblem(tx: Transaction, now = Date.now()): string | null {
+  const maxTime = Number(tx.timeBounds?.maxTime ?? 0);
+  if (!maxTime) return 'the transaction never expires';
+  if (maxTime > now / 1000 + MAX_VALIDITY_SECONDS) {
+    return 'the transaction stays valid for too long';
+  }
+  return null;
 }
 
 /**

@@ -74,6 +74,12 @@ export class StellarService implements OnApplicationBootstrap {
     return this.platform.publicKey();
   }
 
+  /** A transaction of this network, unwrapped from a fee bump if it has one. */
+  parse(xdr: string): Transaction {
+    const tx = TransactionBuilder.fromXDR(xdr, this.networkPassphrase);
+    return tx instanceof FeeBumpTransaction ? tx.innerTransaction : tx;
+  }
+
   /** Transaction hash in hex. Signatures do not change it. */
   hashOf(xdr: string): string {
     const tx = TransactionBuilder.fromXDR(xdr, this.networkPassphrase);

@@ -1,15 +1,19 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import type { ChainOperation, Contract, Milestone, Prisma } from '@prisma/client';
 import {
   ChainOperationsService,
   type PreparedTransaction,
 } from '../stellar/chain-operations.service';
+import { securityEvent } from '../../common/security/security-log';
+import { SorobanReader, type ChainMilestone } from '../stellar/soroban-reader.service';
+import { toStroops } from '../stellar/platform-tx-policy';
 import { StellarService } from '../stellar/stellar.service';
-import {
-  TrustlessWorkClient,
-  type Distribution,
-  type EscrowMilestoneState,
-} from '../stellar/trustless-work.client';
+import { TrustlessWorkClient, type Distribution } from '../stellar/trustless-work.client';
 import {
   deployPolicy,
   releasePolicy,
@@ -47,6 +51,7 @@ export class EscrowService {
     private readonly stellar: StellarService,
     private readonly trustlessWork: TrustlessWorkClient,
     private readonly operations: ChainOperationsService,
+    private readonly chain: SorobanReader,
   ) {}
 
   /** Deploy the contract's escrow. Returns its Soroban contract id. */
@@ -76,25 +81,92 @@ export class EscrowService {
     });
 
     const sorted = [...input.milestones].sort((a, b) => a.position - b.position);
-    const { operation, contractId } = await this.operations.executeAsPlatform(
+    const amounts = sorted.map((milestone) => milestone.amount.toFixed(7));
+    const policy = deployPolicy(this.platformAddresses(), {
+      contractId: input.contract.id,
+      startup: input.startupAddress,
+      specialist: input.specialistAddress,
+      milestoneAmounts: amounts,
+    });
+    const { operation, contractId: reported } = await this.operations.executeAsPlatform(
       { kind: 'deploy', contractId: input.contract.id },
       unsigned,
-      deployPolicy(this.platformAddresses(), {
-        contractId: input.contract.id,
-        startup: input.startupAddress,
-        specialist: input.specialistAddress,
-        milestoneAmounts: sorted.map((milestone) => milestone.amount.toFixed(7)),
-      }),
+      policy,
     );
-    if (!contractId) {
-      // Without the id Pocket cannot use the escrow, so free the step for a retry.
+    // The address follows from the deployer and the salt of the transaction
+    // the platform signed; Trustless Work's answer is only cross-checked.
+    const escrowId = policy.escrowAddress();
+    if (reported && reported !== escrowId) {
+      securityEvent(
+        'platform_refused',
+        { contract: input.contract.id, reason: 'reported escrow address differs', reported, escrowId },
+        'alert',
+      );
+    }
+
+    let problem: string | null;
+    try {
+      problem = await this.deployedProblem(escrowId, input, amounts);
+    } catch (error) {
+      // Unverified is unusable: free the step so accepting again deploys anew.
+      await this.operations.markFailed(operation.txHash, error);
+      throw new ServiceUnavailableException(
+        'Could not check the new escrow on chain. Accept again in a minute',
+      );
+    }
+    if (problem) {
+      securityEvent(
+        'platform_refused',
+        { contract: input.contract.id, escrowId, reason: problem },
+        'alert',
+      );
       const error = new ConflictException(
-        'Trustless Work did not return the escrow contract id. Try again',
+        'The escrow on chain is not the one Pocket asked for, so it will not be used',
       );
       await this.operations.markFailed(operation.txHash, error);
       throw error;
     }
-    return contractId;
+    return escrowId;
+  }
+
+  /**
+   * Reads the new escrow back from the chain: its code and everything the
+   * deposit depends on. Null when it is exactly what Pocket asked for.
+   */
+  private async deployedProblem(
+    escrowId: string,
+    input: DeployInput,
+    amounts: string[],
+  ): Promise<string | null> {
+    const [code, escrow] = await Promise.all([
+      this.chain.wasmHash(escrowId),
+      this.chain.escrow(escrowId),
+    ]);
+    if (code !== this.trustlessWork.escrowWasmHash) return 'the escrow runs other code';
+    if (!escrow) return 'the escrow is not on chain';
+    const platform = this.stellar.platformAddress;
+    const { roles } = escrow;
+    if (
+      escrow.engagementId !== input.contract.id ||
+      roles.approver !== input.startupAddress ||
+      roles.service_provider !== input.specialistAddress ||
+      roles.platform !== platform ||
+      roles.release_signer !== platform ||
+      roles.dispute_resolver !== platform
+    ) {
+      return 'the escrow has other roles';
+    }
+    if (escrow.trustline !== this.stellar.usdcContractId || escrow.platformFee !== 0n) {
+      return 'the escrow holds another asset or charges a fee';
+    }
+    const milestonesMatch =
+      escrow.milestones.length === amounts.length &&
+      escrow.milestones.every(
+        (milestone, index) =>
+          milestone.receiver === input.specialistAddress &&
+          milestone.amount === toStroops(amounts[index]),
+      );
+    return milestonesMatch ? null : 'the escrow has other milestones';
   }
 
   /** Funding transaction for the startup to sign. */
@@ -129,10 +201,13 @@ export class EscrowService {
     );
   }
 
-  /** Whether the escrow holds at least the contract amount. */
+  /**
+   * Whether the escrow holds at least the contract amount, asking the USDC
+   * contract itself rather than anyone's report of it.
+   */
   async isFunded(contract: Pick<Contract, 'escrowId' | 'amount'>): Promise<boolean> {
-    const escrow = await this.trustlessWork.getEscrow(escrowIdOf(contract));
-    return escrow !== null && contract.amount.lte(escrow.balance);
+    const balance = await this.chain.usdcBalance(escrowIdOf(contract));
+    return balance >= toStroops(contract.amount.toFixed(7));
   }
 
   /** Approval transaction for the startup to sign. */
@@ -259,7 +334,7 @@ export class EscrowService {
     flag: Flag,
   ): Promise<boolean> {
     const milestone = await this.milestoneState(contract, position);
-    return milestone?.flags?.[flag] === true;
+    return milestone?.flags[flag] === true;
   }
 
   /**
@@ -279,6 +354,8 @@ export class EscrowService {
       deployer: this.trustlessWork.deployerContractId,
       twFee: this.trustlessWork.feeAddress,
       usdcContract: this.stellar.usdcContractId,
+      escrowWasmHash: this.trustlessWork.escrowWasmHash,
+      networkPassphrase: this.stellar.networkPassphrase,
     };
   }
 
@@ -289,14 +366,15 @@ export class EscrowService {
   ): Promise<Partial<Record<Flag, boolean>>> {
     const milestone = await this.milestoneState(contract, position);
     if (!milestone) throw new NotFoundException('The escrow has no such milestone');
-    return milestone.flags ?? {};
+    return milestone.flags;
   }
 
+  /** A milestone as the escrow contract stores it, read from the chain. */
   private async milestoneState(
     contract: Pick<Contract, 'escrowId'>,
     position: number,
-  ): Promise<EscrowMilestoneState | undefined> {
-    const escrow = await this.trustlessWork.getEscrow(escrowIdOf(contract));
+  ): Promise<ChainMilestone | undefined> {
+    const escrow = await this.chain.escrow(escrowIdOf(contract));
     return escrow?.milestones[position];
   }
 }

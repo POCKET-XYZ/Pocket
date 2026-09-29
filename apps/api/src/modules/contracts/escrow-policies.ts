@@ -1,3 +1,4 @@
+import { Address, hash, StrKey, xdr } from '@stellar/stellar-sdk';
 import {
   expect,
   sameInteger,
@@ -22,6 +23,45 @@ export interface PlatformAddresses {
   twFee: string;
   /** The Stellar Asset Contract of USDC on this network. */
   usdcContract: string;
+  /** The escrow code Trustless Work deploys, as a hex hash. */
+  escrowWasmHash: string;
+  /** The network the escrow is deployed on. */
+  networkPassphrase: string;
+}
+
+/** A deploy policy that also knows where the escrow it allowed will live. */
+export interface DeployPolicy extends PlatformTxPolicy {
+  /**
+   * The escrow's address, derived from the deployer and the salt of the
+   * transaction that was checked. Pocket stores this one, never an address
+   * someone reports back.
+   */
+  escrowAddress(): string;
+}
+
+/** A decoded bytes argument as a Buffer, or undefined when it is not bytes. */
+function bytesOf(value: unknown): Buffer | undefined {
+  return value instanceof Uint8Array ? Buffer.from(value) : undefined;
+}
+
+/** The address a contract gets when `deployer` deploys it with `salt`. */
+export function contractAddressOf(
+  deployer: string,
+  salt: Buffer,
+  networkPassphrase: string,
+): string {
+  const preimage = xdr.HashIdPreimage.envelopeTypeContractId(
+    new xdr.HashIdPreimageContractId({
+      networkId: hash(Buffer.from(networkPassphrase)),
+      contractIdPreimage: xdr.ContractIdPreimage.contractIdPreimageFromAddress(
+        new xdr.ContractIdPreimageFromAddress({
+          address: Address.fromString(deployer).toScAddress(),
+          salt,
+        }),
+      ),
+    }),
+  );
+  return StrKey.encodeContract(hash(preimage.toXDR()));
 }
 
 /** The escrow as the deploy call initialises it, decoded. */
@@ -51,15 +91,28 @@ export function deployPolicy(
     /** USDC per milestone, in milestone order. */
     milestoneAmounts: string[];
   },
-): PlatformTxPolicy {
+): DeployPolicy {
   const { platform } = addresses;
+  let escrowAddress: string | undefined;
   return {
     contractId: addresses.deployer,
     fn: 'tw_new_multi_release_escrow',
     maxFeeStroops: MAX_PLATFORM_FEE_STROOPS,
+    escrowAddress: () => {
+      if (!escrowAddress) throw new Error('The deploy was not checked yet');
+      return escrowAddress;
+    },
     checkArgs: (args) => {
       expect(args.length === 6, 'the deploy has an unexpected shape');
       expect(args[0] === platform, 'the deployer is not the platform');
+      // The code is pinned: an escrow that runs anything else could ignore
+      // its roles and hand the deposit to whoever wrote it.
+      expect(
+        bytesOf(args[1])?.toString('hex') === addresses.escrowWasmHash,
+        "the escrow runs code other than Trustless Work's",
+      );
+      const salt = bytesOf(args[2]);
+      expect(salt?.length === 32, 'the deploy has no salt');
       expect(args[3] === 'initialize_escrow', 'the deploy does not initialise an escrow');
       const inits = args[4];
       expect(Array.isArray(inits) && inits.length === 1, 'the deploy initialises something else');
@@ -107,6 +160,7 @@ export function deployPolicy(
           `milestone ${index} does not start untouched`,
         );
       });
+      escrowAddress = contractAddressOf(addresses.deployer, salt, addresses.networkPassphrase);
     },
   };
 }

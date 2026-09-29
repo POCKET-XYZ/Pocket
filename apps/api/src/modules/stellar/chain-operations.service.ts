@@ -1,8 +1,14 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { Prisma, type ChainOperation, type ChainOperationKind } from '@prisma/client';
 import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { PlatformTxPolicy } from './platform-tx-policy';
+import { timeBoundProblem, type PlatformTxPolicy } from './platform-tx-policy';
+import { SorobanReader } from './soroban-reader.service';
 import { StellarService } from './stellar.service';
 import { TrustlessWorkClient } from './trustless-work.client';
 
@@ -26,6 +32,7 @@ export class ChainOperationsService {
     private readonly prisma: PrismaService,
     private readonly stellar: StellarService,
     private readonly trustlessWork: TrustlessWorkClient,
+    private readonly chain: SorobanReader,
   ) {}
 
   /** Record a transaction a user has to sign and return it for their wallet. */
@@ -35,6 +42,14 @@ export class ChainOperationsService {
     signerId: string,
     amount?: Prisma.Decimal.Value,
   ): Promise<PreparedTransaction> {
+    // Steps are freed for a retry once their transaction can no longer land,
+    // which needs every transaction to expire soon.
+    const expiry = timeBoundProblem(this.stellar.parse(xdr));
+    if (expiry) {
+      throw new ServiceUnavailableException(
+        `Trustless Work built a transaction Pocket will not ask you to sign: ${expiry}. Try again`,
+      );
+    }
     const txHash = this.stellar.hashOf(xdr);
     let operation: ChainOperation;
     try {
@@ -82,7 +97,7 @@ export class ChainOperationsService {
       throw new BadRequestException('signedXdr is not a valid transaction');
     }
 
-    const claimed = await claimStep(scope, () =>
+    const claimed = await this.claim(scope, () =>
       this.prisma.chainOperation.updateMany({
         where: {
           txHash,
@@ -103,9 +118,11 @@ export class ChainOperationsService {
 
     try {
       if (scope.kind === 'trustline') {
+        // Horizon answers once the transaction is in a ledger, or with its error.
         await this.stellar.submitToHorizon(signedXdr);
       } else {
         await this.trustlessWork.send(signedXdr);
+        await this.confirmOnChain(txHash);
       }
     } catch (error) {
       await this.markFailed(txHash, error);
@@ -135,7 +152,7 @@ export class ChainOperationsService {
     });
     // Claimed before sending, like user operations: a parallel request for the
     // same step fails here instead of reaching the network.
-    const operation = await claimStep(scope, () =>
+    const operation = await this.claim(scope, () =>
       this.prisma.chainOperation.create({
         data: {
           ...scope,
@@ -150,6 +167,7 @@ export class ChainOperationsService {
 
     try {
       const { contractId } = await this.trustlessWork.send(signed);
+      await this.confirmOnChain(operation.txHash);
       const confirmed = await this.prisma.chainOperation.update({
         where: { id: operation.id },
         data: { confirmedAt: new Date() },
@@ -159,6 +177,62 @@ export class ChainOperationsService {
       await this.markFailed(operation.txHash, error);
       throw error;
     }
+  }
+
+  /**
+   * Trustless Work answers as soon as the network takes a transaction, which is
+   * not the same as it succeeding. Wait for the ledger's verdict: a failed
+   * transaction moved nothing and frees its step; one that has not landed yet
+   * keeps its step until it does or can no longer land.
+   */
+  private async confirmOnChain(txHash: string): Promise<void> {
+    const status = await this.chain.waitForTransaction(txHash);
+    if (status === 'FAILED') {
+      throw new BadRequestException(
+        'The transaction failed on the network, so nothing moved. Try again',
+      );
+    }
+    if (status === 'NOT_FOUND') {
+      throw new ServiceUnavailableException(
+        'The network has not confirmed the transaction yet. Refresh in a minute',
+      );
+    }
+  }
+
+  /**
+   * Claim a step. When it is held by an earlier transaction that failed, or
+   * that can no longer land, free it and claim again instead of leaving the
+   * contract stuck on a step nobody can retry.
+   */
+  private async claim<T>(scope: OperationScope, claim: () => Promise<T>): Promise<T> {
+    try {
+      return await claimStep(scope, claim);
+    } catch (error) {
+      if (!(error instanceof ConflictException) || !(await this.freeDeadStep(scope))) {
+        throw error;
+      }
+      return claimStep(scope, claim);
+    }
+  }
+
+  private async freeDeadStep(scope: OperationScope): Promise<boolean> {
+    const stepKey = stepKeyOf(scope);
+    if (!stepKey) return false;
+    const held = await this.prisma.chainOperation.findUnique({ where: { stepKey } });
+    if (!held) return false;
+    const age = Date.now() - held.createdAt.getTime();
+    const status = await this.chain.transactionStatus(held.txHash);
+    // FAILED is final. NOT_FOUND only means dead once the transaction's time
+    // bound has passed, and while the node still keeps that day's history.
+    const dead =
+      status === 'FAILED' ||
+      (status === 'NOT_FOUND' && age > DEAD_AFTER_MS && age < HISTORY_MS);
+    if (!dead) return false;
+    await this.markFailed(
+      held.txHash,
+      new Error(`The transaction ${status === 'FAILED' ? 'failed' : 'never landed'} on the network`),
+    );
+    return true;
   }
 
   /**
@@ -212,6 +286,15 @@ async function claimStep<T>(scope: OperationScope, claim: () => Promise<T>): Pro
 function isUniqueViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 }
+
+/**
+ * Past this age a transaction nobody has seen cannot land any more: Pocket only
+ * signs, and only prepares for users, transactions that expire within 15
+ * minutes (see assertTimeBound).
+ */
+const DEAD_AFTER_MS = 16 * 60 * 1000;
+/** How far back an RPC node is trusted to still know a transaction. */
+const HISTORY_MS = 20 * 60 * 60 * 1000;
 
 /** An error as the operation log keeps it, with the provider's own text. */
 function describe(error: unknown): string {

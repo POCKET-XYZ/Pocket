@@ -26,6 +26,7 @@ describe('TrustlessWorkClient', () => {
       apiKey: 'key-1',
       deployerContractId: 'CDEPLOYER',
       feeAddress: 'GTWFEE',
+      escrowWasmHash: 'ab'.repeat(32),
     },
   });
   let fetchMock: jest.SpyInstance;

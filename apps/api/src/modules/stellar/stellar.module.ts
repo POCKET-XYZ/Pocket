@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ChainOperationsService } from './chain-operations.service';
 import { PlatformMonitorService } from './platform-monitor.service';
+import { SorobanReader } from './soroban-reader.service';
 import { StellarService } from './stellar.service';
 import { TrustlessWorkClient } from './trustless-work.client';
 import { WalletController } from './wallet.controller';
@@ -14,7 +15,8 @@ import { WalletService } from './wallet.service';
     ChainOperationsService,
     WalletService,
     PlatformMonitorService,
+    SorobanReader,
   ],
-  exports: [StellarService, TrustlessWorkClient, ChainOperationsService],
+  exports: [StellarService, TrustlessWorkClient, ChainOperationsService, SorobanReader],
 })
 export class StellarModule {}
