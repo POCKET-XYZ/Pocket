@@ -35,32 +35,35 @@ export class AuthService {
    * account, so it must say whether the user is a startup or a specialist.
    */
   async login(dto: LoginDto): Promise<LoginResult> {
-    const valid = await this.challenges.verify(dto.stellarAddress, dto.signedXdr);
-    if (!valid) {
+    const nonce = await this.challenges.verify(dto.stellarAddress, dto.signedXdr);
+    if (!nonce) {
       throw new UnauthorizedException('Invalid or expired wallet signature');
     }
 
-    let user = await this.prisma.user.findUnique({
+    const existing = await this.prisma.user.findUnique({
       where: { stellarAddress: dto.stellarAddress },
     });
-    const isNewUser = !user;
-
-    if (!user) {
-      if (!dto.role) {
-        // The challenge is kept, so the client can resend it with a role
-        // without asking the wallet to sign again.
-        throw new BadRequestException({
-          code: ApiErrorCode.RoleRequired,
-          message: 'Choose startup or specialist to create your account',
-        });
-      }
-      user = await this.prisma.user.create({
-        data: { stellarAddress: dto.stellarAddress, role: dto.role },
+    if (!existing && !dto.role) {
+      // The challenge is kept, so the client can resend it with a role
+      // without asking the wallet to sign again.
+      throw new BadRequestException({
+        code: ApiErrorCode.RoleRequired,
+        message: 'Choose startup or specialist to create your account',
       });
     }
 
-    await this.challenges.consume(dto.stellarAddress);
-    return { accessToken: await this.sign(user), user, isNewUser };
+    // Use the challenge before issuing anything: a replay racing this login
+    // loses here, and never gets a token or creates an account.
+    if (!(await this.challenges.consume(dto.stellarAddress, nonce))) {
+      throw new UnauthorizedException('This signature was already used');
+    }
+
+    const user =
+      existing ??
+      (await this.prisma.user.create({
+        data: { stellarAddress: dto.stellarAddress, role: dto.role! },
+      }));
+    return { accessToken: await this.sign(user), user, isNewUser: !existing };
   }
 
   /**

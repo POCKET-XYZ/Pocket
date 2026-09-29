@@ -59,7 +59,10 @@ describe('AuthService', () => {
   let service: AuthService;
 
   beforeEach(() => {
-    challenges = { verify: jest.fn().mockResolvedValue(true), consume: jest.fn() };
+    challenges = {
+      verify: jest.fn().mockResolvedValue('nonce-1'),
+      consume: jest.fn().mockResolvedValue(true),
+    };
     prisma = {
       user: {
         findUnique: jest.fn(),
@@ -78,7 +81,7 @@ describe('AuthService', () => {
   });
 
   it('rejects an invalid signature', async () => {
-    challenges.verify.mockResolvedValue(false);
+    challenges.verify.mockResolvedValue(null);
     await expect(
       service.login({ stellarAddress: ADDRESS, signedXdr: 'x' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
@@ -109,7 +112,7 @@ describe('AuthService', () => {
       data: { stellarAddress: ADDRESS, role: 'specialist' },
     });
     expect(result.isNewUser).toBe(true);
-    expect(challenges.consume).toHaveBeenCalledWith(ADDRESS);
+    expect(challenges.consume).toHaveBeenCalledWith(ADDRESS, 'nonce-1');
   });
 
   it('signs in an existing user and ignores the role field', async () => {
@@ -130,6 +133,15 @@ describe('AuthService', () => {
       role: 'startup',
       stellarAddress: ADDRESS,
     });
+  });
+
+  it('gives nothing to a replay that lost the race for the challenge', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+    challenges.consume.mockResolvedValue(false);
+    await expect(
+      service.login({ stellarAddress: ADDRESS, signedXdr: 'x', role: 'startup' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prisma.user.create).not.toHaveBeenCalled();
   });
 
   describe('loginWithPollar', () => {

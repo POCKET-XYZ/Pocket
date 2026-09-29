@@ -77,15 +77,19 @@ model User {
   @@map("users")
 }
 
-// One outstanding SEP-10 style login challenge per address. The row is replaced
-// on every new challenge and deleted once a login succeeds.
+// SEP-10 style login challenges, one row per challenge handed out. A row is
+// deleted, atomically, by the login that uses it, and expired rows are swept.
 model AuthChallenge {
   id             String   @id @default(uuid()) @db.Uuid
-  stellarAddress String   @unique @map("stellar_address")
-  nonce          String
+  stellarAddress String   @map("stellar_address")
+  // The challenge is found by its nonce, so several can be open for the same
+  // address and asking for a new one never invalidates someone else's.
+  nonce          String   @unique
   expiresAt      DateTime @map("expires_at")
   createdAt      DateTime @default(now()) @map("created_at")
 
+  @@index([stellarAddress])
+  @@index([expiresAt])
   @@map("auth_challenges")
 }
 
