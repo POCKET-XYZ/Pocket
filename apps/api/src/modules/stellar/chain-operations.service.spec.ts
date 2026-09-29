@@ -5,9 +5,19 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
+import type { PlatformTxPolicy } from './platform-tx-policy';
 import { ChainOperationsService, stepKeyOf } from './chain-operations.service';
 import type { StellarService } from './stellar.service';
 import type { TrustlessWorkClient } from './trustless-work.client';
+
+
+/** Any policy: what it checks is covered by the policy's own tests. */
+const POLICY: PlatformTxPolicy = {
+  contractId: 'CESCROW',
+  fn: 'release_milestone_funds',
+  maxFeeStroops: 20_000_000,
+  checkArgs: () => undefined,
+};
 
 describe('ChainOperationsService', () => {
   let prisma: {
@@ -199,9 +209,11 @@ describe('ChainOperationsService', () => {
     const result = await service.executeAsPlatform(
       { kind: 'deploy', contractId: 'contract-1' },
       'unsigned-xdr',
+      POLICY,
     );
 
-    expect(stellar.signAsPlatform).toHaveBeenCalledWith('unsigned-xdr');
+    // The policy travels with the transaction to the only place that signs.
+    expect(stellar.signAsPlatform).toHaveBeenCalledWith('unsigned-xdr', POLICY);
     expect(trustlessWork.send).toHaveBeenCalledWith('signed-by-platform');
     expect(result.contractId).toBe('CESCROW');
   });
@@ -242,6 +254,7 @@ describe('ChainOperationsService', () => {
       await service.executeAsPlatform(
         { kind: 'release', contractId: 'contract-1', milestoneId: 'milestone-1' },
         'unsigned-xdr',
+        POLICY,
       );
       expect(prisma.chainOperation.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -260,6 +273,7 @@ describe('ChainOperationsService', () => {
         service.executeAsPlatform(
           { kind: 'release', contractId: 'contract-1', milestoneId: 'milestone-1' },
           'unsigned-xdr',
+          POLICY,
         ),
       ).rejects.toBeInstanceOf(ConflictException);
       expect(trustlessWork.send).not.toHaveBeenCalled();
@@ -271,6 +285,7 @@ describe('ChainOperationsService', () => {
         service.executeAsPlatform(
           { kind: 'resolve', contractId: 'contract-1', milestoneId: 'milestone-1' },
           'unsigned-xdr',
+          POLICY,
         ),
       ).rejects.toBeInstanceOf(ServiceUnavailableException);
       expect(prisma.chainOperation.update).toHaveBeenCalledWith({

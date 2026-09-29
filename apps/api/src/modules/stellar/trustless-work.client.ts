@@ -69,10 +69,16 @@ export class TrustlessWorkClient {
   private readonly logger = new Logger(TrustlessWorkClient.name);
   private readonly baseUrl: string;
   private readonly apiKey: string;
+  /** The contract that deploys escrows, which a deploy must call. */
+  readonly deployerContractId: string;
+  /** Where the protocol fee goes, which a release or resolution must name. */
+  readonly feeAddress: string;
 
   constructor(config: ConfigService) {
     this.baseUrl = config.getOrThrow<string>('trustlessWork.apiUrl');
     this.apiKey = config.getOrThrow<string>('trustlessWork.apiKey');
+    this.deployerContractId = config.getOrThrow<string>('trustlessWork.deployerContractId');
+    this.feeAddress = config.getOrThrow<string>('trustlessWork.feeAddress');
   }
 
   deployMultiRelease(input: DeployEscrowInput): Promise<string> {

@@ -13,6 +13,8 @@ import {
   TransactionBuilder,
 } from '@stellar/stellar-sdk';
 
+import { assertPlatformTx, type PlatformTxPolicy } from './platform-tx-policy';
+
 /** Whether an address can receive USDC. */
 export type UsdcReadiness = 'ready' | 'no_account' | 'no_trustline';
 
@@ -81,11 +83,20 @@ export class StellarService implements OnApplicationBootstrap {
     return Buffer.from(hash).toString('hex');
   }
 
-  /** Sign a transaction with the platform key and return the signed XDR. */
-  signAsPlatform(xdr: string): string {
-    const tx = TransactionBuilder.fromXDR(xdr, this.networkPassphrase);
+  /**
+   * Sign a transaction with the platform key and return the signed XDR, but
+   * only when it is exactly what the policy allows. The key holds the platform
+   * roles of every escrow, so it never signs a transaction blindly.
+   */
+  signAsPlatform(xdr: string, policy: PlatformTxPolicy): string {
+    const tx = assertPlatformTx(xdr, this.networkPassphrase, this.platformAddress, policy);
     tx.sign(this.platform);
     return tx.toXDR();
+  }
+
+  /** The Stellar Asset Contract that holds USDC in every escrow. */
+  get usdcContractId(): string {
+    return this.usdc.contractId(this.networkPassphrase);
   }
 
   /** Whether the account exists and holds a USDC trustline. */

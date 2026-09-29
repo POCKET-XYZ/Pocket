@@ -17,7 +17,12 @@ function reply(status: number, body: unknown = {}, headers: Record<string, strin
 
 describe('TrustlessWorkClient', () => {
   const config = new ConfigService({
-    trustlessWork: { apiUrl: 'https://tw.test', apiKey: 'key-1' },
+    trustlessWork: {
+      apiUrl: 'https://tw.test',
+      apiKey: 'key-1',
+      deployerContractId: 'CDEPLOYER',
+      feeAddress: 'GTWFEE',
+    },
   });
   let fetchMock: jest.SpyInstance;
   let client: TestClient;

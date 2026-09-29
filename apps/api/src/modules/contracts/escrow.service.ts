@@ -10,6 +10,12 @@ import {
   type Distribution,
   type EscrowMilestoneState,
 } from '../stellar/trustless-work.client';
+import {
+  deployPolicy,
+  releasePolicy,
+  resolvePolicy,
+  type PlatformAddresses,
+} from './escrow-policies';
 
 /** Trustless Work's text limits for an escrow, in characters. */
 const LIMITS = { title: 100, description: 500, milestone: 500 } as const;
@@ -69,9 +75,16 @@ export class EscrowService {
       trustline: { address: this.stellar.usdcIssuer, symbol: 'USDC' },
     });
 
+    const sorted = [...input.milestones].sort((a, b) => a.position - b.position);
     const { operation, contractId } = await this.operations.executeAsPlatform(
       { kind: 'deploy', contractId: input.contract.id },
       unsigned,
+      deployPolicy(this.platformAddresses(), {
+        contractId: input.contract.id,
+        startup: input.startupAddress,
+        specialist: input.specialistAddress,
+        milestoneAmounts: sorted.map((milestone) => milestone.amount.toFixed(7)),
+      }),
     );
     if (!contractId) {
       // Without the id Pocket cannot use the escrow, so free the step for a retry.
@@ -167,6 +180,7 @@ export class EscrowService {
     const { operation } = await this.operations.executeAsPlatform(
       { kind: 'release', contractId: contract.id, milestoneId: milestone.id },
       xdr,
+      releasePolicy(this.platformAddresses(), escrowIdOf(contract), milestone.position),
       milestone.amount,
     );
     return operation;
@@ -223,6 +237,16 @@ export class EscrowService {
     const { operation } = await this.operations.executeAsPlatform(
       { kind: 'resolve', contractId: contract.id, milestoneId: milestone.id },
       xdr,
+      // Checked against the shares the manager decided, not against what came
+      // back: the contract pays whoever the transaction names.
+      resolvePolicy(
+        this.platformAddresses(),
+        escrowIdOf(contract),
+        milestone.position,
+        shares
+          .filter((share) => share.amount.gt(0))
+          .map((share) => ({ address: share.address, amount: share.amount.toFixed(7) })),
+      ),
       milestone.amount,
     );
     return operation;
@@ -246,6 +270,16 @@ export class EscrowService {
    */
   async discard(txHash: string, reason: string): Promise<void> {
     await this.operations.markFailed(txHash, new Error(reason));
+  }
+
+  /** The addresses every platform signature is checked against. */
+  private platformAddresses(): PlatformAddresses {
+    return {
+      platform: this.stellar.platformAddress,
+      deployer: this.trustlessWork.deployerContractId,
+      twFee: this.trustlessWork.feeAddress,
+      usdcContract: this.stellar.usdcContractId,
+    };
   }
 
   /** Every flag of a milestone as the chain shows it now, in one read. */

@@ -12,7 +12,14 @@ export interface AppConfig {
     /** Signs the escrow deploy and the platform roles: release and dispute resolution. */
     platformSecret: string;
   };
-  trustlessWork: { apiUrl: string; apiKey: string };
+  trustlessWork: {
+    apiUrl: string;
+    apiKey: string;
+    /** Trustless Work's contract that deploys escrows on this network. */
+    deployerContractId: string;
+    /** Where Trustless Work's protocol fee goes on this network. */
+    feeAddress: string;
+  };
   /** Wallets and logins for users without a Stellar wallet of their own. */
   pollar: { serverUrl: string; secretKey: string };
 }
@@ -25,6 +32,10 @@ const REQUIRED = [
   'TRUSTLESS_WORK_API_KEY',
   'USDC_ISSUER',
   'STELLAR_PLATFORM_SECRET',
+  // What every platform signature is checked against: without them the
+  // platform key would sign whatever Trustless Work sends.
+  'TRUSTLESS_WORK_DEPLOYER_CONTRACT_ID',
+  'TRUSTLESS_WORK_FEE_ADDRESS',
 ] as const;
 
 /** Pollar's backend API. Secret-key routes only. */
@@ -71,6 +82,8 @@ export default (): AppConfig => {
     trustlessWork: {
       apiUrl: (process.env.TRUSTLESS_WORK_API_URL as string).replace(/\/+$/, ''),
       apiKey: process.env.TRUSTLESS_WORK_API_KEY as string,
+      deployerContractId: process.env.TRUSTLESS_WORK_DEPLOYER_CONTRACT_ID as string,
+      feeAddress: process.env.TRUSTLESS_WORK_FEE_ADDRESS as string,
     },
     pollar: {
       serverUrl: (process.env.POLLAR_SERVER_URL ?? DEFAULT_POLLAR_SERVER).replace(
