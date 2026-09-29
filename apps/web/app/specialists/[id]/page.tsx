@@ -1,159 +1,247 @@
 'use client';
 
-import type { PublicProfile, SpecialistProfile, StartupProfile } from '@pocket/shared';
+import type { CaseStudy, PublicProfile, SpecialistProfile } from '@pocket/shared';
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLinkIcon } from 'lucide-react';
-import { useParams } from 'next/navigation';
+import {
+  BriefcaseIcon,
+  ClockIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  GlobeIcon,
+  LanguagesIcon,
+  MapPinIcon,
+  TrendingUpIcon,
+  UserRoundIcon,
+} from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { Avatar } from '@/components/avatar';
 import { Detail, ErrorAlert, Loading } from '@/components/page';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import { CATEGORY_LABELS, STAGE_LABELS, date, shortAddress, usdc } from '@/lib/format';
+import { CATEGORY_LABELS, date, shortAddress, usdc } from '@/lib/format';
 
-/** Public profile of any approved user. Specialists link here from the directory and from applications. */
-export default function PublicProfilePage() {
+/**
+ * A specialist's public profile, laid out the way a startup reads a CV: who
+ * they are and how to check them first, then the work they have done with what
+ * it achieved, then the practical details for working together.
+ */
+export default function SpecialistProfilePage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const profile = useQuery({
     queryKey: ['profiles', id],
     queryFn: () => api<PublicProfile>(`/profiles/${id}`),
   });
 
-  if (profile.isLoading) return <Loading />;
+  // Startups used to be linked here; send those links to where startups live.
+  const isStartup = profile.data?.role === 'startup';
+  useEffect(() => {
+    if (isStartup) router.replace(`/startups/${id}`);
+  }, [isStartup, id, router]);
+
+  if (profile.isLoading || isStartup) return <Loading />;
   if (profile.error || !profile.data)
     return <ErrorAlert error={profile.error} title="Profile not found" />;
 
-  const { role, stellarAddress, memberSince } = profile.data;
+  const specialist = profile.data.profile as SpecialistProfile;
   return (
-    <div className="mx-auto max-w-3xl">
-      {role === 'specialist' ? (
-        <SpecialistView profile={profile.data.profile as SpecialistProfile} />
-      ) : (
-        <StartupView profile={profile.data.profile as StartupProfile} />
-      )}
-      <p className="mt-6 text-xs text-muted-foreground">
-        Verified by Pocket. Member since {date(memberSince)}. Wallet{' '}
-        {shortAddress(stellarAddress)}.
+    <div className="mx-auto max-w-4xl space-y-6">
+      <Header specialist={specialist} />
+
+      <div className="grid gap-6 md:grid-cols-3">
+        <div className="space-y-6 md:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>About</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-line text-sm leading-relaxed">
+                {specialist.bio}
+              </p>
+            </CardContent>
+          </Card>
+
+          <PastWork caseStudies={specialist.caseStudies} />
+
+          {specialist.tools.length > 0 || specialist.skills.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Tools and skills</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Tags title="Tools" values={specialist.tools} />
+                <Tags title="Skills" values={specialist.skills} />
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+
+        <WorkingTogether specialist={specialist} />
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Verified by Pocket. Member since {date(profile.data.memberSince)}. Wallet{' '}
+        {shortAddress(profile.data.stellarAddress)}.
       </p>
     </div>
   );
 }
 
-function SpecialistView({ profile }: { profile: SpecialistProfile }) {
+/** Name, role, specialties, and the three ways to check them, up front. */
+function Header({ specialist }: { specialist: SpecialistProfile }) {
   return (
     <Card>
-      <CardContent className="space-y-6 pt-6">
+      <CardContent className="flex flex-col gap-5 pt-6 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
-          <Avatar name={profile.displayName} url={profile.avatarUrl} size={72} />
+          <Avatar name={specialist.displayName} url={specialist.avatarUrl} size={80} />
           <div>
-            <h1 className="text-3xl font-bold text-navy">{profile.displayName}</h1>
-            <p className="text-muted-foreground">{profile.headline}</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {profile.categories.map((category) => (
-            <Badge
-              key={category}
-              variant="secondary"
-              className="border-0 bg-celeste-light text-navy"
-            >
-              {CATEGORY_LABELS[category]}
-            </Badge>
-          ))}
-        </div>
-        <p className="whitespace-pre-line text-sm leading-relaxed">{profile.bio}</p>
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {profile.hourlyRate ? (
-            <Detail label="Hourly rate">{usdc(profile.hourlyRate)}</Detail>
-          ) : null}
-          {profile.minProjectBudget ? (
-            <Detail label="Smallest project">{usdc(profile.minProjectBudget)}</Detail>
-          ) : null}
-          {profile.location ? <Detail label="Location">{profile.location}</Detail> : null}
-        </dl>
-        {profile.skills.length > 0 ? (
-          <section>
-            <h2 className="text-sm font-semibold text-navy">Skills</h2>
+            <h1 className="text-3xl font-bold text-navy">{specialist.displayName}</h1>
+            <p className="text-muted-foreground">{specialist.headline}</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {profile.skills.map((skill) => (
-                <Badge key={skill} variant="outline">
-                  {skill}
+              {specialist.categories.map((category) => (
+                <Badge
+                  key={category}
+                  variant="secondary"
+                  className="border-0 bg-celeste-light text-navy"
+                >
+                  {CATEGORY_LABELS[category]}
                 </Badge>
               ))}
             </div>
-          </section>
-        ) : null}
-        <Links
-          links={[
-            ...profile.caseStudies.map((study) => ({
-              // What it achieved says more than the link itself.
-              label: study.result ? `${study.result}` : study.url,
-              url: study.url,
-            })),
-            ...(profile.portfolioUrl
-              ? [{ label: 'Portfolio', url: profile.portfolioUrl }]
-              : []),
-            ...(profile.linkedinUrl
-              ? [{ label: 'LinkedIn', url: profile.linkedinUrl }]
-              : []),
-          ]}
-        />
-      </CardContent>
-    </Card>
-  );
-}
-
-function StartupView({ profile }: { profile: StartupProfile }) {
-  return (
-    <Card>
-      <CardContent className="space-y-6 pt-6">
-        <div className="flex items-center gap-4">
-          <Avatar name={profile.companyName} url={profile.logoUrl} size={72} />
-          <div>
-            <h1 className="text-3xl font-bold text-navy">{profile.companyName}</h1>
-            <p className="text-muted-foreground">{profile.oneLiner}</p>
           </div>
         </div>
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Detail label="Sector">{profile.sector}</Detail>
-          <Detail label="Stage">{STAGE_LABELS[profile.stage]}</Detail>
-          {profile.location ? <Detail label="Location">{profile.location}</Detail> : null}
-        </dl>
-        <section>
-          <h2 className="text-sm font-semibold text-navy">Looking for</h2>
-          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">
-            {profile.lookingFor}
-          </p>
-        </section>
-        <Links
-          links={
-            profile.websiteUrl ? [{ label: 'Website', url: profile.websiteUrl }] : []
-          }
-        />
+        <div className="flex flex-wrap gap-2 md:flex-col md:items-stretch">
+          {specialist.cvUrl ? (
+            <Button asChild>
+              <a href={specialist.cvUrl} target="_blank" rel="noreferrer">
+                <FileTextIcon className="size-4" /> View CV
+              </a>
+            </Button>
+          ) : null}
+          {specialist.portfolioUrl ? (
+            <Button asChild variant="outline">
+              <a href={specialist.portfolioUrl} target="_blank" rel="noreferrer">
+                <GlobeIcon className="size-4" /> Portfolio
+              </a>
+            </Button>
+          ) : null}
+          {specialist.linkedinUrl ? (
+            <Button asChild variant="outline">
+              <a href={specialist.linkedinUrl} target="_blank" rel="noreferrer">
+                <UserRoundIcon className="size-4" /> LinkedIn
+              </a>
+            </Button>
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-function Links({ links }: { links: { label: string; url: string }[] }) {
-  if (links.length === 0) return null;
+/** Past work with what it achieved: the best signal a growth specialist can give. */
+function PastWork({ caseStudies }: { caseStudies: CaseStudy[] }) {
+  if (caseStudies.length === 0) return null;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Past work</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {caseStudies.map((study) => (
+          <a
+            key={study.url}
+            href={study.url}
+            target="_blank"
+            rel="noreferrer"
+            className="group flex items-start gap-3 rounded-xl border border-border p-4 transition hover:border-celeste"
+          >
+            <TrendingUpIcon className="mt-0.5 size-5 shrink-0 text-navy" />
+            <div className="min-w-0">
+              <p className="font-medium text-navy">
+                {study.result || 'See the work'}
+              </p>
+              <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground group-hover:underline">
+                {study.url} <ExternalLinkIcon className="size-3 shrink-0" />
+              </p>
+            </div>
+          </a>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** What a startup needs to know before hiring: experience, time, place, price. */
+function WorkingTogether({ specialist }: { specialist: SpecialistProfile }) {
+  return (
+    <Card className="h-fit">
+      <CardHeader>
+        <CardTitle>Working together</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <dl className="space-y-4">
+          {specialist.yearsExperience != null ? (
+            <Detail label="Experience">
+              <span className="inline-flex items-center gap-1.5">
+                <BriefcaseIcon className="size-3.5" />
+                {specialist.yearsExperience}{' '}
+                {specialist.yearsExperience === 1 ? 'year' : 'years'}
+              </span>
+            </Detail>
+          ) : null}
+          {specialist.languages.length > 0 ? (
+            <Detail label="Languages">
+              <span className="inline-flex items-center gap-1.5">
+                <LanguagesIcon className="size-3.5" />
+                {specialist.languages.join(', ')}
+              </span>
+            </Detail>
+          ) : null}
+          {specialist.location || specialist.timezone ? (
+            <Detail label="Based in">
+              <span className="inline-flex items-center gap-1.5">
+                <MapPinIcon className="size-3.5" />
+                {[specialist.location, specialist.timezone].filter(Boolean).join(' · ')}
+              </span>
+            </Detail>
+          ) : null}
+          {specialist.weeklyHours ? (
+            <Detail label="Availability">
+              <span className="inline-flex items-center gap-1.5">
+                <ClockIcon className="size-3.5" />
+                {specialist.weeklyHours} hours a week
+              </span>
+            </Detail>
+          ) : null}
+          {specialist.hourlyRate ? (
+            <Detail label="Hourly rate">{usdc(specialist.hourlyRate)}</Detail>
+          ) : null}
+          {specialist.minProjectBudget ? (
+            <Detail label="Smallest project">{usdc(specialist.minProjectBudget)}</Detail>
+          ) : null}
+        </dl>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Tags({ title, values }: { title: string; values: string[] }) {
+  if (values.length === 0) return null;
   return (
     <section>
-      <h2 className="text-sm font-semibold text-navy">Links</h2>
-      <ul className="mt-2 space-y-1">
-        {links.map((link) => (
-          <li key={link.url + link.label}>
-            <a
-              href={link.url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-navy underline"
-            >
-              {link.label} <ExternalLinkIcon className="size-3" />
-            </a>
-          </li>
+      <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {title}
+      </h3>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {values.map((value) => (
+          <Badge key={value} variant="outline">
+            {value}
+          </Badge>
         ))}
-      </ul>
+      </div>
     </section>
   );
 }

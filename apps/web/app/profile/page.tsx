@@ -250,8 +250,8 @@ function SpecialistForm({ initial, saving, onSave }: FormProps<SpecialistProfile
       return;
     }
     const values = formValues(event.currentTarget);
-    if (!values.linkedinUrl && !values.portfolioUrl) {
-      toast.error('Add your LinkedIn or your portfolio, at least one');
+    if (!values.linkedinUrl && !values.portfolioUrl && !values.cvUrl) {
+      toast.error('Add your LinkedIn, your portfolio or your CV, at least one');
       return;
     }
     onSave(
@@ -437,6 +437,19 @@ function SpecialistForm({ initial, saving, onSave }: FormProps<SpecialistProfile
           type="url"
           placeholder="https://"
           defaultValue={initial?.linkedinUrl ?? ''}
+        />
+      </Field>
+      <Field
+        label="CV"
+        htmlFor="cvUrl"
+        hint="A link to your CV, for example a PDF on Google Drive shared with anyone who has the link."
+      >
+        <Input
+          id="cvUrl"
+          name="cvUrl"
+          type="url"
+          placeholder="https://"
+          defaultValue={initial?.cvUrl ?? ''}
         />
       </Field>
       <Field label="Photo URL" htmlFor="avatarUrl">
