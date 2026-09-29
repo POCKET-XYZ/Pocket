@@ -163,9 +163,6 @@ function WalletView({ user }: { user: User }) {
             </Button>
             {throughPollar ? (
               <>
-                <Button variant="outline" size="sm" onClick={pollar.openBalance}>
-                  Balances
-                </Button>
                 <Button variant="outline" size="sm" onClick={pollar.openReceive}>
                   <ArrowDownToLineIcon className="size-4" /> Receive
                 </Button>

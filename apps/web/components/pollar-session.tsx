@@ -38,8 +38,7 @@ export interface PollarSession {
   balancesLoading: boolean;
   /** Load or reload the balances. */
   refreshBalances: () => Promise<void>;
-  /** Pollar's own screens: balances, address with QR, history, fiat ramp. */
-  openBalance: () => void;
+  /** Pollar's own screens: address with QR, history, fiat ramp. */
   openReceive: () => void;
   openHistory: () => void;
   openRamp: () => void;
@@ -64,7 +63,6 @@ const UNAVAILABLE: PollarSession = {
   refreshBalances: () => Promise.resolve(),
   signXdr: () =>
     Promise.reject(new Error('Pollar is not configured in this deployment')),
-  openBalance: () => {},
   openReceive: () => {},
   openHistory: () => {},
   openRamp: () => {},
@@ -95,7 +93,6 @@ function PollarSessionBridge({ children }: { children: React.ReactNode }) {
     getClient,
     logout,
     openLoginModal,
-    openWalletBalanceModal,
     openReceiveModal,
     openTxHistoryModal,
     openRampModal,
@@ -148,7 +145,6 @@ function PollarSessionBridge({ children }: { children: React.ReactNode }) {
           : null,
       balancesLoading: walletBalance.step === 'loading',
       refreshBalances: refreshWalletBalance,
-      openBalance: openWalletBalanceModal,
       openReceive: openReceiveModal,
       openHistory: openTxHistoryModal,
       openRamp: openRampModal,
@@ -165,7 +161,6 @@ function PollarSessionBridge({ children }: { children: React.ReactNode }) {
       signXdr,
       walletBalance,
       refreshWalletBalance,
-      openWalletBalanceModal,
       openReceiveModal,
       openTxHistoryModal,
       openRampModal,
