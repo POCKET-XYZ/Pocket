@@ -8,7 +8,8 @@ describe('ManagerService', () => {
     verificationRequest: {
       findMany: jest.Mock;
       findUnique: jest.Mock;
-      update: jest.Mock;
+      findUniqueOrThrow: jest.Mock;
+      updateMany: jest.Mock;
     };
     user: { update: jest.Mock };
     $transaction: jest.Mock;
@@ -21,11 +22,16 @@ describe('ManagerService', () => {
       verificationRequest: {
         findMany: jest.fn(),
         findUnique: jest.fn(),
-        update: jest.fn(),
+        findUniqueOrThrow: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       user: { update: jest.fn() },
-      $transaction: jest.fn(async (ops: unknown[]) => ops),
+      $transaction: jest.fn(),
     };
+    // An interactive transaction runs its callback with the client itself.
+    prisma.$transaction.mockImplementation((run: (tx: typeof prisma) => unknown) =>
+      run(prisma),
+    );
     wallets = { activate: jest.fn().mockResolvedValue(true) };
     service = new ManagerService(
       prisma as unknown as PrismaService,
@@ -49,7 +55,7 @@ describe('ManagerService', () => {
       userId: 'user-1',
       status: 'pending',
     });
-    prisma.verificationRequest.update.mockReturnValue({
+    prisma.verificationRequest.findUniqueOrThrow.mockResolvedValue({
       id: 'req-1',
       userId: 'user-1',
       status: 'approved',
@@ -57,9 +63,9 @@ describe('ManagerService', () => {
 
     await service.approve('req-1', 'manager-1', 'Looks good');
 
-    expect(prisma.verificationRequest.update).toHaveBeenCalledWith(
+    expect(prisma.verificationRequest.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'req-1' },
+        where: { id: 'req-1', status: 'pending' },
         data: expect.objectContaining({
           status: 'approved',
           reviewNote: 'Looks good',
@@ -88,7 +94,7 @@ describe('ManagerService', () => {
       userId: 'user-1',
       status: 'pending',
     });
-    prisma.verificationRequest.update.mockReturnValue({
+    prisma.verificationRequest.findUniqueOrThrow.mockResolvedValue({
       id: 'req-1',
       status: 'rejected',
     });
@@ -119,5 +125,20 @@ describe('ManagerService', () => {
     await expect(service.approve('req-1', 'manager-1')).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  it('lets only one of two managers deciding at once win', async () => {
+    // Both read the request as pending; the other manager claimed it first.
+    prisma.verificationRequest.findUnique.mockResolvedValue({
+      id: 'req-1',
+      userId: 'user-1',
+      status: 'pending',
+    });
+    prisma.verificationRequest.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.reject('req-1', 'manager-2', 'Changed my mind')).rejects.toThrow(
+      'already reviewed',
+    );
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(wallets.activate).not.toHaveBeenCalled();
   });
 });

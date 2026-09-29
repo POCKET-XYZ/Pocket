@@ -30,7 +30,7 @@ function makeUser(overrides: Partial<User> = {}): User {
 
 describe('VerificationService', () => {
   let prisma: {
-    user: { findUnique: jest.Mock; update: jest.Mock };
+    user: { findUnique: jest.Mock; updateMany: jest.Mock };
     verificationRequest: { create: jest.Mock; findFirst: jest.Mock };
     $transaction: jest.Mock;
   };
@@ -38,10 +38,17 @@ describe('VerificationService', () => {
 
   beforeEach(() => {
     prisma = {
-      user: { findUnique: jest.fn(), update: jest.fn() },
+      user: {
+        findUnique: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
       verificationRequest: { create: jest.fn(), findFirst: jest.fn() },
-      $transaction: jest.fn(async (ops: unknown[]) => ops),
+      $transaction: jest.fn(),
     };
+    // An interactive transaction runs its callback with the client itself.
+    prisma.$transaction.mockImplementation((run: (tx: typeof prisma) => unknown) =>
+      run(prisma),
+    );
     service = new VerificationService(prisma as unknown as PrismaService);
   });
 
@@ -54,8 +61,8 @@ describe('VerificationService', () => {
     expect(prisma.verificationRequest.create).toHaveBeenCalledWith({
       data: { ...SUBMISSION, userId: 'user-1', status: 'pending' },
     });
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: 'user-1' },
+    expect(prisma.user.updateMany).toHaveBeenCalledWith({
+      where: { id: 'user-1', verificationStatus: { in: ['not_submitted', 'rejected'] } },
       data: { verificationStatus: 'pending' },
     });
     expect(request).toEqual({ id: 'req-1' });
@@ -93,6 +100,16 @@ describe('VerificationService', () => {
     );
     prisma.verificationRequest.create.mockReturnValue({ id: 'req-3' });
     await expect(service.submit('user-1', SUBMISSION)).resolves.toEqual({ id: 'req-3' });
+  });
+
+  it('creates one request when the same user submits twice at once', async () => {
+    // Both read the user as not submitted; the other submission moved it first.
+    prisma.user.findUnique.mockResolvedValue(makeUser());
+    prisma.user.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.submit('user-1', SUBMISSION)).rejects.toThrow(
+      'already under review',
+    );
+    expect(prisma.verificationRequest.create).not.toHaveBeenCalled();
   });
 
   it('never verifies managers', async () => {

@@ -55,22 +55,26 @@ export class ManagerService {
       throw new BadRequestException('This request was already reviewed');
     }
 
-    const [reviewed] = await this.prisma.$transaction([
-      this.prisma.verificationRequest.update({
-        where: { id: requestId },
+    return this.prisma.$transaction(async (tx) => {
+      // Claim the request: of two managers deciding at once, only one moves it
+      // out of pending, and the other is told instead of overwriting.
+      const claimed = await tx.verificationRequest.updateMany({
+        where: { id: requestId, status: 'pending' },
         data: {
           status,
           reviewNote: note,
           reviewedById: managerId,
           reviewedAt: new Date(),
         },
-      }),
-      this.prisma.user.update({
+      });
+      if (claimed.count !== 1) {
+        throw new BadRequestException('This request was already reviewed');
+      }
+      await tx.user.update({
         where: { id: request.userId },
         data: { verificationStatus: status },
-      }),
-    ]);
-
-    return reviewed;
+      });
+      return tx.verificationRequest.findUniqueOrThrow({ where: { id: requestId } });
+    });
   }
 }
