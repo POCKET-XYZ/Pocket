@@ -238,7 +238,11 @@ describe('AuthService', () => {
 
     it('keeps the date the wallet came alive on Stellar', async () => {
       const fundedAt = new Date('2026-09-20T10:00:00.000Z');
-      const user = makeUser({ walletCustody: 'pollar', walletFundedAt: fundedAt });
+      const user = makeUser({
+        walletCustody: 'pollar',
+        walletFundedAt: fundedAt,
+        pollarUserId: 'usr_pollar_1',
+      });
       prisma.user.findFirst.mockResolvedValue(user);
       prisma.user.update.mockResolvedValue(user);
 
@@ -246,6 +250,29 @@ describe('AuthService', () => {
 
       const data = prisma.user.update.mock.calls[0][0].data as Partial<User>;
       expect(data.walletFundedAt).toBeUndefined();
+    });
+
+    it('does not let Pollar sign into an account that proved its wallet with a signature', async () => {
+      // The account was created with a wallet challenge and never used Pollar.
+      prisma.user.findFirst.mockResolvedValue(makeUser({ pollarUserId: null }));
+      await expect(
+        service.loginWithPollar({ accessToken: 'pollar-token' }),
+      ).rejects.toThrow('Sign in with the wallet itself');
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('does not let another Pollar user into an account', async () => {
+      prisma.user.findFirst.mockResolvedValue(makeUser({ pollarUserId: 'usr_someone_else' }));
+      await expect(
+        service.loginWithPollar({ accessToken: 'pollar-token' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('refuses an address that is not a valid Stellar account', async () => {
+      pollar.verifyToken.mockResolvedValue(makeSession({ stellarAddress: 'GNOTAREALKEY' }));
+      await expect(
+        service.loginWithPollar({ accessToken: 'pollar-token', role: 'startup' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('is refused when Pollar is not configured', async () => {

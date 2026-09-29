@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ApiErrorCode } from '@pocket/shared';
+import { StrKey } from '@stellar/stellar-sdk';
 import type { User, WalletCustody } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { JwtPayload } from '../../common/types/auth';
@@ -77,7 +78,7 @@ export class AuthService {
       throw new ServiceUnavailableException('Pollar sign-in is not configured');
     }
     const session = await this.pollar.verifyToken(dto.accessToken);
-    if (session.custody === 'smart' || !session.stellarAddress.startsWith('G')) {
+    if (session.custody === 'smart' || !StrKey.isValidEd25519PublicKey(session.stellarAddress)) {
       // Escrow roles are classic Stellar accounts. A passkey smart account is a
       // contract address, and Trustless Work cannot give it a role.
       throw new BadRequestException(
@@ -99,6 +100,15 @@ export class AuthService {
       // break every escrow the old address holds a role in.
       throw new ConflictException(
         'This Pollar account is already linked to another wallet on Pocket',
+      );
+    }
+    if (existing && existing.pollarUserId !== session.userId) {
+      // An account that proved its wallet with a signature, or that belongs to
+      // another Pollar user. Pollar vouching for the address is not enough to
+      // take it over: otherwise a Pollar bug or breach would reach every
+      // Pocket account, including those that never used Pollar.
+      throw new ConflictException(
+        'This wallet already has a Pocket account. Sign in with the wallet itself',
       );
     }
 
