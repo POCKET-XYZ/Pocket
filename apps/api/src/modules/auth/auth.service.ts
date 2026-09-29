@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ApiErrorCode } from '@pocket/shared';
 import { StrKey } from '@stellar/stellar-sdk';
 import type { User, WalletCustody } from '@prisma/client';
+import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { JwtPayload } from '../../common/types/auth';
 import { PollarClient, type PollarSession } from '../pollar/pollar.client';
@@ -64,6 +65,7 @@ export class AuthService {
       (await this.prisma.user.create({
         data: { stellarAddress: dto.stellarAddress, role: dto.role! },
       }));
+    securityEvent('login', { method: 'wallet', userId: user.id, isNewUser: !existing });
     return { accessToken: await this.sign(user), user, isNewUser: !existing };
   }
 
@@ -126,6 +128,7 @@ export class AuthService {
           ...pollarFields(session),
         },
       });
+      securityEvent('login', { method: 'pollar', userId: created.id, isNewUser: true });
       return { accessToken: await this.sign(created), user: created, isNewUser: true };
     }
 
@@ -133,6 +136,7 @@ export class AuthService {
       where: { id: existing.id },
       data: pollarFields(session, existing),
     });
+    securityEvent('login', { method: 'pollar', userId: user.id, isNewUser: false });
     return { accessToken: await this.sign(user), user, isNewUser: false };
   }
 
@@ -145,6 +149,7 @@ export class AuthService {
       where: { id: userId },
       data: { tokenVersion: { increment: 1 } },
     });
+    securityEvent('logout', { userId });
   }
 
   private sign(user: User): Promise<string> {

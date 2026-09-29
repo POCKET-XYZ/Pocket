@@ -11,8 +11,10 @@ import {
   NotFoundError,
   Operation,
   TransactionBuilder,
+  type Transaction,
 } from '@stellar/stellar-sdk';
 
+import { securityEvent } from '../../common/security/security-log';
 import { assertPlatformTx, type PlatformTxPolicy } from './platform-tx-policy';
 
 /** Whether an address can receive USDC. */
@@ -89,7 +91,19 @@ export class StellarService implements OnApplicationBootstrap {
    * roles of every escrow, so it never signs a transaction blindly.
    */
   signAsPlatform(xdr: string, policy: PlatformTxPolicy): string {
-    const tx = assertPlatformTx(xdr, this.networkPassphrase, this.platformAddress, policy);
+    let tx: Transaction;
+    try {
+      tx = assertPlatformTx(xdr, this.networkPassphrase, this.platformAddress, policy);
+    } catch (error) {
+      // Trustless Work handed back something other than what Pocket asked
+      // for: its API, the key or the connection may be compromised.
+      securityEvent(
+        'platform_refused',
+        { contract: policy.contractId, fn: policy.fn, reason: (error as Error).message },
+        'alert',
+      );
+      throw error;
+    }
     tx.sign(this.platform);
     return tx.toXDR();
   }

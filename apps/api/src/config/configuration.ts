@@ -13,6 +13,8 @@ export interface AppConfig {
     usdcIssuer: string;
     /** Signs the escrow deploy and the platform roles: release and dispute resolution. */
     platformSecret: string;
+    /** Below this much XLM for fees the platform account raises an alert. */
+    platformMinXlm: number;
   };
   trustlessWork: {
     apiUrl: string;
@@ -88,6 +90,7 @@ export default (): AppConfig => {
       horizonUrl: process.env.HORIZON_URL ?? DEFAULT_HORIZON[network],
       usdcIssuer: process.env.USDC_ISSUER as string,
       platformSecret: process.env.STELLAR_PLATFORM_SECRET as string,
+      platformMinXlm: Number(process.env.PLATFORM_MIN_XLM ?? 20),
     },
     trustlessWork: {
       apiUrl: (process.env.TRUSTLESS_WORK_API_URL as string).replace(/\/+$/, ''),

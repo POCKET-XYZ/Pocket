@@ -5,6 +5,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { securityEventsMiddleware } from './common/security/security-events.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -16,6 +17,7 @@ async function bootstrap() {
   app.set('trust proxy', config.get<number>('trustProxyHops') ?? 0);
 
   app.use(helmet());
+  app.use(securityEventsMiddleware);
   app.setGlobalPrefix('api');
   app.enableCors({ origin: config.get<string[]>('corsOrigins'), credentials: true });
   app.useGlobalPipes(

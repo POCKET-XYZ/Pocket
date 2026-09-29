@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { VerificationRequest, VerificationStatus } from '@prisma/client';
+import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PollarWalletsService } from '../pollar/pollar-wallets.service';
 
@@ -73,6 +74,12 @@ export class ManagerService {
       await tx.user.update({
         where: { id: request.userId },
         data: { verificationStatus: status },
+      });
+      securityEvent('manager_decision', {
+        managerId,
+        requestId,
+        userId: request.userId,
+        decision: status,
       });
       return tx.verificationRequest.findUniqueOrThrow({ where: { id: requestId } });
     });

@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { Prisma, type ChainOperation, type ChainOperationKind } from '@prisma/client';
+import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { PlatformTxPolicy } from './platform-tx-policy';
 import { StellarService } from './stellar.service';
@@ -124,6 +125,14 @@ export class ChainOperationsService {
     amount?: Prisma.Decimal.Value,
   ): Promise<{ operation: ChainOperation; contractId?: string }> {
     const signed = this.stellar.signAsPlatform(unsignedXdr, policy);
+    securityEvent('platform_signed', {
+      kind: scope.kind,
+      contractId: scope.contractId,
+      milestoneId: scope.milestoneId,
+      escrow: policy.contractId,
+      fn: policy.fn,
+      txHash: this.stellar.hashOf(signed),
+    });
     // Claimed before sending, like user operations: a parallel request for the
     // same step fails here instead of reaching the network.
     const operation = await claimStep(scope, () =>
