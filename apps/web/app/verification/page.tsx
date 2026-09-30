@@ -169,7 +169,7 @@ function Verification({ user }: { user: User }) {
                   </Field>
                 </>
               ) : null}
-              <Field label="LinkedIn" htmlFor="linkedinUrl">
+              <Field label={isStartup ? 'Company LinkedIn' : 'LinkedIn'} htmlFor="linkedinUrl">
                 <Input
                   id="linkedinUrl"
                   name="linkedinUrl"
