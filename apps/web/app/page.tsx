@@ -51,7 +51,7 @@ export default function HomePage() {
             size="lg"
             className="h-11 bg-yellow px-5 text-navy hover:bg-yellow/85"
           >
-            <Link href="/connect">Get started</Link>
+            <Link href="/login">Get started</Link>
           </Button>
           <Button
             asChild

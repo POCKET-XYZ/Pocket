@@ -180,6 +180,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!pollar.ready) claimed.current = false;
   }, [pollar.ready]);
 
+  /**
+   * Pollar's login window closes itself only when a login completes. Opened
+   * over a Pollar session that already exists, it would never close and its
+   * layer would swallow every click on the page. So with a session in place,
+   * use it instead of asking to log in again.
+   */
+  const signInWithPollar = useCallback(() => {
+    if (!pollar.ready) {
+      pollar.openLogin();
+      return;
+    }
+    claimed.current = true;
+    void loginWithPollar().catch((error: unknown) => {
+      claimed.current = false;
+      setPollarError(error);
+    });
+  }, [pollar, loginWithPollar]);
+
   const chooseRole = useCallback(
     async (role: SignUpRole) => {
       if (!pendingSignUp) return;
@@ -226,7 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: status === 'signed-in' ? (me.data ?? null) : null,
       pendingSignUp,
       signIn,
-      signInWithPollar: pollar.openLogin,
+      signInWithPollar,
       pollarAvailable: pollar.available,
       pollarError,
       chooseRole,
@@ -242,6 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       me.data,
       pendingSignUp,
       signIn,
+      signInWithPollar,
       pollar,
       pollarError,
       chooseRole,

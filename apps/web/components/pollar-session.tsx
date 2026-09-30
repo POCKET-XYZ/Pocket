@@ -2,7 +2,7 @@
 
 import { PollarProvider as PollarSdkProvider, usePollar } from '@pollar/react';
 import '@pollar/react/styles.css';
-import { createContext, useCallback, useContext, useMemo } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
 
 /** How the wallet of a Pollar session is held. */
 export type PollarCustody = 'internal' | 'external' | 'smart';
@@ -100,6 +100,28 @@ function PollarSessionBridge({ children }: { children: React.ReactNode }) {
     refreshWalletBalance,
   } = usePollar();
 
+  // Pollar opens its login window on top of the page and closes it a second
+  // after a login completes. When the session was already there, that moment
+  // never comes, and the window's layer would block every click. Once the
+  // session is confirmed, close a login window left open.
+  const confirmed = Boolean(isAuthenticated && verified);
+  useEffect(() => {
+    if (!confirmed) return;
+    const timer = setTimeout(() => {
+      const overlay = document.querySelector<HTMLElement>('.pollar-overlay');
+      // Clicking the layer itself is how the window closes; with a session in
+      // place it does not cancel anything.
+      if (overlay && overlay.querySelector('.pollar-logo')) overlay.click();
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [confirmed]);
+
+  const openLogin = useCallback(() => {
+    // With a session in place the window would never close on its own.
+    if (isAuthenticated) return;
+    openLoginModal();
+  }, [isAuthenticated, openLoginModal]);
+
   const getAccessToken = useCallback(() => {
     const state = getClient().getAuthState();
     return state.step === 'authenticated' ? state.session.token.accessToken : null;
@@ -133,7 +155,7 @@ function PollarSessionBridge({ children }: { children: React.ReactNode }) {
       custody: (wallet?.custody as PollarCustody | undefined) ?? null,
       provider: wallet?.provider ?? null,
       getAccessToken,
-      openLogin: openLoginModal,
+      openLogin,
       signOut: logout,
       signXdr,
       balances:
@@ -156,7 +178,7 @@ function PollarSessionBridge({ children }: { children: React.ReactNode }) {
       wallet?.custody,
       wallet?.provider,
       getAccessToken,
-      openLoginModal,
+      openLogin,
       logout,
       signXdr,
       walletBalance,

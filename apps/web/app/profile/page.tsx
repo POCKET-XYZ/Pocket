@@ -7,6 +7,7 @@ import {
   type SpecialistProfile,
   type StartupProfile,
   type User,
+  type VerificationRequest,
 } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -38,6 +39,14 @@ function Profile({ user }: { user: User }) {
     queryKey: ['profile', 'me'],
     queryFn: () => api<StartupProfile | SpecialistProfile | null>('/profiles/me'),
   });
+  // What the user already gave in their verification fills an empty profile,
+  // so nobody types their company, name or links twice. It stays editable:
+  // verification is private and the profile is public.
+  const verification = useQuery({
+    queryKey: ['verification', 'me'],
+    queryFn: () => api<VerificationRequest | null>('/verification/me'),
+  });
+  const known = verification.data ?? null;
 
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -56,19 +65,21 @@ function Profile({ user }: { user: User }) {
         title="My profile"
         description="Every profile follows the same template, so startups and specialists can compare them at a glance."
       />
-      {profile.isLoading ? (
+      {profile.isLoading || verification.isLoading ? (
         <Loading />
       ) : (
         <Card>
           <CardContent className="pt-6">
             {user.role === 'startup' ? (
               <StartupForm
+                known={known}
                 initial={profile.data as StartupProfile | null}
                 saving={save.isPending}
                 onSave={save.mutate}
               />
             ) : (
               <SpecialistForm
+                known={known}
                 initial={profile.data as SpecialistProfile | null}
                 saving={save.isPending}
                 onSave={save.mutate}
@@ -83,11 +94,13 @@ function Profile({ user }: { user: User }) {
 
 interface FormProps<T> {
   initial: T | null;
+  /** The user's verification request, to fill fields they already gave. */
+  known: VerificationRequest | null;
   saving: boolean;
   onSave: (body: Record<string, unknown>) => void;
 }
 
-function StartupForm({ initial, saving, onSave }: FormProps<StartupProfile>) {
+function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfile>) {
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const values = formValues(event.currentTarget);
@@ -103,7 +116,7 @@ function StartupForm({ initial, saving, onSave }: FormProps<StartupProfile>) {
           required
           minLength={2}
           maxLength={160}
-          defaultValue={initial?.companyName}
+          defaultValue={initial?.companyName ?? known?.companyName ?? ''}
         />
       </Field>
       <Field label="What you do, in one sentence" htmlFor="oneLiner" required>
@@ -167,7 +180,7 @@ function StartupForm({ initial, saving, onSave }: FormProps<StartupProfile>) {
           name="websiteUrl"
           type="url"
           placeholder="https://"
-          defaultValue={initial?.websiteUrl ?? ''}
+          defaultValue={initial?.websiteUrl ?? known?.websiteUrl ?? ''}
         />
       </Field>
       <Field label="Logo URL" htmlFor="logoUrl">
@@ -231,7 +244,7 @@ function StartupForm({ initial, saving, onSave }: FormProps<StartupProfile>) {
   );
 }
 
-function SpecialistForm({ initial, saving, onSave }: FormProps<SpecialistProfile>) {
+function SpecialistForm({ initial, known, saving, onSave }: FormProps<SpecialistProfile>) {
   const [categories, setCategories] = useState<ServiceCategory[]>(
     initial?.categories ?? [],
   );
@@ -315,7 +328,7 @@ function SpecialistForm({ initial, saving, onSave }: FormProps<SpecialistProfile
           required
           minLength={2}
           maxLength={120}
-          defaultValue={initial?.displayName}
+          defaultValue={initial?.displayName ?? known?.fullName ?? ''}
         />
       </Field>
       <Field
@@ -465,7 +478,7 @@ function SpecialistForm({ initial, saving, onSave }: FormProps<SpecialistProfile
           name="portfolioUrl"
           type="url"
           placeholder="https://"
-          defaultValue={initial?.portfolioUrl ?? ''}
+          defaultValue={initial?.portfolioUrl ?? known?.websiteUrl ?? ''}
         />
       </Field>
       <Field label="LinkedIn" htmlFor="linkedinUrl">
@@ -474,7 +487,7 @@ function SpecialistForm({ initial, saving, onSave }: FormProps<SpecialistProfile
           name="linkedinUrl"
           type="url"
           placeholder="https://"
-          defaultValue={initial?.linkedinUrl ?? ''}
+          defaultValue={initial?.linkedinUrl ?? known?.linkedinUrl ?? ''}
         />
       </Field>
       <Field
