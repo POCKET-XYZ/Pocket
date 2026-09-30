@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ApiErrorCode, LEGAL_VERSION } from '@pocket/shared';
 import type { User } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { PollarClient, PollarSession } from '../pollar/pollar.client';
@@ -39,6 +40,10 @@ function makeUser(overrides: Partial<User> = {}): User {
     email: null,
     walletFundedAt: null,
     tokenVersion: 0,
+    termsVersion: null,
+    termsAcceptedAt: null,
+    termsAcceptedIp: null,
+    deletedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -104,17 +109,45 @@ describe('AuthService', () => {
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.user.create.mockResolvedValue(user);
 
-    const result = await service.login({
-      stellarAddress: ADDRESS,
-      signedXdr: 'x',
-      role: 'specialist',
-    });
+    const result = await service.login(
+      { stellarAddress: ADDRESS, signedXdr: 'x', role: 'specialist', acceptTerms: LEGAL_VERSION },
+      '203.0.113.7',
+    );
 
     expect(prisma.user.create).toHaveBeenCalledWith({
-      data: { stellarAddress: ADDRESS, role: 'specialist' },
+      data: {
+        stellarAddress: ADDRESS,
+        role: 'specialist',
+        termsVersion: LEGAL_VERSION,
+        termsAcceptedAt: expect.any(Date),
+        termsAcceptedIp: '203.0.113.7',
+      },
     });
     expect(result.isNewUser).toBe(true);
     expect(challenges.consume).toHaveBeenCalledWith(ADDRESS, 'nonce-1');
+  });
+
+  it.each([
+    ['without accepting the terms', undefined],
+    ['accepting an old version', '2020-01-01'],
+  ])('does not create an account %s, and keeps the challenge', async (_label, acceptTerms) => {
+    prisma.user.findUnique.mockResolvedValue(null);
+    const error = await service
+      .login({ stellarAddress: ADDRESS, signedXdr: 'x', role: 'startup', acceptTerms })
+      .catch((e: BadRequestException) => e);
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect((error as BadRequestException).getResponse()).toMatchObject({
+      code: ApiErrorCode.TermsRequired,
+    });
+    expect(prisma.user.create).not.toHaveBeenCalled();
+    expect(challenges.consume).not.toHaveBeenCalled();
+  });
+
+  it('does not ask an existing user to accept again at login', async () => {
+    prisma.user.findUnique.mockResolvedValue(makeUser());
+    await expect(
+      service.login({ stellarAddress: ADDRESS, signedXdr: 'x' }),
+    ).resolves.toMatchObject({ isNewUser: false });
   });
 
   it('signs in an existing user and ignores the role field', async () => {
@@ -141,7 +174,12 @@ describe('AuthService', () => {
     prisma.user.findUnique.mockResolvedValue(null);
     challenges.consume.mockResolvedValue(false);
     await expect(
-      service.login({ stellarAddress: ADDRESS, signedXdr: 'x', role: 'startup' }),
+      service.login({
+        stellarAddress: ADDRESS,
+        signedXdr: 'x',
+        role: 'startup',
+        acceptTerms: LEGAL_VERSION,
+      }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(prisma.user.create).not.toHaveBeenCalled();
   });
@@ -171,12 +209,14 @@ describe('AuthService', () => {
       const result = await service.loginWithPollar({
         accessToken: 'pollar-token',
         role: 'specialist',
+        acceptTerms: LEGAL_VERSION,
       });
 
       expect(prisma.user.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           stellarAddress: ADDRESS,
           role: 'specialist',
+          termsVersion: LEGAL_VERSION,
           walletCustody: 'pollar',
           walletProvider: 'google',
           pollarUserId: 'usr_pollar_1',
@@ -196,6 +236,14 @@ describe('AuthService', () => {
       expect(prisma.user.create).not.toHaveBeenCalled();
     });
 
+    it('does not create a Pollar account without accepting the terms', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      await expect(
+        service.loginWithPollar({ accessToken: 'pollar-token', role: 'startup' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
     it('records a connected wallet as the user own', async () => {
       prisma.user.findFirst.mockResolvedValue(null);
       prisma.user.create.mockImplementation(({ data }: { data: Partial<User> }) =>
@@ -208,6 +256,7 @@ describe('AuthService', () => {
       const result = await service.loginWithPollar({
         accessToken: 'pollar-token',
         role: 'startup',
+        acceptTerms: LEGAL_VERSION,
       });
 
       expect(result.user.walletCustody).toBe('external');

@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ApiErrorCode } from '@pocket/shared';
+import { ApiErrorCode, LEGAL_VERSION } from '@pocket/shared';
 import { StrKey } from '@stellar/stellar-sdk';
 import type { User, WalletCustody } from '@prisma/client';
 import { securityEvent } from '../../common/security/security-log';
@@ -36,7 +36,7 @@ export class AuthService {
    * Sign in with a signed wallet challenge. The first login creates the
    * account, so it must say whether the user is a startup or a specialist.
    */
-  async login(dto: LoginDto): Promise<LoginResult> {
+  async login(dto: LoginDto, ip?: string): Promise<LoginResult> {
     const nonce = await this.challenges.verify(dto.stellarAddress, dto.signedXdr);
     if (!nonce) {
       throw new UnauthorizedException('Invalid or expired wallet signature');
@@ -53,6 +53,8 @@ export class AuthService {
         message: 'Choose startup or specialist to create your account',
       });
     }
+    // Also before the challenge is used, so the client can resend it.
+    if (!existing) requireTerms(dto.acceptTerms);
 
     // Use the challenge before issuing anything: a replay racing this login
     // loses here, and never gets a token or creates an account.
@@ -63,7 +65,11 @@ export class AuthService {
     const user =
       existing ??
       (await this.prisma.user.create({
-        data: { stellarAddress: dto.stellarAddress, role: dto.role! },
+        data: {
+          stellarAddress: dto.stellarAddress,
+          role: dto.role!,
+          ...termsAccepted(ip),
+        },
       }));
     securityEvent('login', { method: 'wallet', userId: user.id, isNewUser: !existing });
     return { accessToken: await this.sign(user), user, isNewUser: !existing };
@@ -75,7 +81,7 @@ export class AuthService {
    * to sign here: the access token is checked against Pollar's server and the
    * wallet it reports becomes the Pocket account.
    */
-  async loginWithPollar(dto: PollarLoginDto): Promise<LoginResult> {
+  async loginWithPollar(dto: PollarLoginDto, ip?: string): Promise<LoginResult> {
     if (!this.pollar.enabled) {
       throw new ServiceUnavailableException('Pollar sign-in is not configured');
     }
@@ -121,11 +127,13 @@ export class AuthService {
           message: 'Choose startup or specialist to create your account',
         });
       }
+      requireTerms(dto.acceptTerms);
       const created = await this.prisma.user.create({
         data: {
           stellarAddress: session.stellarAddress,
           role: dto.role,
           ...pollarFields(session),
+          ...termsAccepted(ip),
         },
       });
       securityEvent('login', { method: 'pollar', userId: created.id, isNewUser: true });
@@ -187,4 +195,22 @@ function pollarFields(
     // Keep the first date: this is when the wallet came alive on Stellar.
     ...(session.funded && !existing?.walletFundedAt ? { walletFundedAt: new Date() } : {}),
   };
+}
+
+/**
+ * A new account must accept the current Terms of Service and Privacy Policy.
+ * Checked on the server: a client that skips the checkbox cannot skip this.
+ */
+function requireTerms(accepted: string | undefined): void {
+  if (accepted !== LEGAL_VERSION) {
+    throw new BadRequestException({
+      code: ApiErrorCode.TermsRequired,
+      message: 'Accept the Terms of Service and the Privacy Policy to create your account',
+    });
+  }
+}
+
+/** What Pocket keeps as proof of that acceptance. */
+export function termsAccepted(ip?: string) {
+  return { termsVersion: LEGAL_VERSION, termsAcceptedAt: new Date(), termsAcceptedIp: ip ?? null };
 }

@@ -48,9 +48,9 @@ export class JwtAuthGuard implements CanActivate {
 
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { role: true, stellarAddress: true, tokenVersion: true },
+      select: { role: true, stellarAddress: true, tokenVersion: true, deletedAt: true },
     });
-    if (!user || user.tokenVersion !== payload.ver) {
+    if (!user || user.deletedAt || user.tokenVersion !== payload.ver) {
       throw new UnauthorizedException('Your session ended. Sign in again');
     }
     request.user = { sub: payload.sub, role: user.role, stellarAddress: user.stellarAddress };

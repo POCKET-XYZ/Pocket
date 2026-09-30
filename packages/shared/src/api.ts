@@ -27,6 +27,9 @@ export interface User {
   walletProvider: string | null;
   /** Email verified by Pollar during login. Absent for wallet sign-ins. */
   email: string | null;
+  /** Version of the Terms and Privacy Policy the user accepted, if any. */
+  termsVersion: string | null;
+  termsAcceptedAt: IsoDate | null;
   createdAt: IsoDate;
   updatedAt: IsoDate;
 }
@@ -83,6 +86,8 @@ export interface WalletStatus {
 /** Error codes the API returns in the `code` field of a 4xx body. */
 export const ApiErrorCode = {
   RoleRequired: 'ROLE_REQUIRED',
+  /** A new account must accept the current Terms and Privacy Policy. */
+  TermsRequired: 'TERMS_REQUIRED',
   /** The wallet has never been funded, so it does not exist on the network yet. */
   StellarAccountNotFound: 'STELLAR_ACCOUNT_NOT_FOUND',
   /** The wallet has to trust USDC before it can receive or send it. */

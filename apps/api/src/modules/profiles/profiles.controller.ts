@@ -84,6 +84,8 @@ export class ProfilesController {
       'Cache-Control': 'private, max-age=300',
       // A PDF is shown, never run as a page of the API.
       'Content-Security-Policy': "sandbox; default-src 'none'",
+      // People's CVs stay out of search engines.
+      'X-Robots-Tag': 'noindex, nofollow',
     });
     res.send(pdf);
   }

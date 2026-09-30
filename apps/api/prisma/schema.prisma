@@ -60,6 +60,14 @@ model User {
   walletFundedAt     DateTime?          @map("wallet_funded_at")
   // Bumped to end every session at once: signing out, or an account taken over.
   tokenVersion       Int                @default(0) @map("token_version")
+  // Proof of consent: which version of the Terms and Privacy Policy the user
+  // accepted, when, and from which IP.
+  termsVersion    String?   @map("terms_version")
+  termsAcceptedAt DateTime? @map("terms_accepted_at")
+  termsAcceptedIp String?   @map("terms_accepted_ip")
+  // Set when the user deleted the account. The row stays, emptied of personal
+  // data, because contracts and disputes of the other party point to it.
+  deletedAt       DateTime? @map("deleted_at")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
