@@ -1,15 +1,16 @@
 /**
  * Time zones a specialist picks from, as UTC offsets with the places a startup
  * recognises. Offsets rather than city names: what a startup wants to know is
- * how many hours apart they are.
+ * how many hours apart they are. Each entry stays within the 60 characters the
+ * API accepts for a time zone.
  */
 export const TIME_ZONES: string[] = [
   'UTC-10 · Hawaii',
   'UTC-8 · Los Angeles, Vancouver, Tijuana',
   'UTC-7 · Denver, Phoenix',
-  'UTC-6 · Mexico City, Guatemala, Costa Rica, El Salvador, Honduras',
+  'UTC-6 · Mexico City, Central America',
   'UTC-5 · Bogotá, Lima, Quito, Panama, New York, Miami',
-  'UTC-4 · Caracas, La Paz, Santo Domingo, Puerto Rico, Santiago',
+  'UTC-4 · La Paz, Caracas, Santo Domingo, Santiago',
   'UTC-3 · Buenos Aires, São Paulo, Montevideo',
   'UTC+0 · London, Lisbon',
   'UTC+1 · Madrid, Paris, Berlin, Lagos',
