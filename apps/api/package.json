@@ -29,6 +29,7 @@
     "@nestjs/swagger": "^11",
     "@pocket/shared": "workspace:*",
     "@prisma/client": "^6",
+    "@sentry/nestjs": "^11.1.0",
     "@stellar/stellar-sdk": "^17.1.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",

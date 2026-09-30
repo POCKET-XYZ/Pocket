@@ -56,6 +56,8 @@ const reportOnly = enforced
           'https://*.walletconnect.org',
           'wss://*.walletconnect.org',
           'https://stellar.creit.tech',
+          // Error reports (Sentry).
+          'https://*.ingest.us.sentry.io',
           ...(isDev ? ['ws:'] : []),
         ].join(' ')
       : directive,
