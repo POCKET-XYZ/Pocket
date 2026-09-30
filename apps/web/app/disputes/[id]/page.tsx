@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { api, errorMessage } from '@/lib/api';
 import { dateTime, usdc } from '@/lib/format';
+import { fromUnits, toUnits } from '@/lib/usdc';
 import { cn } from '@/lib/utils';
 import { linkHost, safeHref } from '@/lib/links';
 
@@ -235,12 +236,25 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
     },
   });
 
+  const total = toUnits(dispute.milestone.amount);
+
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const values = formValues(event.currentTarget);
-    const decision = OUTCOMES.find((option) => option.value === outcome)?.label;
-    if (!window.confirm(`${decision}? This executes on the escrow and cannot be undone.`))
-      return;
+    let summary = OUTCOMES.find((option) => option.value === outcome)?.label ?? '';
+    if (outcome === DisputeOutcome.Split) {
+      const raw = String(values.specialistAmount ?? '').trim();
+      const toSpecialist = toUnits(raw);
+      // The API takes more than 0, less than the whole, and 7 decimals at most.
+      if (!/^\d+(\.\d{1,7})?$/.test(raw) || toSpecialist <= BigInt(0) || toSpecialist >= total) {
+        toast.error(
+          `Give the specialist more than 0 and less than ${usdc(dispute.milestone.amount)}, with at most 7 decimals`,
+        );
+        return;
+      }
+      summary = `${fromUnits(toSpecialist)} USDC to the specialist and ${fromUnits(total - toSpecialist)} USDC to the startup`;
+    }
+    if (!window.confirm(`${summary}? This executes on the escrow and cannot be undone.`)) return;
     resolve.mutate({
       outcome,
       note: values.note,
@@ -248,6 +262,46 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
         ? { specialistAmount: Number(values.specialistAmount) }
         : {}),
     });
+  }
+
+  // A decision already recorded whose execution did not finish (the network
+  // was slow): show it and let the manager send exactly it again. Any other
+  // decision would be refused while this one may still land.
+  if (dispute.outcome) {
+    const label = OUTCOMES.find((option) => option.value === dispute.outcome)?.label;
+    return (
+      <Card className="border-yellow">
+        <CardHeader>
+          <CardTitle>A decision is being executed</CardTitle>
+          <CardDescription>
+            {label}
+            {dispute.outcome === DisputeOutcome.Split && dispute.specialistAmount
+              ? `: ${usdc(dispute.specialistAmount)} to the specialist, ${usdc(
+                  fromUnits(total - toUnits(dispute.specialistAmount)),
+                )} to the startup`
+              : ''}
+            . The network had not confirmed it yet. Retry to finish it; if it already
+            landed, Pocket just records it.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            disabled={resolve.isPending}
+            onClick={() =>
+              resolve.mutate({
+                outcome: dispute.outcome,
+                note: dispute.resolutionNote ?? 'Resolution retried by a manager.',
+                ...(dispute.outcome === DisputeOutcome.Split && dispute.specialistAmount
+                  ? { specialistAmount: Number(dispute.specialistAmount) }
+                  : {}),
+              })
+            }
+          >
+            {resolve.isPending ? 'Retrying...' : 'Retry'}
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -290,9 +344,9 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
                 name="specialistAmount"
                 type="number"
                 required
-                min={0}
-                max={Number(dispute.milestone.amount)}
-                step="any"
+                min="0.0000001"
+                step="0.0000001"
+                inputMode="decimal"
               />
             </Field>
           ) : null}
