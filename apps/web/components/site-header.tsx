@@ -46,6 +46,10 @@ export function SiteHeader() {
   const pathname = usePathname();
   const links = [...PUBLIC_LINKS, ...(user ? ROLE_LINKS[user.role] : [])];
 
+  // The sign-in page stands alone: the menu and its Sign in button next to
+  // the sign-in options confused people.
+  if (pathname === '/connect') return null;
+
   return (
     <header className="sticky top-0 z-40 bg-navy text-off-white shadow-sm">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-6 px-4 md:px-6">
