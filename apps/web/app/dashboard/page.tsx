@@ -49,9 +49,8 @@ function Dashboard({ user }: { user: User }) {
               key={job.id}
               job={job}
               showStatus
-              href={
-                job.status === 'open' ? `/jobs/${job.id}/applicants` : `/jobs/${job.id}`
-              }
+              // The applicants page leads to the contract once someone is hired.
+              href={`/jobs/${job.id}/applicants`}
             />
           ))}
         </div>

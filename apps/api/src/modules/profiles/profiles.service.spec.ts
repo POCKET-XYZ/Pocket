@@ -80,8 +80,28 @@ describe('ProfilesService', () => {
     expect(prisma.startupProfile.upsert).toHaveBeenCalledWith({
       where: { userId: 'user-1' },
       create: { ...STARTUP_DTO, userId: 'user-1' },
-      update: STARTUP_DTO,
+      update: {
+        ...STARTUP_DTO,
+        websiteUrl: null,
+        logoUrl: null,
+        legalName: null,
+        contactRole: null,
+        languages: [],
+        location: null,
+      },
     });
+  });
+
+  it('empties the optional fields a specialist cleared', async () => {
+    await service.saveSpecialist(SPECIALIST, SPECIALIST_DTO);
+    const { update } = prisma.specialistProfile.upsert.mock.calls[0][0];
+    expect(update).toMatchObject({ displayName: SPECIALIST_DTO.displayName });
+    for (const key of ['skills', 'tools', 'languages', 'caseStudies']) {
+      if (!(key in SPECIALIST_DTO)) expect(update[key]).toEqual([]);
+    }
+    for (const key of ['timezone', 'hourlyRate', 'portfolioUrl', 'location']) {
+      if (!(key in SPECIALIST_DTO)) expect(update[key]).toBeNull();
+    }
   });
 
   it('does not let a specialist save a startup profile', async () => {

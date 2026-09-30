@@ -8,6 +8,7 @@ import { HireDialog } from '@/components/hire-dialog';
 import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
 import { StatusBadge } from '@/components/status-badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { dateTime, usdc } from '@/lib/format';
@@ -100,6 +101,10 @@ function Applicants() {
                   </p>
                   {canHire && applicant.status === 'submitted' ? (
                     <HireDialog applicant={applicant} job={job.data} />
+                  ) : applicant.contract ? (
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/contracts/${applicant.contract.id}`}>View contract</Link>
+                    </Button>
                   ) : null}
                 </div>
               </CardContent>

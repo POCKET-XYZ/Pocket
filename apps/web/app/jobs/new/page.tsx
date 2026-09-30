@@ -3,11 +3,12 @@
 import { ServiceCategory, type Job, type JobMilestoneInput } from '@pocket/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, Trash2Icon } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Field, formValues } from '@/components/form';
-import { PageHeader } from '@/components/page';
+import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,6 +18,7 @@ import { ApiError, api, errorMessage } from '@/lib/api';
 import { CATEGORY_LABELS, todayIso, usdc } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { fromUnits, toUnits } from '@/lib/usdc';
+import { useMyProfile } from '@/lib/use-my-profile';
 
 const MAX_MILESTONES = 5;
 
@@ -39,9 +41,29 @@ const EMPTY: MilestoneDraft = {
 export default function NewJobPage() {
   return (
     <RequireAuth roles={['startup']} verified>
-      {() => <NewJob />}
+      {() => <ProfileFirst />}
     </RequireAuth>
   );
+}
+
+/** Specialists judge a job by the startup behind it: the profile comes first. */
+function ProfileFirst() {
+  const profile = useMyProfile();
+  if (profile.isLoading) return <Loading />;
+  if (profile.error) return <ErrorAlert error={profile.error} />;
+  if (!profile.data) {
+    return (
+      <EmptyState title="Fill in your startup profile first">
+        Specialists read it before applying.
+        <div>
+          <Button asChild className="mt-4">
+            <Link href="/profile">Create profile</Link>
+          </Button>
+        </div>
+      </EmptyState>
+    );
+  }
+  return <NewJob />;
 }
 
 /**

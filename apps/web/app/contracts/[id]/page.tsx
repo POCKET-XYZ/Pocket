@@ -7,10 +7,11 @@ import {
   type ContractDetail,
   type User,
 } from '@pocket/shared';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLinkIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { MilestoneCard } from '@/components/contract/milestone-card';
 import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
@@ -25,7 +26,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { ApiError, api } from '@/lib/api';
+import { ApiError, api, errorMessage } from '@/lib/api';
 import { dateTime, explorerContract, explorerTx, shortAddress, usdc } from '@/lib/format';
 import { useContractAction } from '@/lib/use-contract-action';
 import { useSigner } from '@/components/use-signer';
@@ -74,7 +75,7 @@ function Contract({ user }: { user: User }) {
         title={data.job.title}
         description={
           <>
-            <Link href={`/specialists/${data.startupId}`} className="underline">
+            <Link href={`/startups/${data.startupId}`} className="underline">
               {startupName}
             </Link>{' '}
             hired{' '}
@@ -221,6 +222,7 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
   );
 
   if (contract.status === 'awaiting_specialist') {
+    if (isStartup) return <WithdrawOffer contract={contract} />;
     if (!isSpecialist) {
       return (
         <Waiting
@@ -328,13 +330,75 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
       <Alert>
         <AlertTitle>Contract cancelled</AlertTitle>
         <AlertDescription>
-          The specialist declined the terms, so the job was opened again.
+          <p>The specialist declined the terms, so the job was opened again.</p>
+          {isStartup ? (
+            <Button asChild size="sm" className="mt-3">
+              <Link href={`/jobs/${contract.jobId}/applicants`}>Choose another applicant</Link>
+            </Button>
+          ) : isSpecialist ? (
+            <Button asChild size="sm" variant="outline" className="mt-3">
+              <Link href="/jobs">Browse jobs</Link>
+            </Button>
+          ) : null}
         </AlertDescription>
       </Alert>
     );
   }
 
   return null;
+}
+
+/**
+ * The startup waits for the specialist, and can take the terms back to fix
+ * them or to choose someone else while they are not accepted.
+ */
+function WithdrawOffer({ contract }: { contract: ContractDetail }) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const withdraw = useMutation({
+    mutationFn: () =>
+      api<{ jobId: string }>(`/contracts/${contract.id}/withdraw`, { method: 'POST' }),
+    onSuccess: async ({ jobId }) => {
+      toast.success('Offer withdrawn. The job is open again.');
+      // The offer no longer exists: leave its page before anything reloads it.
+      router.replace(`/jobs/${jobId}/applicants`);
+      queryClient.removeQueries({ queryKey: ['contracts', contract.id] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['contracts', 'mine'] }),
+        queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+        queryClient.invalidateQueries({ queryKey: ['applications'] }),
+      ]);
+    },
+    onError: async (error) => {
+      toast.error(errorMessage(error));
+      await queryClient.invalidateQueries({ queryKey: ['contracts', contract.id] });
+    },
+  });
+
+  return (
+    <Alert className="border-celeste bg-celeste-light/40">
+      <AlertTitle>Waiting for the specialist</AlertTitle>
+      <AlertDescription>
+        <p>They review the milestones and accept or decline the terms.</p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-3"
+          disabled={withdraw.isPending}
+          onClick={() => {
+            if (
+              window.confirm(
+                'Withdraw these terms? The job opens again and you can send new terms to this or another applicant.',
+              )
+            )
+              withdraw.mutate();
+          }}
+        >
+          {withdraw.isPending ? 'Withdrawing...' : 'Withdraw offer'}
+        </Button>
+      </AlertDescription>
+    </Alert>
+  );
 }
 
 function Waiting({ title, text }: { title: string; text: string }) {

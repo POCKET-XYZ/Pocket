@@ -299,6 +299,11 @@ function SpecialistForm({ initial, known, saving, onSave }: FormProps<Specialist
       toast.error('Add your LinkedIn, your portfolio or your CV, at least one');
       return;
     }
+    const problem = specialistListProblem(values);
+    if (problem) {
+      toast.error(problem);
+      return;
+    }
     onSave(
       compact({
         ...values,
@@ -543,10 +548,37 @@ function splitList(value: string | undefined, separator: RegExp): string[] {
 
 /** One line per piece of work: `link | what it achieved`. */
 function parseCaseStudies(value: string | undefined): CaseStudy[] {
-  return splitList(value, /\n/)
-    .map((line) => {
-      const [url = '', ...rest] = line.split('|');
-      return { url: url.trim(), result: rest.join('|').trim() };
-    })
-    .filter((study) => study.url !== '' && study.result !== '');
+  return splitList(value, /\n/).map((line) => {
+    const [url = '', ...rest] = line.split('|');
+    return { url: url.trim(), result: rest.join('|').trim() };
+  });
+}
+
+/**
+ * What the API would refuse in the specialist's lists, said the way the form
+ * asks for it, or null when everything fits.
+ */
+function specialistListProblem(values: Record<string, string>): string | null {
+  const lists: [string, string[], number, number][] = [
+    ['skills', splitList(values.skills, /,/), 20, 60],
+    ['tools', splitList(values.tools, /,/), 20, 60],
+    ['languages', splitList(values.languages, /,/), 10, 40],
+  ];
+  for (const [name, items, most, longest] of lists) {
+    if (items.length > most) return `Up to ${most} ${name}, separated by commas`;
+    const long = items.find((item) => item.length > longest);
+    if (long) return `"${long.slice(0, 30)}..." is too long: ${name} take ${longest} characters each`;
+  }
+  const studies = parseCaseStudies(values.caseStudies);
+  if (studies.length > 10) return 'Up to 10 pieces of past work';
+  const bad = studies.find(
+    (study) =>
+      !/^https:\/\/\S+\.\S+/.test(study.url) ||
+      study.result.length < 3 ||
+      study.result.length > 160,
+  );
+  if (bad) {
+    return `Past work "${bad.url.slice(0, 40)}": write it as https://link | what it achieved (3 to 160 characters)`;
+  }
+  return null;
 }

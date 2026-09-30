@@ -206,12 +206,42 @@ export class ContractsService {
       if (claimed.count !== 1) {
         throw new ConflictException('These terms are being accepted already');
       }
+      // The specialist chose to step out: their application is withdrawn,
+      // not rejected by the startup.
       await tx.application.update({
         where: { id: contract.applicationId },
-        data: { status: 'rejected' },
+        data: { status: 'withdrawn', decidedAt: new Date() },
       });
       await tx.job.update({ where: { id: contract.jobId }, data: { status: 'open' } });
       return tx.contract.findUniqueOrThrow({ where: { id: contractId } });
+    });
+  }
+
+  /**
+   * The startup takes back terms the specialist has not accepted yet, to fix
+   * them or to choose someone else. Nothing was on chain, so the offer is
+   * removed, the application waits again and the job opens again.
+   */
+  async withdrawOffer(user: AuthUser, contractId: string): Promise<{ jobId: string }> {
+    const contract = await this.startupContract(user, contractId);
+    if (contract.status !== 'awaiting_specialist') {
+      throw new BadRequestException('Only terms the specialist has not accepted can be withdrawn');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Not while an accept is deploying the escrow.
+      const removed = await tx.contract.deleteMany({
+        where: { id: contractId, status: 'awaiting_specialist', acceptedAt: null },
+      });
+      if (removed.count !== 1) {
+        throw new ConflictException('The specialist is accepting these terms right now');
+      }
+      await tx.application.update({
+        where: { id: contract.applicationId },
+        data: { status: 'submitted', decidedAt: null },
+      });
+      await tx.job.update({ where: { id: contract.jobId }, data: { status: 'open' } });
+      return { jobId: contract.jobId };
     });
   }
 

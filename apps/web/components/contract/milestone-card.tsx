@@ -42,8 +42,9 @@ export function MilestoneCard({
 }) {
   const isStartup = user.id === contract.startupId;
   const isSpecialist = user.id === contract.specialistId;
+  const isManager = user.role === 'manager';
+  const roundsLeft = milestone.revisionsUsed < contract.job.revisionRounds;
   const active = contract.status === 'active';
-  const openDispute = milestone.disputes.find((dispute) => dispute.status === 'open');
   const lastDispute: Dispute | undefined = milestone.disputes.at(-1);
   const signer = useSigner();
 
@@ -166,11 +167,25 @@ export function MilestoneCard({
               >
                 {approve.isPending ? 'Waiting for your wallet...' : 'Approve and pay'}
               </Button>
-              <RequestChangesDialog contractId={contract.id} milestoneId={milestone.id} />
+              {roundsLeft ? (
+                <RequestChangesDialog contractId={contract.id} milestoneId={milestone.id} />
+              ) : (
+                <p className="self-center text-sm text-muted-foreground">
+                  No rounds of changes left: approve it, or open a dispute.
+                </p>
+              )}
             </>
           ) : null}
 
-          {active && isStartup && milestone.status === 'approved' ? (
+          {/* Approved but not paid yet: the release failed or is still confirming. */}
+          {active && isSpecialist && milestone.status === 'approved' ? (
+            <p className="text-sm text-muted-foreground">
+              Approved. The payment is being released to your wallet; it shows up here as
+              paid once the network confirms it.
+            </p>
+          ) : null}
+
+          {active && (isStartup || isManager) && milestone.status === 'approved' ? (
             <Button
               variant="outline"
               disabled={retryRelease.isPending}
@@ -190,9 +205,9 @@ export function MilestoneCard({
             />
           ) : null}
 
-          {openDispute ? (
+          {lastDispute ? (
             <Button asChild variant="outline">
-              <Link href={`/disputes/${openDispute.id}`}>View dispute</Link>
+              <Link href={`/disputes/${lastDispute.id}`}>View dispute</Link>
             </Button>
           ) : null}
         </div>
