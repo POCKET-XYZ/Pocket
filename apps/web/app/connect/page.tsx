@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/auth-provider';
 import { PageHeader } from '@/components/page';
+import { NO_CONSENT, TermsConsent, consentGiven, type Consent } from '@/components/terms';
 import { Button } from '@/components/ui/button';
 import { errorMessage } from '@/lib/api';
 import { isWalletDismissed } from '@/lib/wallet';
@@ -54,6 +55,7 @@ export default function ConnectPage() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [role, setRole] = useState<SignUpRole | null>(null);
+  const [consent, setConsent] = useState<Consent>(NO_CONSENT);
 
   useEffect(() => {
     if (status === 'signed-in' && user) router.replace(homeFor(user));
@@ -102,10 +104,11 @@ export default function ConnectPage() {
             </button>
           ))}
         </div>
-        <div className="mt-6 flex gap-2">
+        <TermsConsent value={consent} onChange={setConsent} className="mt-6" />
+        <div className="mt-4 flex gap-2">
           <Button
             size="lg"
-            disabled={!role || busy}
+            disabled={!role || !consentGiven(consent) || busy}
             onClick={() => role && run(() => chooseRole(role))}
           >
             Create account

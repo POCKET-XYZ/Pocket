@@ -108,6 +108,9 @@ export function SiteHeader() {
                     </DropdownMenuItem>
                   </>
                 ) : null}
+                <DropdownMenuItem asChild>
+                  <Link href="/account">Account and data</Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={signOut}>Sign out</DropdownMenuItem>
               </DropdownMenuContent>
