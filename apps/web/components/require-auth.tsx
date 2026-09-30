@@ -38,7 +38,7 @@ export function RequireAuth({
     return (
       <EmptyState title="Sign in to continue">
         <Button asChild className="mt-4">
-          <Link href="/connect">Sign in</Link>
+          <Link href="/login">Sign in</Link>
         </Button>
       </EmptyState>
     );

@@ -92,6 +92,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }];
   },
+  // The sign-in page used to live at /connect; links already shared keep working.
+  async redirects() {
+    return [{ source: '/connect', destination: '/login', permanent: true }];
+  },
 };
 
 export default nextConfig;

@@ -39,7 +39,7 @@ function homeFor(user: User): string {
   return user.role === 'startup' ? '/dashboard' : '/jobs';
 }
 
-export default function ConnectPage() {
+export default function LoginPage() {
   const {
     status,
     user,

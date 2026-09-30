@@ -48,7 +48,7 @@ export function SiteHeader() {
 
   // The sign-in page stands alone: the menu and its Sign in button next to
   // the sign-in options confused people.
-  if (pathname === '/connect') return null;
+  if (pathname === '/login') return null;
 
   return (
     <header className="sticky top-0 z-40 bg-navy text-off-white shadow-sm">
@@ -118,7 +118,7 @@ export function SiteHeader() {
             </DropdownMenu>
           ) : status === 'signed-out' ? (
             <Button asChild className="bg-yellow text-navy hover:bg-yellow/85">
-              <Link href="/connect">Sign in</Link>
+              <Link href="/login">Sign in</Link>
             </Button>
           ) : null}
         </div>
