@@ -67,6 +67,7 @@ model User {
   verificationsReviewed VerificationRequest[] @relation("VerificationReviews")
   startupProfile        StartupProfile?
   specialistProfile     SpecialistProfile?
+  cv                    SpecialistCv?
   jobs                  Job[]
   applications          Application[]
   contractsAsStartup    Contract[]            @relation("ContractStartup")
@@ -174,6 +175,19 @@ model StartupProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("startup_profiles")
+}
+
+// A specialist's CV as the PDF they uploaded. Kept in the database, one per
+// specialist, so Pocket needs no file storage of its own.
+model SpecialistCv {
+  userId     String   @id @map("user_id") @db.Uuid
+  data       Bytes
+  size       Int
+  uploadedAt DateTime @default(now()) @updatedAt @map("uploaded_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("specialist_cvs")
 }
 
 // Fixed template every specialist fills in. Rates are in USDC.

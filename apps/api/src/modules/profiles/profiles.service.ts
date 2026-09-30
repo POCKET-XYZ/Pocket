@@ -12,6 +12,15 @@ import { BrowseStartupsDto } from './dto/browse-startups.dto';
 import { SpecialistProfileDto } from './dto/specialist-profile.dto';
 import { StartupProfileDto } from './dto/startup-profile.dto';
 
+/** An uploaded file as Nest hands it over, kept in memory. */
+export interface UploadedPdf {
+  buffer: Buffer;
+  size: number;
+}
+
+/** The largest CV Pocket keeps. */
+export const MAX_CV_BYTES = 4 * 1024 * 1024;
+
 @Injectable()
 export class ProfilesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -148,6 +157,38 @@ export class ProfilesService {
     ]);
 
     return { items, total, limit, offset };
+  }
+
+  /**
+   * Store the signed-in specialist's CV. Only a real PDF is kept: the file is
+   * read, not trusted for its name or type. Returns the link to it, which is
+   * also saved on the profile when there is one.
+   */
+  async saveCv(user: AuthUser, file: UploadedPdf | undefined, cvUrl: string) {
+    if (!file?.buffer.length) throw new BadRequestException('Choose a PDF file');
+    if (file.buffer.subarray(0, 5).toString('latin1') !== '%PDF-') {
+      throw new BadRequestException('Upload your CV as a PDF');
+    }
+    const data = new Uint8Array(file.buffer);
+    await this.prisma.specialistCv.upsert({
+      where: { userId: user.sub },
+      create: { userId: user.sub, data, size: data.length },
+      update: { data, size: data.length },
+    });
+    await this.prisma.specialistProfile.updateMany({
+      where: { userId: user.sub },
+      data: { cvUrl },
+    });
+    return { cvUrl };
+  }
+
+  /** The CV of an approved specialist, for anyone who can see their profile. */
+  async cvOf(userId: string): Promise<Buffer> {
+    const cv = await this.prisma.specialistCv.findFirst({
+      where: { userId, user: { verificationStatus: 'approved' } },
+    });
+    if (!cv) throw new NotFoundException('CV not found');
+    return Buffer.from(cv.data);
   }
 
   /** Public profile of an approved user. Unverified accounts stay hidden. */

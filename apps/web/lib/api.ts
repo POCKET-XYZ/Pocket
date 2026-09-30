@@ -85,6 +85,35 @@ export async function api<T>(
   return payload as T;
 }
 
+/** Send a file to the Pocket API as multipart form data, with the session token. */
+export async function upload<T>(path: string, field: string, file: File): Promise<T> {
+  const token = getToken();
+  const form = new FormData();
+  form.append(field, file);
+  const response = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    // No content-type: the browser sets the multipart boundary itself.
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+    body: form,
+  }).catch(() => {
+    throw new ApiError(0, `Cannot reach the Pocket API at ${API_URL}.`);
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { message?: string | string[]; code?: string }
+    | null;
+  if (!response.ok) {
+    const message = Array.isArray(payload?.message)
+      ? payload.message.join('. ')
+      : payload?.message;
+    throw new ApiError(
+      response.status,
+      response.status === 413 ? 'The file is too big. The limit is 4 MB' : (message ?? response.statusText),
+      payload?.code,
+    );
+  }
+  return payload as T;
+}
+
 /** A readable message for any error, for toasts and inline alerts. */
 export function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;

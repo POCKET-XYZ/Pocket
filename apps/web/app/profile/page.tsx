@@ -19,7 +19,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { api, errorMessage } from '@/lib/api';
+import { api, errorMessage, upload } from '@/lib/api';
+import { TIME_ZONES, guessTimeZone } from '@/lib/timezones';
 import { CATEGORY_LABELS, STAGE_LABELS } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -234,6 +235,37 @@ function SpecialistForm({ initial, saving, onSave }: FormProps<SpecialistProfile
   const [categories, setCategories] = useState<ServiceCategory[]>(
     initial?.categories ?? [],
   );
+  const [cvUrl, setCvUrl] = useState(initial?.cvUrl ?? '');
+  const [uploadingCv, setUploadingCv] = useState(false);
+  // A saved value that is not in the list stays selectable.
+  const zones =
+    initial?.timezone && !TIME_ZONES.includes(initial.timezone)
+      ? [initial.timezone, ...TIME_ZONES]
+      : TIME_ZONES;
+
+  async function onCvChosen(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      toast.error('Upload your CV as a PDF');
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error('The file is too big. The limit is 4 MB');
+      return;
+    }
+    setUploadingCv(true);
+    try {
+      const { cvUrl: url } = await upload<{ cvUrl: string }>('/profiles/me/cv', 'file', file);
+      setCvUrl(url);
+      toast.success('CV uploaded');
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setUploadingCv(false);
+    }
+  }
 
   function toggle(category: ServiceCategory) {
     setCategories((current) =>
@@ -378,13 +410,19 @@ function SpecialistForm({ initial, saving, onSave }: FormProps<SpecialistProfile
           />
         </Field>
         <Field label="Time zone" htmlFor="timezone">
-          <Input
+          <select
             id="timezone"
             name="timezone"
-            maxLength={60}
-            placeholder="UTC-6"
-            defaultValue={initial?.timezone ?? ''}
-          />
+            defaultValue={initial?.timezone ?? guessTimeZone() ?? ''}
+            className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+          >
+            <option value="">Choose one</option>
+            {zones.map((zone) => (
+              <option key={zone} value={zone}>
+                {zone}
+              </option>
+            ))}
+          </select>
         </Field>
       </div>
       <Field
@@ -442,24 +480,30 @@ function SpecialistForm({ initial, saving, onSave }: FormProps<SpecialistProfile
       <Field
         label="CV"
         htmlFor="cvUrl"
-        hint="A link to your CV, for example a PDF on Google Drive shared with anyone who has the link."
+        hint="Upload it as a PDF (up to 4 MB), or paste a link to it."
       >
-        <Input
-          id="cvUrl"
-          name="cvUrl"
-          type="url"
-          placeholder="https://"
-          defaultValue={initial?.cvUrl ?? ''}
-        />
-      </Field>
-      <Field label="Photo URL" htmlFor="avatarUrl">
-        <Input
-          id="avatarUrl"
-          name="avatarUrl"
-          type="url"
-          placeholder="https://"
-          defaultValue={initial?.avatarUrl ?? ''}
-        />
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            id="cvUrl"
+            name="cvUrl"
+            type="url"
+            placeholder="https://"
+            value={cvUrl}
+            onChange={(event) => setCvUrl(event.target.value)}
+          />
+          <Button type="button" variant="outline" disabled={uploadingCv} asChild>
+            <label className="cursor-pointer whitespace-nowrap">
+              {uploadingCv ? 'Uploading...' : 'Upload PDF'}
+              <input
+                type="file"
+                accept="application/pdf"
+                className="sr-only"
+                disabled={uploadingCv}
+                onChange={(event) => void onCvChosen(event)}
+              />
+            </label>
+          </Button>
+        </div>
       </Field>
       <Field label="Location" htmlFor="location">
         <Input

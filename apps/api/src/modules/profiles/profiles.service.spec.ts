@@ -42,11 +42,13 @@ describe('ProfilesService', () => {
     };
     specialistProfile: {
       upsert: jest.Mock;
+      updateMany: jest.Mock;
       findUnique: jest.Mock;
       findMany: jest.Mock;
       count: jest.Mock;
     };
     user: { findUnique: jest.Mock };
+    specialistCv: { upsert: jest.Mock; findFirst: jest.Mock };
     $transaction: jest.Mock;
   };
   let service: ProfilesService;
@@ -61,11 +63,13 @@ describe('ProfilesService', () => {
       },
       specialistProfile: {
         upsert: jest.fn(),
+        updateMany: jest.fn(),
         findUnique: jest.fn(),
         findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
       },
       user: { findUnique: jest.fn() },
+      specialistCv: { upsert: jest.fn(), findFirst: jest.fn() },
       $transaction: jest.fn(async (ops: unknown[]) => Promise.all(ops)),
     };
     service = new ProfilesService(prisma as unknown as PrismaService);
@@ -181,6 +185,41 @@ describe('ProfilesService', () => {
       userId: 'user-1',
       role: 'startup',
       profile: { id: 'p-1' },
+    });
+  });
+
+  describe('CV', () => {
+    const URL = 'https://api.example/api/profiles/user-2/cv';
+    const pdf = (body: string) => ({ buffer: Buffer.from(body), size: body.length });
+
+    it('keeps a PDF and links it from the profile', async () => {
+      await expect(
+        service.saveCv(SPECIALIST, pdf('%PDF-1.7 a real cv'), URL),
+      ).resolves.toEqual({ cvUrl: URL });
+      expect(prisma.specialistCv.upsert).toHaveBeenCalled();
+      expect(prisma.specialistProfile.updateMany).toHaveBeenCalledWith({
+        where: { userId: SPECIALIST.sub },
+        data: { cvUrl: URL },
+      });
+    });
+
+    it.each([
+      ['a page dressed as a PDF', '<html><script>alert(1)</script>'],
+      ['an image', 'PNG image bytes'],
+      ['an empty file', ''],
+    ])('refuses %s', async (_label, body) => {
+      await expect(service.saveCv(SPECIALIST, pdf(body), URL)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(prisma.specialistCv.upsert).not.toHaveBeenCalled();
+    });
+
+    it('only shows the CV of an approved specialist', async () => {
+      prisma.specialistCv.findFirst.mockResolvedValue(null);
+      await expect(service.cvOf('user-2')).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.specialistCv.findFirst).toHaveBeenCalledWith({
+        where: { userId: 'user-2', user: { verificationStatus: 'approved' } },
+      });
     });
   });
 });
