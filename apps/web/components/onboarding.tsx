@@ -4,6 +4,7 @@ import type { SpecialistProfile, StartupProfile, User } from '@pocket/shared';
 import { useQuery } from '@tanstack/react-query';
 import { CheckIcon, ClockIcon } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,6 +30,7 @@ interface Step {
  */
 export function Onboarding({ className }: { className?: string }) {
   const { user } = useAuth();
+  const pathname = usePathname();
   const approved = user?.verificationStatus === 'approved';
 
   const profile = useQuery({
@@ -68,13 +70,24 @@ export function Onboarding({ className }: { className?: string }) {
                 <p className="text-sm text-muted-foreground">{step.text}</p>
               </div>
               {step.action && step.state !== 'later' ? (
-                <Button
-                  asChild
-                  size="sm"
-                  variant={step.state === 'current' ? 'default' : 'outline'}
-                >
-                  <Link href={step.action.href}>{step.action.label}</Link>
-                </Button>
+                step.action.href === pathname ? (
+                  // A link to the page you are on does nothing. Here the step
+                  // is the form below, so take the user to it instead; with
+                  // nothing to fill in, there is nothing to press.
+                  step.state === 'current' ? (
+                    <Button size="sm" onClick={goToForm}>
+                      Fill in the form below
+                    </Button>
+                  ) : null
+                ) : (
+                  <Button
+                    asChild
+                    size="sm"
+                    variant={step.state === 'current' ? 'default' : 'outline'}
+                  >
+                    <Link href={step.action.href}>{step.action.label}</Link>
+                  </Button>
+                )
               ) : null}
             </li>
           ))}
@@ -82,6 +95,16 @@ export function Onboarding({ className }: { className?: string }) {
       </CardContent>
     </Card>
   );
+}
+
+/** The form a page marks as the place to act; its first field gets the focus. */
+export const PAGE_FORM_ID = 'page-form';
+
+function goToForm() {
+  const form = document.getElementById(PAGE_FORM_ID);
+  if (!form) return;
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  form.querySelector<HTMLElement>('input, textarea, select')?.focus({ preventScroll: true });
 }
 
 function stepsFor(user: User, hasProfile: boolean): Step[] {

@@ -14,7 +14,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Field, compact, formValues } from '@/components/form';
 import { Loading, PageHeader } from '@/components/page';
-import { Onboarding } from '@/components/onboarding';
+import { Onboarding, PAGE_FORM_ID } from '@/components/onboarding';
 import { RequireAuth } from '@/components/require-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -108,7 +108,7 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form id={PAGE_FORM_ID} onSubmit={onSubmit} className="scroll-mt-24 space-y-4">
       <Field label="Company name" htmlFor="companyName" required>
         <Input
           id="companyName"
@@ -320,7 +320,7 @@ function SpecialistForm({ initial, known, saving, onSave }: FormProps<Specialist
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form id={PAGE_FORM_ID} onSubmit={onSubmit} className="scroll-mt-24 space-y-4">
       <Field label="Name" htmlFor="displayName" required>
         <Input
           id="displayName"
