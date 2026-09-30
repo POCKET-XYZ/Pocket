@@ -20,14 +20,24 @@ Users' funds never touch Pocket: every deposit, approval and dispute is signed b
 
 - **The platform key never signs blindly.** Every transaction Trustless Work builds for it is decoded and compared with what Pocket asked for (`platform-tx-policy.ts`, `escrow-policies.ts`): one `invokeHostFunction` on the expected contract and function, the exact roles, receivers and amounts of the deploy, the exact milestone of a release, and exactly the two parties and amounts of a dispute resolution. Fee bumps, other sources, extra operations, high fees and authorizations that reach other contracts are refused.
 - `TRUSTLESS_WORK_DEPLOYER_CONTRACT_ID` and `TRUSTLESS_WORK_FEE_ADDRESS` are what those checks compare against. For a new network, read them from a real deploy and a real release on that network, not from Trustless Work's answer at signing time.
-- **The browser checks what the user signs** (`apps/web/lib/tx-check.ts`): the user's own account, the expected network, a single operation, and either the USDC trustline or the expected call (`fund_escrow`, `approve_milestone`, `dispute_milestone`) on this contract's escrow.
+- **The escrow's code is pinned.** A deploy must install `TRUSTLESS_WORK_ESCROW_WASM_HASH`. Pocket derives the escrow's address itself from the deployer and the salt it signed, never from Trustless Work's answer, then reads the new escrow back from the chain (code, roles, receivers, amounts, asset) before using it.
+- Platform transactions must expire within 15 minutes, so one that never lands cannot land later on top of a retry.
+- **The browser checks what the user signs** (`apps/web/lib/tx-check.ts`): the user's own account, the expected network, a single operation, and either the USDC trustline or the expected call (`fund_escrow`, `approve_milestone`, `dispute_milestone`) on this contract's escrow. A deposit must pay exactly the agreed amount, from the user, into this escrow. The login challenge must be a single `Pocket auth` data entry with a sequence number no account can use, so it can never be submitted.
 
-### Accounts and sessions
+### What counts as done
+
+- Funded, approved, released, disputed and resolved are read from the chain through a Soroban RPC node (`SOROBAN_RPC_URL`): the escrow's own `get_escrow` and the USDC contract's `balance`. Trustless Work's answers are never the proof.
+- Every transaction sent through Trustless Work is confirmed by hash. A failed one frees its step at once; one that has not landed keeps its step until it can no longer land (15 minutes), and is freed then.
+- Hiring, accepting, declining, closing, withdrawing, asking for changes and resolving disputes are claimed atomically: two requests at once cannot both win. A dispute decision is recorded before it is sent, so the record always matches what the escrow paid.
+
+### Accounts and privacy
 
 - Wallet sign-in signs a one-time challenge, kept per nonce and consumed atomically: a replay loses the race and gets nothing.
 - Pollar can only sign into accounts Pollar created. An account that proved its wallet with a signature is never reachable through Pollar.
 - Tokens are HS256 with issuer and audience, last 12 hours, and carry a session version: signing out ends every session on every device. The role is read from the database on every request, not from the token.
 - The API refuses to start with a `JWT_SECRET` under 32 characters.
+- Sign-out also ends the Pollar session and forgets the wallet picked in the kit.
+- Contact emails are shared only once the specialist accepts the terms. Public profiles show a shortened wallet, not the full address.
 
 ### Abuse
 
@@ -36,7 +46,7 @@ Users' funds never touch Pocket: every deposit, approval and dispute is signed b
 
 ### Input and output
 
-- Every DTO is whitelisted; unknown fields are refused.
+- Every DTO is whitelisted; unknown fields are refused. Text, lists, rates, search and paging are bounded.
 - Links from users must be `https://` (`@IsHttpsUrl()`), and the web checks again, shows the domain, and never opens anything else.
 - Errors from Trustless Work reach users as fixed sentences; the provider's text stays in the log.
 
@@ -111,4 +121,6 @@ Reset the database password in Supabase, update `DATABASE_URL` and `DIRECT_URL` 
 
 - **A second, offline key for the platform account**, so a leaked hot key can be removed without losing the account. `bun run stellar:cosigner` (in `apps/api`) adds it: generate the key offline, pass only its public key as `OFFLINE_SIGNER`, check the dry run, then add `--apply`. The server key keeps weight 1 and signs every escrow step; changing signers needs weight 2, which only the offline key has. Tested on a throwaway testnet account; run one release on testnet after applying it to the real account.
 - **Error tracking** (Sentry or similar), filtering `authorization` headers and `signedXdr` bodies.
+- **The session token lives in `localStorage`.** CSP blocks outside scripts and tokens last 12 hours and can be revoked, but an `HttpOnly` cookie (with CSRF protection) would keep it out of reach of any script. It needs the web and the API on the same site.
+- **The browser trusts the escrow address the API gives it.** Checking the escrow's code from the browser too, through its own RPC call, would protect deposits even against a compromised API.
 - **An external audit** of the escrow flow, the platform key and both sign-in doors.
