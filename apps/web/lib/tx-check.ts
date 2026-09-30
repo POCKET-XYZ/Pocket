@@ -3,10 +3,12 @@ import {
   Asset,
   FeeBumpTransaction,
   Networks,
+  scValToNative,
   TransactionBuilder,
   type Transaction,
   type xdr,
 } from '@stellar/stellar-sdk';
+import { toUnits } from './usdc';
 
 const IS_MAINNET = process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'mainnet';
 const NETWORK = IS_MAINNET ? Networks.PUBLIC : Networks.TESTNET;
@@ -30,7 +32,9 @@ const ESCROW_FUNCTIONS = {
 /** What the user is about to sign, as the page that asks for it knows it. */
 export type TxPurpose =
   | { kind: 'usdc-trustline' }
-  | { kind: keyof typeof ESCROW_FUNCTIONS; escrowId: string | null | undefined };
+  /** A deposit: the page knows how much the startup agreed to put in. */
+  | { kind: 'fund'; escrowId: string | null | undefined; amount: string }
+  | { kind: 'approve' | 'dispute'; escrowId: string | null | undefined };
 
 /** Thrown when a transaction is not the one the page asked for. */
 export class UnexpectedTransaction extends Error {
@@ -112,16 +116,63 @@ export function checkTransaction(
     for (const sub of field<xdr.SorobanAuthorizedInvocation[]>(root, 'subInvocations')) {
       const [subContract, subFn] = authorized(sub);
       const nested = field<xdr.SorobanAuthorizedInvocation[]>(sub, 'subInvocations');
-      if (
-        purpose.kind !== 'fund' ||
-        subContract !== usdcContract ||
-        subFn !== 'transfer' ||
-        nested.length > 0
-      ) {
+      if (purpose.kind !== 'fund') return refuse('it authorizes a payment');
+      if (subContract !== usdcContract || subFn !== 'transfer' || nested.length > 0) {
         refuse('it authorizes another payment');
       }
+      // The payment itself: from the user, into this escrow, the agreed amount.
+      const [from, to, amount] = transferArgs(sub);
+      if (from !== signer || to !== purpose.escrowId) refuse('it pays someone else');
+      if (amount !== toUnits(purpose.amount)) refuse('it pays another amount');
     }
   }
+}
+
+/** What the API's login challenge writes, and nothing else may. */
+const CHALLENGE_DATA_NAME = 'Pocket auth';
+
+/**
+ * Checks the login challenge before the wallet signs it. Users sign it
+ * without thinking twice ("it's just the login"), so it must be impossible to
+ * turn into anything that moves money: one data entry named for Pocket, on the
+ * user's own account, with a sequence number no real account can use, so the
+ * signed challenge can never be submitted to the network.
+ */
+export function checkLoginChallenge(
+  unsignedXdr: string,
+  networkPassphrase: string | undefined,
+  signer: string,
+): void {
+  const refuse = (reason: string): never => {
+    throw new UnexpectedTransaction(reason);
+  };
+  if (networkPassphrase && networkPassphrase !== NETWORK) refuse('it is for another network');
+  let parsed: Transaction | FeeBumpTransaction;
+  try {
+    parsed = TransactionBuilder.fromXDR(unsignedXdr, NETWORK);
+  } catch {
+    return refuse('the sign-in challenge could not be read');
+  }
+  if (parsed instanceof FeeBumpTransaction) return refuse('it is wrapped in a fee bump');
+  const tx = parsed;
+  if (tx.source !== signer) refuse('the sign-in challenge is for another account');
+  // Accounts start far above this, so it can never be the next sequence.
+  if (tx.sequence !== '1') refuse('the sign-in challenge could be sent to the network');
+  if (tx.operations.length !== 1) refuse('the sign-in challenge does more than one thing');
+  const [op] = tx.operations;
+  if (op.type !== 'manageData' || op.name !== CHALLENGE_DATA_NAME) {
+    refuse('the sign-in challenge is not a sign-in challenge');
+  }
+  if (op.source && op.source !== signer) refuse('it acts for another account');
+}
+
+/** The from, to and amount of an authorized token transfer. */
+function transferArgs(invocation: xdr.SorobanAuthorizedInvocation): [unknown, unknown, unknown] {
+  const fn = field<xdr.SorobanAuthorizedFunction>(invocation, 'function');
+  const call = field<xdr.InvokeContractArgs>(fn, 'contractFn');
+  const args = field<xdr.ScVal[]>(call, 'args').map((arg) => scValToNative(arg) as unknown);
+  if (args.length !== 3) throw new UnexpectedTransaction('it authorizes an odd payment');
+  return [args[0], args[1], typeof args[2] === 'bigint' ? args[2] : undefined];
 }
 
 /** The contract and function an authorization entry covers. */

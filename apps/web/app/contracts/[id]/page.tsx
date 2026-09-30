@@ -199,7 +199,7 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
     () =>
       prepareSignSubmit(
         signer.sign,
-        { kind: 'fund', escrowId: contract.escrowId },
+        { kind: 'fund', escrowId: contract.escrowId, amount: contract.amount },
         `/contracts/${contract.id}/fund/prepare`,
         `/contracts/${contract.id}/fund/submit`,
       ),
