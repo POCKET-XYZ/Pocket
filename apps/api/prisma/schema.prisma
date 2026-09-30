@@ -519,9 +519,12 @@ model ChainOperation {
   createdAt   DateTime             @default(now()) @map("created_at")
   confirmedAt DateTime?            @map("confirmed_at")
 
+  // Never deleted with what they belong to: this is the record of every
+  // transaction the platform key signed, and the monitor alerts on any
+  // platform transaction missing from it.
   signer    User?      @relation(fields: [signerId], references: [id], onDelete: SetNull)
-  contract  Contract?  @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  milestone Milestone? @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  contract  Contract?  @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  milestone Milestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
 
   @@index([contractId])
   @@index([milestoneId])
