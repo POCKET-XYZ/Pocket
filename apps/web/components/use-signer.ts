@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { usePollarSession } from '@/components/pollar-session';
+import { checkTransaction } from '@/lib/tx-check';
 import { signXdr as signWithWallet, type SignXdr } from '@/lib/wallet';
 
 export interface Signer {
@@ -31,7 +32,9 @@ export function useSigner(): Signer {
   const pollarReady = pollar.ready && pollar.address === address;
 
   const sign = useCallback<SignXdr>(
-    (xdr, networkPassphrase) => {
+    async (xdr, networkPassphrase, purpose) => {
+      // Whoever signs, the transaction must be the step the user pressed.
+      if (address) checkTransaction(xdr, networkPassphrase, address, purpose);
       if (pollarReady) return pollar.signXdr(xdr);
       if (belongsToPollar) {
         // Opening the login here means the user can sign in and press the same

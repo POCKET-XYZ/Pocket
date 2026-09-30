@@ -4,6 +4,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Verified } from '../../common/decorators/verified.decorator';
 import type { AuthUser } from '../../common/types/auth';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { BrowseSpecialistsDto } from './dto/browse-specialists.dto';
 import { BrowseStartupsDto } from './dto/browse-startups.dto';
 import { SpecialistProfileDto } from './dto/specialist-profile.dto';
@@ -23,6 +24,7 @@ export class ProfilesController {
   }
 
   @ApiBearerAuth()
+  @Roles('startup')
   @Verified()
   @Put('me/startup')
   saveStartup(@CurrentUser() user: AuthUser, @Body() dto: StartupProfileDto) {
@@ -30,6 +32,7 @@ export class ProfilesController {
   }
 
   @ApiBearerAuth()
+  @Roles('specialist')
   @Verified()
   @Put('me/specialist')
   saveSpecialist(@CurrentUser() user: AuthUser, @Body() dto: SpecialistProfileDto) {

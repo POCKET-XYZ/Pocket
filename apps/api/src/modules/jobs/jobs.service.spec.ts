@@ -56,6 +56,8 @@ describe('JobsService', () => {
       findUnique: jest.Mock;
       count: jest.Mock;
       update: jest.Mock;
+      updateMany: jest.Mock;
+      findUniqueOrThrow: jest.Mock;
     };
     application: { updateMany: jest.Mock };
     startupProfile: { findUnique: jest.Mock };
@@ -71,10 +73,15 @@ describe('JobsService', () => {
         findUnique: jest.fn(),
         count: jest.fn().mockReturnValue(0),
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn(),
       },
       application: { updateMany: jest.fn() },
       startupProfile: { findUnique: jest.fn().mockResolvedValue({ id: 'profile-1' }) },
-      $transaction: jest.fn(async (ops: unknown[]) => ops),
+      // A batch runs its operations; an interactive one runs with the client.
+      $transaction: jest.fn((arg: unknown) =>
+        typeof arg === 'function' ? (arg as (tx: unknown) => unknown)(prisma) : arg,
+      ),
     };
     service = new JobsService(prisma as unknown as PrismaService);
   });
@@ -218,8 +225,8 @@ describe('JobsService', () => {
 
       await service.close(startup, 'job-1');
 
-      expect(prisma.job.update).toHaveBeenCalledWith({
-        where: { id: 'job-1' },
+      expect(prisma.job.updateMany).toHaveBeenCalledWith({
+        where: { id: 'job-1', status: 'open' },
         data: { status: 'closed' },
       });
       expect(prisma.application.updateMany).toHaveBeenCalledWith({

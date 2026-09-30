@@ -24,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { api, errorMessage } from '@/lib/api';
 import { dateTime, usdc } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { linkHost, safeHref } from '@/lib/links';
 
 const OUTCOMES: { value: DisputeOutcome; label: string }[] = [
   { value: DisputeOutcome.PaySpecialist, label: 'Pay the specialist' },
@@ -111,13 +112,16 @@ function DisputeView({ user }: { user: User }) {
                     Version {deliverable.version}:{' '}
                   </span>
                   <a
-                    href={deliverable.url}
+                    href={safeHref(deliverable.url)}
                     target="_blank"
                     rel="noreferrer"
                     className="break-all underline"
                   >
                     {deliverable.url}
-                  </a>
+                  </a>{' '}
+                  <span className="text-xs text-muted-foreground">
+                    ({linkHost(deliverable.url)})
+                  </span>
                   {deliverable.feedback ? (
                     <p className="text-muted-foreground">
                       Changes asked: {deliverable.feedback}
@@ -146,12 +150,15 @@ function DisputeView({ user }: { user: User }) {
                 <p className="mt-1 whitespace-pre-line">{item.comment}</p>
                 {item.url ? (
                   <a
-                    href={item.url}
+                    href={safeHref(item.url)}
                     target="_blank"
                     rel="noreferrer"
                     className="mt-1 inline-flex items-center gap-1 break-all underline"
                   >
                     {item.url} <ExternalLinkIcon className="size-3 shrink-0" />
+                    <span className="text-xs text-muted-foreground no-underline">
+                      ({linkHost(item.url)})
+                    </span>
                   </a>
                 ) : null}
               </div>

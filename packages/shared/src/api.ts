@@ -188,7 +188,11 @@ export interface SpecialistProfile {
 export interface PublicProfile {
   userId: string;
   role: UserRole;
-  stellarAddress: string;
+  /**
+   * The wallet shortened (GABC...WXYZ): enough to recognise it, not to look up
+   * someone's balance and payments on chain from their name.
+   */
+  wallet: string;
   memberSince: IsoDate;
   profile: StartupProfile | SpecialistProfile;
 }

@@ -10,17 +10,18 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUrl,
   Length,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
+import { IsHttpsUrl } from '../../../common/decorators/is-https-url.decorator';
 
 /** A piece of past work: where to see it and what it achieved. */
 export class CaseStudyDto {
   @ApiProperty({ example: 'https://example.com/campaign' })
-  @IsUrl()
+  @IsHttpsUrl()
   url: string;
 
   @ApiProperty({
@@ -61,6 +62,7 @@ export class SpecialistProfileDto {
   @IsArray()
   @ArrayMaxSize(20)
   @IsString({ each: true })
+  @MaxLength(60, { each: true })
   skills?: string[];
 
   @ApiPropertyOptional({
@@ -83,6 +85,7 @@ export class SpecialistProfileDto {
   @IsArray()
   @ArrayMaxSize(20)
   @IsString({ each: true })
+  @MaxLength(60, { each: true })
   tools?: string[];
 
   @ApiPropertyOptional({ description: 'Years working in this field', example: 6 })
@@ -98,6 +101,7 @@ export class SpecialistProfileDto {
   @IsArray()
   @ArrayMaxSize(10)
   @IsString({ each: true })
+  @MaxLength(40, { each: true })
   languages?: string[];
 
   @ApiPropertyOptional({ example: 'UTC-6' })
@@ -117,35 +121,37 @@ export class SpecialistProfileDto {
   @ApiPropertyOptional({ description: 'Hourly rate in USDC' })
   @IsOptional()
   @Type(() => Number)
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 7 })
   @Min(0)
+  @Max(1_000_000)
   hourlyRate?: number;
 
   @ApiPropertyOptional({ description: 'Smallest project they take, in USDC' })
   @IsOptional()
   @Type(() => Number)
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 7 })
   @Min(0)
+  @Max(1_000_000_000)
   minProjectBudget?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   portfolioUrl?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   linkedinUrl?: string;
 
   @ApiPropertyOptional({ description: 'Link to the CV, e.g. a PDF on Google Drive' })
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   cvUrl?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   avatarUrl?: string;
 
   @ApiPropertyOptional()

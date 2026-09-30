@@ -1,5 +1,12 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { RateLimiter } from '../../common/rate-limit/rate-limiter';
 
 /** Roles of a multi-release escrow. Every role is a Stellar address. */
 export interface EscrowRoles {
@@ -69,10 +76,25 @@ export class TrustlessWorkClient {
   private readonly logger = new Logger(TrustlessWorkClient.name);
   private readonly baseUrl: string;
   private readonly apiKey: string;
+  /** The contract that deploys escrows, which a deploy must call. */
+  readonly deployerContractId: string;
+  /** Where the protocol fee goes, which a release or resolution must name. */
+  readonly feeAddress: string;
+  /** The escrow code a deploy must install, as a hex hash. */
+  readonly escrowWasmHash: string;
+  /**
+   * Pocket's own budget, below Trustless Work's 50 requests a minute. The per
+   * user limits keep one person from spending it; this keeps everyone together
+   * from reaching the provider's limit, where every step would start failing.
+   */
+  private readonly budget = new RateLimiter();
 
   constructor(config: ConfigService) {
     this.baseUrl = config.getOrThrow<string>('trustlessWork.apiUrl');
     this.apiKey = config.getOrThrow<string>('trustlessWork.apiKey');
+    this.deployerContractId = config.getOrThrow<string>('trustlessWork.deployerContractId');
+    this.feeAddress = config.getOrThrow<string>('trustlessWork.feeAddress');
+    this.escrowWasmHash = config.getOrThrow<string>('trustlessWork.escrowWasmHash');
   }
 
   deployMultiRelease(input: DeployEscrowInput): Promise<string> {
@@ -136,10 +158,12 @@ export class TrustlessWorkClient {
       message?: string;
       contractId?: string;
     }>('POST', '/helper/send-transaction', { signedXdr });
-    if (result.status && result.status !== 'SUCCESS') {
-      throw new ServiceUnavailableException(
-        `Trustless Work could not send the transaction: ${result.message ?? result.status}`,
+    // Only an explicit SUCCESS counts; an answer without a status is not one.
+    if (result.status !== 'SUCCESS') {
+      this.logger.error(
+        `POST /helper/send-transaction -> ${result.status}: ${result.message ?? ''}`,
       );
+      throw publicError(result.message);
     }
     return { contractId: result.contractId };
   }
@@ -180,9 +204,7 @@ export class TrustlessWorkClient {
       this.logger.error(
         `${method} ${path} -> ${response.status}: ${JSON.stringify(payload)}`,
       );
-      const message =
-        typeof payload.message === 'string' ? payload.message : response.statusText;
-      throw new ServiceUnavailableException(`Trustless Work error: ${message}`);
+      throw publicError(typeof payload.message === 'string' ? payload.message : undefined);
     }
     return payload as T;
   }
@@ -199,6 +221,12 @@ export class TrustlessWorkClient {
     body?: unknown,
   ): Promise<Response> {
     for (let attempt = 0; ; attempt++) {
+      if (this.budget.take('trustless-work', TRUSTLESS_WORK_BUDGET_PER_MINUTE, 60_000) > 0) {
+        this.logger.warn(`${method} ${path} held back: Pocket's Trustless Work budget is spent`);
+        throw new ServiceUnavailableException(
+          'Trustless Work is busy right now. Try again in a minute',
+        );
+      }
       const response = await fetch(`${this.baseUrl}${path}`, {
         method,
         headers: { 'content-type': 'application/json', 'x-api-key': this.apiKey },
@@ -223,6 +251,9 @@ export class TrustlessWorkClient {
   }
 }
 
+/** Requests a minute Pocket allows itself, under Trustless Work's 50. */
+export const TRUSTLESS_WORK_BUDGET_PER_MINUTE = 40;
+
 /** Retries after a 429 before giving up. */
 const RATE_LIMIT_RETRIES = 3;
 /** Never wait longer than this for one retry, whatever the server says. */
@@ -236,4 +267,28 @@ export function retryDelayMs(retryAfter: string | null, attempt: number): number
       ? seconds * 1000
       : 1000 * 2 ** attempt;
   return Math.min(delay, MAX_RETRY_DELAY_MS);
+}
+
+/**
+ * What the user reads when Trustless Work refuses a step. Its own text can
+ * carry contract internals and addresses, so it only goes to the log; the
+ * cases a user can act on get a fixed sentence of Pocket's.
+ */
+const KNOWN_ERRORS: [RegExp, string][] = [
+  [/already in dispute/i, 'This milestone is already in dispute'],
+  [/insufficient|not enough|underfunded/i, 'The wallet does not have enough funds for this step'],
+  [/trustline/i, 'The wallet needs to accept USDC before this step'],
+  [/not found/i, 'This escrow was not found on Stellar'],
+];
+
+function publicError(message: string | undefined): HttpException {
+  const known = message && KNOWN_ERRORS.find(([pattern]) => pattern.test(message));
+  // The original text rides along as the cause, for the operation log.
+  const options = message ? { cause: new Error(message) } : undefined;
+  return known
+    ? new BadRequestException(known[1], options)
+    : new ServiceUnavailableException(
+        'The escrow service could not complete this step. Try again',
+        options,
+      );
 }

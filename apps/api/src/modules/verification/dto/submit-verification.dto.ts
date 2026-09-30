@@ -4,10 +4,10 @@ import {
   IsISO31661Alpha2,
   IsOptional,
   IsString,
-  IsUrl,
   Length,
   MaxLength,
 } from 'class-validator';
+import { IsHttpsUrl } from '../../../common/decorators/is-https-url.decorator';
 
 /**
  * Lightweight KYC/KYB: what a startup or specialist sends for a manager to
@@ -29,14 +29,14 @@ export class SubmitVerificationDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   linkedinUrl?: string;
 
   @ApiPropertyOptional({
     description: 'Company site for startups, portfolio for specialists',
   })
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   websiteUrl?: string;
 
   @ApiPropertyOptional({ description: 'Startups: registered company name' })

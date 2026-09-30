@@ -6,6 +6,7 @@ import {
 import { Prisma } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import type { PrismaService } from '../../prisma/prisma.service';
+import { NotYetConfirmed } from '../stellar/chain-operations.service';
 import { DisputesService, splitFor } from './disputes.service';
 import type { EscrowService } from './escrow.service';
 import type { MilestonesService } from './milestones.service';
@@ -71,8 +72,15 @@ describe('splitFor', () => {
 
 describe('DisputesService', () => {
   let prisma: {
-    dispute: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock };
+    dispute: {
+      findUnique: jest.Mock;
+      findUniqueOrThrow: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+      updateMany: jest.Mock;
+    };
     disputeEvidence: { create: jest.Mock };
+    chainOperation: { findUnique: jest.Mock };
     milestone: { update: jest.Mock };
     contract: { findUniqueOrThrow: jest.Mock };
     $transaction: jest.Mock;
@@ -81,6 +89,7 @@ describe('DisputesService', () => {
     prepareDispute: jest.Mock;
     submitDispute: jest.Mock;
     milestoneHas: jest.Mock;
+    milestoneFlags: jest.Mock;
     discard: jest.Mock;
     resolve: jest.Mock;
   };
@@ -89,8 +98,15 @@ describe('DisputesService', () => {
 
   beforeEach(() => {
     prisma = {
-      dispute: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
+      dispute: {
+        findUnique: jest.fn(),
+        findUniqueOrThrow: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
       disputeEvidence: { create: jest.fn() },
+      chainOperation: { findUnique: jest.fn() },
       milestone: { update: jest.fn() },
       contract: {
         findUniqueOrThrow: jest.fn().mockResolvedValue({
@@ -104,6 +120,8 @@ describe('DisputesService', () => {
       prepareDispute: jest.fn(),
       submitDispute: jest.fn().mockResolvedValue({ txHash: 'hash-1' }),
       milestoneHas: jest.fn(),
+      // Not disputed on chain yet, unless a test says so.
+      milestoneFlags: jest.fn().mockResolvedValue({}),
       discard: jest.fn(),
       resolve: jest.fn(),
     };
@@ -194,6 +212,41 @@ describe('DisputesService', () => {
     });
   });
 
+  describe('a dispute that landed on chain after the request gave up', () => {
+    const milestone = {
+      id: 'milestone-1',
+      contractId: 'contract-1',
+      position: 0,
+      status: 'delivered',
+      contract,
+    };
+
+    it('is recorded, with who signed it, instead of being sent again', async () => {
+      milestones.load.mockResolvedValue(milestone);
+      escrow.milestoneFlags.mockResolvedValue({ disputed: true });
+      prisma.dispute.create.mockResolvedValue({ id: 'dispute-1' });
+      prisma.chainOperation.findUnique.mockResolvedValue({ signerId: 'specialist-1' });
+      await service.open(startup, 'milestone-1', {
+        signedXdr: 'signed',
+        reason: 'The work never arrived at all',
+      });
+      expect(escrow.submitDispute).not.toHaveBeenCalled();
+      expect(prisma.dispute.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ milestoneId: 'milestone-1', openedById: 'specialist-1' }),
+      });
+    });
+
+    it('is not prepared a second time', async () => {
+      milestones.load.mockResolvedValue(milestone);
+      escrow.milestoneFlags.mockResolvedValue({ disputed: true });
+      prisma.dispute.create.mockResolvedValue({ id: 'dispute-1' });
+      await expect(service.prepareOpen(startup, 'milestone-1')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(escrow.prepareDispute).not.toHaveBeenCalled();
+    });
+  });
+
   describe('resolve', () => {
     const openDispute = {
       id: 'dispute-1',
@@ -225,15 +278,58 @@ describe('DisputesService', () => {
         ['GSPECIALIST', '1.5'],
         ['GSTARTUP', '0.5'],
       ]);
+      // The decision is recorded before anything is sent.
+      expect(prisma.dispute.updateMany).toHaveBeenCalledWith({
+        where: { id: 'dispute-1', status: 'open', outcome: null },
+        data: expect.objectContaining({ outcome: 'split', resolvedById: 'manager-1' }),
+      });
+      expect(prisma.dispute.updateMany.mock.invocationCallOrder[0]).toBeLessThan(
+        escrow.resolve.mock.invocationCallOrder[0],
+      );
       expect(prisma.dispute.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            status: 'resolved',
-            resolvedById: 'manager-1',
-          }),
+          data: expect.objectContaining({ status: 'resolved' }),
         }),
       );
       expect(milestones.completeIfDone).toHaveBeenCalledWith('contract-1');
+    });
+
+    it('refuses a different decision while another one is being executed', async () => {
+      prisma.dispute.findUnique.mockResolvedValue(openDispute);
+      prisma.dispute.updateMany.mockResolvedValue({ count: 0 });
+      prisma.dispute.findUniqueOrThrow.mockResolvedValue({
+        status: 'open',
+        outcome: 'pay_specialist',
+        specialistAmount: new Prisma.Decimal(2),
+        startupAmount: new Prisma.Decimal(0),
+      });
+      await expect(
+        service.resolve(manager, 'dispute-1', { outcome: 'refund_startup', note: 'The other way' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(escrow.resolve).not.toHaveBeenCalled();
+    });
+
+    it('takes the decision back when nothing was sent', async () => {
+      prisma.dispute.findUnique.mockResolvedValue(openDispute);
+      escrow.milestoneHas.mockResolvedValue(false);
+      escrow.resolve.mockRejectedValue(new Error('Trustless Work is down'));
+      await expect(
+        service.resolve(manager, 'dispute-1', { outcome: 'refund_startup', note: 'Nothing done' }),
+      ).rejects.toThrow('down');
+      expect(prisma.dispute.updateMany).toHaveBeenLastCalledWith({
+        where: { id: 'dispute-1', status: 'open' },
+        data: expect.objectContaining({ outcome: null }),
+      });
+    });
+
+    it('keeps the decision while its transaction may still land', async () => {
+      prisma.dispute.findUnique.mockResolvedValue(openDispute);
+      escrow.milestoneHas.mockResolvedValue(false);
+      escrow.resolve.mockRejectedValue(new NotYetConfirmed());
+      await expect(
+        service.resolve(manager, 'dispute-1', { outcome: 'refund_startup', note: 'Nothing done' }),
+      ).rejects.toBeInstanceOf(NotYetConfirmed);
+      expect(prisma.dispute.updateMany).toHaveBeenCalledTimes(1);
     });
 
     it('does not resolve the same dispute twice', async () => {

@@ -5,11 +5,11 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUrl,
   Length,
   Max,
   Min,
 } from 'class-validator';
+import { IsHttpsUrl } from '../../../common/decorators/is-https-url.decorator';
 
 /** A specialist's offer on a job. The price may differ from the posted budget. */
 export class ApplyDto {
@@ -20,7 +20,7 @@ export class ApplyDto {
 
   @ApiPropertyOptional({ description: 'A piece of past work close to this job' })
   @IsOptional()
-  @IsUrl()
+  @IsHttpsUrl()
   similarWorkUrl?: string;
 
   @ApiPropertyOptional({

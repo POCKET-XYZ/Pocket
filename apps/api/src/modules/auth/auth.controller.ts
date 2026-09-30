@@ -5,10 +5,14 @@ import { ChallengeDto } from './dto/challenge.dto';
 import { LoginDto } from './dto/login.dto';
 import { PollarLoginDto } from './dto/pollar-login.dto';
 import { WalletChallengeService } from './wallet-challenge.service';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import type { AuthUser } from '../../common/types/auth';
+import { AUTH_RATE_LIMIT, RateLimit } from '../../common/rate-limit/rate-limit.decorator';
 
 @ApiTags('auth')
 @Public()
+@RateLimit(AUTH_RATE_LIMIT)
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -28,6 +32,14 @@ export class AuthController {
   @HttpCode(200)
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
+  }
+
+  /** End every session of the signed-in user, on every device. */
+  @Public(false)
+  @Post('logout')
+  @HttpCode(204)
+  async logout(@CurrentUser() user: AuthUser): Promise<void> {
+    await this.auth.logout(user.sub);
   }
 
   /**

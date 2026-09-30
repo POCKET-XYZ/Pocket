@@ -112,9 +112,14 @@ export class ApplicationsService {
       throw new BadRequestException('Only an application still waiting can be withdrawn');
     }
 
-    return await this.prisma.application.update({
-      where: { id: applicationId },
+    // Only while still waiting: not after an offer claimed it meanwhile.
+    const claimed = await this.prisma.application.updateMany({
+      where: { id: applicationId, status: 'submitted' },
       data: { status: 'withdrawn', decidedAt: new Date() },
     });
+    if (claimed.count !== 1) {
+      throw new BadRequestException('Only an application still waiting can be withdrawn');
+    }
+    return this.prisma.application.findUniqueOrThrow({ where: { id: applicationId } });
   }
 }

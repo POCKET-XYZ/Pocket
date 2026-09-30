@@ -1,0 +1,14 @@
+# Public testnet addresses and contract ids in docs and fixtures are not secrets.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public Stellar data in fixtures and the dummy secrets of unit tests"
+paths = [
+  '''apps/api/src/modules/stellar/__fixtures__/.*''',
+]
+# Exact dummy values only, so a real secret in a test still fails the check.
+regexes = [
+  '''a-test-secret-that-is-long-enough-000''',
+  '''another-secret-that-is-long-enough-00''',
+]

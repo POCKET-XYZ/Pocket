@@ -1,7 +1,15 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ServiceCategory } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class BrowseSpecialistsDto {
   @ApiPropertyOptional({ enum: ServiceCategory })
@@ -14,6 +22,7 @@ export class BrowseSpecialistsDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   search?: string;
 
   @ApiPropertyOptional({ default: 20, maximum: 50 })
@@ -29,5 +38,6 @@ export class BrowseSpecialistsDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @Max(10_000)
   offset?: number;
 }

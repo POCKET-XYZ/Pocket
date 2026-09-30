@@ -14,6 +14,8 @@ import {
 } from 'react';
 import { usePollarSession } from '@/components/pollar-session';
 import { ApiError, api, getToken, setToken, subscribeToken } from '@/lib/api';
+import { disconnectWalletKit } from '@/components/tw-blocks/wallet-kit/wallet-kit';
+import { checkLoginChallenge } from '@/lib/tx-check';
 import { connectWallet, signXdr } from '@/lib/wallet';
 
 type Status = 'loading' | 'signed-out' | 'signed-in';
@@ -112,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: 'POST',
       body: { stellarAddress: address },
     });
+    checkLoginChallenge(challenge.xdr, challenge.networkPassphrase, address);
     const signedXdr = await signXdr(challenge.xdr, address, challenge.networkPassphrase);
     try {
       finishLogin(
@@ -170,6 +173,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [pollar.ready, token, pendingSignUp, loginWithPollar]);
 
+  // Only once Pollar's session is really gone may a new one be picked up.
+  // Pollar clears it after a round trip to its server; until then its old
+  // session is still there and would sign the user straight back in.
+  useEffect(() => {
+    if (!pollar.ready) claimed.current = false;
+  }, [pollar.ready]);
+
   const chooseRole = useCallback(
     async (role: SignUpRole) => {
       if (!pendingSignUp) return;
@@ -192,11 +202,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback(() => {
+    // End the session on the server too, so a copy of the token stops working.
+    // Best effort: signing out locally must not wait for the network.
+    if (getToken()) void api('/auth/logout', { method: 'POST' }).catch(() => undefined);
     setToken(null);
     setPendingSignUp(null);
     setPollarError(null);
-    claimed.current = false;
+    // Stays claimed while Pollar is still signed in; see the effect above.
+    claimed.current = pollar.ready;
     if (pollar.ready) pollar.signOut();
+    // The wallet picked in the kit is forgotten too, on a shared computer.
+    void disconnectWalletKit().catch(() => undefined);
     queryClient.clear();
   }, [queryClient, pollar]);
 

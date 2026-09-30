@@ -7,7 +7,9 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ApiErrorCode } from '@pocket/shared';
+import { StrKey } from '@stellar/stellar-sdk';
 import type { User, WalletCustody } from '@prisma/client';
+import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { JwtPayload } from '../../common/types/auth';
 import { PollarClient, type PollarSession } from '../pollar/pollar.client';
@@ -35,32 +37,36 @@ export class AuthService {
    * account, so it must say whether the user is a startup or a specialist.
    */
   async login(dto: LoginDto): Promise<LoginResult> {
-    const valid = await this.challenges.verify(dto.stellarAddress, dto.signedXdr);
-    if (!valid) {
+    const nonce = await this.challenges.verify(dto.stellarAddress, dto.signedXdr);
+    if (!nonce) {
       throw new UnauthorizedException('Invalid or expired wallet signature');
     }
 
-    let user = await this.prisma.user.findUnique({
+    const existing = await this.prisma.user.findUnique({
       where: { stellarAddress: dto.stellarAddress },
     });
-    const isNewUser = !user;
-
-    if (!user) {
-      if (!dto.role) {
-        // The challenge is kept, so the client can resend it with a role
-        // without asking the wallet to sign again.
-        throw new BadRequestException({
-          code: ApiErrorCode.RoleRequired,
-          message: 'Choose startup or specialist to create your account',
-        });
-      }
-      user = await this.prisma.user.create({
-        data: { stellarAddress: dto.stellarAddress, role: dto.role },
+    if (!existing && !dto.role) {
+      // The challenge is kept, so the client can resend it with a role
+      // without asking the wallet to sign again.
+      throw new BadRequestException({
+        code: ApiErrorCode.RoleRequired,
+        message: 'Choose startup or specialist to create your account',
       });
     }
 
-    await this.challenges.consume(dto.stellarAddress);
-    return { accessToken: await this.sign(user), user, isNewUser };
+    // Use the challenge before issuing anything: a replay racing this login
+    // loses here, and never gets a token or creates an account.
+    if (!(await this.challenges.consume(dto.stellarAddress, nonce))) {
+      throw new UnauthorizedException('This signature was already used');
+    }
+
+    const user =
+      existing ??
+      (await this.prisma.user.create({
+        data: { stellarAddress: dto.stellarAddress, role: dto.role! },
+      }));
+    securityEvent('login', { method: 'wallet', userId: user.id, isNewUser: !existing });
+    return { accessToken: await this.sign(user), user, isNewUser: !existing };
   }
 
   /**
@@ -74,7 +80,7 @@ export class AuthService {
       throw new ServiceUnavailableException('Pollar sign-in is not configured');
     }
     const session = await this.pollar.verifyToken(dto.accessToken);
-    if (session.custody === 'smart' || !session.stellarAddress.startsWith('G')) {
+    if (session.custody === 'smart' || !StrKey.isValidEd25519PublicKey(session.stellarAddress)) {
       // Escrow roles are classic Stellar accounts. A passkey smart account is a
       // contract address, and Trustless Work cannot give it a role.
       throw new BadRequestException(
@@ -98,6 +104,15 @@ export class AuthService {
         'This Pollar account is already linked to another wallet on Pocket',
       );
     }
+    if (existing && existing.pollarUserId !== session.userId) {
+      // An account that proved its wallet with a signature, or that belongs to
+      // another Pollar user. Pollar vouching for the address is not enough to
+      // take it over: otherwise a Pollar bug or breach would reach every
+      // Pocket account, including those that never used Pollar.
+      throw new ConflictException(
+        'This wallet already has a Pocket account. Sign in with the wallet itself',
+      );
+    }
 
     if (!existing) {
       if (!dto.role) {
@@ -113,6 +128,7 @@ export class AuthService {
           ...pollarFields(session),
         },
       });
+      securityEvent('login', { method: 'pollar', userId: created.id, isNewUser: true });
       return { accessToken: await this.sign(created), user: created, isNewUser: true };
     }
 
@@ -120,7 +136,20 @@ export class AuthService {
       where: { id: existing.id },
       data: pollarFields(session, existing),
     });
+    securityEvent('login', { method: 'pollar', userId: user.id, isNewUser: false });
     return { accessToken: await this.sign(user), user, isNewUser: false };
+  }
+
+  /**
+   * End every session of the user, on every device: tokens issued before
+   * carry the old version and the guard refuses them.
+   */
+  async logout(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    securityEvent('logout', { userId });
   }
 
   private sign(user: User): Promise<string> {
@@ -128,6 +157,7 @@ export class AuthService {
       sub: user.id,
       role: user.role,
       stellarAddress: user.stellarAddress,
+      ver: user.tokenVersion,
     };
     return this.jwt.signAsync(payload);
   }

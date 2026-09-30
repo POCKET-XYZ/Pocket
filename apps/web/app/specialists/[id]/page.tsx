@@ -21,7 +21,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import { CATEGORY_LABELS, date, shortAddress, usdc } from '@/lib/format';
+import { CATEGORY_LABELS, date, usdc } from '@/lib/format';
+import { linkHost, safeHref } from '@/lib/links';
 
 /**
  * A specialist's public profile, laid out the way a startup reads a CV: who
@@ -84,7 +85,7 @@ export default function SpecialistProfilePage() {
 
       <p className="text-xs text-muted-foreground">
         Verified by Pocket. Member since {date(profile.data.memberSince)}. Wallet{' '}
-        {shortAddress(profile.data.stellarAddress)}.
+        {profile.data.wallet}.
       </p>
     </div>
   );
@@ -116,21 +117,36 @@ function Header({ specialist }: { specialist: SpecialistProfile }) {
         <div className="flex flex-wrap gap-2 md:flex-col md:items-stretch">
           {specialist.cvUrl ? (
             <Button asChild>
-              <a href={specialist.cvUrl} target="_blank" rel="noreferrer">
+              <a
+                href={safeHref(specialist.cvUrl)}
+                title={linkHost(specialist.cvUrl)}
+                target="_blank"
+                rel="noreferrer"
+              >
                 <FileTextIcon className="size-4" /> View CV
               </a>
             </Button>
           ) : null}
           {specialist.portfolioUrl ? (
             <Button asChild variant="outline">
-              <a href={specialist.portfolioUrl} target="_blank" rel="noreferrer">
+              <a
+                href={safeHref(specialist.portfolioUrl)}
+                title={linkHost(specialist.portfolioUrl)}
+                target="_blank"
+                rel="noreferrer"
+              >
                 <GlobeIcon className="size-4" /> Portfolio
               </a>
             </Button>
           ) : null}
           {specialist.linkedinUrl ? (
             <Button asChild variant="outline">
-              <a href={specialist.linkedinUrl} target="_blank" rel="noreferrer">
+              <a
+                href={safeHref(specialist.linkedinUrl)}
+                title={linkHost(specialist.linkedinUrl)}
+                target="_blank"
+                rel="noreferrer"
+              >
                 <UserRoundIcon className="size-4" /> LinkedIn
               </a>
             </Button>
@@ -153,7 +169,8 @@ function PastWork({ caseStudies }: { caseStudies: CaseStudy[] }) {
         {caseStudies.map((study) => (
           <a
             key={study.url}
-            href={study.url}
+            href={safeHref(study.url)}
+            title={linkHost(study.url)}
             target="_blank"
             rel="noreferrer"
             className="group flex items-start gap-3 rounded-xl border border-border p-4 transition hover:border-celeste"

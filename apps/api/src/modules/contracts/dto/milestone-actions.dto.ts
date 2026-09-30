@@ -1,10 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUrl, Length } from 'class-validator';
+import { IsOptional, IsString, Length } from 'class-validator';
+import { IsHttpsUrl } from '../../../common/decorators/is-https-url.decorator';
 
 /** A specialist's submission for a milestone: a link to the work and a note. */
 export class DeliverDto {
   @ApiProperty({ description: 'Link to the document, folder, report or campaign' })
-  @IsUrl()
+  @IsHttpsUrl()
   url: string;
 
   @ApiPropertyOptional()

@@ -123,14 +123,21 @@ export class JobsService {
       throw new BadRequestException('Only an open job can be closed');
     }
 
-    const [closed] = await this.prisma.$transaction([
-      this.prisma.job.update({ where: { id: jobId }, data: { status: 'closed' } }),
-      this.prisma.application.updateMany({
+    return this.prisma.$transaction(async (tx) => {
+      // Only while still open: not under an offer sent at the same moment.
+      const claimed = await tx.job.updateMany({
+        where: { id: jobId, status: 'open' },
+        data: { status: 'closed' },
+      });
+      if (claimed.count !== 1) {
+        throw new BadRequestException('Only an open job can be closed');
+      }
+      await tx.application.updateMany({
         where: { jobId, status: 'submitted' },
         data: { status: 'rejected', decidedAt: new Date() },
-      }),
-    ]);
-    return closed;
+      });
+      return tx.job.findUniqueOrThrow({ where: { id: jobId } });
+    });
   }
 
   /** A job the signed-in startup owns, or an error. */

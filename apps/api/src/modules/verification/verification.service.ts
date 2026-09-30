@@ -28,21 +28,24 @@ export class VerificationService {
       throw new BadRequestException('companyName is required for startups');
     }
 
-    const [request] = await this.prisma.$transaction([
-      this.prisma.verificationRequest.create({
+    return this.prisma.$transaction(async (tx) => {
+      // Move the user to pending only from a state that allows it: of two
+      // submissions sent at once, the second finds the user pending already.
+      const claimed = await tx.user.updateMany({
+        where: { id: userId, verificationStatus: { in: ['not_submitted', 'rejected'] } },
+        data: { verificationStatus: 'pending' },
+      });
+      if (claimed.count !== 1) {
+        throw new BadRequestException('Your verification is already under review');
+      }
+      return tx.verificationRequest.create({
         data: {
           ...dto,
           userId,
           status: 'pending',
         } satisfies Prisma.VerificationRequestUncheckedCreateInput,
-      }),
-      this.prisma.user.update({
-        where: { id: userId },
-        data: { verificationStatus: 'pending' },
-      }),
-    ]);
-
-    return request;
+      });
+    });
   }
 
   /** The user's latest request, or null when they never submitted one. */

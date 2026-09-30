@@ -1,6 +1,10 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { retryDelayMs, TrustlessWorkClient } from './trustless-work.client';
+import {
+  retryDelayMs,
+  TRUSTLESS_WORK_BUDGET_PER_MINUTE,
+  TrustlessWorkClient,
+} from './trustless-work.client';
 
 /** The client with an instant sleep, recording how long it was asked to wait. */
 class TestClient extends TrustlessWorkClient {
@@ -17,7 +21,13 @@ function reply(status: number, body: unknown = {}, headers: Record<string, strin
 
 describe('TrustlessWorkClient', () => {
   const config = new ConfigService({
-    trustlessWork: { apiUrl: 'https://tw.test', apiKey: 'key-1' },
+    trustlessWork: {
+      apiUrl: 'https://tw.test',
+      apiKey: 'key-1',
+      deployerContractId: 'CDEPLOYER',
+      feeAddress: 'GTWFEE',
+      escrowWasmHash: 'ab'.repeat(32),
+    },
   });
   let fetchMock: jest.SpyInstance;
   let client: TestClient;
@@ -74,9 +84,35 @@ describe('TrustlessWorkClient', () => {
   it('does not retry other errors', async () => {
     fetchMock.mockResolvedValue(reply(400, { message: 'Escrow not found' }));
     await expect(client.fund('CESCROW', 'GSTARTUP', 10)).rejects.toThrow(
-      'Trustless Work error: Escrow not found',
+      'This escrow was not found on Stellar',
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not pass the text of Trustless Work to the user', async () => {
+    fetchMock.mockResolvedValue(
+      reply(500, { message: 'HostError: Error(Contract, #12) at GABC...XYZ /srv/tw/escrow.ts' }),
+    );
+    const error = await client.fund('CESCROW', 'GSTARTUP', 10).catch((e: Error) => e);
+    expect(error).toBeInstanceOf(ServiceUnavailableException);
+    expect((error as Error).message).toBe(
+      'The escrow service could not complete this step. Try again',
+    );
+  });
+
+  it('holds requests back once Pocket spent its own budget', async () => {
+    // A fresh response each time: a body can only be read once.
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ unsignedTransaction: 'xdr' }), { status: 200 }),
+      ),
+    );
+    for (let i = 0; i < TRUSTLESS_WORK_BUDGET_PER_MINUTE; i++) {
+      await client.fund('C1', 'G1', 1);
+    }
+    await expect(client.fund('C1', 'G1', 1)).rejects.toThrow('busy right now');
+    // Held back before reaching Trustless Work.
+    expect(fetchMock).toHaveBeenCalledTimes(TRUSTLESS_WORK_BUDGET_PER_MINUTE);
   });
 
   describe('retryDelayMs', () => {

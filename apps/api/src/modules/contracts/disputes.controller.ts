@@ -5,6 +5,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthUser } from '../../common/types/auth';
 import { DisputesService } from './disputes.service';
 import { AddEvidenceDto, ListDisputesDto, ResolveDisputeDto } from './dto/dispute.dto';
+import { ESCROW_RATE_LIMIT, RateLimit } from '../../common/rate-limit/rate-limit.decorator';
 
 @ApiTags('disputes')
 @ApiBearerAuth()
@@ -40,6 +41,8 @@ export class ManagerDisputesController {
   list(@Query() query: ListDisputesDto) {
     return this.disputes.list(query.status);
   }
+
+  @RateLimit(ESCROW_RATE_LIMIT)
 
   @Post(':id/resolve')
   resolve(

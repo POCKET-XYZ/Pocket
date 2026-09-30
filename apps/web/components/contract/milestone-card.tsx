@@ -24,6 +24,7 @@ import { date, dateTime, usdc } from '@/lib/format';
 import { useContractAction } from '@/lib/use-contract-action';
 import { useSigner } from '@/components/use-signer';
 import { prepareSignSubmit, type PreparedTransaction } from '@/lib/wallet';
+import { linkHost, safeHref } from '@/lib/links';
 
 type MilestoneWithHistory = ContractDetail['milestones'][number];
 
@@ -51,6 +52,7 @@ export function MilestoneCard({
     () =>
       prepareSignSubmit(
         signer.sign,
+        { kind: 'approve', escrowId: contract.escrowId },
         `/milestones/${milestone.id}/approve/prepare`,
         `/milestones/${milestone.id}/approve/submit`,
       ),
@@ -107,13 +109,16 @@ export function MilestoneCard({
                       Version {deliverable.version}
                     </span>
                     <a
-                      href={deliverable.url}
+                      href={safeHref(deliverable.url)}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 break-all underline"
                     >
                       {deliverable.url} <ExternalLinkIcon className="size-3 shrink-0" />
                     </a>
+                    <span className="text-xs text-muted-foreground">
+                      {linkHost(deliverable.url)}
+                    </span>
                     <span className="text-xs text-muted-foreground">
                       {dateTime(deliverable.createdAt)}
                     </span>
@@ -178,7 +183,11 @@ export function MilestoneCard({
           {active &&
           (isStartup || isSpecialist) &&
           DISPUTABLE.includes(milestone.status) ? (
-            <OpenDisputeDialog contractId={contract.id} milestoneId={milestone.id} />
+            <OpenDisputeDialog
+              contractId={contract.id}
+              escrowId={contract.escrowId}
+              milestoneId={milestone.id}
+            />
           ) : null}
 
           {openDispute ? (
@@ -304,9 +313,11 @@ function RequestChangesDialog({
 
 function OpenDisputeDialog({
   contractId,
+  escrowId,
   milestoneId,
 }: {
   contractId: string;
+  escrowId: string | null;
   milestoneId: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -319,7 +330,10 @@ function OpenDisputeDialog({
         `/milestones/${milestoneId}/dispute/prepare`,
         { method: 'POST' },
       );
-      const signedXdr = await signer.sign(prepared.xdr, prepared.networkPassphrase);
+      const signedXdr = await signer.sign(prepared.xdr, prepared.networkPassphrase, {
+        kind: 'dispute',
+        escrowId,
+      });
       return api(`/milestones/${milestoneId}/dispute`, {
         method: 'POST',
         body: { signedXdr, reason },

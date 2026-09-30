@@ -166,7 +166,9 @@ export class ProfilesService {
     return {
       userId: user.id,
       role: user.role,
-      stellarAddress: user.stellarAddress,
+      // Shortened: a public page must not tie a person's name to a wallet
+      // anyone can read the balance and payments of.
+      wallet: `${user.stellarAddress.slice(0, 4)}...${user.stellarAddress.slice(-4)}`,
       memberSince: user.createdAt,
       profile,
     };

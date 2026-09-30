@@ -11,7 +11,11 @@ import {
   NotFoundError,
   Operation,
   TransactionBuilder,
+  type Transaction,
 } from '@stellar/stellar-sdk';
+
+import { securityEvent } from '../../common/security/security-log';
+import { assertPlatformTx, type PlatformTxPolicy } from './platform-tx-policy';
 
 /** Whether an address can receive USDC. */
 export type UsdcReadiness = 'ready' | 'no_account' | 'no_trustline';
@@ -70,6 +74,12 @@ export class StellarService implements OnApplicationBootstrap {
     return this.platform.publicKey();
   }
 
+  /** A transaction of this network, unwrapped from a fee bump if it has one. */
+  parse(xdr: string): Transaction {
+    const tx = TransactionBuilder.fromXDR(xdr, this.networkPassphrase);
+    return tx instanceof FeeBumpTransaction ? tx.innerTransaction : tx;
+  }
+
   /** Transaction hash in hex. Signatures do not change it. */
   hashOf(xdr: string): string {
     const tx = TransactionBuilder.fromXDR(xdr, this.networkPassphrase);
@@ -81,11 +91,32 @@ export class StellarService implements OnApplicationBootstrap {
     return Buffer.from(hash).toString('hex');
   }
 
-  /** Sign a transaction with the platform key and return the signed XDR. */
-  signAsPlatform(xdr: string): string {
-    const tx = TransactionBuilder.fromXDR(xdr, this.networkPassphrase);
+  /**
+   * Sign a transaction with the platform key and return the signed XDR, but
+   * only when it is exactly what the policy allows. The key holds the platform
+   * roles of every escrow, so it never signs a transaction blindly.
+   */
+  signAsPlatform(xdr: string, policy: PlatformTxPolicy): string {
+    let tx: Transaction;
+    try {
+      tx = assertPlatformTx(xdr, this.networkPassphrase, this.platformAddress, policy);
+    } catch (error) {
+      // Trustless Work handed back something other than what Pocket asked
+      // for: its API, the key or the connection may be compromised.
+      securityEvent(
+        'platform_refused',
+        { contract: policy.contractId, fn: policy.fn, reason: (error as Error).message },
+        'alert',
+      );
+      throw error;
+    }
     tx.sign(this.platform);
     return tx.toXDR();
+  }
+
+  /** The Stellar Asset Contract that holds USDC in every escrow. */
+  get usdcContractId(): string {
+    return this.usdc.contractId(this.networkPassphrase);
   }
 
   /** Whether the account exists and holds a USDC trustline. */

@@ -1,7 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { VerificationRequest, VerificationStatus } from '@prisma/client';
+import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PollarWalletsService } from '../pollar/pollar-wallets.service';
+
+/** The most requests one page of the queue shows. */
+const QUEUE_PAGE = 200;
 
 /** Verification queue operations. Only managers reach these. */
 @Injectable()
@@ -16,6 +20,9 @@ export class ManagerService {
     return this.prisma.verificationRequest.findMany({
       where: { status },
       orderBy: { submittedAt: 'asc' },
+      // A queue, not an export: a stolen manager session cannot pull
+      // everyone's verification data in one request.
+      take: QUEUE_PAGE,
       include: {
         user: { select: { id: true, role: true, stellarAddress: true, createdAt: true } },
       },
@@ -55,22 +62,32 @@ export class ManagerService {
       throw new BadRequestException('This request was already reviewed');
     }
 
-    const [reviewed] = await this.prisma.$transaction([
-      this.prisma.verificationRequest.update({
-        where: { id: requestId },
+    return this.prisma.$transaction(async (tx) => {
+      // Claim the request: of two managers deciding at once, only one moves it
+      // out of pending, and the other is told instead of overwriting.
+      const claimed = await tx.verificationRequest.updateMany({
+        where: { id: requestId, status: 'pending' },
         data: {
           status,
           reviewNote: note,
           reviewedById: managerId,
           reviewedAt: new Date(),
         },
-      }),
-      this.prisma.user.update({
+      });
+      if (claimed.count !== 1) {
+        throw new BadRequestException('This request was already reviewed');
+      }
+      await tx.user.update({
         where: { id: request.userId },
         data: { verificationStatus: status },
-      }),
-    ]);
-
-    return reviewed;
+      });
+      securityEvent('manager_decision', {
+        managerId,
+        requestId,
+        userId: request.userId,
+        decision: status,
+      });
+      return tx.verificationRequest.findUniqueOrThrow({ where: { id: requestId } });
+    });
   }
 }

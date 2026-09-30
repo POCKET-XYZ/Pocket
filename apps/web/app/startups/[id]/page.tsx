@@ -12,7 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import { STAGE_LABELS, date, shortAddress } from '@/lib/format';
+import { STAGE_LABELS, date } from '@/lib/format';
+import { linkHost, safeHref } from '@/lib/links';
 
 /**
  * A startup's public profile. A specialist reads it before applying: who the
@@ -60,8 +61,12 @@ export default function StartupProfilePage() {
           </div>
           {startup.websiteUrl ? (
             <Button asChild variant="outline">
-              <a href={startup.websiteUrl} target="_blank" rel="noreferrer">
-                <GlobeIcon className="size-4" /> Website
+              <a
+                href={safeHref(startup.websiteUrl)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <GlobeIcon className="size-4" /> {linkHost(startup.websiteUrl)}
               </a>
             </Button>
           ) : null}
@@ -130,7 +135,7 @@ export default function StartupProfilePage() {
 
       <p className="text-xs text-muted-foreground">
         Verified by Pocket. Member since {date(profile.data.memberSince)}. Wallet{' '}
-        {shortAddress(profile.data.stellarAddress)}.
+        {profile.data.wallet}.
       </p>
     </div>
   );

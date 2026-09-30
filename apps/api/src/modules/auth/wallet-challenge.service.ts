@@ -54,54 +54,67 @@ export class WalletChallengeService {
       .build();
 
     const expiresAt = new Date(Date.now() + CHALLENGE_TTL_SECONDS * 1000);
-    await this.prisma.authChallenge.upsert({
-      where: { stellarAddress },
-      create: { stellarAddress, nonce, expiresAt },
-      update: { nonce, expiresAt },
-    });
+    await this.prisma.$transaction([
+      // Housekeeping: an expired challenge can never be used.
+      this.prisma.authChallenge.deleteMany({ where: { expiresAt: { lt: new Date() } } }),
+      this.prisma.authChallenge.create({ data: { stellarAddress, nonce, expiresAt } }),
+    ]);
 
     return { xdr: tx.toXDR(), networkPassphrase: this.networkPassphrase };
   }
 
   /**
-   * True only when `signedXdr` is the challenge we issued to this address
-   * (same nonce, not expired) and carries a valid signature from its key.
-   * Does not consume the challenge: call `consume` after a successful login.
+   * The nonce of the challenge `signedXdr` answers, when it is one Pocket
+   * issued to this address, still open, and signed by the address's key;
+   * otherwise null. It does not use the challenge up: `consume` does that.
    */
-  async verify(stellarAddress: string, signedXdr: string): Promise<boolean> {
-    const challenge = await this.prisma.authChallenge.findUnique({
-      where: { stellarAddress },
-    });
-    if (!challenge || challenge.expiresAt.getTime() < Date.now()) return false;
-
+  async verify(stellarAddress: string, signedXdr: string): Promise<string | null> {
     let tx: Transaction | FeeBumpTransaction;
     try {
       tx = TransactionBuilder.fromXDR(signedXdr, this.networkPassphrase);
     } catch {
-      return false;
+      return null;
     }
 
-    if ('innerTransaction' in tx) return false;
-    if (tx.source !== stellarAddress || tx.operations.length !== 1) return false;
+    if ('innerTransaction' in tx) return null;
+    if (tx.source !== stellarAddress || tx.operations.length !== 1) return null;
     const [op] = tx.operations;
-    if (op.type !== 'manageData' || op.name !== CHALLENGE_DATA_NAME) return false;
-    if (!op.value || Buffer.from(op.value).toString('utf8') !== challenge.nonce)
-      return false;
+    if (op.type !== 'manageData' || op.name !== CHALLENGE_DATA_NAME || !op.value) {
+      return null;
+    }
+
+    const nonce = Buffer.from(op.value).toString('utf8');
+    const challenge = await this.prisma.authChallenge.findUnique({ where: { nonce } });
+    if (
+      !challenge ||
+      challenge.stellarAddress !== stellarAddress ||
+      challenge.expiresAt.getTime() < Date.now()
+    ) {
+      return null;
+    }
 
     const keypair = Keypair.fromPublicKey(stellarAddress);
     const hash = tx.hash();
-    return tx.signatures.some((sig) => {
+    const signed = tx.signatures.some((sig) => {
       try {
         return keypair.verify(hash, sig.signature);
       } catch {
         return false;
       }
     });
+    return signed ? nonce : null;
   }
 
-  /** Invalidate the challenge so a captured signature cannot be replayed. */
-  async consume(stellarAddress: string): Promise<void> {
-    await this.prisma.authChallenge.deleteMany({ where: { stellarAddress } });
+  /**
+   * Use the challenge up, atomically: of two logins racing with the same
+   * signature, exactly one gets true, so a captured signature cannot be
+   * replayed.
+   */
+  async consume(stellarAddress: string, nonce: string): Promise<boolean> {
+    const { count } = await this.prisma.authChallenge.deleteMany({
+      where: { stellarAddress, nonce },
+    });
+    return count === 1;
   }
 }
 

@@ -9,6 +9,7 @@ import { OpenDisputeDto } from './dto/dispute.dto';
 import { DeliverDto, RequestChangesDto } from './dto/milestone-actions.dto';
 import { SignedTransactionDto } from '../stellar/dto/signed-transaction.dto';
 import { MilestonesService } from './milestones.service';
+import { ESCROW_RATE_LIMIT, RateLimit } from '../../common/rate-limit/rate-limit.decorator';
 
 @ApiTags('milestones')
 @ApiBearerAuth()
@@ -42,6 +43,7 @@ export class MilestonesController {
 
   /** Approval transaction for the startup's wallet to sign. */
   @Roles('startup')
+  @RateLimit(ESCROW_RATE_LIMIT)
   @Post(':id/approve/prepare')
   prepareApprove(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.milestones.prepareApprove(user, id);
@@ -49,6 +51,7 @@ export class MilestonesController {
 
   /** Broadcast the signed approval; Pocket then pays the specialist. */
   @Roles('startup')
+  @RateLimit(ESCROW_RATE_LIMIT)
   @Post(':id/approve/submit')
   submitApprove(
     @CurrentUser() user: AuthUser,
@@ -60,6 +63,7 @@ export class MilestonesController {
 
   /** Retry the payment of an approved milestone. */
   @Roles('startup', 'manager')
+  @RateLimit(ESCROW_RATE_LIMIT)
   @Post(':id/release')
   release(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.milestones.retryRelease(user, id);
@@ -67,12 +71,14 @@ export class MilestonesController {
 
   /** Dispute transaction for the party opening it to sign. */
   @Roles('startup', 'specialist')
+  @RateLimit(ESCROW_RATE_LIMIT)
   @Post(':id/dispute/prepare')
   prepareDispute(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.disputes.prepareOpen(user, id);
   }
 
   @Roles('startup', 'specialist')
+  @RateLimit(ESCROW_RATE_LIMIT)
   @Post(':id/dispute')
   openDispute(
     @CurrentUser() user: AuthUser,

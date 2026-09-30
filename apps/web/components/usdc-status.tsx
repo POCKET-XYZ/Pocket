@@ -49,6 +49,7 @@ export function UsdcStatus({
     mutationFn: () =>
       prepareSignSubmit(
         signer.sign,
+        { kind: 'usdc-trustline' },
         '/wallet/usdc-trustline/prepare',
         '/wallet/usdc-trustline/submit',
       ),
