@@ -283,6 +283,20 @@ export class ContractsService {
     if (contract.status !== 'awaiting_funding') {
       throw new BadRequestException('This contract is not waiting for funding');
     }
+    // Never a second deposit: not when the escrow already holds the money,
+    // and not while a deposit already sent is still being confirmed.
+    if (await this.escrow.isFunded(contract)) {
+      await this.activate(contractId);
+      throw new ConflictException('This escrow is already funded. The contract is active now');
+    }
+    const sent = await this.prisma.chainOperation.findUnique({
+      where: { stepKey: `fund:${contractId}` },
+    });
+    if (sent) {
+      throw new ConflictException(
+        'Your deposit is still being confirmed by the network. Check again in a minute',
+      );
+    }
     await this.requireUsdcReady(user.stellarAddress);
     await this.requireUsdcFor(user.stellarAddress, contract.amount);
     return this.escrow.prepareFund(contract, user.sub, user.stellarAddress);
@@ -313,6 +327,10 @@ export class ContractsService {
         'The escrow does not hold the full amount yet. Try again in a few seconds',
       );
     }
+    return this.activate(contractId);
+  }
+
+  private activate(contractId: string): Promise<Contract> {
     return this.prisma.contract.update({
       where: { id: contractId },
       data: { status: 'active', fundedAt: new Date() },

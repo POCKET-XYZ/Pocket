@@ -330,6 +330,15 @@ describe('ChainOperationsService', () => {
       });
     });
 
+    it('keeps a deposit that is not confirmed yet from being sent again', async () => {
+      chain.waitForTransaction.mockResolvedValue('NOT_FOUND');
+      await expect(
+        service.submitSigned({ kind: 'fund', contractId: 'contract-1' }, 'signed-xdr', 'user-1'),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+      // The step stays taken: freeing it would let a second deposit through.
+      expect(prisma.chainOperation.update).not.toHaveBeenCalled();
+    });
+
     it('does not count a platform step until the chain shows it', async () => {
       chain.waitForTransaction.mockResolvedValue('NOT_FOUND');
       await expect(

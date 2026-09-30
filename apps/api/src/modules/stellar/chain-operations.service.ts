@@ -135,7 +135,9 @@ export class ChainOperationsService {
         await this.confirmOnChain(txHash);
       }
     } catch (error) {
-      await this.markFailed(txHash, error);
+      // Not confirmed yet is not failed: the transaction may still land, so
+      // its step stays taken. freeDeadStep frees it once it can no longer land.
+      if (!(error instanceof NotYetConfirmed)) await this.markFailed(txHash, error);
       throw error;
     }
     return this.prisma.chainOperation.findUniqueOrThrow({ where: { txHash } });
@@ -184,7 +186,9 @@ export class ChainOperationsService {
       });
       return { operation: confirmed, contractId };
     } catch (error) {
-      await this.markFailed(operation.txHash, error);
+      if (!(error instanceof NotYetConfirmed)) {
+        await this.markFailed(operation.txHash, error);
+      }
       throw error;
     }
   }

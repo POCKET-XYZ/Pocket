@@ -58,6 +58,7 @@ describe('ContractsService', () => {
       updateMany: jest.Mock;
     };
     verificationRequest: { findMany: jest.Mock };
+    chainOperation: { findUnique: jest.Mock };
     $transaction: jest.Mock;
   };
   let escrow: { deploy: jest.Mock; isFunded: jest.Mock; prepareFund: jest.Mock };
@@ -96,6 +97,7 @@ describe('ContractsService', () => {
         })),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
+      chainOperation: { findUnique: jest.fn().mockResolvedValue(null) },
       verificationRequest: {
         // Two different people: each account verified with its own email.
         findMany: jest.fn().mockResolvedValue([
@@ -371,6 +373,22 @@ describe('ContractsService', () => {
 
     beforeEach(() => {
       prisma.contract.findUnique.mockResolvedValue(awaiting);
+    });
+
+    it('does not prepare a second deposit when the escrow already holds the money', async () => {
+      escrow.isFunded.mockResolvedValue(true);
+      await expect(service.prepareFund(startup, 'contract-1')).rejects.toThrow('already funded');
+      expect(prisma.contract.update).toHaveBeenCalledWith({
+        where: { id: 'contract-1' },
+        data: expect.objectContaining({ status: 'active' }),
+      });
+      expect(escrow.prepareFund).not.toHaveBeenCalled();
+    });
+
+    it('does not prepare a second deposit while one is being confirmed', async () => {
+      prisma.chainOperation.findUnique.mockResolvedValue({ txHash: 'pending' });
+      await expect(service.prepareFund(startup, 'contract-1')).rejects.toThrow('being confirmed');
+      expect(escrow.prepareFund).not.toHaveBeenCalled();
     });
 
     it('prepares the funding when the wallet can pay it', async () => {

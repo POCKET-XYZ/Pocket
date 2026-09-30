@@ -210,8 +210,10 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
     () => api(`/contracts/${contract.id}/fund/sync`, { method: 'POST' }),
     'Escrow funded. The specialist can start.',
   );
-  // The chain can take a few seconds to show a deposit; offer to check again.
-  const fundingPending = fund.error instanceof ApiError && fund.error.status === 409;
+  // The network can take a while to confirm a deposit (409 or 503): say so,
+  // and never offer a second deposit as the way out.
+  const fundingPending =
+    fund.error instanceof ApiError && [409, 503].includes(fund.error.status);
   const specialistReceives = usdc(
     totalAfterTrustlessWorkFee(contract.milestones.map((milestone) => milestone.amount)),
   );
@@ -279,21 +281,30 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
             receives {specialistReceives}. Pocket charges nothing.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button disabled={fund.isPending} onClick={() => fund.mutate()}>
-            {fund.isPending
-              ? 'Waiting for your wallet...'
-              : `Fund ${usdc(contract.amount)}`}
-          </Button>
+        <CardContent className="space-y-3">
           {fundingPending ? (
+            <p className="text-sm text-muted-foreground">
+              Your deposit is being confirmed by the network. Check again in a minute; do
+              not fund again.
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {fundingPending ? null : (
+              <Button disabled={fund.isPending} onClick={() => fund.mutate()}>
+                {fund.isPending
+                  ? 'Waiting for your wallet...'
+                  : `Fund ${usdc(contract.amount)}`}
+              </Button>
+            )}
+            {/* Always there: after a reload the error is gone, the deposit is not. */}
             <Button
               variant="outline"
               disabled={sync.isPending}
               onClick={() => sync.mutate()}
             >
-              Check again
+              {sync.isPending ? 'Checking...' : 'Already funded? Check again'}
             </Button>
-          ) : null}
+          </div>
         </CardContent>
       </Card>
     );
