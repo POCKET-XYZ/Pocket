@@ -31,7 +31,8 @@ describe('ApplicationsService', () => {
       create: jest.Mock;
       findMany: jest.Mock;
       findUnique: jest.Mock;
-      update: jest.Mock;
+      findUniqueOrThrow: jest.Mock;
+      updateMany: jest.Mock;
     };
     specialistProfile: { findUnique: jest.Mock };
   };
@@ -46,7 +47,8 @@ describe('ApplicationsService', () => {
         create: jest.fn(),
         findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn(),
-        update: jest.fn(),
+        findUniqueOrThrow: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       specialistProfile: {
         findUnique: jest.fn().mockResolvedValue({ id: 'profile-1' }),
@@ -153,10 +155,22 @@ describe('ApplicationsService', () => {
 
       await service.withdraw(specialist, 'app-1');
 
-      expect(prisma.application.update).toHaveBeenCalledWith({
-        where: { id: 'app-1' },
+      expect(prisma.application.updateMany).toHaveBeenCalledWith({
+        where: { id: 'app-1', status: 'submitted' },
         data: expect.objectContaining({ status: 'withdrawn' }),
       });
+    });
+
+    it('does not withdraw an application an offer claimed meanwhile', async () => {
+      prisma.application.findUnique.mockResolvedValue({
+        id: 'app-1',
+        specialistId: 'specialist-1',
+        status: 'submitted',
+      });
+      prisma.application.updateMany.mockResolvedValue({ count: 0 });
+      await expect(service.withdraw(specialist, 'app-1')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     });
 
     it('does not withdraw once the startup decided', async () => {

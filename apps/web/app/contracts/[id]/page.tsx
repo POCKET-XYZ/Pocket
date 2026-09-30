@@ -105,9 +105,12 @@ function Contract({ user }: { user: User }) {
               'Not deployed yet'
             )}
           </Detail>
-          <Detail label={`${startupName} contact`}>{data.contacts.startup ?? '-'}</Detail>
+          {/* Contacts are shared once the specialist accepts the terms. */}
+          <Detail label={`${startupName} contact`}>
+            {data.contacts.startup ?? 'Shared once the terms are accepted'}
+          </Detail>
           <Detail label={`${specialistName} contact`}>
-            {data.contacts.specialist ?? '-'}
+            {data.contacts.specialist ?? 'Shared once the terms are accepted'}
           </Detail>
         </CardContent>
       </Card>

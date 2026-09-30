@@ -8,13 +8,20 @@ import {
 import { Prisma, type DisputeStatus, type DisputeEvidence } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { PreparedTransaction } from '../stellar/chain-operations.service';
+import {
+  NotYetConfirmed,
+  stepKeyOf,
+  type PreparedTransaction,
+} from '../stellar/chain-operations.service';
 import { AddEvidenceDto, OpenDisputeDto, ResolveDisputeDto } from './dto/dispute.dto';
 import { EscrowService } from './escrow.service';
 import { MilestonesService } from './milestones.service';
 
 /** A milestone can be disputed while the work is under way or delivered. */
 const DISPUTABLE = ['pending', 'delivered', 'changes_requested'] as const;
+
+/** Reason on record for a dispute found on chain that nobody explained yet. */
+const LANDED_REASON = 'Opened on the escrow; the reason was not recorded. Add it as evidence';
 
 @Injectable()
 export class DisputesService {
@@ -27,6 +34,9 @@ export class DisputesService {
   /** Dispute transaction for the party opening it to sign. */
   async prepareOpen(user: AuthUser, milestoneId: string): Promise<PreparedTransaction> {
     const milestone = await this.disputableMilestone(user, milestoneId);
+    if (await this.syncLandedDispute(user, milestone, LANDED_REASON)) {
+      throw new ConflictException('This dispute already reached the escrow and is open now');
+    }
     return this.escrow.prepareDispute(
       milestone.contract,
       milestone,
@@ -41,6 +51,8 @@ export class DisputesService {
    */
   async open(user: AuthUser, milestoneId: string, dto: OpenDisputeDto) {
     const milestone = await this.disputableMilestone(user, milestoneId);
+    const landed = await this.syncLandedDispute(user, milestone, dto.reason);
+    if (landed) return landed;
     const operation = await this.escrow.submitDispute(
       milestone.contractId,
       milestoneId,
@@ -98,6 +110,7 @@ export class DisputesService {
   list(status: DisputeStatus = 'open') {
     return this.prisma.dispute.findMany({
       where: { status },
+      take: 200,
       orderBy: { createdAt: 'asc' },
       include: {
         milestone: {
@@ -146,6 +159,35 @@ export class DisputesService {
     const { milestone } = dispute;
     const { specialistAmount, startupAmount } = splitFor(dto, milestone.amount);
 
+    // Record the decision before anything is sent, and only once: a retry, or
+    // a second manager at the same moment, executes this decision or is told
+    // another one is under way, and the record always matches what was paid.
+    const decided = await this.prisma.dispute.updateMany({
+      where: { id: disputeId, status: 'open', outcome: null },
+      data: {
+        outcome: dto.outcome,
+        specialistAmount,
+        startupAmount,
+        resolutionNote: dto.note,
+        resolvedById: manager.sub,
+      },
+    });
+    if (decided.count !== 1) {
+      const current = await this.prisma.dispute.findUniqueOrThrow({ where: { id: disputeId } });
+      const same =
+        current.outcome === dto.outcome &&
+        current.specialistAmount?.equals(specialistAmount) === true &&
+        current.startupAmount?.equals(startupAmount) === true;
+      if (current.status !== 'open') {
+        throw new BadRequestException('This dispute is already resolved');
+      }
+      if (!same) {
+        throw new ConflictException(
+          'Another decision on this dispute is being executed. Refresh to see it',
+        );
+      }
+    }
+
     const parties = await this.prisma.contract.findUniqueOrThrow({
       where: { id: milestone.contractId },
       select: {
@@ -160,10 +202,28 @@ export class DisputesService {
       'resolved',
     );
     if (!alreadyResolved) {
-      await this.escrow.resolve(milestone.contract, milestone, [
-        { address: parties.specialist.stellarAddress, amount: specialistAmount },
-        { address: parties.startup.stellarAddress, amount: startupAmount },
-      ]);
+      try {
+        await this.escrow.resolve(milestone.contract, milestone, [
+          { address: parties.specialist.stellarAddress, amount: specialistAmount },
+          { address: parties.startup.stellarAddress, amount: startupAmount },
+        ]);
+      } catch (error) {
+        // Nothing moved, unless the transaction may still land: then the
+        // decision stays, so nobody can record a different one meanwhile.
+        if (!(error instanceof NotYetConfirmed)) {
+          await this.prisma.dispute.updateMany({
+            where: { id: disputeId, status: 'open' },
+            data: {
+              outcome: null,
+              specialistAmount: null,
+              startupAmount: null,
+              resolutionNote: null,
+              resolvedById: null,
+            },
+          });
+        }
+        throw error;
+      }
       if (
         !(await this.escrow.milestoneHas(
           milestone.contract,
@@ -180,15 +240,8 @@ export class DisputesService {
     const [resolved] = await this.prisma.$transaction([
       this.prisma.dispute.update({
         where: { id: disputeId },
-        data: {
-          status: 'resolved',
-          outcome: dto.outcome,
-          specialistAmount,
-          startupAmount,
-          resolutionNote: dto.note,
-          resolvedById: manager.sub,
-          resolvedAt: new Date(),
-        },
+        // The decision recorded above; only its execution is new.
+        data: { status: 'resolved', resolvedAt: new Date() },
       }),
       this.prisma.milestone.update({
         where: { id: milestone.id },
@@ -197,6 +250,35 @@ export class DisputesService {
     ]);
     await this.milestones.completeIfDone(milestone.contractId);
     return resolved;
+  }
+
+  /**
+   * A dispute can land on chain after the request that sent it gave up
+   * waiting. The escrow then refuses a new one while Pocket shows none, and
+   * the funds would stay frozen with nothing for a manager to resolve. Record
+   * it now. Returns the dispute when there was one to record.
+   */
+  private async syncLandedDispute(
+    user: AuthUser,
+    milestone: { id: string; position: number; contract: { escrowId: string | null } },
+    reason: string,
+  ) {
+    const flags = await this.escrow.milestoneFlags(milestone.contract, milestone.position);
+    if (!flags.disputed) return null;
+    const stepKey = stepKeyOf({ kind: 'dispute', milestoneId: milestone.id });
+    const sent = stepKey
+      ? await this.prisma.chainOperation.findUnique({ where: { stepKey } })
+      : null;
+    const [dispute] = await this.prisma.$transaction([
+      this.prisma.dispute.create({
+        data: { milestoneId: milestone.id, openedById: sent?.signerId ?? user.sub, reason },
+      }),
+      this.prisma.milestone.update({
+        where: { id: milestone.id },
+        data: { status: 'disputed' },
+      }),
+    ]);
+    return dispute;
   }
 
   private async disputableMilestone(user: AuthUser, milestoneId: string) {

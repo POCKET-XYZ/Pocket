@@ -49,7 +49,7 @@ const dto: CreateContractDto = {
 describe('ContractsService', () => {
   let prisma: {
     application: { findUnique: jest.Mock; update: jest.Mock; updateMany: jest.Mock };
-    job: { findUnique: jest.Mock; update: jest.Mock };
+    job: { findUnique: jest.Mock; update: jest.Mock; updateMany: jest.Mock };
     contract: {
       create: jest.Mock;
       findUnique: jest.Mock;
@@ -75,7 +75,7 @@ describe('ContractsService', () => {
           price: new Prisma.Decimal('450.5'),
         }),
         update: jest.fn(),
-        updateMany: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       job: {
         findUnique: jest.fn().mockResolvedValue({
@@ -84,6 +84,7 @@ describe('ContractsService', () => {
           status: 'open',
         }),
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       contract: {
         create: jest.fn().mockReturnValue({ id: 'contract-1' }),
@@ -102,7 +103,12 @@ describe('ContractsService', () => {
           { userId: 'specialist-1', contactEmail: 'specialist@example.com' },
         ]),
       },
-      $transaction: jest.fn(async (ops: unknown[]) => Promise.all(ops)),
+      // A batch runs its operations; an interactive one runs with the client.
+      $transaction: jest.fn((arg: unknown) =>
+        typeof arg === 'function'
+          ? (arg as (tx: unknown) => unknown)(prisma)
+          : Promise.all(arg as unknown[]),
+      ),
     };
     escrow = {
       deploy: jest.fn().mockResolvedValue('CESCROW'),
@@ -141,14 +147,21 @@ describe('ContractsService', () => {
           }),
         }),
       );
-      expect(prisma.application.update).toHaveBeenCalledWith({
-        where: { id: 'app-1' },
+      expect(prisma.application.updateMany).toHaveBeenCalledWith({
+        where: { id: 'app-1', status: 'submitted' },
         data: expect.objectContaining({ status: 'accepted' }),
       });
-      expect(prisma.job.update).toHaveBeenCalledWith({
-        where: { id: 'job-1' },
+      expect(prisma.job.updateMany).toHaveBeenCalledWith({
+        where: { id: 'job-1', status: 'open' },
         data: { status: 'in_progress' },
       });
+    });
+
+    it('hires once when two offers for the same job arrive together', async () => {
+      // The other offer took the job between the read and the write.
+      prisma.job.updateMany.mockResolvedValue({ count: 0 });
+      await expect(service.create(startup, dto)).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.contract.create).not.toHaveBeenCalled();
     });
 
     it('requires the milestones to add up to the agreed price exactly', async () => {
@@ -220,14 +233,54 @@ describe('ContractsService', () => {
 
       await service.decline(specialist, 'contract-1');
 
-      expect(prisma.contract.update).toHaveBeenCalledWith({
-        where: { id: 'contract-1' },
+      expect(prisma.contract.updateMany).toHaveBeenCalledWith({
+        where: { id: 'contract-1', status: 'awaiting_specialist', acceptedAt: null },
         data: expect.objectContaining({ status: 'cancelled' }),
       });
       expect(prisma.job.update).toHaveBeenCalledWith({
         where: { id: 'job-1' },
         data: { status: 'open' },
       });
+    });
+  });
+
+  describe('detail', () => {
+    const offer = { id: 'contract-1', startupId: 'startup-1', specialistId: 'specialist-1' };
+
+    it('hides the contact emails while the terms are only an offer', async () => {
+      prisma.contract.findUnique.mockResolvedValue({ ...offer, status: 'awaiting_specialist' });
+      const detail = await service.detail(startup, 'contract-1');
+      expect(detail.contacts).toEqual({ startup: null, specialist: null });
+      expect(prisma.verificationRequest.findMany).not.toHaveBeenCalled();
+    });
+
+    it('shows them once the specialist accepted', async () => {
+      prisma.contract.findUnique.mockResolvedValue({ ...offer, status: 'awaiting_funding' });
+      const detail = await service.detail(startup, 'contract-1');
+      expect(detail.contacts.specialist).toBe('specialist@example.com');
+    });
+
+    it('hides them again on terms that were declined', async () => {
+      prisma.contract.findUnique.mockResolvedValue({ ...offer, status: 'cancelled' });
+      const detail = await service.detail(specialist, 'contract-1');
+      expect(detail.contacts).toEqual({ startup: null, specialist: null });
+    });
+  });
+
+  describe('declining while the escrow is being deployed', () => {
+    it('is refused, so the job does not reopen under a live contract', async () => {
+      prisma.contract.findUnique.mockResolvedValue({
+        id: 'contract-1',
+        jobId: 'job-1',
+        applicationId: 'app-1',
+        specialistId: 'specialist-1',
+        status: 'awaiting_specialist',
+      });
+      prisma.contract.updateMany.mockResolvedValue({ count: 0 });
+      await expect(service.decline(specialist, 'contract-1')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(prisma.job.update).not.toHaveBeenCalled();
     });
   });
 
@@ -241,12 +294,14 @@ describe('ContractsService', () => {
 
     beforeEach(() => {
       prisma.contract.findUnique.mockResolvedValue(waiting);
-      prisma.contract.findUniqueOrThrow.mockResolvedValue({
-        ...waiting,
-        job: { title: 'A job', description: 'Scope' },
-        startup: { stellarAddress: 'GSTARTUP' },
-        milestones: [],
-      });
+      prisma.contract.findUniqueOrThrow
+        .mockResolvedValueOnce({
+          ...waiting,
+          job: { title: 'A job', description: 'Scope' },
+          startup: { stellarAddress: 'GSTARTUP' },
+          milestones: [],
+        })
+        .mockResolvedValue({ ...waiting, status: 'awaiting_funding', escrowId: 'CESCROW' });
     });
 
     it('deploys the escrow and turns down the applicants on hold', async () => {
@@ -261,6 +316,10 @@ describe('ContractsService', () => {
       expect(accepted).toEqual(
         expect.objectContaining({ status: 'awaiting_funding', escrowId: 'CESCROW' }),
       );
+      expect(prisma.contract.updateMany).toHaveBeenCalledWith({
+        where: { id: 'contract-1', status: 'awaiting_specialist' },
+        data: { status: 'awaiting_funding', escrowId: 'CESCROW' },
+      });
       expect(prisma.application.updateMany).toHaveBeenCalledWith({
         where: { jobId: 'job-1', status: 'submitted' },
         data: expect.objectContaining({ status: 'rejected' }),

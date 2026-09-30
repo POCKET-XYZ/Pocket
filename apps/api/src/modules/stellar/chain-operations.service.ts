@@ -12,6 +12,16 @@ import { SorobanReader } from './soroban-reader.service';
 import { StellarService } from './stellar.service';
 import { TrustlessWorkClient } from './trustless-work.client';
 
+/**
+ * The transaction was sent but the chain has not shown it yet. It may still
+ * land, so its step stays taken and nothing that depends on it is undone.
+ */
+export class NotYetConfirmed extends ServiceUnavailableException {
+  constructor() {
+    super('The network has not confirmed the transaction yet. Refresh in a minute');
+  }
+}
+
 /** What an operation is about, so a signed transaction can only be used for it. */
 export interface OperationScope {
   kind: ChainOperationKind;
@@ -192,11 +202,7 @@ export class ChainOperationsService {
         'The transaction failed on the network, so nothing moved. Try again',
       );
     }
-    if (status === 'NOT_FOUND') {
-      throw new ServiceUnavailableException(
-        'The network has not confirmed the transaction yet. Refresh in a minute',
-      );
-    }
+    if (status === 'NOT_FOUND') throw new NotYetConfirmed();
   }
 
   /**

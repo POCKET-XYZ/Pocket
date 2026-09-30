@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import { STAGE_LABELS, date, shortAddress } from '@/lib/format';
+import { STAGE_LABELS, date } from '@/lib/format';
 import { linkHost, safeHref } from '@/lib/links';
 
 /**
@@ -135,7 +135,7 @@ export default function StartupProfilePage() {
 
       <p className="text-xs text-muted-foreground">
         Verified by Pocket. Member since {date(profile.data.memberSince)}. Wallet{' '}
-        {shortAddress(profile.data.stellarAddress)}.
+        {profile.data.wallet}.
       </p>
     </div>
   );

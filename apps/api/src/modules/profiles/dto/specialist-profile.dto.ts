@@ -12,6 +12,7 @@ import {
   IsString,
   Length,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -61,6 +62,7 @@ export class SpecialistProfileDto {
   @IsArray()
   @ArrayMaxSize(20)
   @IsString({ each: true })
+  @MaxLength(60, { each: true })
   skills?: string[];
 
   @ApiPropertyOptional({
@@ -83,6 +85,7 @@ export class SpecialistProfileDto {
   @IsArray()
   @ArrayMaxSize(20)
   @IsString({ each: true })
+  @MaxLength(60, { each: true })
   tools?: string[];
 
   @ApiPropertyOptional({ description: 'Years working in this field', example: 6 })
@@ -98,6 +101,7 @@ export class SpecialistProfileDto {
   @IsArray()
   @ArrayMaxSize(10)
   @IsString({ each: true })
+  @MaxLength(40, { each: true })
   languages?: string[];
 
   @ApiPropertyOptional({ example: 'UTC-6' })
@@ -117,15 +121,17 @@ export class SpecialistProfileDto {
   @ApiPropertyOptional({ description: 'Hourly rate in USDC' })
   @IsOptional()
   @Type(() => Number)
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 7 })
   @Min(0)
+  @Max(1_000_000)
   hourlyRate?: number;
 
   @ApiPropertyOptional({ description: 'Smallest project they take, in USDC' })
   @IsOptional()
   @Type(() => Number)
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 7 })
   @Min(0)
+  @Max(1_000_000_000)
   minProjectBudget?: number;
 
   @ApiPropertyOptional()

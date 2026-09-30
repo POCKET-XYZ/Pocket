@@ -1,6 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class BrowseStartupsDto {
   @ApiPropertyOptional({
@@ -8,6 +15,7 @@ export class BrowseStartupsDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   search?: string;
 
   @ApiPropertyOptional({ default: 20, maximum: 50 })
@@ -23,5 +31,6 @@ export class BrowseStartupsDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @Max(10_000)
   offset?: number;
 }

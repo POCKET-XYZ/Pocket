@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import { CATEGORY_LABELS, date, shortAddress, usdc } from '@/lib/format';
+import { CATEGORY_LABELS, date, usdc } from '@/lib/format';
 import { linkHost, safeHref } from '@/lib/links';
 
 /**
@@ -85,7 +85,7 @@ export default function SpecialistProfilePage() {
 
       <p className="text-xs text-muted-foreground">
         Verified by Pocket. Member since {date(profile.data.memberSince)}. Wallet{' '}
-        {shortAddress(profile.data.stellarAddress)}.
+        {profile.data.wallet}.
       </p>
     </div>
   );

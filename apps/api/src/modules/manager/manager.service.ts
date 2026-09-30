@@ -4,6 +4,9 @@ import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PollarWalletsService } from '../pollar/pollar-wallets.service';
 
+/** The most requests one page of the queue shows. */
+const QUEUE_PAGE = 200;
+
 /** Verification queue operations. Only managers reach these. */
 @Injectable()
 export class ManagerService {
@@ -17,6 +20,9 @@ export class ManagerService {
     return this.prisma.verificationRequest.findMany({
       where: { status },
       orderBy: { submittedAt: 'asc' },
+      // A queue, not an export: a stolen manager session cannot pull
+      // everyone's verification data in one request.
+      take: QUEUE_PAGE,
       include: {
         user: { select: { id: true, role: true, stellarAddress: true, createdAt: true } },
       },

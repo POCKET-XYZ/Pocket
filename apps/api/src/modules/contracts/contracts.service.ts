@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ApiErrorCode } from '@pocket/shared';
-import { Prisma, type Contract } from '@prisma/client';
+import { Prisma, type Contract, type ContractStatus } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { PreparedTransaction } from '../stellar/chain-operations.service';
@@ -61,6 +61,9 @@ const DETAIL_INCLUDE = {
   },
 } satisfies Prisma.ContractInclude;
 
+/** Once the hire is final, the parties see each other's contact email. */
+const CONTACT_STATUSES: ContractStatus[] = ['awaiting_funding', 'active', 'completed'];
+
 @Injectable()
 export class ContractsService {
   constructor(
@@ -106,8 +109,21 @@ export class ContractsService {
       );
     }
 
-    const [contract] = await this.prisma.$transaction([
-      this.prisma.contract.create({
+    return this.prisma.$transaction(async (tx) => {
+      // Claim the job and the application together: of two offers sent at
+      // once for the same job, only one finds it still open.
+      const job = await tx.job.updateMany({
+        where: { id: jobId, status: 'open' },
+        data: { status: 'in_progress' },
+      });
+      const chosen = await tx.application.updateMany({
+        where: { id: application.id, status: 'submitted' },
+        data: { status: 'accepted', decidedAt: new Date() },
+      });
+      if (job.count !== 1 || chosen.count !== 1) {
+        throw new ConflictException('This job or application changed meanwhile. Refresh');
+      }
+      return tx.contract.create({
         data: {
           jobId,
           applicationId: application.id,
@@ -123,14 +139,8 @@ export class ContractsService {
           },
         },
         include: { milestones: { orderBy: { position: 'asc' } } },
-      }),
-      this.prisma.application.update({
-        where: { id: application.id },
-        data: { status: 'accepted', decidedAt: new Date() },
-      }),
-      this.prisma.job.update({ where: { id: jobId }, data: { status: 'in_progress' } }),
-    ]);
-    return contract;
+      });
+    });
   }
 
   /** Contracts the signed-in user is a party to, newest first. */
@@ -150,9 +160,10 @@ export class ContractsService {
   }
 
   /**
-   * Full contract for its two parties and for managers. Once there is a
-   * contract, each party can see the other's contact email, since they talk
-   * outside the platform.
+   * Full contract for its two parties and for managers. Once the specialist
+   * has accepted, each party can see the other's contact email, since they
+   * talk outside the platform. Not before: an offer alone must not be a way
+   * to collect people's emails.
    */
   async detail(user: AuthUser, contractId: string) {
     const contract = await this.prisma.contract.findUnique({
@@ -162,10 +173,10 @@ export class ContractsService {
     if (!contract) throw new NotFoundException('Contract not found');
     assertCanView(user, contract);
 
-    const contacts = await this.contactEmails([
-      contract.startupId,
-      contract.specialistId,
-    ]);
+    const hired = CONTACT_STATUSES.includes(contract.status);
+    const contacts = hired
+      ? await this.contactEmails([contract.startupId, contract.specialistId])
+      : new Map<string, string>();
     return {
       ...contract,
       contacts: {
@@ -185,18 +196,23 @@ export class ContractsService {
       throw new BadRequestException('Only terms still waiting for you can be declined');
     }
 
-    const [cancelled] = await this.prisma.$transaction([
-      this.prisma.contract.update({
-        where: { id: contractId },
+    return this.prisma.$transaction(async (tx) => {
+      // Not while an accept is deploying the escrow: that would reopen the
+      // job under a contract about to hold money.
+      const claimed = await tx.contract.updateMany({
+        where: { id: contractId, status: 'awaiting_specialist', acceptedAt: null },
         data: { status: 'cancelled', cancelledAt: new Date() },
-      }),
-      this.prisma.application.update({
+      });
+      if (claimed.count !== 1) {
+        throw new ConflictException('These terms are being accepted already');
+      }
+      await tx.application.update({
         where: { id: contract.applicationId },
         data: { status: 'rejected' },
-      }),
-      this.prisma.job.update({ where: { id: contract.jobId }, data: { status: 'open' } }),
-    ]);
-    return cancelled;
+      });
+      await tx.job.update({ where: { id: contract.jobId }, data: { status: 'open' } });
+      return tx.contract.findUniqueOrThrow({ where: { id: contractId } });
+    });
   }
 
   /**
@@ -246,11 +262,12 @@ export class ContractsService {
       throw error;
     }
 
-    const [accepted] = await this.prisma.$transaction([
-      this.prisma.contract.update({
-        where: { id: contractId },
+    const [, accepted] = await this.prisma.$transaction([
+      this.prisma.contract.updateMany({
+        where: { id: contractId, status: 'awaiting_specialist' },
         data: { status: 'awaiting_funding', escrowId },
       }),
+      this.prisma.contract.findUniqueOrThrow({ where: { id: contractId } }),
       // The hire is final now: the applicants who were on hold are turned down.
       this.prisma.application.updateMany({
         where: { jobId: contract.jobId, status: 'submitted' },

@@ -36,13 +36,20 @@ function milestone(status: string) {
     position: 0,
     amount: new Prisma.Decimal(100),
     status,
+    revisionsUsed: 0,
     contract: activeContract,
   };
 }
 
 describe('MilestonesService', () => {
   let prisma: {
-    milestone: { findUnique: jest.Mock; update: jest.Mock; count: jest.Mock };
+    milestone: {
+      findUnique: jest.Mock;
+      findUniqueOrThrow: jest.Mock;
+      update: jest.Mock;
+      updateMany: jest.Mock;
+      count: jest.Mock;
+    };
     deliverable: {
       count: jest.Mock;
       create: jest.Mock;
@@ -50,7 +57,7 @@ describe('MilestonesService', () => {
       update: jest.Mock;
     };
     contract: { update: jest.Mock };
-    job: { update: jest.Mock };
+    job: { update: jest.Mock; findUniqueOrThrow: jest.Mock };
     $transaction: jest.Mock;
   };
   let escrow: {
@@ -72,6 +79,8 @@ describe('MilestonesService', () => {
           ...data,
         })),
         count: jest.fn().mockResolvedValue(1),
+        findUniqueOrThrow: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       deliverable: {
         count: jest.fn().mockResolvedValue(1),
@@ -82,8 +91,16 @@ describe('MilestonesService', () => {
       contract: {
         update: jest.fn().mockResolvedValue({ id: 'contract-1', jobId: 'job-1' }),
       },
-      job: { update: jest.fn() },
-      $transaction: jest.fn(async (ops: unknown[]) => Promise.all(ops)),
+      job: {
+        update: jest.fn(),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({ revisionRounds: 2 }),
+      },
+      // A batch runs its operations; an interactive one runs with the client.
+      $transaction: jest.fn((arg: unknown) =>
+        typeof arg === 'function'
+          ? (arg as (tx: unknown) => unknown)(prisma)
+          : Promise.all(arg as unknown[]),
+      ),
     };
     escrow = {
       prepareApprove: jest.fn().mockResolvedValue({ operationId: 'op-1' }),
@@ -149,6 +166,26 @@ describe('MilestonesService', () => {
       where: { id: 'deliverable-2' },
       data: { feedback: 'Add sources' },
     });
+    expect(prisma.milestone.updateMany).toHaveBeenCalledWith({
+      where: { id: 'milestone-1', status: 'delivered', revisionsUsed: { lt: 2 } },
+      data: { status: 'changes_requested', revisionsUsed: { increment: 1 } },
+    });
+  });
+
+  it('stops asking for changes once the agreed rounds are used', async () => {
+    prisma.milestone.findUnique.mockResolvedValue({ ...milestone('delivered'), revisionsUsed: 2 });
+    await expect(
+      service.requestChanges(startup, 'milestone-1', { feedback: 'One more time please' }),
+    ).rejects.toThrow('Approve the work or open a dispute');
+    expect(prisma.deliverable.update).not.toHaveBeenCalled();
+  });
+
+  it('spends one round when the same request arrives twice', async () => {
+    prisma.milestone.findUnique.mockResolvedValue(milestone('delivered'));
+    prisma.milestone.updateMany.mockResolvedValue({ count: 0 });
+    await expect(
+      service.requestChanges(startup, 'milestone-1', { feedback: 'Add sources' }),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   describe('prepareApprove', () => {

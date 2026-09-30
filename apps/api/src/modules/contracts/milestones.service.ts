@@ -59,24 +59,39 @@ export class MilestonesService {
     if (milestone.status !== 'delivered') {
       throw new BadRequestException('Only a delivered milestone can be sent back');
     }
+    // The price included a number of revision rounds. Past them the startup
+    // approves or opens a dispute; it cannot hold the payment back forever.
+    const { revisionRounds } = await this.prisma.job.findUniqueOrThrow({
+      where: { id: milestone.contract.jobId },
+      select: { revisionRounds: true },
+    });
+    if (milestone.revisionsUsed >= revisionRounds) {
+      throw new BadRequestException(
+        `The ${revisionRounds} revision round${revisionRounds === 1 ? '' : 's'} agreed are used. Approve the work or open a dispute`,
+      );
+    }
     const latest = await this.prisma.deliverable.findFirstOrThrow({
       where: { milestoneId },
       orderBy: { version: 'desc' },
     });
 
-    const [updated] = await this.prisma.$transaction([
-      this.prisma.milestone.update({
-        where: { id: milestoneId },
-        // Each round is counted, so both sides can see how many the price
-        // included and how many are left.
+    return this.prisma.$transaction(async (tx) => {
+      // Each round is counted, so both sides can see how many the price
+      // included and how many are left. Claimed like any step: two requests
+      // at once cannot spend two rounds on one delivery.
+      const claimed = await tx.milestone.updateMany({
+        where: { id: milestoneId, status: 'delivered', revisionsUsed: { lt: revisionRounds } },
         data: { status: 'changes_requested', revisionsUsed: { increment: 1 } },
-      }),
-      this.prisma.deliverable.update({
+      });
+      if (claimed.count !== 1) {
+        throw new ConflictException('This delivery was already answered. Refresh');
+      }
+      await tx.deliverable.update({
         where: { id: latest.id },
         data: { feedback: dto.feedback },
-      }),
-    ]);
-    return updated;
+      });
+      return tx.milestone.findUniqueOrThrow({ where: { id: milestoneId } });
+    });
   }
 
   /** Approval transaction for the startup's wallet to sign. */

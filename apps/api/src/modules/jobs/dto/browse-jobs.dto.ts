@@ -1,7 +1,16 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ServiceCategory } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class BrowseJobsDto {
   @ApiPropertyOptional({ enum: ServiceCategory })
@@ -12,6 +21,7 @@ export class BrowseJobsDto {
   @ApiPropertyOptional({ description: 'Free text matched against title and description' })
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   search?: string;
 
   @ApiPropertyOptional({ description: 'Only the open jobs of this startup' })
@@ -32,5 +42,6 @@ export class BrowseJobsDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @Max(10_000)
   offset?: number;
 }
