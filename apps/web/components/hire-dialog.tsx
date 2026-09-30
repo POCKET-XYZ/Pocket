@@ -6,7 +6,7 @@ import {
   type Applicant,
   type JobListing,
 } from '@pocket/shared';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, Trash2Icon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -94,6 +94,7 @@ export function HireDialog({
   );
   const remaining = toUnits(applicant.price) - total;
 
+  const queryClient = useQueryClient();
   const hire = useMutation({
     mutationFn: () =>
       api<{ id: string }>('/contracts', {
@@ -111,8 +112,14 @@ export function HireDialog({
           })),
         },
       }),
-    onSuccess: (contract) => {
+    onSuccess: async (contract) => {
       toast.success('Terms sent. The specialist has to accept them.');
+      // The job is no longer open and the application is taken.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+        queryClient.invalidateQueries({ queryKey: ['contracts', 'mine'] }),
+        queryClient.invalidateQueries({ queryKey: ['applications'] }),
+      ]);
       router.push(`/contracts/${contract.id}`);
     },
     onError: (error) => toast.error(errorMessage(error)),

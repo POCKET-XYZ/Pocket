@@ -28,6 +28,10 @@ export function useContractAction<TArgs = void>(
         queryClient.invalidateQueries({ queryKey: ['contracts', contractId] }),
         queryClient.invalidateQueries({ queryKey: ['contracts', 'mine'] }),
         queryClient.invalidateQueries({ queryKey: ['wallet', 'usdc'] }),
+        // Accepting, declining or paying also changes jobs, applications and disputes.
+        queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+        queryClient.invalidateQueries({ queryKey: ['applications'] }),
+        queryClient.invalidateQueries({ queryKey: ['disputes'] }),
       ]);
     },
   });

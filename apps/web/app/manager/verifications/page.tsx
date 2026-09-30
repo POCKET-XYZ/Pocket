@@ -84,7 +84,11 @@ function RequestCard({ request }: { request: QueueItem }) {
       toast.success(decision === 'approve' ? 'Approved' : 'Rejected');
       await queryClient.invalidateQueries({ queryKey: ['manager', 'verifications'] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: async (error) => {
+      toast.error(errorMessage(error));
+      // Another manager may have reviewed it: show the queue as it is now.
+      await queryClient.invalidateQueries({ queryKey: ['manager', 'verifications'] });
+    },
   });
 
   const links = [

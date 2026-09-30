@@ -54,6 +54,8 @@ function Contract({ user }: { user: User }) {
   const contract = useQuery({
     queryKey: ['contracts', id],
     queryFn: () => api<ContractDetail>(`/contracts/${id}`),
+    // While it waits for the other party, keep looking.
+    refetchInterval: (query) => (waitsForOtherParty(query.state.data) ? 15_000 : false),
   });
 
   if (contract.isLoading) return <Loading />;
@@ -341,5 +343,21 @@ function Waiting({ title, text }: { title: string; text: string }) {
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>{text}</AlertDescription>
     </Alert>
+  );
+}
+
+/** Whether the contract is waiting on something the other party does. */
+function waitsForOtherParty(contract: ContractDetail | undefined): boolean {
+  if (!contract) return false;
+  if (contract.status === 'awaiting_specialist' || contract.status === 'awaiting_funding') {
+    return true;
+  }
+  return (
+    contract.status === 'active' &&
+    contract.milestones.some((milestone) =>
+      ['pending', 'delivered', 'changes_requested', 'approved', 'disputed'].includes(
+        milestone.status,
+      ),
+    )
   );
 }

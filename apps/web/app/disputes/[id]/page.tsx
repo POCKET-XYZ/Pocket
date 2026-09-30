@@ -186,7 +186,11 @@ function EvidenceForm({ disputeId }: { disputeId: string }) {
       toast.success('Evidence added');
       await queryClient.invalidateQueries({ queryKey: ['disputes', disputeId] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: async (error) => {
+      toast.error(errorMessage(error));
+      // Most often the dispute was resolved meanwhile: show it as it is now.
+      await queryClient.invalidateQueries({ queryKey: ['disputes', disputeId] });
+    },
   });
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -220,9 +224,15 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
       api(`/manager/disputes/${dispute.id}/resolve`, { method: 'POST', body }),
     onSuccess: async () => {
       toast.success('Resolved. The escrow paid out the decision.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['disputes'] }),
+        queryClient.invalidateQueries({ queryKey: ['contracts'] }),
+      ]);
+    },
+    onError: async (error) => {
+      toast.error(errorMessage(error));
       await queryClient.invalidateQueries({ queryKey: ['disputes'] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
   });
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {

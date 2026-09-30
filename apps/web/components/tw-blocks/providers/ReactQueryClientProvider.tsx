@@ -4,20 +4,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 /**
- * Query Client, you can configure the default options for the query client
- *
- * - Stale Time: 5 minutes
- * - GC Time: 30 minutes
- * - Retry: 1
- * - Refetch on Window Focus: false
+ * Two people work on the same contract from different screens, so data goes
+ * stale fast: it counts as fresh for 10 seconds, and coming back to the tab
+ * reloads it.
  */
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 10_000,
       gcTime: 1000 * 60 * 30, // 30 minutes
       retry: 1,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
     },
   },
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { ServiceCategory, type Job, type JobMilestoneInput } from '@pocket/shared';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, Trash2Icon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -57,11 +57,13 @@ function NewJob() {
   const assigned = milestones.reduce((sum, m) => sum + toUnits(m.amount), BigInt(0));
   const remaining = toUnits(budget) - assigned;
 
+  const queryClient = useQueryClient();
   const create = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       api<Job>('/jobs', { method: 'POST', body }),
-    onSuccess: (job) => {
+    onSuccess: async (job) => {
       toast.success('Job posted');
+      await queryClient.invalidateQueries({ queryKey: ['jobs'] });
       router.push(`/jobs/${job.id}`);
     },
     onError: (error) => {
