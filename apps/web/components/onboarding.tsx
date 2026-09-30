@@ -69,25 +69,15 @@ export function Onboarding({ className }: { className?: string }) {
                 </p>
                 <p className="text-sm text-muted-foreground">{step.text}</p>
               </div>
-              {step.action && step.state !== 'later' ? (
-                step.action.href === pathname ? (
-                  // A link to the page you are on does nothing. Here the step
-                  // is the form below, so take the user to it instead; with
-                  // nothing to fill in, there is nothing to press.
-                  step.state === 'current' ? (
-                    <Button size="sm" onClick={goToForm}>
-                      Fill in the form below
-                    </Button>
-                  ) : null
-                ) : (
-                  <Button
-                    asChild
-                    size="sm"
-                    variant={step.state === 'current' ? 'default' : 'outline'}
-                  >
-                    <Link href={step.action.href}>{step.action.label}</Link>
-                  </Button>
-                )
+              {/* No button to the page you are already on: the form is right below. */}
+              {step.action && step.state !== 'later' && step.action.href !== pathname ? (
+                <Button
+                  asChild
+                  size="sm"
+                  variant={step.state === 'current' ? 'default' : 'outline'}
+                >
+                  <Link href={step.action.href}>{step.action.label}</Link>
+                </Button>
               ) : null}
             </li>
           ))}
@@ -95,16 +85,6 @@ export function Onboarding({ className }: { className?: string }) {
       </CardContent>
     </Card>
   );
-}
-
-/** The form a page marks as the place to act; its first field gets the focus. */
-export const PAGE_FORM_ID = 'page-form';
-
-function goToForm() {
-  const form = document.getElementById(PAGE_FORM_ID);
-  if (!form) return;
-  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  form.querySelector<HTMLElement>('input, textarea, select')?.focus({ preventScroll: true });
 }
 
 function stepsFor(user: User, hasProfile: boolean): Step[] {

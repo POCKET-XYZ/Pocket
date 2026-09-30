@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/components/auth-provider';
 import { Field, compact, formValues } from '@/components/form';
 import { Loading, PageHeader } from '@/components/page';
-import { Onboarding, PAGE_FORM_ID } from '@/components/onboarding';
+import { Onboarding } from '@/components/onboarding';
 import { RequireAuth } from '@/components/require-auth';
 import { StatusBadge } from '@/components/status-badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -105,7 +105,7 @@ function Verification({ user }: { user: User }) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form id={PAGE_FORM_ID} onSubmit={onSubmit} className="scroll-mt-24 space-y-4">
+            <form onSubmit={onSubmit} className="space-y-4">
               <Field label="Full name" htmlFor="fullName" required>
                 <Input
                   id="fullName"
