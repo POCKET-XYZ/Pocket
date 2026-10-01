@@ -93,7 +93,12 @@ describe('ProfilesService', () => {
   });
 
   it('empties the optional fields a specialist cleared', async () => {
-    await service.saveSpecialist(SPECIALIST, SPECIALIST_DTO);
+    // As the validation pipe hands it over: absent fields exist, as undefined.
+    await service.saveSpecialist(SPECIALIST, {
+      ...SPECIALIST_DTO,
+      timezone: undefined,
+      skills: undefined,
+    } as SpecialistProfileDto);
     const { update } = prisma.specialistProfile.upsert.mock.calls[0][0];
     expect(update).toMatchObject({ displayName: SPECIALIST_DTO.displayName });
     for (const key of ['skills', 'tools', 'languages', 'caseStudies']) {

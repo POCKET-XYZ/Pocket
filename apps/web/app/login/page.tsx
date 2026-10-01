@@ -1,6 +1,6 @@
 'use client';
 
-import type { SignUpRole, User } from '@pocket/shared';
+import type { SignUpRole } from '@pocket/shared';
 import { BriefcaseBusinessIcon, MailIcon, RocketIcon, WalletIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { errorMessage } from '@/lib/api';
 import { isWalletDismissed } from '@/lib/wallet';
 import { cn } from '@/lib/utils';
+import { homeFor } from '@/lib/home';
 
 const ROLES: {
   value: SignUpRole;
@@ -31,13 +32,6 @@ const ROLES: {
     icon: BriefcaseBusinessIcon,
   },
 ];
-
-/** Where a user lands after signing in. */
-function homeFor(user: User): string {
-  if (user.role === 'manager') return '/manager/verifications';
-  if (user.verificationStatus !== 'approved') return '/verification';
-  return user.role === 'startup' ? '/dashboard' : '/jobs';
-}
 
 export default function LoginPage() {
   const {
