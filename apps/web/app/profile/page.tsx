@@ -179,6 +179,8 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
           id="websiteUrl"
           name="websiteUrl"
           type="url"
+          pattern="https://.+"
+          title="A link that starts with https://"
           placeholder="https://"
           defaultValue={initial?.websiteUrl ?? known?.websiteUrl ?? ''}
         />
@@ -188,6 +190,8 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
           id="logoUrl"
           name="logoUrl"
           type="url"
+          pattern="https://.+"
+          title="A link that starts with https://"
           placeholder="https://"
           defaultValue={initial?.logoUrl ?? ''}
         />
@@ -244,7 +248,12 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
   );
 }
 
-function SpecialistForm({ initial, known, saving, onSave }: FormProps<SpecialistProfile>) {
+function SpecialistForm({
+  initial,
+  known,
+  saving,
+  onSave,
+}: FormProps<SpecialistProfile>) {
   const [categories, setCategories] = useState<ServiceCategory[]>(
     initial?.categories ?? [],
   );
@@ -270,7 +279,11 @@ function SpecialistForm({ initial, known, saving, onSave }: FormProps<Specialist
     }
     setUploadingCv(true);
     try {
-      const { cvUrl: url } = await upload<{ cvUrl: string }>('/profiles/me/cv', 'file', file);
+      const { cvUrl: url } = await upload<{ cvUrl: string }>(
+        '/profiles/me/cv',
+        'file',
+        file,
+      );
       setCvUrl(url);
       toast.success('CV uploaded');
     } catch (error) {
@@ -482,6 +495,8 @@ function SpecialistForm({ initial, known, saving, onSave }: FormProps<Specialist
           id="portfolioUrl"
           name="portfolioUrl"
           type="url"
+          pattern="https://.+"
+          title="A link that starts with https://"
           placeholder="https://"
           defaultValue={initial?.portfolioUrl ?? known?.websiteUrl ?? ''}
         />
@@ -491,6 +506,8 @@ function SpecialistForm({ initial, known, saving, onSave }: FormProps<Specialist
           id="linkedinUrl"
           name="linkedinUrl"
           type="url"
+          pattern="https://.+"
+          title="A link that starts with https://"
           placeholder="https://"
           defaultValue={initial?.linkedinUrl ?? known?.linkedinUrl ?? ''}
         />
@@ -505,6 +522,8 @@ function SpecialistForm({ initial, known, saving, onSave }: FormProps<Specialist
             id="cvUrl"
             name="cvUrl"
             type="url"
+            pattern="https://.+"
+            title="A link that starts with https://"
             placeholder="https://"
             value={cvUrl}
             onChange={(event) => setCvUrl(event.target.value)}
@@ -567,7 +586,8 @@ function specialistListProblem(values: Record<string, string>): string | null {
   for (const [name, items, most, longest] of lists) {
     if (items.length > most) return `Up to ${most} ${name}, separated by commas`;
     const long = items.find((item) => item.length > longest);
-    if (long) return `"${long.slice(0, 30)}..." is too long: ${name} take ${longest} characters each`;
+    if (long)
+      return `"${long.slice(0, 30)}..." is too long: ${name} take ${longest} characters each`;
   }
   const studies = parseCaseStudies(values.caseStudies);
   if (studies.length > 10) return 'Up to 10 pieces of past work';

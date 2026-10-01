@@ -1,7 +1,7 @@
 'use client';
 
 import type { JobBoard, ServiceCategory } from '@pocket/shared';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useDeferredValue, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
@@ -18,15 +18,23 @@ export default function JobsPage() {
   const [search, setSearch] = useState('');
   const query = useDeferredValue(search.trim());
 
-  const board = useQuery({
+  // Fifty at a time, the most the API hands out; more on demand.
+  const board = useInfiniteQuery({
     queryKey: ['jobs', 'board', category, query],
-    queryFn: () => {
-      const params = new URLSearchParams({ limit: '50' });
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: '50', offset: String(pageParam) });
       if (category) params.set('category', category);
       if (query) params.set('search', query);
       return api<JobBoard>(`/jobs?${params.toString()}`);
     },
+    getNextPageParam: (last) =>
+      last.offset + last.items.length < last.total
+        ? last.offset + last.items.length
+        : undefined,
   });
+  const jobs = board.data?.pages.flatMap((page) => page.items) ?? [];
+  const total = board.data?.pages[0]?.total ?? 0;
 
   return (
     <div>
@@ -55,12 +63,28 @@ export default function JobsPage() {
         <Loading />
       ) : board.error ? (
         <ErrorAlert error={board.error} />
-      ) : board.data && board.data.items.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          {board.data.items.map((job) => (
-            <JobCard key={job.id} job={job} href={`/jobs/${job.id}`} />
-          ))}
-        </div>
+      ) : jobs.length > 0 ? (
+        <>
+          <div className="grid gap-4 md:grid-cols-2">
+            {jobs.map((job) => (
+              <JobCard key={job.id} job={job} href={`/jobs/${job.id}`} />
+            ))}
+          </div>
+          {board.hasNextPage ? (
+            <div className="mt-6 flex flex-col items-center gap-2">
+              <p className="text-sm text-muted-foreground">
+                Showing {jobs.length} of {total}
+              </p>
+              <Button
+                variant="outline"
+                disabled={board.isFetchingNextPage}
+                onClick={() => void board.fetchNextPage()}
+              >
+                {board.isFetchingNextPage ? 'Loading...' : 'Show more jobs'}
+              </Button>
+            </div>
+          ) : null}
+        </>
       ) : (
         <EmptyState title="No open jobs match">
           Try another category or search.

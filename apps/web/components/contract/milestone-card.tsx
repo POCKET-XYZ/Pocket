@@ -168,7 +168,10 @@ export function MilestoneCard({
                 {approve.isPending ? 'Waiting for your wallet...' : 'Approve and pay'}
               </Button>
               {roundsLeft ? (
-                <RequestChangesDialog contractId={contract.id} milestoneId={milestone.id} />
+                <RequestChangesDialog
+                  contractId={contract.id}
+                  milestoneId={milestone.id}
+                />
               ) : (
                 <p className="self-center text-sm text-muted-foreground">
                   No rounds of changes left: approve it, or open a dispute.
@@ -253,7 +256,14 @@ function DeliverDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-3">
-          <Input name="url" type="url" required placeholder="https://" />
+          <Input
+            name="url"
+            type="url"
+            pattern="https://.+"
+            title="A link that starts with https://"
+            required
+            placeholder="https://"
+          />
           <Textarea
             name="note"
             maxLength={2000}

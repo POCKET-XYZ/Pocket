@@ -296,6 +296,8 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
               id="similarWorkUrl"
               name="similarWorkUrl"
               type="url"
+              pattern="https://.+"
+              title="A link that starts with https://"
               placeholder="https://"
             />
           </Field>

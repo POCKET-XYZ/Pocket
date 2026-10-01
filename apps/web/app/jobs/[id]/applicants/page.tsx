@@ -73,7 +73,7 @@ function Applicants() {
                         href={safeHref(applicant.similarWorkUrl)}
                         target="_blank"
                         rel="noreferrer"
-                        className="underline"
+                        className="break-all underline"
                       >
                         {applicant.similarWorkUrl}
                       </a>{' '}
@@ -103,7 +103,9 @@ function Applicants() {
                     <HireDialog applicant={applicant} job={job.data} />
                   ) : applicant.contract ? (
                     <Button asChild size="sm" variant="outline">
-                      <Link href={`/contracts/${applicant.contract.id}`}>View contract</Link>
+                      <Link href={`/contracts/${applicant.contract.id}`}>
+                        View contract
+                      </Link>
                     </Button>
                   ) : null}
                 </div>

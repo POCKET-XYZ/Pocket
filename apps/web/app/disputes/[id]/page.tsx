@@ -209,7 +209,13 @@ function EvidenceForm({ disputeId }: { disputeId: string }) {
         maxLength={2000}
         placeholder="Add a comment"
       />
-      <Input name="url" type="url" placeholder="Link (optional)" />
+      <Input
+        name="url"
+        type="url"
+        pattern="https://.+"
+        title="A link that starts with https://"
+        placeholder="Link (optional)"
+      />
       <Button type="submit" size="sm" disabled={add.isPending}>
         Add evidence
       </Button>
@@ -246,7 +252,11 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
       const raw = String(values.specialistAmount ?? '').trim();
       const toSpecialist = toUnits(raw);
       // The API takes more than 0, less than the whole, and 7 decimals at most.
-      if (!/^\d+(\.\d{1,7})?$/.test(raw) || toSpecialist <= BigInt(0) || toSpecialist >= total) {
+      if (
+        !/^\d+(\.\d{1,7})?$/.test(raw) ||
+        toSpecialist <= BigInt(0) ||
+        toSpecialist >= total
+      ) {
         toast.error(
           `Give the specialist more than 0 and less than ${usdc(dispute.milestone.amount)}, with at most 7 decimals`,
         );
@@ -254,7 +264,8 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
       }
       summary = `${fromUnits(toSpecialist)} USDC to the specialist and ${fromUnits(total - toSpecialist)} USDC to the startup`;
     }
-    if (!window.confirm(`${summary}? This executes on the escrow and cannot be undone.`)) return;
+    if (!window.confirm(`${summary}? This executes on the escrow and cannot be undone.`))
+      return;
     resolve.mutate({
       outcome,
       note: values.note,

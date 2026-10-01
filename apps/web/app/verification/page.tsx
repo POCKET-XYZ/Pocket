@@ -171,11 +171,16 @@ function Verification({ user }: { user: User }) {
                   </Field>
                 </>
               ) : null}
-              <Field label={isStartup ? 'Company LinkedIn' : 'LinkedIn'} htmlFor="linkedinUrl">
+              <Field
+                label={isStartup ? 'Company LinkedIn' : 'LinkedIn'}
+                htmlFor="linkedinUrl"
+              >
                 <Input
                   id="linkedinUrl"
                   name="linkedinUrl"
                   type="url"
+                  pattern="https://.+"
+                  title="A link that starts with https://"
                   placeholder="https://"
                   defaultValue={previous?.linkedinUrl}
                 />
@@ -188,6 +193,8 @@ function Verification({ user }: { user: User }) {
                   id="websiteUrl"
                   name="websiteUrl"
                   type="url"
+                  pattern="https://.+"
+                  title="A link that starts with https://"
                   placeholder="https://"
                   defaultValue={previous?.websiteUrl}
                 />
