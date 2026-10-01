@@ -78,7 +78,9 @@ function RequestCard({ request }: { request: QueueItem }) {
     mutationFn: (decision: 'approve' | 'reject') =>
       api(`/manager/verifications/${request.id}/${decision}`, {
         method: 'POST',
-        body: note.trim() ? { note: note.trim() } : {},
+        // Only a rejection carries a note: it is what the user reads to fix
+        // their request. Nothing shows a note on an approval.
+        body: decision === 'reject' ? { note: note.trim() } : {},
       }),
     onSuccess: async (_, decision) => {
       toast.success(decision === 'approve' ? 'Approved' : 'Rejected');
@@ -148,7 +150,8 @@ function RequestCard({ request }: { request: QueueItem }) {
             <Textarea
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="Note for the user. Required to reject: tell them what to fix."
+              aria-label="Reason for rejecting"
+              placeholder="Only to reject: tell them what to fix. They will read this."
               maxLength={1000}
             />
             <div className="flex gap-2">
