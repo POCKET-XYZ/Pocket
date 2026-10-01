@@ -71,6 +71,8 @@ export class ApplicationsService {
             },
           },
         },
+        // The terms sent to this applicant, to go from the job to its contract.
+        contract: { select: { id: true, status: true } },
       },
     });
     return applications.map(({ specialist, ...application }) => ({
@@ -95,6 +97,7 @@ export class ApplicationsService {
             status: true,
           },
         },
+        contract: { select: { id: true, status: true } },
       },
     });
   }

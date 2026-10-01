@@ -35,7 +35,9 @@ function Verification({ user }: { user: User }) {
   const { refreshUser } = useAuth();
   const queryClient = useQueryClient();
   const latest = useQuery({
-    queryKey: ['verification', 'me'],
+    // Keyed on the status: when a manager decides, the request (and the
+    // reason for a rejection) is loaded again.
+    queryKey: ['verification', 'me', user.verificationStatus],
     queryFn: () => api<VerificationRequest | null>('/verification/me'),
   });
 
@@ -169,11 +171,16 @@ function Verification({ user }: { user: User }) {
                   </Field>
                 </>
               ) : null}
-              <Field label={isStartup ? 'Company LinkedIn' : 'LinkedIn'} htmlFor="linkedinUrl">
+              <Field
+                label={isStartup ? 'Company LinkedIn' : 'LinkedIn'}
+                htmlFor="linkedinUrl"
+              >
                 <Input
                   id="linkedinUrl"
                   name="linkedinUrl"
                   type="url"
+                  pattern="https://.+"
+                  title="A link that starts with https://"
                   placeholder="https://"
                   defaultValue={previous?.linkedinUrl}
                 />
@@ -186,6 +193,8 @@ function Verification({ user }: { user: User }) {
                   id="websiteUrl"
                   name="websiteUrl"
                   type="url"
+                  pattern="https://.+"
+                  title="A link that starts with https://"
                   placeholder="https://"
                   defaultValue={previous?.websiteUrl}
                 />

@@ -7,10 +7,11 @@ import {
   type ContractDetail,
   type User,
 } from '@pocket/shared';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLinkIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { MilestoneCard } from '@/components/contract/milestone-card';
 import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
@@ -25,7 +26,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { ApiError, api } from '@/lib/api';
+import { ApiError, api, errorMessage } from '@/lib/api';
 import { dateTime, explorerContract, explorerTx, shortAddress, usdc } from '@/lib/format';
 import { useContractAction } from '@/lib/use-contract-action';
 import { useSigner } from '@/components/use-signer';
@@ -54,6 +55,8 @@ function Contract({ user }: { user: User }) {
   const contract = useQuery({
     queryKey: ['contracts', id],
     queryFn: () => api<ContractDetail>(`/contracts/${id}`),
+    // While it waits for the other party, keep looking.
+    refetchInterval: (query) => (waitsForOtherParty(query.state.data) ? 15_000 : false),
   });
 
   if (contract.isLoading) return <Loading />;
@@ -72,7 +75,7 @@ function Contract({ user }: { user: User }) {
         title={data.job.title}
         description={
           <>
-            <Link href={`/specialists/${data.startupId}`} className="underline">
+            <Link href={`/startups/${data.startupId}`} className="underline">
               {startupName}
             </Link>{' '}
             hired{' '}
@@ -210,13 +213,16 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
     () => api(`/contracts/${contract.id}/fund/sync`, { method: 'POST' }),
     'Escrow funded. The specialist can start.',
   );
-  // The chain can take a few seconds to show a deposit; offer to check again.
-  const fundingPending = fund.error instanceof ApiError && fund.error.status === 409;
+  // The network can take a while to confirm a deposit (409 or 503): say so,
+  // and never offer a second deposit as the way out.
+  const fundingPending =
+    fund.error instanceof ApiError && [409, 503].includes(fund.error.status);
   const specialistReceives = usdc(
     totalAfterTrustlessWorkFee(contract.milestones.map((milestone) => milestone.amount)),
   );
 
   if (contract.status === 'awaiting_specialist') {
+    if (isStartup) return <WithdrawOffer contract={contract} />;
     if (!isSpecialist) {
       return (
         <Waiting
@@ -279,21 +285,30 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
             receives {specialistReceives}. Pocket charges nothing.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button disabled={fund.isPending} onClick={() => fund.mutate()}>
-            {fund.isPending
-              ? 'Waiting for your wallet...'
-              : `Fund ${usdc(contract.amount)}`}
-          </Button>
+        <CardContent className="space-y-3">
           {fundingPending ? (
+            <p className="text-sm text-muted-foreground">
+              Your deposit is being confirmed by the network. Check again in a minute; do
+              not fund again.
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {fundingPending ? null : (
+              <Button disabled={fund.isPending} onClick={() => fund.mutate()}>
+                {fund.isPending
+                  ? 'Waiting for your wallet...'
+                  : `Fund ${usdc(contract.amount)}`}
+              </Button>
+            )}
+            {/* Always there: after a reload the error is gone, the deposit is not. */}
             <Button
               variant="outline"
               disabled={sync.isPending}
               onClick={() => sync.mutate()}
             >
-              Check again
+              {sync.isPending ? 'Checking...' : 'Already funded? Check again'}
             </Button>
-          ) : null}
+          </div>
         </CardContent>
       </Card>
     );
@@ -315,7 +330,16 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
       <Alert>
         <AlertTitle>Contract cancelled</AlertTitle>
         <AlertDescription>
-          The specialist declined the terms, so the job was opened again.
+          <p>The specialist declined the terms, so the job was opened again.</p>
+          {isStartup ? (
+            <Button asChild size="sm" className="mt-3">
+              <Link href={`/jobs/${contract.jobId}/applicants`}>Choose another applicant</Link>
+            </Button>
+          ) : isSpecialist ? (
+            <Button asChild size="sm" variant="outline" className="mt-3">
+              <Link href="/jobs">Browse jobs</Link>
+            </Button>
+          ) : null}
         </AlertDescription>
       </Alert>
     );
@@ -324,11 +348,80 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
   return null;
 }
 
+/**
+ * The startup waits for the specialist, and can take the terms back to fix
+ * them or to choose someone else while they are not accepted.
+ */
+function WithdrawOffer({ contract }: { contract: ContractDetail }) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const withdraw = useMutation({
+    mutationFn: () =>
+      api<{ jobId: string }>(`/contracts/${contract.id}/withdraw`, { method: 'POST' }),
+    onSuccess: async ({ jobId }) => {
+      toast.success('Offer withdrawn. The job is open again.');
+      // The offer no longer exists: leave its page before anything reloads it.
+      router.replace(`/jobs/${jobId}/applicants`);
+      queryClient.removeQueries({ queryKey: ['contracts', contract.id] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['contracts', 'mine'] }),
+        queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+        queryClient.invalidateQueries({ queryKey: ['applications'] }),
+      ]);
+    },
+    onError: async (error) => {
+      toast.error(errorMessage(error));
+      await queryClient.invalidateQueries({ queryKey: ['contracts', contract.id] });
+    },
+  });
+
+  return (
+    <Alert className="border-celeste bg-celeste-light/40">
+      <AlertTitle>Waiting for the specialist</AlertTitle>
+      <AlertDescription>
+        <p>They review the milestones and accept or decline the terms.</p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-3"
+          disabled={withdraw.isPending}
+          onClick={() => {
+            if (
+              window.confirm(
+                'Withdraw these terms? The job opens again and you can send new terms to this or another applicant.',
+              )
+            )
+              withdraw.mutate();
+          }}
+        >
+          {withdraw.isPending ? 'Withdrawing...' : 'Withdraw offer'}
+        </Button>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 function Waiting({ title, text }: { title: string; text: string }) {
   return (
     <Alert className="border-celeste bg-celeste-light/40">
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>{text}</AlertDescription>
     </Alert>
+  );
+}
+
+/** Whether the contract is waiting on something the other party does. */
+function waitsForOtherParty(contract: ContractDetail | undefined): boolean {
+  if (!contract) return false;
+  if (contract.status === 'awaiting_specialist' || contract.status === 'awaiting_funding') {
+    return true;
+  }
+  return (
+    contract.status === 'active' &&
+    contract.milestones.some((milestone) =>
+      ['pending', 'delivered', 'changes_requested', 'approved', 'disputed'].includes(
+        milestone.status,
+      ),
+    )
   );
 }

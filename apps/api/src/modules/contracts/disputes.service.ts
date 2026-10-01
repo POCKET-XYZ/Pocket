@@ -320,7 +320,7 @@ export function splitFor(
   const specialistAmount = new Prisma.Decimal(dto.specialistAmount ?? 0);
   if (specialistAmount.lte(0) || specialistAmount.gte(total)) {
     throw new BadRequestException(
-      `A split gives each side part of the ${total.toString()} USDC. Use pay_specialist or refund_startup for all of it`,
+      `A split gives each side part of the ${total.toString()} USDC. To give all of it to one side, choose Pay the specialist or Refund the startup`,
     );
   }
   return { specialistAmount, startupAmount: total.minus(specialistAmount) };

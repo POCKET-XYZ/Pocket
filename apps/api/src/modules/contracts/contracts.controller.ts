@@ -51,6 +51,14 @@ export class ContractsController {
     return this.contracts.decline(user, id);
   }
 
+  /** The startup takes back terms the specialist has not accepted yet. */
+  @Roles('startup')
+  @Verified()
+  @Post(':id/withdraw')
+  withdraw(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.contracts.withdrawOffer(user, id);
+  }
+
   /** Funding transaction for the startup's wallet to sign. */
   @Roles('startup')
   @Verified()

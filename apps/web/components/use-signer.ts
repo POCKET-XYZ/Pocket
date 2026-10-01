@@ -36,6 +36,15 @@ export function useSigner(): Signer {
       // Whoever signs, the transaction must be the step the user pressed.
       if (address) checkTransaction(xdr, networkPassphrase, address, purpose);
       if (pollarReady) return pollar.signXdr(xdr);
+      if (belongsToPollar && pollar.ready) {
+        // Pollar is open, but on another account: its login window would not
+        // help, it only opens over no session.
+        return Promise.reject(
+          new Error(
+            'Pollar is signed in with a different account. Sign out of Pocket and sign in again with this account',
+          ),
+        );
+      }
       if (belongsToPollar) {
         // Opening the login here means the user can sign in and press the same
         // button again, instead of hunting for where to reconnect.

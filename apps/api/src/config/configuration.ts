@@ -2,6 +2,8 @@ export type StellarNetwork = 'testnet' | 'mainnet';
 
 export interface AppConfig {
   port: number;
+  /** Public address of the API with its /api prefix, for links it hands out. */
+  apiPublicUrl: string;
   /** Proxies in front of the API: 0 locally, 1 behind Railway or Render. */
   trustProxyHops: number;
   corsOrigins: string[];
@@ -88,6 +90,7 @@ export default (): AppConfig => {
     (process.env.STELLAR_NETWORK as StellarNetwork | undefined) ?? 'testnet';
   return {
     port: Number(process.env.PORT ?? 3000),
+    apiPublicUrl: (process.env.API_PUBLIC_URL ?? '').replace(/\/+$/, ''),
     trustProxyHops: Number(process.env.TRUST_PROXY_HOPS ?? 0),
     corsOrigins: (process.env.CORS_ORIGINS ?? 'http://localhost:3001')
       .split(',')

@@ -6,6 +6,7 @@ import {
   openAuthModal,
   signTransaction,
 } from '@/components/tw-blocks/wallet-kit/wallet-kit';
+import { Keypair, Networks, TransactionBuilder } from '@stellar/stellar-sdk';
 import { api } from './api';
 import type { TxPurpose } from './tx-check';
 
@@ -52,7 +53,40 @@ export async function signXdr(
   networkPassphrase?: string,
 ): Promise<string> {
   await requireWalletNetwork(networkPassphrase);
-  return signTransaction({ unsignedTransaction: xdr, address, networkPassphrase });
+  const signed = await signTransaction({
+    unsignedTransaction: xdr,
+    address,
+    networkPassphrase,
+  });
+  requireSignedBy(signed, address, networkPassphrase);
+  return signed;
+}
+
+const hex = (bytes: Uint8Array) =>
+  Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+
+/**
+ * An extension signs with whatever account is active in it. When that is not
+ * the account signed in to Pocket, say so plainly instead of letting the
+ * network refuse a signature from the wrong key.
+ */
+function requireSignedBy(signedXdr: string, address: string, networkPassphrase?: string) {
+  let hints: string[];
+  try {
+    const tx = TransactionBuilder.fromXDR(
+      signedXdr,
+      networkPassphrase ?? Networks.TESTNET,
+    );
+    hints = tx.signatures.map((signature) => hex(signature.hint.toBytes()));
+  } catch {
+    return; // Not readable here: the API still checks the signature.
+  }
+  const expected = hex(Keypair.fromPublicKey(address).signatureHint());
+  if (!hints.includes(expected)) {
+    throw new Error(
+      `Your wallet signed with a different account. Switch it to ${address.slice(0, 4)}...${address.slice(-4)}, the one you signed in with, and try again.`,
+    );
+  }
 }
 
 /** A transaction the API prepared for the user's wallet. */

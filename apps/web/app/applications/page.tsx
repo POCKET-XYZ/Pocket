@@ -103,6 +103,14 @@ function Applications({ user }: { user: User }) {
                       >
                         Withdraw
                       </Button>
+                    ) : application.contract ? (
+                      <Button asChild size="sm" variant="ghost">
+                        <Link href={`/contracts/${application.contract.id}`}>
+                          {application.contract.status === 'awaiting_specialist'
+                            ? 'Review the terms'
+                            : 'View contract'}
+                        </Link>
+                      </Button>
                     ) : null}
                   </TableCell>
                 </TableRow>

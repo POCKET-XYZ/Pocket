@@ -18,6 +18,45 @@ export interface UploadedPdf {
   size: number;
 }
 
+/**
+ * Optional fields and their empty value. Saving a profile replaces it, so a
+ * field the form no longer sends was cleared and is emptied too.
+ */
+const STARTUP_OPTIONAL = {
+  websiteUrl: null,
+  logoUrl: null,
+  legalName: null,
+  contactRole: null,
+  languages: [],
+  location: null,
+};
+const SPECIALIST_OPTIONAL = {
+  skills: [],
+  caseStudies: [],
+  tools: [],
+  yearsExperience: null,
+  languages: [],
+  timezone: null,
+  weeklyHours: null,
+  hourlyRate: null,
+  minProjectBudget: null,
+  portfolioUrl: null,
+  linkedinUrl: null,
+  cvUrl: null,
+  avatarUrl: null,
+  location: null,
+};
+
+/**
+ * Only the fields actually sent. The validated DTO is a class instance whose
+ * absent fields exist as undefined, and those would hide the empty values.
+ */
+function given<T extends object>(dto: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(dto).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
+}
+
 /** The largest CV Pocket keeps. */
 export const MAX_CV_BYTES = 4 * 1024 * 1024;
 
@@ -33,7 +72,7 @@ export class ProfilesService {
     return await this.prisma.startupProfile.upsert({
       where: { userId: user.sub },
       create: { ...dto, userId: user.sub },
-      update: dto,
+      update: { ...STARTUP_OPTIONAL, ...given(dto) },
     });
   }
 
@@ -63,7 +102,7 @@ export class ProfilesService {
     return await this.prisma.specialistProfile.upsert({
       where: { userId: user.sub },
       create: { ...data, userId: user.sub },
-      update: data,
+      update: { ...SPECIALIST_OPTIONAL, ...given(data) },
     });
   }
 

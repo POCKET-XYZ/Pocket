@@ -56,8 +56,10 @@ describe('ContractsService', () => {
       findUniqueOrThrow: jest.Mock;
       update: jest.Mock;
       updateMany: jest.Mock;
+      deleteMany: jest.Mock;
     };
     verificationRequest: { findMany: jest.Mock };
+    chainOperation: { findUnique: jest.Mock };
     $transaction: jest.Mock;
   };
   let escrow: { deploy: jest.Mock; isFunded: jest.Mock; prepareFund: jest.Mock };
@@ -95,7 +97,9 @@ describe('ContractsService', () => {
           ...data,
         })),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
+      chainOperation: { findUnique: jest.fn().mockResolvedValue(null) },
       verificationRequest: {
         // Two different people: each account verified with its own email.
         findMany: jest.fn().mockResolvedValue([
@@ -241,6 +245,63 @@ describe('ContractsService', () => {
         where: { id: 'job-1' },
         data: { status: 'open' },
       });
+      expect(prisma.application.update).toHaveBeenCalledWith({
+        where: { id: 'app-1' },
+        data: expect.objectContaining({ status: 'withdrawn' }),
+      });
+    });
+  });
+
+  describe('withdrawOffer', () => {
+    const offer = {
+      id: 'contract-1',
+      jobId: 'job-1',
+      applicationId: 'app-1',
+      startupId: 'startup-1',
+      specialistId: 'specialist-1',
+      status: 'awaiting_specialist',
+    };
+
+    it('removes the offer, and the application and the job wait again', async () => {
+      prisma.contract.findUnique.mockResolvedValue(offer);
+      prisma.contract.deleteMany.mockResolvedValue({ count: 1 });
+      await expect(service.withdrawOffer(startup, 'contract-1')).resolves.toEqual({
+        jobId: 'job-1',
+      });
+      expect(prisma.contract.deleteMany).toHaveBeenCalledWith({
+        where: { id: 'contract-1', status: 'awaiting_specialist', acceptedAt: null },
+      });
+      expect(prisma.application.update).toHaveBeenCalledWith({
+        where: { id: 'app-1' },
+        data: { status: 'submitted', decidedAt: null },
+      });
+      expect(prisma.job.update).toHaveBeenCalledWith({
+        where: { id: 'job-1' },
+        data: { status: 'open' },
+      });
+    });
+
+    it('is refused once the specialist accepted', async () => {
+      prisma.contract.findUnique.mockResolvedValue({ ...offer, status: 'awaiting_funding' });
+      await expect(service.withdrawOffer(startup, 'contract-1')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('is refused while the escrow is being deployed', async () => {
+      prisma.contract.findUnique.mockResolvedValue(offer);
+      prisma.contract.deleteMany.mockResolvedValue({ count: 0 });
+      await expect(service.withdrawOffer(startup, 'contract-1')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(prisma.job.update).not.toHaveBeenCalled();
+    });
+
+    it('is only for the startup that made it', async () => {
+      prisma.contract.findUnique.mockResolvedValue({ ...offer, startupId: 'someone-else' });
+      await expect(service.withdrawOffer(startup, 'contract-1')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
     });
   });
 
@@ -371,6 +432,22 @@ describe('ContractsService', () => {
 
     beforeEach(() => {
       prisma.contract.findUnique.mockResolvedValue(awaiting);
+    });
+
+    it('does not prepare a second deposit when the escrow already holds the money', async () => {
+      escrow.isFunded.mockResolvedValue(true);
+      await expect(service.prepareFund(startup, 'contract-1')).rejects.toThrow('already funded');
+      expect(prisma.contract.update).toHaveBeenCalledWith({
+        where: { id: 'contract-1' },
+        data: expect.objectContaining({ status: 'active' }),
+      });
+      expect(escrow.prepareFund).not.toHaveBeenCalled();
+    });
+
+    it('does not prepare a second deposit while one is being confirmed', async () => {
+      prisma.chainOperation.findUnique.mockResolvedValue({ txHash: 'pending' });
+      await expect(service.prepareFund(startup, 'contract-1')).rejects.toThrow('being confirmed');
+      expect(escrow.prepareFund).not.toHaveBeenCalled();
     });
 
     it('prepares the funding when the wallet can pay it', async () => {

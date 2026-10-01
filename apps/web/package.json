@@ -15,6 +15,7 @@
     "@pocket/shared": "workspace:*",
     "@pollar/core": "0.11.3",
     "@pollar/react": "0.11.3",
+    "@sentry/nextjs": "^11.1.0",
     "@stellar/stellar-sdk": "^17.1.0",
     "@tanstack/react-query": "^5.103.2",
     "@tanstack/react-query-devtools": "^5.103.2",

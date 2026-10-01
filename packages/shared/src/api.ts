@@ -324,6 +324,8 @@ export interface Application {
   decidedAt?: IsoDate | null;
   createdAt: IsoDate;
   updatedAt: IsoDate;
+  /** The terms sent for this application, once the startup made an offer. */
+  contract?: { id: string; status: ContractStatus } | null;
 }
 
 /** GET /jobs/:id/applications: what the startup sees about each applicant. */

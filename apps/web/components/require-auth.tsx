@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { EmptyState, Loading } from '@/components/page';
 import { Button } from '@/components/ui/button';
+import { homeFor } from '@/lib/home';
 
 const VERIFICATION_HINTS: Record<string, string> = {
   not_submitted:
@@ -30,9 +31,21 @@ export function RequireAuth({
   verified?: boolean;
   children: (user: User) => React.ReactNode;
 }) {
-  const { status, user } = useAuth();
+  const { status, user, refreshUser } = useAuth();
 
   if (status === 'loading') return <Loading />;
+
+  // Signed in, but Pocket cannot be reached: not the same as signed out.
+  if (status === 'unreachable') {
+    return (
+      <EmptyState title="Pocket cannot be reached right now">
+        <p>Your session is fine. Check your connection and try again in a moment.</p>
+        <Button className="mt-4" onClick={() => void refreshUser()}>
+          Try again
+        </Button>
+      </EmptyState>
+    );
+  }
 
   if (!user) {
     return (
@@ -47,7 +60,10 @@ export function RequireAuth({
   if (roles && !roles.includes(user.role)) {
     return (
       <EmptyState title="This page is not for your account">
-        It is only for {roles.join(' or ')} accounts.
+        <p>It is only for {roles.join(' or ')} accounts.</p>
+        <Button asChild className="mt-4">
+          <Link href={homeFor(user)}>Go to your home</Link>
+        </Button>
       </EmptyState>
     );
   }

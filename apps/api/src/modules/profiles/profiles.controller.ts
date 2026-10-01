@@ -12,6 +12,7 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
@@ -29,7 +30,10 @@ import { MAX_CV_BYTES, ProfilesService, type UploadedPdf } from './profiles.serv
 @ApiTags('profiles')
 @Controller('profiles')
 export class ProfilesController {
-  constructor(private readonly profiles: ProfilesService) {}
+  constructor(
+    private readonly profiles: ProfilesService,
+    private readonly config: ConfigService,
+  ) {}
 
   /** The profile of the signed-in user. */
   @ApiBearerAuth()
@@ -68,8 +72,11 @@ export class ProfilesController {
     @UploadedFile() file: UploadedPdf | undefined,
     @Req() req: Request,
   ) {
-    // The address the API answers on, as the client reached it.
-    const cvUrl = `${req.protocol}://${req.get('host')}/api/profiles/${user.sub}/cv`;
+    // The API's public address when it is configured; otherwise the one the
+    // client reached, which behind a misconfigured proxy may say http.
+    const base =
+      this.config.get<string>('apiPublicUrl') || `${req.protocol}://${req.get('host')}/api`;
+    const cvUrl = `${base}/profiles/${user.sub}/cv`;
     return this.profiles.saveCv(user, file, cvUrl);
   }
 

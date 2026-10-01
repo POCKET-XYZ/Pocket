@@ -18,7 +18,8 @@ import { disconnectWalletKit } from '@/components/tw-blocks/wallet-kit/wallet-ki
 import { checkLoginChallenge } from '@/lib/tx-check';
 import { connectWallet, signXdr } from '@/lib/wallet';
 
-type Status = 'loading' | 'signed-out' | 'signed-in';
+/** `unreachable`: there is a session but the API cannot be asked about it. */
+type Status = 'loading' | 'signed-out' | 'signed-in' | 'unreachable';
 
 /**
  * The first sign-in of a new wallet, waiting for the user to pick a role. A
@@ -91,18 +92,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (me.error instanceof ApiError && me.error.status === 401) setToken(null);
   }, [me.error]);
 
+  // Another account signed in (here or in another tab) or the session ended:
+  // nothing loaded for the previous one may show. A sign-in in this tab has
+  // just loaded its own user, which stays.
+  const previousToken = useRef(token);
+  const keepUser = useRef(false);
+  useEffect(() => {
+    const previous = previousToken.current;
+    previousToken.current = token;
+    if (previous === undefined || previous === token) return;
+    if (keepUser.current) {
+      keepUser.current = false;
+      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== ME[0] });
+    } else {
+      queryClient.clear();
+    }
+  }, [token, queryClient]);
+
   const status: Status =
     token === undefined || (token && me.isPending)
       ? 'loading'
       : token && me.data
         ? 'signed-in'
-        : 'signed-out';
+        : token && me.error && !(me.error instanceof ApiError && me.error.status === 401)
+          ? 'unreachable'
+          : 'signed-out';
 
   const finishLogin = useCallback(
     (response: LoginResponse) => {
       queryClient.clear();
       queryClient.setQueryData(ME, response.user);
       setPendingSignUp(null);
+      keepUser.current = true;
       setToken(response.accessToken);
     },
     [queryClient],
@@ -205,16 +226,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await loginWithPollar(role);
         return;
       }
-      finishLogin(
-        await api<LoginResponse>('/auth/login', {
+      const address = pendingSignUp.stellarAddress;
+      const login = (signedXdr: string) =>
+        api<LoginResponse>('/auth/login', {
           method: 'POST',
-          body: {
-            stellarAddress: pendingSignUp.stellarAddress,
-            signedXdr: pendingSignUp.signedXdr,
-            role,
-          },
-        }),
-      );
+          body: { stellarAddress: address, signedXdr, role },
+        });
+      try {
+        finishLogin(await login(pendingSignUp.signedXdr));
+      } catch (error) {
+        if (!(error instanceof ApiError && error.status === 401)) throw error;
+        // The signature is only good for a few minutes and the role took
+        // longer: the wallet signs a fresh challenge once more.
+        const challenge = await api<ChallengeResponse>('/auth/challenge', {
+          method: 'POST',
+          body: { stellarAddress: address },
+        });
+        checkLoginChallenge(challenge.xdr, challenge.networkPassphrase, address);
+        finishLogin(
+          await login(await signXdr(challenge.xdr, address, challenge.networkPassphrase)),
+        );
+      }
     },
     [pendingSignUp, finishLogin, loginWithPollar],
   );

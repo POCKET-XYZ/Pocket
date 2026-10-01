@@ -70,6 +70,7 @@ export async function api<T>(
     );
   }
 
+  signOutIfRejected(response.status, path, token);
   const text = await response.text();
   let payload: unknown = null;
   try {
@@ -85,6 +86,18 @@ export async function api<T>(
   return payload as T;
 }
 
+/**
+ * A session the API no longer accepts (expired, revoked, or the account was
+ * removed) signs the user out right away, instead of every page failing on
+ * its own. Only when the token sent is still the current one: a request that
+ * raced a new sign-in must not end the new session.
+ */
+function signOutIfRejected(status: number, path: string, token: string | null): void {
+  if (status === 401 && token && !path.startsWith('/auth/') && getToken() === token) {
+    setToken(null);
+  }
+}
+
 /** Send a file to the Pocket API as multipart form data, with the session token. */
 export async function upload<T>(path: string, field: string, file: File): Promise<T> {
   const token = getToken();
@@ -98,6 +111,7 @@ export async function upload<T>(path: string, field: string, file: File): Promis
   }).catch(() => {
     throw new ApiError(0, `Cannot reach the Pocket API at ${API_URL}.`);
   });
+  signOutIfRejected(response.status, path, token);
   const payload = (await response.json().catch(() => null)) as
     | { message?: string | string[]; code?: string }
     | null;

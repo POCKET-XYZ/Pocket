@@ -29,6 +29,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { api, errorMessage } from '@/lib/api';
+import { useMyProfile } from '@/lib/use-my-profile';
 import { CATEGORY_LABELS, date, isoInDays, usdc } from '@/lib/format';
 
 export default function JobPage() {
@@ -169,6 +170,7 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
     queryFn: () => api<MyApplication[]>('/applications/mine'),
   });
   const existing = mine.data?.find((application) => application.jobId === job.id);
+  const profile = useMyProfile();
 
   const apply = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -240,6 +242,26 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
     );
   }
 
+  // The startup reads the profile to choose: without one there is nothing to send.
+  if (profile.isLoading) return null;
+  if (!profile.data) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Create your profile to apply</CardTitle>
+          <CardDescription>
+            Startups read it to choose who to hire. It takes a few minutes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild className="w-full">
+            <Link href="/profile">Create profile</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -274,6 +296,8 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
               id="similarWorkUrl"
               name="similarWorkUrl"
               type="url"
+              pattern="https://.+"
+              title="A link that starts with https://"
               placeholder="https://"
             />
           </Field>

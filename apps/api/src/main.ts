@@ -1,3 +1,5 @@
+// Error reporting has to load before everything else.
+import './instrument';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
