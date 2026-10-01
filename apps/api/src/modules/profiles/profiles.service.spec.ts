@@ -98,7 +98,7 @@ describe('ProfilesService', () => {
       ...SPECIALIST_DTO,
       timezone: undefined,
       skills: undefined,
-    } as SpecialistProfileDto);
+    });
     const { update } = prisma.specialistProfile.upsert.mock.calls[0][0];
     expect(update).toMatchObject({ displayName: SPECIALIST_DTO.displayName });
     for (const key of ['skills', 'tools', 'languages', 'caseStudies']) {
