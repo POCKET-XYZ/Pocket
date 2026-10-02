@@ -98,8 +98,16 @@ function signOutIfRejected(status: number, path: string, token: string | null): 
   }
 }
 
-/** Send a file to the Pocket API as multipart form data, with the session token. */
-export async function upload<T>(path: string, field: string, file: File): Promise<T> {
+/**
+ * Send a file to the Pocket API as multipart form data, with the session token.
+ * `limit` is how the size limit of that route reads, for when it is exceeded.
+ */
+export async function upload<T>(
+  path: string,
+  field: string,
+  file: File,
+  limit = '4 MB',
+): Promise<T> {
   const token = getToken();
   const form = new FormData();
   form.append(field, file);
@@ -121,11 +129,35 @@ export async function upload<T>(path: string, field: string, file: File): Promis
       : payload?.message;
     throw new ApiError(
       response.status,
-      response.status === 413 ? 'The file is too big. The limit is 4 MB' : (message ?? response.statusText),
+      response.status === 413
+        ? `The file is too big. The limit is ${limit}`
+        : (message ?? response.statusText),
       payload?.code,
     );
   }
   return payload as T;
+}
+
+/**
+ * Download a private file from the Pocket API with the session token. Files
+ * that need a session cannot be plain links, so the page fetches them and
+ * shows or saves the result.
+ */
+export async function download(path: string): Promise<Blob> {
+  const token = getToken();
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+  }).catch(() => {
+    throw new ApiError(0, `Cannot reach the Pocket API at ${API_URL}.`);
+  });
+  signOutIfRejected(response.status, path, token);
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+    throw new ApiError(response.status, payload?.message ?? response.statusText);
+  }
+  return response.blob();
 }
 
 /** A readable message for any error, for toasts and inline alerts. */

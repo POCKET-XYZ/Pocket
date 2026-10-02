@@ -12,7 +12,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 import type { PreparedTransaction } from '../stellar/chain-operations.service';
 import { StellarService } from '../stellar/stellar.service';
 import { JobsService } from '../jobs/jobs.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { contactEmails } from '../users/contact-emails';
 import { CreateContractDto } from './dto/create-contract.dto';
+import { DELIVERABLE_REPORT } from './deliverable-report';
 import { EscrowService } from './escrow.service';
 
 const DETAIL_INCLUDE = {
@@ -24,6 +27,7 @@ const DETAIL_INCLUDE = {
       deadline: true,
       status: true,
       revisionRounds: true,
+      kpis: { orderBy: { position: 'asc' } },
     },
   },
   startup: {
@@ -43,7 +47,7 @@ const DETAIL_INCLUDE = {
   milestones: {
     orderBy: { position: 'asc' },
     include: {
-      deliverables: { orderBy: { version: 'asc' } },
+      deliverables: { orderBy: { version: 'asc' }, include: DELIVERABLE_REPORT },
       disputes: { orderBy: { createdAt: 'asc' } },
     },
   },
@@ -71,6 +75,7 @@ export class ContractsService {
     private readonly jobs: JobsService,
     private readonly escrow: EscrowService,
     private readonly stellar: StellarService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -109,7 +114,7 @@ export class ContractsService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const created = await this.prisma.$transaction(async (tx) => {
       // Claim the job and the application together: of two offers sent at
       // once for the same job, only one finds it still open.
       const job = await tx.job.updateMany({
@@ -141,6 +146,12 @@ export class ContractsService {
         include: { milestones: { orderBy: { position: 'asc' } } },
       });
     });
+    this.notifications.notifyUsers([created.specialistId], {
+      type: 'offer_received',
+      contractId: created.id,
+      jobTitle: job.title,
+    });
+    return created;
   }
 
   /** Contracts the signed-in user is a party to, newest first. */
@@ -304,6 +315,11 @@ export class ContractsService {
         data: { status: 'rejected', decidedAt: new Date() },
       }),
     ]);
+    this.notifications.notifyUsers([accepted.startupId], {
+      type: 'terms_accepted',
+      contractId,
+      jobTitle: full.job.title,
+    });
     return accepted;
   }
 
@@ -360,11 +376,25 @@ export class ContractsService {
     return this.activate(contractId);
   }
 
-  private activate(contractId: string): Promise<Contract> {
-    return this.prisma.contract.update({
-      where: { id: contractId },
+  /**
+   * Only the call that moves the contract out of awaiting_funding tells the
+   * specialist, so two syncs at once do not send two emails.
+   */
+  private async activate(contractId: string): Promise<Contract> {
+    const activated = await this.prisma.contract.updateMany({
+      where: { id: contractId, status: 'awaiting_funding' },
       data: { status: 'active', fundedAt: new Date() },
     });
+    const contract = await this.prisma.contract.findUniqueOrThrow({
+      where: { id: contractId },
+    });
+    if (activated.count === 1) {
+      this.notifications.notifyUsers([contract.specialistId], {
+        type: 'escrow_funded',
+        contractId,
+      });
+    }
+    return contract;
   }
 
   private async specialistContract(
@@ -441,17 +471,8 @@ export class ContractsService {
   }
 
   /** Contact email from each user's approved verification. */
-  private async contactEmails(userIds: string[]): Promise<Map<string, string>> {
-    const requests = await this.prisma.verificationRequest.findMany({
-      where: { userId: { in: userIds }, status: 'approved' },
-      orderBy: { submittedAt: 'desc' },
-      select: { userId: true, contactEmail: true },
-    });
-    const emails = new Map<string, string>();
-    for (const request of requests) {
-      if (!emails.has(request.userId)) emails.set(request.userId, request.contactEmail);
-    }
-    return emails;
+  private contactEmails(userIds: string[]): Promise<Map<string, string>> {
+    return contactEmails(this.prisma, userIds);
   }
 }
 

@@ -7,6 +7,7 @@ import {
   FeeBumpTransaction,
   Horizon,
   Keypair,
+  Memo,
   Networks,
   NotFoundError,
   Operation,
@@ -15,6 +16,8 @@ import {
 } from '@stellar/stellar-sdk';
 
 import { securityEvent } from '../../common/security/security-log';
+import type { StellarNetwork } from '../../config/configuration';
+import { usdcPaymentsOf, type UsdcPaymentRecord } from './payment-history';
 import { assertPlatformTx, type PlatformTxPolicy } from './platform-tx-policy';
 
 /** Whether an address can receive USDC. */
@@ -29,10 +32,17 @@ const BASE_RESERVE_XLM = '0.5';
 /** How long a user has to sign a transaction Pocket prepared for them. */
 const SIGNING_WINDOW_SECONDS = 300;
 
+/**
+ * How many of the account's latest payment records are read to find its USDC
+ * payments. Horizon's maximum page; older ones are left to the explorer.
+ */
+const PAYMENT_RECORDS_SCANNED = 200;
+
 /** Network access shared by every on-chain operation. */
 @Injectable()
 export class StellarService implements OnApplicationBootstrap {
   private readonly logger = new Logger(StellarService.name);
+  readonly network: StellarNetwork;
   readonly networkPassphrase: string;
   readonly usdc: Asset;
   readonly usdcIssuer: string;
@@ -40,10 +50,10 @@ export class StellarService implements OnApplicationBootstrap {
   private readonly horizon: Horizon.Server;
 
   constructor(config: ConfigService) {
+    this.network =
+      config.get<string>('stellar.network') === 'mainnet' ? 'mainnet' : 'testnet';
     this.networkPassphrase =
-      config.get<string>('stellar.network') === 'mainnet'
-        ? Networks.PUBLIC
-        : Networks.TESTNET;
+      this.network === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
     this.usdcIssuer = config.getOrThrow<string>('stellar.usdcIssuer');
     this.usdc = new Asset('USDC', this.usdcIssuer);
     this.platform = Keypair.fromSecret(
@@ -53,15 +63,23 @@ export class StellarService implements OnApplicationBootstrap {
   }
 
   /**
+   * The platform account receives Pocket's fee in USDC on every payout, and
    * Trustless Work refuses to deploy an escrow whose platform account does not
-   * trust USDC, so say so at boot instead of on the first hire.
+   * trust USDC. Without the trustline no hire can start and no fee can be paid,
+   * so raise an alert at boot instead of failing on the first hire. The
+   * platform monitor keeps checking while the API runs.
    */
   async onApplicationBootstrap(): Promise<void> {
     try {
       const readiness = await this.usdcReadiness(this.platformAddress);
       if (readiness !== 'ready') {
-        this.logger.warn(
+        this.logger.error(
           `Platform account ${this.platformAddress} is not ready for USDC (${readiness}). Run: bun run stellar:setup`,
+        );
+        securityEvent(
+          'platform_usdc_trustline_missing',
+          { account: this.platformAddress, issuer: this.usdcIssuer, readiness },
+          'alert',
         );
       }
     } catch (error) {
@@ -202,6 +220,48 @@ export class StellarService implements OnApplicationBootstrap {
       .setTimeout(SIGNING_WINDOW_SECONDS)
       .build()
       .toXDR();
+  }
+
+  /**
+   * Unsigned transaction that pays USDC from `source` to `destination`, with
+   * an optional text memo. Nothing else: one payment operation.
+   */
+  async buildUsdcPayment(
+    source: string,
+    destination: string,
+    amount: string,
+    memo?: string,
+  ): Promise<string> {
+    const account = await this.horizon.loadAccount(source);
+    const builder = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: this.networkPassphrase,
+    }).addOperation(Operation.payment({ destination, asset: this.usdc, amount }));
+    if (memo) builder.addMemo(Memo.text(memo));
+    return builder.setTimeout(SIGNING_WINDOW_SECONDS).build().toXDR();
+  }
+
+  /**
+   * The latest USDC that came into or left the account, newest first: plain
+   * payments, path payments and escrow transfers. Empty when the account is
+   * not on the network.
+   */
+  async usdcPayments(address: string, limit: number): Promise<UsdcPaymentRecord[]> {
+    try {
+      const page = await this.horizon
+        .payments()
+        .forAccount(address)
+        .order('desc')
+        .limit(PAYMENT_RECORDS_SCANNED)
+        .call();
+      return usdcPaymentsOf(page.records, address, this.usdc.getCode(), this.usdcIssuer).slice(
+        0,
+        limit,
+      );
+    } catch (error) {
+      if (error instanceof NotFoundError) return [];
+      throw error;
+    }
   }
 
   /** Submit a signed classic transaction straight to Horizon. */

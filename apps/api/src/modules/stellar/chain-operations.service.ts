@@ -127,9 +127,9 @@ export class ChainOperationsService {
     }
 
     try {
-      if (scope.kind === 'trustline') {
+      if (scope.kind === 'trustline' || scope.kind === 'payment') {
         // Horizon answers once the transaction is in a ledger, or with its error.
-        await this.stellar.submitToHorizon(signedXdr);
+        await this.submitClassic(signedXdr);
       } else {
         await this.trustlessWork.send(signedXdr);
         await this.confirmOnChain(txHash);
@@ -190,6 +190,29 @@ export class ChainOperationsService {
         await this.markFailed(operation.txHash, error);
       }
       throw error;
+    }
+  }
+
+  /**
+   * Send a classic transaction through Horizon. A refusal moved nothing and
+   * says why in words; a timeout may still land, so it is not a failure.
+   */
+  private async submitClassic(signedXdr: string): Promise<void> {
+    try {
+      await this.stellar.submitToHorizon(signedXdr);
+    } catch (error) {
+      const response = (error as { response?: HorizonErrorResponse }).response;
+      if (response?.status === 504) throw new NotYetConfirmed();
+      const codes = response?.data?.extras?.result_codes;
+      if (!codes) throw error;
+      const all = [codes.transaction, ...(codes.operations ?? [])].filter(
+        (code): code is string => Boolean(code) && code !== 'op_success',
+      );
+      const reason = all.map((code) => REFUSALS[code]).find(Boolean) ?? all.join(', ');
+      throw new BadRequestException(
+        `The network refused the transaction: ${reason}. Nothing moved`,
+        { cause: error },
+      );
     }
   }
 
@@ -264,11 +287,11 @@ export class ChainOperationsService {
 
 /**
  * The key that makes an escrow step unique while it is confirmed. Deploy and
- * fund happen once per contract; the rest once per milestone. Trustlines are
- * per user and can be sent again, so they have none.
+ * fund happen once per contract; the rest once per milestone. Trustlines and
+ * payments are per user and can be sent again, so they have none.
  */
 export function stepKeyOf(scope: OperationScope): string | null {
-  if (scope.kind === 'trustline') return null;
+  if (scope.kind === 'trustline' || scope.kind === 'payment') return null;
   const target =
     scope.kind === 'deploy' || scope.kind === 'fund'
       ? scope.contractId
@@ -292,6 +315,27 @@ async function claimStep<T>(scope: OperationScope, claim: () => Promise<T>): Pro
     throw error;
   }
 }
+
+/** What Horizon answers when it refuses a transaction. */
+interface HorizonErrorResponse {
+  status?: number;
+  data?: { extras?: { result_codes?: { transaction?: string; operations?: string[] } } };
+}
+
+/** Horizon result codes a user can act on, in words. */
+const REFUSALS: Record<string, string> = {
+  op_underfunded: 'your wallet does not have enough USDC',
+  op_no_trust: 'the destination does not accept USDC',
+  op_not_authorized: 'the destination is not allowed to hold USDC',
+  op_no_destination: 'the destination account does not exist on Stellar',
+  op_line_full: 'the destination cannot hold that much USDC',
+  op_src_no_trust: 'your wallet does not trust USDC',
+  tx_bad_seq: 'your wallet sent another transaction in the meantime, try again',
+  tx_too_late: 'it expired before it was sent, try again',
+  tx_insufficient_balance: 'your wallet does not have enough XLM for the network fee',
+  tx_insufficient_fee: 'the network fee was too low, try again',
+  tx_bad_auth: 'it was not signed by your wallet',
+};
 
 function isUniqueViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';

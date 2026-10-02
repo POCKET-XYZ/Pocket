@@ -213,6 +213,50 @@ describe('ChainOperationsService', () => {
     expect(trustlessWork.send).not.toHaveBeenCalled();
   });
 
+  it('sends payments straight to Horizon', async () => {
+    await service.submitSigned({ kind: 'payment' }, 'signed-xdr', 'user-1');
+    expect(stellar.submitToHorizon).toHaveBeenCalledWith('signed-xdr');
+    expect(trustlessWork.send).not.toHaveBeenCalled();
+    expect(prisma.chainOperation.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ kind: 'payment', signerId: 'user-1' }),
+        data: expect.objectContaining({ stepKey: null }),
+      }),
+    );
+  });
+
+  it('says in words why Horizon refused a payment, and frees it', async () => {
+    stellar.submitToHorizon.mockRejectedValue(
+      Object.assign(new Error('Transaction Failed'), {
+        response: {
+          status: 400,
+          data: {
+            extras: { result_codes: { transaction: 'tx_failed', operations: ['op_no_trust'] } },
+          },
+        },
+      }),
+    );
+    await expect(
+      service.submitSigned({ kind: 'payment' }, 'signed-xdr', 'user-1'),
+    ).rejects.toThrow(
+      'The network refused the transaction: the destination does not accept USDC. Nothing moved',
+    );
+    expect(prisma.chainOperation.update).toHaveBeenCalledWith({
+      where: { txHash: 'hash-1' },
+      data: expect.objectContaining({ status: 'failed' }),
+    });
+  });
+
+  it('does not count a payment Horizon timed out on as failed: it may still land', async () => {
+    stellar.submitToHorizon.mockRejectedValue(
+      Object.assign(new Error('Timeout'), { response: { status: 504 } }),
+    );
+    await expect(
+      service.submitSigned({ kind: 'payment' }, 'signed-xdr', 'user-1'),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(prisma.chainOperation.update).not.toHaveBeenCalled();
+  });
+
   it('marks the operation failed when the network refuses it', async () => {
     trustlessWork.send.mockRejectedValue(new ServiceUnavailableException('boom'));
     await expect(
@@ -405,6 +449,7 @@ describe('ChainOperationsService', () => {
         'dispute:m-1',
       );
       expect(stepKeyOf({ kind: 'trustline' })).toBeNull();
+      expect(stepKeyOf({ kind: 'payment' })).toBeNull();
       expect(() => stepKeyOf({ kind: 'approve', contractId: 'c-1' })).toThrow();
     });
   });

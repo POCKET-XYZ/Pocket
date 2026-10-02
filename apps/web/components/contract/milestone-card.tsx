@@ -1,6 +1,13 @@
 'use client';
 
-import type { ContractDetail, Dispute, User } from '@pocket/shared';
+import type {
+  ContractDetail,
+  Deliverable,
+  DeliveryInput,
+  Dispute,
+  JobKpi,
+  User,
+} from '@pocket/shared';
 import { ExternalLinkIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -17,9 +24,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AttachFileButton,
+  ATTACHMENT_TYPES,
+  KpiReport,
+  attachmentProblem,
+  kpiTarget,
+} from '@/components/contract/kpi-report';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { api } from '@/lib/api';
+import { api, errorMessage, upload } from '@/lib/api';
+import { toast } from 'sonner';
 import { date, dateTime, usdc } from '@/lib/format';
 import { useContractAction } from '@/lib/use-contract-action';
 import { useSigner } from '@/components/use-signer';
@@ -46,6 +61,7 @@ export function MilestoneCard({
   const roundsLeft = milestone.revisionsUsed < contract.job.revisionRounds;
   const active = contract.status === 'active';
   const lastDispute: Dispute | undefined = milestone.disputes.at(-1);
+  const latest: Deliverable | undefined = milestone.deliverables.at(-1);
   const signer = useSigner();
 
   const approve = useContractAction(
@@ -127,6 +143,7 @@ export function MilestoneCard({
                   {deliverable.note ? (
                     <p className="mt-1 text-foreground/80">{deliverable.note}</p>
                   ) : null}
+                  <KpiReport kpis={contract.job.kpis} deliverable={deliverable} />
                   {deliverable.feedback ? (
                     <p className="mt-1 rounded-lg bg-yellow/25 px-2 py-1 text-navy">
                       Changes asked: {deliverable.feedback}
@@ -149,7 +166,15 @@ export function MilestoneCard({
           {active &&
           isSpecialist &&
           (milestone.status === 'pending' || milestone.status === 'changes_requested') ? (
-            <DeliverDialog contractId={contract.id} milestoneId={milestone.id} />
+            <DeliverDialog
+              contractId={contract.id}
+              milestoneId={milestone.id}
+              kpis={contract.job.kpis}
+            />
+          ) : null}
+
+          {active && isSpecialist && milestone.status === 'delivered' && latest ? (
+            <AttachFileButton contractId={contract.id} deliverable={latest} />
           ) : null}
 
           {active && isStartup && milestone.status === 'delivered' ? (
@@ -222,24 +247,75 @@ export function MilestoneCard({
 function DeliverDialog({
   contractId,
   milestoneId,
+  kpis,
 }: {
   contractId: string;
   milestoneId: string;
+  kpis: JobKpi[];
 }) {
   const [open, setOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
   const deliver = useContractAction(
     contractId,
-    (body: { url: string; note?: string }) =>
-      api(`/milestones/${milestoneId}/deliveries`, { method: 'POST', body }),
+    async ({ body, file }: { body: DeliveryInput; file: File | null }) => {
+      const deliverable = await api<Deliverable>(
+        `/milestones/${milestoneId}/deliveries`,
+        {
+          method: 'POST',
+          body,
+        },
+      );
+      if (!file) return;
+      try {
+        await upload(`/deliverables/${deliverable.id}/attachment`, 'file', file, '5 MB');
+      } catch (error) {
+        // The delivery itself went through; only the file is missing.
+        toast.error(
+          `Delivered, but the file did not upload: ${errorMessage(error)}. Attach it again from the milestone.`,
+        );
+      }
+    },
     'Delivered. The startup will review it.',
   );
 
+  function onFileChosen(event: React.ChangeEvent<HTMLInputElement>) {
+    const chosen = event.target.files?.[0] ?? null;
+    const problem = chosen ? attachmentProblem(chosen) : null;
+    if (problem) {
+      toast.error(problem);
+      event.target.value = '';
+      setFile(null);
+      return;
+    }
+    setFile(chosen);
+  }
+
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const { url, note } = formValues(event.currentTarget);
+    const values = formValues(event.currentTarget);
+    const body: DeliveryInput = {
+      url: values.url,
+      ...(values.note ? { note: values.note } : {}),
+      ...(kpis.length > 0
+        ? {
+            results: kpis.map((kpi) => ({
+              kpiId: kpi.id,
+              value: values[`result-${kpi.id}`],
+              ...(values[`comment-${kpi.id}`]
+                ? { comment: values[`comment-${kpi.id}`] }
+                : {}),
+            })),
+          }
+        : {}),
+    };
     deliver.mutate(
-      { url, ...(note ? { note } : {}) },
-      { onSuccess: () => setOpen(false) },
+      { body, file },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          setFile(null);
+        },
+      },
     );
   }
 
@@ -248,11 +324,14 @@ function DeliverDialog({
       <DialogTrigger asChild>
         <Button>Deliver</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Deliver this milestone</DialogTitle>
           <DialogDescription>
             Share a link to the work: a document, folder, report or campaign.
+            {kpis.length > 0
+              ? ' Then report where each KPI stands, so the startup can compare it with the target.'
+              : ''}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-3">
@@ -263,12 +342,63 @@ function DeliverDialog({
             title="A link that starts with https://"
             required
             placeholder="https://"
+            aria-label="Link to the work"
           />
           <Textarea
             name="note"
             maxLength={2000}
             placeholder="A note for the startup (optional)"
+            aria-label="Note for the startup"
           />
+
+          {kpis.length > 0 ? (
+            <fieldset className="space-y-3">
+              <legend className="text-sm font-semibold text-navy">Results</legend>
+              {kpis.map((kpi) => (
+                <div key={kpi.id} className="space-y-1.5 rounded-xl bg-muted/50 p-3">
+                  <label
+                    htmlFor={`result-${kpi.id}`}
+                    className="block text-sm font-medium text-navy"
+                  >
+                    {kpi.name}
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      Target: {kpiTarget(kpi)}
+                    </span>
+                  </label>
+                  <Input
+                    id={`result-${kpi.id}`}
+                    name={`result-${kpi.id}`}
+                    required
+                    maxLength={120}
+                    placeholder='Result, e.g. 48, or "Not measurable yet"'
+                  />
+                  <Input
+                    name={`comment-${kpi.id}`}
+                    maxLength={500}
+                    placeholder="Comment (optional)"
+                    aria-label={`Comment on ${kpi.name}`}
+                  />
+                </div>
+              ))}
+            </fieldset>
+          ) : null}
+
+          <div className="space-y-1">
+            <label htmlFor="attachment" className="block text-sm font-medium text-navy">
+              A file backing it (optional)
+            </label>
+            <Input
+              id="attachment"
+              type="file"
+              accept={ATTACHMENT_TYPES.join(',')}
+              onChange={onFileChosen}
+            />
+            <p className="text-xs text-muted-foreground">
+              A PDF report or a screenshot (PNG, JPEG or WebP), up to 5 MB. Only the
+              startup and Pocket managers can open it.
+            </p>
+          </div>
+
           <DialogFooter>
             <Button type="submit" disabled={deliver.isPending}>
               {deliver.isPending ? 'Sending...' : 'Send delivery'}

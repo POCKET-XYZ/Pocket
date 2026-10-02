@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import type { VerificationRequest, VerificationStatus } from '@prisma/client';
 import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PollarWalletsService } from '../pollar/pollar-wallets.service';
 
 /** The most requests one page of the queue shows. */
@@ -13,6 +14,7 @@ export class ManagerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly wallets: PollarWalletsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Review queue, oldest first so nobody waits forever. */
@@ -36,6 +38,7 @@ export class ManagerService {
    */
   async approve(requestId: string, managerId: string, note?: string) {
     const reviewed = await this.decide(requestId, managerId, 'approved', note);
+    this.notifications.notifyEmail(reviewed.contactEmail, { type: 'verification_approved' });
     await this.wallets.activate(reviewed.userId);
     return reviewed;
   }
@@ -45,7 +48,13 @@ export class ManagerService {
     if (!note?.trim()) {
       throw new BadRequestException('A rejection must explain why');
     }
-    return await this.decide(requestId, managerId, 'rejected', note);
+    const reviewed = await this.decide(requestId, managerId, 'rejected', note);
+    // The request is not approved, so the address comes from it directly.
+    this.notifications.notifyEmail(reviewed.contactEmail, {
+      type: 'verification_rejected',
+      reason: note.trim(),
+    });
+    return reviewed;
   }
 
   private async decide(

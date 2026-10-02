@@ -78,6 +78,39 @@ export interface WalletStatus {
    * on the network yet. Every escrow step its owner signs pays a small fee.
    */
   xlmForFees: string | null;
+  /**
+   * USDC the wallet can send right now (its balance minus what open offers
+   * lock), with up to 7 decimals. Null when the wallet does not hold USDC yet.
+   */
+  usdcSpendable: string | null;
+}
+
+/** POST /wallet/usdc-payment/prepare */
+export interface UsdcPaymentRequest {
+  /** The Stellar account (G...) that receives the USDC. */
+  destination: string;
+  /** Decimal string, more than zero, up to 7 decimals. */
+  amount: string;
+  /** Text memo, up to 28 bytes. Exchanges use it to tell deposits apart. */
+  memo?: string;
+}
+
+/** POST /wallet/usdc-payment/submit */
+export interface UsdcPaymentResult {
+  txHash: string;
+  amount: string;
+  destination: string;
+}
+
+/** One USDC movement in or out of the wallet, GET /wallet/usdc-payments */
+export interface UsdcPaymentRecord {
+  id: string;
+  txHash: string;
+  createdAt: IsoDate;
+  direction: 'in' | 'out';
+  /** Who paid or got paid: an account (G...) or a contract such as an escrow (C...). */
+  counterparty: string;
+  amount: string;
 }
 
 /** Error codes the API returns in the `code` field of a 4xx body. */
@@ -243,6 +276,29 @@ export interface JobInput {
   startupProvides?: string;
   /** The payment plan. Each milestone says what it has to meet to be approved. */
   milestones: JobMilestoneInput[];
+  /**
+   * What the work will be measured on, up to 10. Every delivery reports a
+   * result for each one.
+   */
+  kpis?: JobKpiInput[];
+}
+
+/** Something the work is measured on, e.g. { name: 'Qualified leads', target: '50 per month' }. */
+export interface JobKpiInput {
+  name: string;
+  /** Free text, e.g. "50 per month". */
+  target?: string;
+  /** e.g. "leads", "%". */
+  unit?: string;
+}
+
+export interface JobKpi {
+  id: string;
+  /** Order in which the startup listed it. */
+  position: number;
+  name: string;
+  target: string | null;
+  unit: string | null;
 }
 
 /** A milestone as the startup posts it with the job. */
@@ -278,6 +334,8 @@ export interface Job {
   contentLanguage?: string | null;
   startupProvides?: string | null;
   milestones: JobMilestone[];
+  /** What the work is measured on. Empty when the startup set none. */
+  kpis: JobKpi[];
   status: JobStatus;
   createdAt: IsoDate;
   updatedAt: IsoDate;
@@ -399,6 +457,49 @@ export interface Milestone {
   paidAt: IsoDate | null;
 }
 
+/** POST /milestones/:id/deliveries */
+export interface DeliveryInput {
+  /** Link to the work. */
+  url: string;
+  note?: string;
+  /** One result for each KPI of the job. Required when the job has KPIs. */
+  results?: KpiResultInput[];
+}
+
+/** What a delivery reports for one of the job's KPIs. */
+export interface KpiResultInput {
+  kpiId: string;
+  /** Free text, short: "62", "48 of 50", "Not measurable yet". */
+  value: string;
+  comment?: string;
+}
+
+export interface KpiResult {
+  id: string;
+  deliverableId: string;
+  kpiId: string;
+  value: string;
+  comment: string | null;
+}
+
+/** The types a delivery's file can be. Never SVG. */
+export type AttachmentContentType =
+  | 'application/pdf'
+  | 'image/png'
+  | 'image/jpeg'
+  | 'image/webp';
+
+/**
+ * The file backing a delivery's report, described. Its bytes are at
+ * GET /deliverables/:id/attachment, for the contract's parties and managers.
+ */
+export interface DeliverableAttachment {
+  contentType: AttachmentContentType;
+  /** Bytes. */
+  size: number;
+  uploadedAt: IsoDate;
+}
+
 export interface Deliverable {
   id: string;
   milestoneId: string;
@@ -407,6 +508,10 @@ export interface Deliverable {
   note: string | null;
   /** What the startup asked to change on this version. */
   feedback: string | null;
+  /** The result reported for each KPI of the job, empty when it has none. */
+  kpiResults: KpiResult[];
+  /** The file backing the report, if the specialist attached one. */
+  attachment: DeliverableAttachment | null;
   createdAt: IsoDate;
 }
 
@@ -452,7 +557,10 @@ export interface ContractSummary extends Contract {
 
 /** GET /contracts/:id */
 export interface ContractDetail extends Contract {
-  job: Pick<Job, 'id' | 'title' | 'category' | 'deadline' | 'status' | 'revisionRounds'>;
+  job: Pick<
+    Job,
+    'id' | 'title' | 'category' | 'deadline' | 'status' | 'revisionRounds' | 'kpis'
+  >;
   startup: {
     id: string;
     stellarAddress: string;
@@ -482,7 +590,13 @@ export interface DisputeListItem extends Dispute {
 /** GET /disputes/:id */
 export interface DisputeDetail extends Dispute {
   milestone: Milestone & {
-    contract: { id: string; startupId: string; specialistId: string };
+    contract: {
+      id: string;
+      startupId: string;
+      specialistId: string;
+      /** What the work is measured on, to read each delivery's report. */
+      job: Pick<Job, 'kpis'>;
+    };
     deliverables: Deliverable[];
   };
   evidence: (DisputeEvidence & { author: { id: string; role: UserRole } })[];
@@ -494,4 +608,101 @@ export interface DisputeResolution {
   /** Split only: USDC the specialist receives. The startup gets the rest. */
   specialistAmount?: number;
   note: string;
+}
+
+// ---------------------------------------------------------------------------
+// Manager metrics
+// ---------------------------------------------------------------------------
+
+/** Window the metrics dashboard looks at: the last 7, 30 or 90 days, or all time. */
+export const MetricsPeriod = {
+  Week: '7d',
+  Month: '30d',
+  Quarter: '90d',
+  All: 'all',
+} as const;
+export type MetricsPeriod = (typeof MetricsPeriod)[keyof typeof MetricsPeriod];
+
+/** One week of the 12-week series. Weeks start on Monday, 00:00 UTC. */
+export interface MetricsWeek {
+  weekStart: IsoDate;
+  /** Startups and specialists who signed up that week. */
+  newUsers: number;
+  jobsPosted: number;
+  /** USDC that came into escrow: contracts that became active that week. */
+  funded: string;
+  /** USDC paid to specialists: milestones released plus their dispute shares. */
+  released: string;
+}
+
+/**
+ * GET /manager/metrics?period=30d. "In the period" counts happened inside the
+ * window; the others are the state right now. USDC amounts are decimal strings.
+ */
+export interface ManagerMetrics {
+  period: MetricsPeriod;
+  /** Start of the window, null for all time. */
+  since: IsoDate | null;
+  generatedAt: IsoDate;
+  users: {
+    startups: { total: number; newInPeriod: number };
+    specialists: { total: number; newInPeriod: number };
+    verification: {
+      /** Requests waiting for a manager right now. */
+      pending: number;
+      /** Requests decided in the period. */
+      approved: number;
+      rejected: number;
+      /** Median hours from submission to approval, for approvals in the period. */
+      medianHoursToApprove: number | null;
+    };
+  };
+  marketplace: {
+    jobsPosted: number;
+    /** Jobs open for applications right now. */
+    openJobs: number;
+    /** Applications sent in the period, to any job. */
+    applications: number;
+    /** Applications per job, over the jobs posted in the period. */
+    averageApplicationsPerJob: number | null;
+    offers: {
+      sent: number;
+      accepted: number;
+      declined: number;
+      /**
+       * Always null for now: a withdrawn offer is deleted and leaves nothing
+       * behind to count.
+       */
+      withdrawn: number | null;
+      /** Offers waiting for the specialist's answer right now. */
+      awaitingReply: number;
+    };
+    /** Median days from posting a job to its first accepted offer. */
+    medianDaysToFirstHire: number | null;
+  };
+  money: {
+    /** USDC that came into escrow: contracts that became active in the period. */
+    funded: string;
+    contractsFunded: number;
+    /** Average amount of the contracts funded in the period. */
+    averageContract: string | null;
+    /** Paid to specialists, before Trustless Work's fee. */
+    released: string;
+    /** Returned to startups by resolved disputes. */
+    refunded: string;
+    /** Held right now by the escrows of active contracts. */
+    inEscrow: string;
+    /** POCKET_FEE_PERCENT of what was released in the period. */
+    pocketFee: string;
+  };
+  health: {
+    openDisputes: number;
+    disputesResolved: number;
+    /** Milestones of active contracts past their due date and not yet approved. */
+    overdueMilestones: number;
+    /** Contracts accepted more than 3 days ago and still not funded. */
+    staleAwaitingFunding: number;
+  };
+  /** The last 12 weeks, oldest first, the current week last. */
+  weekly: MetricsWeek[];
 }

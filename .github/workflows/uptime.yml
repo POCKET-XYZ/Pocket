@@ -1,0 +1,89 @@
+name: Uptime
+
+# Checks that the API and the web answer, and posts to Discord when one does
+# not. No account anywhere else: GitHub runs it on a schedule.
+#
+# Set in the repository settings (Settings > Secrets and variables > Actions):
+# - Variable UPTIME_API_URL: the API health check, e.g. https://api.example.com/api/health
+# - Variable UPTIME_WEB_URL: the web login page, e.g. https://app.example.com/login
+# - Secret UPTIME_DISCORD_WEBHOOK: a Discord incoming webhook for the alerts
+# Each one left unset is skipped.
+#
+# GitHub runs schedules on the default branch only, sometimes a few minutes
+# late, and pauses them after 60 days without activity on a public repository.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check the API and the web
+        env:
+          API_URL: ${{ vars.UPTIME_API_URL }}
+          WEB_URL: ${{ vars.UPTIME_WEB_URL }}
+          DISCORD_WEBHOOK: ${{ secrets.UPTIME_DISCORD_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -u
+
+          # Prints the HTTP status, or 000 when nothing answered in time.
+          status_of() {
+            curl -sS -o /dev/null -L --max-time 20 -w '%{http_code}' "$1" 2>/dev/null || true
+          }
+
+          is_up() {
+            case "$1" in 2??) return 0 ;; *) return 1 ;; esac
+          }
+
+          failures=""
+          for pair in "API|$API_URL" "Web|$WEB_URL"; do
+            name="${pair%%|*}"
+            url="${pair#*|}"
+            if [ -z "$url" ]; then
+              echo "::notice::$name URL is not set, skipped"
+              continue
+            fi
+            code="$(status_of "$url")"
+            if ! is_up "$code"; then
+              echo "$name answered $code, checking again in 30 seconds"
+              sleep 30
+              code="$(status_of "$url")"
+            fi
+            if is_up "$code"; then
+              echo "$name is up ($code): $url"
+            else
+              echo "::error::$name is down ($code): $url"
+              failures="${failures}- ${name} is down: ${url} answered HTTP ${code}"$'\n'
+            fi
+          done
+
+          if [ -z "$failures" ]; then
+            exit 0
+          fi
+
+          if [ -n "$DISCORD_WEBHOOK" ]; then
+            message="$(printf 'Pocket uptime alert\n%s(000 means no answer within 20 seconds)\n%s' "$failures" "$RUN_URL")"
+            # Discord carries the alert; the run passes so GitHub does not
+            # also email every five minutes. Only when Discord cannot be
+            # reached does the run fail, so the alert still gets out.
+            if jq -n --arg content "$message" '{content: $content}' \
+              | curl -sSf -o /dev/null --max-time 15 -H 'content-type: application/json' -d @- "$DISCORD_WEBHOOK"; then
+              exit 0
+            fi
+            echo "::warning::Could not post the alert to Discord"
+          else
+            echo "::warning::UPTIME_DISCORD_WEBHOOK is not set, no alert sent"
+          fi
+          exit 1

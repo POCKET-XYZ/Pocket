@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -25,7 +26,13 @@ import { BrowseSpecialistsDto } from './dto/browse-specialists.dto';
 import { BrowseStartupsDto } from './dto/browse-startups.dto';
 import { SpecialistProfileDto } from './dto/specialist-profile.dto';
 import { StartupProfileDto } from './dto/startup-profile.dto';
-import { MAX_CV_BYTES, ProfilesService, type UploadedPdf } from './profiles.service';
+import {
+  MAX_CV_BYTES,
+  MAX_LOGO_BYTES,
+  ProfilesService,
+  type UploadedPdf,
+} from './profiles.service';
+import type { UploadedBytes } from '../../common/uploads/file-type';
 
 @ApiTags('profiles')
 @Controller('profiles')
@@ -72,12 +79,59 @@ export class ProfilesController {
     @UploadedFile() file: UploadedPdf | undefined,
     @Req() req: Request,
   ) {
-    // The API's public address when it is configured; otherwise the one the
-    // client reached, which behind a misconfigured proxy may say http.
-    const base =
-      this.config.get<string>('apiPublicUrl') || `${req.protocol}://${req.get('host')}/api`;
-    const cvUrl = `${base}/profiles/${user.sub}/cv`;
+    const cvUrl = `${this.publicBase(req)}/profiles/${user.sub}/cv`;
     return this.profiles.saveCv(user, file, cvUrl);
+  }
+
+  /** Upload the signed-in startup's logo: PNG, JPEG or WebP, up to 1 MB. */
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @Roles('startup')
+  @Verified()
+  @Post('me/logo')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_LOGO_BYTES, files: 1, fields: 0 },
+    }),
+  )
+  uploadLogo(
+    @CurrentUser() user: AuthUser,
+    @UploadedFile() file: UploadedBytes | undefined,
+    @Req() req: Request,
+  ) {
+    // A new address for every upload, so browsers that cached the old logo
+    // fetch the new one. The query is ignored when serving it.
+    const version = Date.now().toString(36);
+    const logoUrl = `${this.publicBase(req)}/profiles/${user.sub}/logo?v=${version}`;
+    return this.profiles.saveLogo(user, file, logoUrl);
+  }
+
+  /** Remove the signed-in startup's logo, uploaded or linked. */
+  @ApiBearerAuth()
+  @Roles('startup')
+  @Verified()
+  @Delete('me/logo')
+  removeLogo(@CurrentUser() user: AuthUser) {
+    return this.profiles.removeLogo(user);
+  }
+
+  /** The logo an approved startup uploaded, as the image it is. */
+  @Public()
+  @Get(':userId/logo')
+  async logo(@Param('userId', ParseUUIDPipe) userId: string, @Res() res: Response) {
+    const logo = await this.profiles.logoOf(userId);
+    res.set({
+      'Content-Type': logo.contentType,
+      'Content-Disposition': 'inline; filename="logo"',
+      'X-Content-Type-Options': 'nosniff',
+      // Each upload gets a new address, so a cached copy is never stale for long.
+      'Cache-Control': 'public, max-age=86400',
+      // Shown in <img> tags on the web app, which is another origin.
+      'Cross-Origin-Resource-Policy': 'cross-origin',
+      // An image is shown, never run as a page of the API.
+      'Content-Security-Policy': "sandbox; default-src 'none'",
+    });
+    res.send(logo.data);
   }
 
   /** The CV of an approved specialist, as a PDF. */
@@ -114,5 +168,16 @@ export class ProfilesController {
   @Get(':userId')
   publicProfile(@Param('userId', ParseUUIDPipe) userId: string) {
     return this.profiles.publicProfile(userId);
+  }
+
+  /**
+   * The API's public address when it is configured; otherwise the one the
+   * client reached, which behind a misconfigured proxy may say http.
+   */
+  private publicBase(req: Request): string {
+    return (
+      this.config.get<string>('apiPublicUrl') ||
+      `${req.protocol}://${req.get('host')}/api`
+    );
   }
 }

@@ -1,8 +1,9 @@
 'use client';
 
 import {
+  POCKET_FEE_PERCENT,
   TRUSTLESS_WORK_FEE_PERCENT,
-  afterTrustlessWorkFee,
+  afterFees,
   type JobListing,
   type MyApplication,
   type User,
@@ -14,6 +15,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/auth-provider';
 import { Avatar } from '@/components/avatar';
+import { KpiList } from '@/components/contract/kpi-report';
 import { Field, formValues } from '@/components/form';
 import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { StatusBadge } from '@/components/status-badge';
@@ -34,7 +36,7 @@ import { CATEGORY_LABELS, date, isoInDays, usdc } from '@/lib/format';
 
 export default function JobPage() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, status } = useAuth();
   const job = useQuery({
     queryKey: ['jobs', id],
     queryFn: () => api<JobListing>(`/jobs/${id}`),
@@ -104,6 +106,17 @@ export default function JobPage() {
                 ) : null}
               </dl>
             ) : null}
+            {data.kpis.length > 0 ? (
+              <section>
+                <h2 className="text-lg font-semibold text-navy">
+                  How the work is measured
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Every delivery reports a result for each of these.
+                </p>
+                <KpiList kpis={data.kpis} />
+              </section>
+            ) : null}
             {data.milestones.length > 0 ? (
               <section>
                 <h2 className="text-lg font-semibold text-navy">Payment plan</h2>
@@ -137,7 +150,8 @@ export default function JobPage() {
       </div>
 
       <aside className="space-y-4">
-        {!user ? (
+        {/* Until the session is known, offer nothing rather than the wrong thing. */}
+        {status === 'loading' ? null : !user ? (
           <Card>
             <CardHeader>
               <CardTitle>Want this job?</CardTitle>
@@ -357,20 +371,21 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
   );
 }
 
-/** How the offer compares to the budget, and what is left after the escrow fee. */
+/** How the offer compares to the budget, and what is left after the fees. */
 function PriceNote({ price, budget }: { price: string; budget: string }) {
   const offered = Number(price);
   const posted = Number(budget);
   if (!Number.isFinite(offered) || offered <= 0) return null;
   const difference = offered - posted;
-  const net = usdc(afterTrustlessWorkFee(offered));
+  const net = usdc(afterFees(offered));
+  const fees = `Trustless Work keeps ${TRUSTLESS_WORK_FEE_PERCENT}% and Pocket ${POCKET_FEE_PERCENT}%, so you receive ${net}.`;
   return (
     <p className="text-sm text-muted-foreground">
       {difference === 0
-        ? `Same as the budget. You receive ${net} after the ${TRUSTLESS_WORK_FEE_PERCENT}% Trustless Work fee.`
+        ? `Same as the budget. ${fees}`
         : `${difference > 0 ? '+' : '-'}${usdc(Math.abs(difference))} ${
             difference > 0 ? 'over' : 'under'
-          } the ${usdc(budget)} budget. You receive ${net} after the ${TRUSTLESS_WORK_FEE_PERCENT}% Trustless Work fee.`}
+          } the ${usdc(budget)} budget. ${fees}`}
     </p>
   );
 }

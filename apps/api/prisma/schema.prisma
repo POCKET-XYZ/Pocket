@@ -68,6 +68,7 @@ model User {
   startupProfile        StartupProfile?
   specialistProfile     SpecialistProfile?
   cv                    SpecialistCv?
+  logo                  StartupLogo?
   jobs                  Job[]
   applications          Application[]
   contractsAsStartup    Contract[]            @relation("ContractStartup")
@@ -177,6 +178,22 @@ model StartupProfile {
   @@map("startup_profiles")
 }
 
+// A startup's logo as the image it uploaded: PNG, JPEG or WebP, never SVG.
+// One per startup, kept in the database like the CVs. Only company logos:
+// people have no profile photo on Pocket.
+model StartupLogo {
+  userId      String   @id @map("user_id") @db.Uuid
+  data        Bytes
+  // The type read from the file's own bytes, served as is.
+  contentType String   @map("content_type")
+  size        Int
+  uploadedAt  DateTime @default(now()) @updatedAt @map("uploaded_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("startup_logos")
+}
+
 // A specialist's CV as the PDF they uploaded. Kept in the database, one per
 // specialist, so Pocket needs no file storage of its own.
 model SpecialistCv {
@@ -273,6 +290,7 @@ model Job {
   applications Application[]
   contracts    Contract[]
   milestones   JobMilestone[]
+  kpis         JobKpi[]
 
   @@index([status, category])
   @@index([startupId])
@@ -297,6 +315,27 @@ model JobMilestone {
 
   @@unique([jobId, position])
   @@map("job_milestones")
+}
+
+// What the work will be measured on, posted with the job so applicants know
+// before applying: "Qualified leads", target "50 per month". Up to 10 per job.
+// A table rather than JSON on the job, so each delivery's results point at a
+// KPI that exists through a foreign key.
+model JobKpi {
+  id       String  @id @default(uuid()) @db.Uuid
+  jobId    String  @map("job_id") @db.Uuid
+  position Int
+  name     String
+  // Free text, e.g. "50 per month". Optional: some KPIs are only tracked.
+  target   String?
+  // e.g. "leads", "%", "USD".
+  unit     String?
+
+  job     Job                    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  results DeliverableKpiResult[]
+
+  @@unique([jobId, position])
+  @@map("job_kpis")
 }
 
 // A specialist's offer on a job. One per specialist and job; the price may
@@ -423,10 +462,45 @@ model Deliverable {
   feedback    String?
   createdAt   DateTime @default(now()) @map("created_at")
 
-  milestone Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  milestone  Milestone              @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  kpiResults DeliverableKpiResult[]
+  attachment DeliverableAttachment?
 
   @@unique([milestoneId, version])
   @@map("deliverables")
+}
+
+// The result a delivery reports for one of the job's KPIs. Every version of a
+// delivery has its own, so the startup sees how the numbers moved.
+model DeliverableKpiResult {
+  id            String  @id @default(uuid()) @db.Uuid
+  deliverableId String  @map("deliverable_id") @db.Uuid
+  kpiId         String  @map("kpi_id") @db.Uuid
+  // Free text, short: "62", "48 of 50", "Not measurable yet".
+  value         String
+  comment       String?
+
+  deliverable Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  kpi         JobKpi      @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+
+  @@unique([deliverableId, kpiId])
+  @@index([kpiId])
+  @@map("deliverable_kpi_results")
+}
+
+// A file backing a delivery's report: a PDF or a PNG, JPEG or WebP image, up
+// to 5 MB, one per version. Only the two parties and managers can read it.
+model DeliverableAttachment {
+  deliverableId String   @id @map("deliverable_id") @db.Uuid
+  data          Bytes
+  // The type read from the file's own bytes, served as is.
+  contentType   String   @map("content_type")
+  size          Int
+  uploadedAt    DateTime @default(now()) @updatedAt @map("uploaded_at")
+
+  deliverable Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+
+  @@map("deliverable_attachments")
 }
 
 // ---------------------------------------------------------------------------
@@ -499,6 +573,8 @@ enum ChainOperationKind {
   release
   dispute
   resolve
+  // USDC the user sends from their wallet to another Stellar address.
+  payment
 }
 
 enum ChainOperationStatus {
@@ -527,7 +603,7 @@ model ChainOperation {
   // Unique, so each escrow step happens once per contract (deploy, fund) or per
   // milestone (approve, release, dispute, resolve), even with parallel requests.
   // Cleared when the operation fails so the step can be retried. Null for
-  // trustlines, which are not tied to a contract.
+  // trustlines and payments, which are not tied to a contract.
   stepKey     String?              @unique @map("step_key")
   error       String?
   createdAt   DateTime             @default(now()) @map("created_at")

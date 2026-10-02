@@ -10,7 +10,8 @@ export type SecurityEventName =
   | 'platform_refused'
   | 'manager_decision'
   | 'unrecorded_platform_operation'
-  | 'platform_balance_low';
+  | 'platform_balance_low'
+  | 'platform_usdc_trustline_missing';
 
 type Fields = Record<string, string | number | boolean | null | undefined>;
 

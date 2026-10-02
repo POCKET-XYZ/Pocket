@@ -1,6 +1,9 @@
-import { safeHref } from '@/lib/links';
+import { imageSrc } from '@/lib/links';
 
-/** A profile photo, or the first letter of the name when there is none. */
+/**
+ * A startup's logo, or the first letter of the name when there is none. People
+ * have no photo on Pocket, so for them it is always the letter.
+ */
 export function Avatar({
   name,
   url,
@@ -10,9 +13,9 @@ export function Avatar({
   url?: string | null;
   size?: number;
 }) {
-  const src = safeHref(url);
+  const src = imageSrc(url);
   if (src) {
-    // Profile photos are arbitrary links, so a plain img avoids next/image domain rules.
+    // Logos are arbitrary links, so a plain img avoids next/image domain rules.
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
@@ -20,7 +23,7 @@ export function Avatar({
         alt={name}
         width={size}
         height={size}
-        className="shrink-0 rounded-full object-cover"
+        className="shrink-0 rounded-full border border-border bg-white object-contain"
         style={{ width: size, height: size }}
       />
     );

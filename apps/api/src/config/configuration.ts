@@ -25,13 +25,24 @@ export interface AppConfig {
     apiKey: string;
     /** Trustless Work's contract that deploys escrows on this network. */
     deployerContractId: string;
-    /** Where Trustless Work's protocol fee goes on this network. */
-    feeAddress: string;
+    /**
+     * Where Trustless Work's protocol fee goes. Testnet calls carry it; the
+     * mainnet contract has it written in, so it is unset there.
+     */
+    feeAddress: string | undefined;
     /** Hash of the escrow code Trustless Work deploys; nothing else is deployed. */
     escrowWasmHash: string;
   };
   /** Wallets and logins for users without a Stellar wallet of their own. */
   pollar: { serverUrl: string; secretKey: string };
+  /** Transactional emails through Resend. Off when the API key is empty. */
+  email: {
+    resendApiKey: string;
+    /** Sender, for example "Pocket <hola@example.com>", on a domain verified in Resend. */
+    from: string;
+    /** Public address of the web app, for the links in each email. */
+    webPublicUrl: string;
+  };
 }
 
 const REQUIRED = [
@@ -45,10 +56,21 @@ const REQUIRED = [
   // What every platform signature is checked against: without them the
   // platform key would sign whatever Trustless Work sends.
   'TRUSTLESS_WORK_DEPLOYER_CONTRACT_ID',
-  'TRUSTLESS_WORK_FEE_ADDRESS',
   'TRUSTLESS_WORK_ESCROW_WASM_HASH',
 ] as const;
 
+/**
+ * Required on testnet only: there releases and resolutions name Trustless
+ * Work's fee address and the platform checks it. On mainnet the contract has
+ * it written in and the calls do not carry it.
+ */
+const REQUIRED_ON_TESTNET = ['TRUSTLESS_WORK_FEE_ADDRESS'] as const;
+
+/** Circle's USDC issuer on each network. */
+export const USDC_ISSUERS: Record<StellarNetwork, string> = {
+  testnet: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
+  mainnet: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+};
 /** Pollar's backend API. Secret-key routes only. */
 const DEFAULT_POLLAR_SERVER = 'https://server.api.pollar.xyz';
 
@@ -76,11 +98,40 @@ export function validateEnv(env: Record<string, unknown>): Record<string, unknow
   if (network !== 'testnet' && network !== 'mainnet') {
     throw new Error('STELLAR_NETWORK must be "testnet" or "mainnet"');
   }
+  if (network === 'testnet') {
+    const missingOnTestnet = REQUIRED_ON_TESTNET.filter((key) => !env[key]);
+    if (missingOnTestnet.length > 0) {
+      throw new Error(
+        `Missing required environment variables on testnet: ${missingOnTestnet.join(', ')}`,
+      );
+    }
+  }
   if (network === 'mainnet' && !env.SOROBAN_RPC_URL) {
     throw new Error('SOROBAN_RPC_URL is required on mainnet');
   }
-  if (!/^[0-9a-f]{64}$/.test(String(env.TRUSTLESS_WORK_ESCROW_WASM_HASH))) {
+  // The other network's USDC is another asset: escrows would hold it and users
+  // would be asked to trust it. A known issuer of the wrong network is always a
+  // configuration mistake.
+  const otherNetwork: StellarNetwork = network === 'mainnet' ? 'testnet' : 'mainnet';
+  if (env.USDC_ISSUER === USDC_ISSUERS[otherNetwork]) {
+    throw new Error(
+      `USDC_ISSUER is the ${otherNetwork} issuer, but STELLAR_NETWORK is ${network}`,
+    );
+  }  if (!/^[0-9a-f]{64}$/.test(String(env.TRUSTLESS_WORK_ESCROW_WASM_HASH))) {
     throw new Error('TRUSTLESS_WORK_ESCROW_WASM_HASH must be 64 hex characters');
+  }
+  // Emails are optional, but once turned on they need a sender and somewhere
+  // for their links to point: an email with a broken button is worse than none.
+  if (env.RESEND_API_KEY) {
+    if (!env.EMAIL_FROM) {
+      throw new Error('EMAIL_FROM is required when RESEND_API_KEY is set');
+    }
+    const webUrl = typeof env.WEB_PUBLIC_URL === 'string' ? env.WEB_PUBLIC_URL : '';
+    if (!/^https?:\/\/[^\s/]+/.test(webUrl)) {
+      throw new Error(
+        'WEB_PUBLIC_URL must be the http(s) address of the web app when RESEND_API_KEY is set',
+      );
+    }
   }
   return env;
 }
@@ -114,7 +165,7 @@ export default (): AppConfig => {
       apiUrl: (process.env.TRUSTLESS_WORK_API_URL as string).replace(/\/+$/, ''),
       apiKey: process.env.TRUSTLESS_WORK_API_KEY as string,
       deployerContractId: process.env.TRUSTLESS_WORK_DEPLOYER_CONTRACT_ID as string,
-      feeAddress: process.env.TRUSTLESS_WORK_FEE_ADDRESS as string,
+      feeAddress: process.env.TRUSTLESS_WORK_FEE_ADDRESS || undefined,
       escrowWasmHash: process.env.TRUSTLESS_WORK_ESCROW_WASM_HASH as string,
     },
     pollar: {
@@ -124,6 +175,12 @@ export default (): AppConfig => {
       ),
       // Optional: without it Pocket only accepts wallet sign-ins.
       secretKey: process.env.POLLAR_SECRET_KEY ?? '',
+    },
+    email: {
+      // Optional: without it no email is sent (local runs, tests).
+      resendApiKey: process.env.RESEND_API_KEY ?? '',
+      from: process.env.EMAIL_FROM ?? '',
+      webPublicUrl: (process.env.WEB_PUBLIC_URL ?? '').replace(/\/+$/, ''),
     },
   };
 };

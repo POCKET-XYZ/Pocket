@@ -1,6 +1,12 @@
 'use client';
 
-import { DisputeOutcome, type DisputeDetail, type User } from '@pocket/shared';
+import {
+  DisputeOutcome,
+  POCKET_FEE_PERCENT,
+  TRUSTLESS_WORK_FEE_PERCENT,
+  type DisputeDetail,
+  type User,
+} from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLinkIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -9,6 +15,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Field, compact, formValues } from '@/components/form';
 import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
+import { KpiReport } from '@/components/contract/kpi-report';
 import { RequireAuth } from '@/components/require-auth';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -123,6 +130,7 @@ function DisputeView({ user }: { user: User }) {
                   <span className="text-xs text-muted-foreground">
                     ({linkHost(deliverable.url)})
                   </span>
+                  <KpiReport kpis={contract.job.kpis} deliverable={deliverable} />
                   {deliverable.feedback ? (
                     <p className="text-muted-foreground">
                       Changes asked: {deliverable.feedback}
@@ -321,7 +329,8 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
         <CardTitle>Decide</CardTitle>
         <CardDescription>
           Pocket executes the decision on the escrow. It can only pay the two parties.
-          Trustless Work keeps 0.3% of what is paid out.
+          Trustless Work keeps {TRUSTLESS_WORK_FEE_PERCENT}% and Pocket {POCKET_FEE_PERCENT}% of
+          what is paid out, from each side.
         </CardDescription>
       </CardHeader>
       <CardContent>

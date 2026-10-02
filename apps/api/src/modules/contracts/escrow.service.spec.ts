@@ -19,7 +19,8 @@ const onChain = (): ChainEscrow => ({
     dispute_resolver: 'GPOCKET',
   },
   trustline: 'CUSDC',
-  platformFee: 0n,
+  // Pocket's 1%, in basis points.
+  platformFee: 100n,
   milestones: [
     { amount: 4_505_000_000n, receiver: 'GSPECIALIST', flags: untouched() },
     { amount: 495_000_000n, receiver: 'GSPECIALIST', flags: untouched() },
@@ -94,7 +95,7 @@ describe('EscrowService', () => {
             releaseSigner: 'GPOCKET',
             disputeResolver: 'GPOCKET',
           },
-          platformFee: 0,
+          platformFee: 1,
           milestones: [
             { description: 'Lead list', amount: 450.5, receiver: 'GSPECIALIST' },
             { description: 'Report', amount: 49.5, receiver: 'GSPECIALIST' },
@@ -119,6 +120,10 @@ describe('EscrowService', () => {
         'has another approver',
         () => chain.escrow.mockResolvedValue({ ...onChain(), roles: { ...onChain().roles, approver: 'GTHIEF' } }),
       ],
+      ['charges no fee', () => chain.escrow.mockResolvedValue({ ...onChain(), platformFee: 0n })],
+      ['charges 2%', () => chain.escrow.mockResolvedValue({ ...onChain(), platformFee: 200n })],
+      ['charges 1% read as a percent', () => chain.escrow.mockResolvedValue({ ...onChain(), platformFee: 1n })],
+      ['holds another asset', () => chain.escrow.mockResolvedValue({ ...onChain(), trustline: 'CEURC' })],
       [
         'asks for another amount',
         () => {
@@ -141,6 +146,61 @@ describe('EscrowService', () => {
         },
       );
       await expect(service.deploy(input)).resolves.toBe('CESCROW');
+    });
+  });
+
+  describe.each([
+    ['testnet', 'GTWFEE', ['GPOCKET', 'GTWFEE', 1], ['GPOCKET', 1]],
+    ['mainnet', undefined, ['GPOCKET', 1], ['GPOCKET', 'GTWFEE', 1]],
+  ] as const)('release on %s', (network, feeAddress, accepted, refused) => {
+    const contract = { id: 'contract-1', escrowId: 'CESCROW' };
+    const milestone = { id: 'm-2', position: 1, amount: new Prisma.Decimal('49.5') };
+
+    /** The service for `network`, returning the policy the platform would sign with. */
+    async function policyFor(
+      act: (service: EscrowService) => Promise<unknown>,
+    ): Promise<{ checkArgs: (args: unknown[]) => void }> {
+      const signed = jest.fn().mockResolvedValue({ operation: { id: 'op-2' } });
+      const networkService = new EscrowService(
+        { platformAddress: 'GPOCKET', network } as unknown as StellarService,
+        {
+          release: jest.fn().mockResolvedValue('release-xdr'),
+          resolve: jest.fn().mockResolvedValue('resolve-xdr'),
+          feeAddress,
+        } as unknown as TrustlessWorkClient,
+        { executeAsPlatform: signed } as unknown as ChainOperationsService,
+        chain as unknown as SorobanReader,
+      );
+      await act(networkService);
+      return signed.mock.calls[0][2] as { checkArgs: (args: unknown[]) => void };
+    }
+
+    it(`signs the ${network} call shape only`, async () => {
+      const policy = await policyFor((s) => s.release(contract, milestone));
+      expect(() => policy.checkArgs([...accepted])).not.toThrow();
+      expect(() => policy.checkArgs([...refused])).toThrow('unexpected shape');
+    });
+
+    it(`resolves with the ${network} call shape only`, async () => {
+      const policy = await policyFor((s) =>
+        s.resolve(contract, milestone, [
+          { address: 'GSPECIALIST', amount: new Prisma.Decimal('40') },
+          { address: 'GSTARTUP', amount: new Prisma.Decimal('9.5') },
+        ]),
+      );
+      const distribution = { GSPECIALIST: 400_000_000n, GSTARTUP: 95_000_000n };
+      const shape = (args: readonly unknown[]) => [
+        args[0],
+        args[args.length - 1],
+        ...args.slice(1, -1),
+        distribution,
+      ];
+      expect(() => policy.checkArgs(shape(accepted))).not.toThrow();
+      expect(() => policy.checkArgs(shape(refused))).toThrow('unexpected shape');
+      // The parties and amounts are still checked on either network.
+      expect(() =>
+        policy.checkArgs([...shape(accepted).slice(0, -1), { GTHIEF: 495_000_000n }]),
+      ).toThrow();
     });
   });
 

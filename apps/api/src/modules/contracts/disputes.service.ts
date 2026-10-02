@@ -8,12 +8,14 @@ import {
 import { Prisma, type DisputeStatus, type DisputeEvidence } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   NotYetConfirmed,
   stepKeyOf,
   type PreparedTransaction,
 } from '../stellar/chain-operations.service';
 import { AddEvidenceDto, OpenDisputeDto, ResolveDisputeDto } from './dto/dispute.dto';
+import { DELIVERABLE_REPORT } from './deliverable-report';
 import { EscrowService } from './escrow.service';
 import { MilestonesService } from './milestones.service';
 
@@ -29,6 +31,7 @@ export class DisputesService {
     private readonly prisma: PrismaService,
     private readonly escrow: EscrowService,
     private readonly milestones: MilestonesService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Dispute transaction for the party opening it to sign. */
@@ -87,7 +90,23 @@ export class DisputesService {
         data: { status: 'disputed' },
       }),
     ]);
+    this.notifyOpened(milestone, dispute.id, user.sub);
     return dispute;
+  }
+
+  /** The party who did not open the dispute hears about it. */
+  private notifyOpened(
+    milestone: { title: string; contract: { startupId: string; specialistId: string } },
+    disputeId: string,
+    openedById: string,
+  ): void {
+    const { startupId, specialistId } = milestone.contract;
+    const other = openedById === startupId ? specialistId : startupId;
+    this.notifications.notifyUsers([other], {
+      type: 'dispute_opened',
+      disputeId,
+      milestoneTitle: milestone.title,
+    });
   }
 
   /** Either party, or a manager, adds a link or a comment to an open dispute. */
@@ -131,8 +150,15 @@ export class DisputesService {
       include: {
         milestone: {
           include: {
-            contract: { select: { id: true, startupId: true, specialistId: true } },
-            deliverables: { orderBy: { version: 'asc' } },
+            contract: {
+              select: {
+                id: true,
+                startupId: true,
+                specialistId: true,
+                job: { select: { kpis: { orderBy: { position: 'asc' } } } },
+              },
+            },
+            deliverables: { orderBy: { version: 'asc' }, include: DELIVERABLE_REPORT },
           },
         },
         evidence: {
@@ -248,6 +274,16 @@ export class DisputesService {
         data: { status: 'resolved' },
       }),
     ]);
+    this.notifications.notifyUsers(
+      [milestone.contract.startupId, milestone.contract.specialistId],
+      {
+        type: 'dispute_resolved',
+        disputeId,
+        milestoneTitle: milestone.title,
+        specialistAmount: specialistAmount.toString(),
+        startupAmount: startupAmount.toString(),
+      },
+    );
     await this.milestones.completeIfDone(milestone.contractId);
     return resolved;
   }
@@ -260,7 +296,12 @@ export class DisputesService {
    */
   private async syncLandedDispute(
     user: AuthUser,
-    milestone: { id: string; position: number; contract: { escrowId: string | null } },
+    milestone: {
+      id: string;
+      title: string;
+      position: number;
+      contract: { escrowId: string | null; startupId: string; specialistId: string };
+    },
     reason: string,
   ) {
     const flags = await this.escrow.milestoneFlags(milestone.contract, milestone.position);
@@ -269,15 +310,17 @@ export class DisputesService {
     const sent = stepKey
       ? await this.prisma.chainOperation.findUnique({ where: { stepKey } })
       : null;
+    const openedById = sent?.signerId ?? user.sub;
     const [dispute] = await this.prisma.$transaction([
       this.prisma.dispute.create({
-        data: { milestoneId: milestone.id, openedById: sent?.signerId ?? user.sub, reason },
+        data: { milestoneId: milestone.id, openedById, reason },
       }),
       this.prisma.milestone.update({
         where: { id: milestone.id },
         data: { status: 'disputed' },
       }),
     ]);
+    this.notifyOpened(milestone, dispute.id, openedById);
     return dispute;
   }
 
