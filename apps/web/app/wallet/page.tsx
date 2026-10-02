@@ -23,6 +23,7 @@ import { SendUsdcCard } from '@/components/wallet/send-usdc-card';
 import { UsdcHistoryCard } from '@/components/wallet/usdc-history-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useUsdcStatus } from '@/components/usdc-status';
 
 /**
  * What the wallet holds, hidden the way a password field hides itself: someone
@@ -122,6 +123,31 @@ const PROVIDER_NAMES: Record<string, string> = {
   'albedo-native': 'Albedo',
 };
 
+/** What a wallet the user holds has in USDC and in XLM for network fees. */
+function WalletBalance() {
+  const status = useUsdcStatus();
+  if (!status.data || status.data.usdc === 'no_account') return null;
+  return (
+    <Card>
+      <CardContent className="flex flex-wrap items-end justify-between gap-4 pt-6">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Balance
+          </p>
+          <p className="font-heading text-3xl font-bold text-navy">
+            {status.data.usdcSpendable ?? '0'} <span className="text-lg">USDC</span>
+          </p>
+        </div>
+        {status.data.xlmForFees !== null ? (
+          <p className="text-sm text-muted-foreground">
+            {Number(status.data.xlmForFees).toFixed(2)} XLM for network fees
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function WalletPage() {
   return (
     <RequireAuth roles={['startup', 'specialist']}>
@@ -168,7 +194,7 @@ function WalletView({ user }: { user: User }) {
         </CardContent>
       </Card>
 
-      {throughPollar ? <BalanceCard pollar={pollar} /> : null}
+      {throughPollar ? <BalanceCard pollar={pollar} /> : <WalletBalance />}
 
       <div id={USDC_STATUS_ANCHOR} className="scroll-mt-24 empty:hidden">
         <UsdcStatus user={user} showReady />

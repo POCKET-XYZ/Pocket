@@ -1,7 +1,7 @@
 'use client';
 
 import type { UserRole } from '@pocket/shared';
-import { ChevronDownIcon, WalletIcon } from 'lucide-react';
+import { ChevronDownIcon, MenuIcon, WalletIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
@@ -77,6 +77,26 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          {/* On a phone the nav collapses into a menu of its own, for everyone. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-off-white hover:bg-white/10 hover:text-off-white md:hidden"
+                aria-label="Menu"
+              >
+                <MenuIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 md:hidden">
+              {links.map((link) => (
+                <DropdownMenuItem key={link.href} asChild>
+                  <Link href={link.href}>{link.label}</Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {status === 'signed-in' && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -94,12 +114,6 @@ export function SiteHeader() {
                   ) : null}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {/* The nav collapses on small screens, so its links live here too. */}
-                {links.map((link) => (
-                  <DropdownMenuItem key={link.href} asChild className="md:hidden">
-                    <Link href={link.href}>{link.label}</Link>
-                  </DropdownMenuItem>
-                ))}
                 {user.role !== 'manager' ? (
                   <>
                     <DropdownMenuItem asChild>

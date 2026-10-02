@@ -86,10 +86,20 @@ function PaymentRow({ payment }: { payment: UsdcPaymentRecord }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">
-          {incoming ? 'Received from' : 'Sent to'}{' '}
-          <span className="font-mono" title={payment.counterparty}>
-            {shortAddress(payment.counterparty)}
-          </span>
+          {payment.counterparty.startsWith('C') ? (
+            // Contract addresses here are Pocket escrows: a payment for a
+            // milestone, a dispute share, or a deposit into an escrow.
+            <span title={payment.counterparty}>
+              {incoming ? 'Payment from an escrow' : 'Deposit into an escrow'}
+            </span>
+          ) : (
+            <>
+              {incoming ? 'Received from' : 'Sent to'}{' '}
+              <span className="font-mono" title={payment.counterparty}>
+                {shortAddress(payment.counterparty)}
+              </span>
+            </>
+          )}
         </p>
         <p className="text-xs text-muted-foreground">{dateTime(payment.createdAt)}</p>
       </div>

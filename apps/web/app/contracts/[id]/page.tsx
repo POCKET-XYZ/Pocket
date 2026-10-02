@@ -68,6 +68,8 @@ function Contract({ user }: { user: User }) {
   const isParty = user.id === data.startupId || user.id === data.specialistId;
   const startupName = data.startup.startupProfile?.companyName ?? 'Startup';
   const specialistName = data.specialist.specialistProfile?.displayName ?? 'Specialist';
+  const contactPending =
+    data.status === 'awaiting_specialist' ? 'Shared once the terms are accepted' : 'Not provided';
   const titleFor = (milestoneId: string | null) =>
     data.milestones.find((milestone) => milestone.id === milestoneId)?.title;
 
@@ -112,10 +114,10 @@ function Contract({ user }: { user: User }) {
           </Detail>
           {/* Contacts are shared once the specialist accepts the terms. */}
           <Detail label={`${startupName} contact`}>
-            {data.contacts.startup ?? 'Shared once the terms are accepted'}
+            {data.contacts.startup ?? contactPending}
           </Detail>
           <Detail label={`${specialistName} contact`}>
-            {data.contacts.specialist ?? 'Shared once the terms are accepted'}
+            {data.contacts.specialist ?? contactPending}
           </Detail>
         </CardContent>
       </Card>
