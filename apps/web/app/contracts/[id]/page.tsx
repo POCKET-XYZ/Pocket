@@ -41,6 +41,7 @@ const OPERATION_LABELS: Record<ChainOperationKind, string> = {
   release: 'Payment released',
   dispute: 'Dispute opened',
   resolve: 'Dispute resolved',
+  payment: 'USDC sent',
 };
 
 export default function ContractPage() {

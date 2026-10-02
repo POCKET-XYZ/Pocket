@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthUser } from '../../common/types/auth';
 import { SignedTransactionDto } from './dto/signed-transaction.dto';
+import { UsdcPaymentDto } from './dto/usdc-payment.dto';
 import { WalletService } from './wallet.service';
 import { ESCROW_RATE_LIMIT, RateLimit } from '../../common/rate-limit/rate-limit.decorator';
 
@@ -27,9 +28,28 @@ export class WalletController {
   }
 
   @RateLimit(ESCROW_RATE_LIMIT)
-
   @Post('usdc-trustline/submit')
   submitTrustline(@CurrentUser() user: AuthUser, @Body() dto: SignedTransactionDto) {
     return this.wallet.submitTrustline(user, dto.signedXdr);
+  }
+
+  /** USDC payment to another Stellar address, for the wallet to sign. */
+  @RateLimit(ESCROW_RATE_LIMIT)
+  @Post('usdc-payment/prepare')
+  preparePayment(@CurrentUser() user: AuthUser, @Body() dto: UsdcPaymentDto) {
+    return this.wallet.preparePayment(user, dto);
+  }
+
+  @RateLimit(ESCROW_RATE_LIMIT)
+  @Post('usdc-payment/submit')
+  submitPayment(@CurrentUser() user: AuthUser, @Body() dto: SignedTransactionDto) {
+    return this.wallet.submitPayment(user, dto.signedXdr);
+  }
+
+  /** The latest USDC payments in and out of the signed-in wallet. */
+  @RateLimit(ESCROW_RATE_LIMIT)
+  @Get('usdc-payments')
+  payments(@CurrentUser() user: AuthUser) {
+    return this.wallet.payments(user);
   }
 }

@@ -499,6 +499,8 @@ enum ChainOperationKind {
   release
   dispute
   resolve
+  // USDC the user sends from their wallet to another Stellar address.
+  payment
 }
 
 enum ChainOperationStatus {
@@ -527,7 +529,7 @@ model ChainOperation {
   // Unique, so each escrow step happens once per contract (deploy, fund) or per
   // milestone (approve, release, dispute, resolve), even with parallel requests.
   // Cleared when the operation fails so the step can be retried. Null for
-  // trustlines, which are not tied to a contract.
+  // trustlines and payments, which are not tied to a contract.
   stepKey     String?              @unique @map("step_key")
   error       String?
   createdAt   DateTime             @default(now()) @map("created_at")
