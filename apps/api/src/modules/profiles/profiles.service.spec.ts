@@ -287,9 +287,11 @@ describe('ProfilesService', () => {
     it.each([
       [
         'an SVG',
-        Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'),
+        Buffer.from(
+          '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+        ),
       ],
-      ['a GIF', Buffer.from('GIF89a  ')],
+      ['a GIF', Buffer.from('GIF89a and the rest of a GIF')],
       // Named logo.png by whoever sent it: the name and claimed type are ignored.
       ['a page renamed to .png', Buffer.from('<html><script>alert(1)</script></html>')],
       ['a PDF', Buffer.from('%PDF-1.7 not an image')],

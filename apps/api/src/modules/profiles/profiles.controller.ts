@@ -90,7 +90,9 @@ export class ProfilesController {
   @Verified()
   @Post('me/logo')
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: MAX_LOGO_BYTES, files: 1, fields: 0 } }),
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_LOGO_BYTES, files: 1, fields: 0 },
+    }),
   )
   uploadLogo(
     @CurrentUser() user: AuthUser,
@@ -174,7 +176,8 @@ export class ProfilesController {
    */
   private publicBase(req: Request): string {
     return (
-      this.config.get<string>('apiPublicUrl') || `${req.protocol}://${req.get('host')}/api`
+      this.config.get<string>('apiPublicUrl') ||
+      `${req.protocol}://${req.get('host')}/api`
     );
   }
 }

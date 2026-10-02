@@ -108,7 +108,9 @@ describe('JobsService', () => {
     });
 
     it('takes up to 10 KPIs with an optional target and unit', async () => {
-      const kpis: object[] = Array.from({ length: 10 }, (_, i) => ({ name: `KPI ${i + 1}` }));
+      const kpis: object[] = Array.from({ length: 10 }, (_, i) => ({
+        name: `KPI ${i + 1}`,
+      }));
       kpis[0] = { name: 'Qualified leads', target: '50 per month', unit: 'leads' };
       await expect(problems({ ...dto, kpis })).resolves.toEqual([]);
     });

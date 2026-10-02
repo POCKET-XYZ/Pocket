@@ -200,7 +200,9 @@ function assertMilestonesMatch(dto: CreateJobDto): void {
  * The KPIs as stored: trimmed, without empty optional parts, and each name
  * once, since every delivery reports one result per KPI by name.
  */
-function cleanKpis(dto: CreateJobDto): { name: string; target?: string; unit?: string }[] {
+function cleanKpis(
+  dto: CreateJobDto,
+): { name: string; target?: string; unit?: string }[] {
   const kpis = (dto.kpis ?? []).map((kpi) => ({
     name: kpi.name.trim(),
     ...(kpi.target?.trim() ? { target: kpi.target.trim() } : {}),
