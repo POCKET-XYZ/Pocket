@@ -38,6 +38,7 @@ const ROLE_LINKS: Record<UserRole, { href: string; label: string }[]> = {
   manager: [
     { href: '/manager/verifications', label: 'Verifications' },
     { href: '/manager/disputes', label: 'Disputes' },
+    { href: '/manager/metrics', label: 'Metrics' },
   ],
 };
 
