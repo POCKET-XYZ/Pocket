@@ -1,5 +1,6 @@
 import { POCKET_FEE_BASIS_POINTS, POCKET_FEE_PERCENT } from '@pocket/shared';
 import { Address, hash, StrKey, xdr } from '@stellar/stellar-sdk';
+import type { StellarNetwork } from '../../config/configuration';
 import {
   expect,
   sameInteger,
@@ -45,14 +46,20 @@ export interface PlatformAddresses {
   platform: string;
   /** Trustless Work's contract that deploys escrows. */
   deployer: string;
-  /** Where Trustless Work's protocol fee goes on this network. */
-  twFee: string;
+  /**
+   * Where Trustless Work's protocol fee goes. Testnet calls name it; on mainnet
+   * it is written into the contract and the calls do not carry it, so it is
+   * only needed on testnet.
+   */
+  twFee?: string;
   /** The Stellar Asset Contract of USDC on this network. */
   usdcContract: string;
   /** The escrow code Trustless Work deploys, as a hex hash. */
   escrowWasmHash: string;
   /** The network the escrow is deployed on. */
   networkPassphrase: string;
+  /** Which Trustless Work contract lineage the calls follow. */
+  network: StellarNetwork;
 }
 
 /** A deploy policy that also knows where the escrow it allowed will live. */
@@ -129,6 +136,8 @@ export function deployPolicy(
       return escrowAddress;
     },
     checkArgs: (args) => {
+      // The deploy names no fee address on testnet either, so its shape is the
+      // same on both networks.
       expect(args.length === 6, 'the deploy has an unexpected shape');
       expect(args[0] === platform, 'the deployer is not the platform');
       // The code is pinned: an escrow that runs anything else could ignore
@@ -196,9 +205,38 @@ export function deployPolicy(
 }
 
 /**
+ * Whether the calls carry Trustless Work's fee address. The testnet contract
+ * lineage (`*-develop`) takes it as an argument so tests can run; the mainnet
+ * lineage (`*-main`) has it written into the contract, so whoever builds the
+ * call cannot choose where the protocol fee goes. Any other network is
+ * refused rather than guessed.
+ */
+function callsNameFeeAddress(addresses: PlatformAddresses): boolean {
+  if (addresses.network === 'testnet') return true;
+  if (addresses.network === 'mainnet') return false;
+  throw new Error(`unknown network ${String(addresses.network)}`);
+}
+
+/** The fee address argument of a testnet call, which must be Trustless Work's. */
+function expectFeeAddress(addresses: PlatformAddresses, value: unknown): void {
+  expect(
+    addresses.twFee !== undefined && value === addresses.twFee,
+    'the protocol fee goes to an unknown address',
+  );
+}
+
+/**
  * Releasing a milestone: that escrow, that milestone, fee to Trustless Work.
  * The call carries no amount: the contract pays the milestone's configured
  * amount, minus both fees, to the receiver fixed at deploy.
+ *
+ * Arguments on testnet, read from real testnet releases:
+ *   (release_signer, trustless_work_address, milestone_index)
+ * On mainnet: (release_signer, milestone_index), the testnet order without the
+ * fee address. That mainnet order is inferred, not read from the mainnet
+ * contract: confirm it against the `multi-release-main` contract spec before
+ * the first mainnet release. Until then a different shape is refused, so the
+ * worst case is a release that waits, never one that pays someone else.
  */
 export function releasePolicy(
   addresses: PlatformAddresses,
@@ -210,10 +248,17 @@ export function releasePolicy(
     fn: 'release_milestone_funds',
     maxFeeStroops: MAX_PLATFORM_FEE_STROOPS,
     checkArgs: (args) => {
-      expect(args.length === 3, 'the release has an unexpected shape');
+      const withFeeAddress = callsNameFeeAddress(addresses);
+      expect(
+        args.length === (withFeeAddress ? 3 : 2),
+        'the release has an unexpected shape',
+      );
       expect(args[0] === addresses.platform, 'the release signer is not the platform');
-      expect(args[1] === addresses.twFee, 'the protocol fee goes to an unknown address');
-      expect(sameInteger(args[2], position), 'the release is for another milestone');
+      if (withFeeAddress) expectFeeAddress(addresses, args[1]);
+      expect(
+        sameInteger(args[withFeeAddress ? 2 : 1], position),
+        'the release is for another milestone',
+      );
     },
   };
 }
@@ -224,6 +269,13 @@ export function releasePolicy(
  * manager decided. Those are amounts before fees: the contract takes
  * Trustless Work's and Pocket's fee out of each share as it pays it, so the
  * call carries the gross shares and so does this check.
+ *
+ * Arguments on testnet, read from a real testnet resolution:
+ *   (dispute_resolver, milestone_index, trustless_work_address, distributions)
+ * On mainnet: (dispute_resolver, milestone_index, distributions), the testnet
+ * order without the fee address. Like the release, that mainnet order is
+ * inferred: confirm it against the `multi-release-main` contract spec before
+ * the first mainnet resolution.
  */
 export function resolvePolicy(
   addresses: PlatformAddresses,
@@ -236,12 +288,16 @@ export function resolvePolicy(
     fn: 'resolve_milestone_dispute',
     maxFeeStroops: MAX_PLATFORM_FEE_STROOPS,
     checkArgs: (args) => {
-      expect(args.length === 4, 'the resolution has an unexpected shape');
+      const withFeeAddress = callsNameFeeAddress(addresses);
+      expect(
+        args.length === (withFeeAddress ? 4 : 3),
+        'the resolution has an unexpected shape',
+      );
       expect(args[0] === addresses.platform, 'the dispute resolver is not the platform');
       expect(sameInteger(args[1], position), 'the resolution is for another milestone');
-      expect(args[2] === addresses.twFee, 'the protocol fee goes to an unknown address');
+      if (withFeeAddress) expectFeeAddress(addresses, args[2]);
 
-      const distribution = args[3];
+      const distribution = args[withFeeAddress ? 3 : 2];
       expect(
         typeof distribution === 'object' && distribution !== null && !Array.isArray(distribution),
         'the resolution has no distribution',

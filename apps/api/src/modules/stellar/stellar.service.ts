@@ -15,6 +15,7 @@ import {
 } from '@stellar/stellar-sdk';
 
 import { securityEvent } from '../../common/security/security-log';
+import type { StellarNetwork } from '../../config/configuration';
 import { assertPlatformTx, type PlatformTxPolicy } from './platform-tx-policy';
 
 /** Whether an address can receive USDC. */
@@ -33,6 +34,7 @@ const SIGNING_WINDOW_SECONDS = 300;
 @Injectable()
 export class StellarService implements OnApplicationBootstrap {
   private readonly logger = new Logger(StellarService.name);
+  readonly network: StellarNetwork;
   readonly networkPassphrase: string;
   readonly usdc: Asset;
   readonly usdcIssuer: string;
@@ -40,10 +42,10 @@ export class StellarService implements OnApplicationBootstrap {
   private readonly horizon: Horizon.Server;
 
   constructor(config: ConfigService) {
+    this.network =
+      config.get<string>('stellar.network') === 'mainnet' ? 'mainnet' : 'testnet';
     this.networkPassphrase =
-      config.get<string>('stellar.network') === 'mainnet'
-        ? Networks.PUBLIC
-        : Networks.TESTNET;
+      this.network === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
     this.usdcIssuer = config.getOrThrow<string>('stellar.usdcIssuer');
     this.usdc = new Asset('USDC', this.usdcIssuer);
     this.platform = Keypair.fromSecret(

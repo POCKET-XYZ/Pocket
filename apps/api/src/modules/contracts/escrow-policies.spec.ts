@@ -1,4 +1,4 @@
-import { Networks, scValToNative, xdr } from '@stellar/stellar-sdk';
+import { Address, Networks, scValToNative, xdr } from '@stellar/stellar-sdk';
 import fixtures from '../stellar/__fixtures__/platform-transactions.json';
 import { assertPlatformTx } from '../stellar/platform-tx-policy';
 import {
@@ -16,7 +16,10 @@ const ADDRESSES: PlatformAddresses = {
   usdcContract: fixtures.usdcContractId,
   escrowWasmHash: '5618791548edfc44074e4b79e5d1b29f5712ff98eead12d22fb4d7f04d4edbf2',
   networkPassphrase: Networks.TESTNET,
+  network: 'testnet',
 };
+/** Mainnet: the contract has the fee address written in, so none is configured. */
+const MAINNET: PlatformAddresses = { ...ADDRESSES, twFee: undefined, network: 'mainnet' };
 const STRANGER = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
 const sign = (envelope: string, policy: ReturnType<typeof releasePolicy>) =>
   assertPlatformTx(envelope, Networks.TESTNET, ADDRESSES.platform, policy);
@@ -206,5 +209,156 @@ describe('the escrow policies refuse a real transaction that is not what Pocket 
       { address: r.specialist, amount: '0.1' },
     ]);
     expect(() => sign(r.envelopeXdr, policy)).toThrow('pays someone else');
+  });
+
+  it('a testnet release when no fee address is configured', () => {
+    const r = fixtures.release;
+    const policy = releasePolicy({ ...ADDRESSES, twFee: undefined }, r.escrowId, 0);
+    expect(() => sign(r.envelopeXdr, policy)).toThrow('unknown address');
+  });
+
+  it('a release on a network Pocket does not know', () => {
+    const r = fixtures.release;
+    const policy = releasePolicy(
+      { ...ADDRESSES, network: 'futurenet' as PlatformAddresses['network'] },
+      r.escrowId,
+      0,
+    );
+    expect(() => sign(r.envelopeXdr, policy)).toThrow('unknown network');
+  });
+});
+
+/**
+ * The mainnet calls. The mainnet contract has the fee address written in, so
+ * its calls are the testnet ones without that argument. No mainnet call has
+ * been recorded yet: these are the real testnet transactions with the fee
+ * address taken out, which is the shape the policies expect until the mainnet
+ * contract spec confirms it.
+ */
+const withoutArg = (envelopeXdr: string, index: number) =>
+  rewrite(envelopeXdr, (args) => args.filter((_arg, i) => i !== index));
+/** The real call with argument `index` replaced. */
+const withArg = (envelopeXdr: string, index: number, value: xdr.ScVal) =>
+  rewrite(envelopeXdr, (args) => args.map((arg, i) => (i === index ? value : arg)));
+const MAINNET_RELEASE = withoutArg(fixtures.release.envelopeXdr, 1);
+const MAINNET_RESOLVE = withoutArg(fixtures.resolve.envelopeXdr, 2);
+const strangerScVal = () => new Address(STRANGER).toScVal();
+
+describe('the escrow policies on mainnet', () => {
+  const r = fixtures.release;
+  const d = fixtures.resolve;
+  const startupGets60 = [{ address: d.startup, amount: '60' }];
+
+  it('accept a release without the fee address', () => {
+    expect(() => sign(MAINNET_RELEASE, releasePolicy(MAINNET, r.escrowId, 0))).not.toThrow();
+  });
+
+  it('accept a resolution without the fee address', () => {
+    expect(() =>
+      sign(MAINNET_RESOLVE, resolvePolicy(MAINNET, d.escrowId, 0, startupGets60)),
+    ).not.toThrow();
+  });
+
+  it('refuse the testnet shape, which would name a fee address', () => {
+    expect(() => sign(r.envelopeXdr, releasePolicy(MAINNET, r.escrowId, 0))).toThrow(
+      'unexpected shape',
+    );
+    expect(() =>
+      sign(d.envelopeXdr, resolvePolicy(MAINNET, d.escrowId, 0, startupGets60)),
+    ).toThrow('unexpected shape');
+  });
+
+  it('ignore a fee address configured anyway', () => {
+    const configured = { ...MAINNET, twFee: STRANGER };
+    expect(() => sign(MAINNET_RELEASE, releasePolicy(configured, r.escrowId, 0))).not.toThrow();
+  });
+});
+
+describe('testnet keeps the testnet shape', () => {
+  it('refuses a release without the fee address', () => {
+    const r = fixtures.release;
+    expect(() => sign(MAINNET_RELEASE, releasePolicy(ADDRESSES, r.escrowId, 0))).toThrow(
+      'unexpected shape',
+    );
+  });
+
+  it('refuses a resolution without the fee address', () => {
+    const d = fixtures.resolve;
+    const policy = resolvePolicy(ADDRESSES, d.escrowId, 0, [
+      { address: d.startup, amount: '60' },
+    ]);
+    expect(() => sign(MAINNET_RESOLVE, policy)).toThrow('unexpected shape');
+  });
+});
+
+describe.each([
+  ['testnet', ADDRESSES, fixtures.release.envelopeXdr, fixtures.resolve.envelopeXdr],
+  ['mainnet', MAINNET, MAINNET_RELEASE, MAINNET_RESOLVE],
+] as const)('on %s the policies still refuse', (_network, addresses, release, resolve) => {
+  const r = fixtures.release;
+  const d = fixtures.resolve;
+  const milestoneArg = addresses.network === 'testnet' ? 2 : 1;
+
+  it('a release signed by someone other than the platform', () => {
+    expect(() =>
+      sign(withArg(release, 0, strangerScVal()), releasePolicy(addresses, r.escrowId, 0)),
+    ).toThrow('release signer is not the platform');
+  });
+
+  it('a release of another milestone', () => {
+    expect(() => sign(release, releasePolicy(addresses, r.escrowId, 1))).toThrow(
+      'another milestone',
+    );
+    expect(() =>
+      sign(
+        withArg(release, milestoneArg, xdr.ScVal.scvU32(3)),
+        releasePolicy(addresses, r.escrowId, 0),
+      ),
+    ).toThrow('another milestone');
+  });
+
+  it('a release of another escrow', () => {
+    const another = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
+    expect(() => sign(release, releasePolicy(addresses, another, 0))).toThrow(
+      'unexpected contract',
+    );
+  });
+
+  it('a resolution by someone other than the platform', () => {
+    expect(() =>
+      sign(
+        withArg(resolve, 0, strangerScVal()),
+        resolvePolicy(addresses, d.escrowId, 0, [{ address: d.startup, amount: '60' }]),
+      ),
+    ).toThrow('dispute resolver is not the platform');
+  });
+
+  it('a resolution of another milestone', () => {
+    const policy = resolvePolicy(addresses, d.escrowId, 1, [
+      { address: d.startup, amount: '60' },
+    ]);
+    expect(() => sign(resolve, policy)).toThrow('another milestone');
+  });
+
+  it('a resolution that pays someone other than the parties', () => {
+    const policy = resolvePolicy(addresses, d.escrowId, 0, [
+      { address: d.specialist, amount: '60' },
+    ]);
+    expect(() => sign(resolve, policy)).toThrow('leaves out a party');
+  });
+
+  it('a resolution that pays another amount', () => {
+    const policy = resolvePolicy(addresses, d.escrowId, 0, [
+      { address: d.startup, amount: '59' },
+    ]);
+    expect(() => sign(resolve, policy)).toThrow('another amount');
+  });
+
+  it('a resolution that adds a payee', () => {
+    const policy = resolvePolicy(addresses, d.escrowId, 0, [
+      { address: d.startup, amount: '60' },
+      { address: d.specialist, amount: '0.1' },
+    ]);
+    expect(() => sign(resolve, policy)).toThrow('pays someone else');
   });
 });

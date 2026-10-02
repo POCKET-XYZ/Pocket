@@ -363,6 +363,7 @@ export class EscrowService {
       usdcContract: this.stellar.usdcContractId,
       escrowWasmHash: this.trustlessWork.escrowWasmHash,
       networkPassphrase: this.stellar.networkPassphrase,
+      network: this.stellar.network,
     };
   }
 

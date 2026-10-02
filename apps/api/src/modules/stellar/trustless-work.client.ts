@@ -81,8 +81,11 @@ export class TrustlessWorkClient {
   private readonly apiKey: string;
   /** The contract that deploys escrows, which a deploy must call. */
   readonly deployerContractId: string;
-  /** Where the protocol fee goes, which a release or resolution must name. */
-  readonly feeAddress: string;
+  /**
+   * Where the protocol fee goes, which a testnet release or resolution must
+   * name. Unset on mainnet, where the contract has it written in.
+   */
+  readonly feeAddress: string | undefined;
   /** The escrow code a deploy must install, as a hex hash. */
   readonly escrowWasmHash: string;
   /**
@@ -96,7 +99,9 @@ export class TrustlessWorkClient {
     this.baseUrl = config.getOrThrow<string>('trustlessWork.apiUrl');
     this.apiKey = config.getOrThrow<string>('trustlessWork.apiKey');
     this.deployerContractId = config.getOrThrow<string>('trustlessWork.deployerContractId');
-    this.feeAddress = config.getOrThrow<string>('trustlessWork.feeAddress');
+    // Required on testnet by validateEnv; the policies refuse a testnet call
+    // whose fee address does not match, so a missing one cannot slip through.
+    this.feeAddress = config.get<string>('trustlessWork.feeAddress') || undefined;
     this.escrowWasmHash = config.getOrThrow<string>('trustlessWork.escrowWasmHash');
   }
 
