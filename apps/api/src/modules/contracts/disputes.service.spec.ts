@@ -6,6 +6,7 @@ import {
 import { Prisma } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import type { PrismaService } from '../../prisma/prisma.service';
+import type { NotificationsService } from '../notifications/notifications.service';
 import { NotYetConfirmed } from '../stellar/chain-operations.service';
 import { DisputesService, splitFor } from './disputes.service';
 import type { EscrowService } from './escrow.service';
@@ -94,6 +95,7 @@ describe('DisputesService', () => {
     resolve: jest.Mock;
   };
   let milestones: { load: jest.Mock; completeIfDone: jest.Mock };
+  let notifications: { notifyUsers: jest.Mock };
   let service: DisputesService;
 
   beforeEach(() => {
@@ -126,10 +128,12 @@ describe('DisputesService', () => {
       resolve: jest.fn(),
     };
     milestones = { load: jest.fn(), completeIfDone: jest.fn() };
+    notifications = { notifyUsers: jest.fn() };
     service = new DisputesService(
       prisma as unknown as PrismaService,
       escrow as unknown as EscrowService,
       milestones as unknown as MilestonesService,
+      notifications as unknown as NotificationsService,
     );
   });
 
@@ -170,6 +174,7 @@ describe('DisputesService', () => {
       milestones.load.mockResolvedValue({
         id: 'milestone-1',
         contractId: 'contract-1',
+        title: 'Report',
         status: 'delivered',
         position: 1,
         contract,
@@ -191,6 +196,12 @@ describe('DisputesService', () => {
         data: { status: 'disputed' },
       });
       expect(escrow.discard).not.toHaveBeenCalled();
+      // The specialist opened it, so the startup hears about it.
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(['startup-1'], {
+        type: 'dispute_opened',
+        disputeId: 'dispute-1',
+        milestoneTitle: 'Report',
+      });
     });
 
     it('frees the step when the escrow does not show the dispute', async () => {
@@ -209,6 +220,7 @@ describe('DisputesService', () => {
       expect(escrow.discard).toHaveBeenCalledWith('hash-1', expect.any(String));
       expect(prisma.dispute.create).not.toHaveBeenCalled();
       expect(prisma.milestone.update).not.toHaveBeenCalled();
+      expect(notifications.notifyUsers).not.toHaveBeenCalled();
     });
   });
 
@@ -216,6 +228,7 @@ describe('DisputesService', () => {
     const milestone = {
       id: 'milestone-1',
       contractId: 'contract-1',
+      title: 'Report',
       position: 0,
       status: 'delivered',
       contract,
@@ -233,6 +246,12 @@ describe('DisputesService', () => {
       expect(escrow.submitDispute).not.toHaveBeenCalled();
       expect(prisma.dispute.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ milestoneId: 'milestone-1', openedById: 'specialist-1' }),
+      });
+      // Told to the party who did not sign it, not to whoever found it.
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(['startup-1'], {
+        type: 'dispute_opened',
+        disputeId: 'dispute-1',
+        milestoneTitle: 'Report',
       });
     });
 
@@ -254,6 +273,7 @@ describe('DisputesService', () => {
       milestone: {
         id: 'milestone-1',
         contractId: 'contract-1',
+        title: 'Report',
         position: 1,
         amount: new Prisma.Decimal(2),
         contract,
@@ -292,6 +312,13 @@ describe('DisputesService', () => {
         }),
       );
       expect(milestones.completeIfDone).toHaveBeenCalledWith('contract-1');
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(['startup-1', 'specialist-1'], {
+        type: 'dispute_resolved',
+        disputeId: 'dispute-1',
+        milestoneTitle: 'Report',
+        specialistAmount: '1.5',
+        startupAmount: '0.5',
+      });
     });
 
     it('refuses a different decision while another one is being executed', async () => {
@@ -316,6 +343,7 @@ describe('DisputesService', () => {
       await expect(
         service.resolve(manager, 'dispute-1', { outcome: 'refund_startup', note: 'Nothing done' }),
       ).rejects.toThrow('down');
+      expect(notifications.notifyUsers).not.toHaveBeenCalled();
       expect(prisma.dispute.updateMany).toHaveBeenLastCalledWith({
         where: { id: 'dispute-1', status: 'open' },
         data: expect.objectContaining({ outcome: null }),

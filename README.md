@@ -58,7 +58,7 @@ cp apps/api/.env.example apps/api/.env
 # Database
 cd apps/api
 bunx prisma migrate deploy
-bun run db:seed          # creates the managers listed in MANAGER_STELLAR_ADDRESSES
+bun run db:seed          # managers = MANAGER_STELLAR_ADDRESSES (others are demoted)
 bun run stellar:setup    # one time per network: the platform account trusts USDC
 
 # Run the API on http://localhost:3000/api (Swagger UI at /api/docs)
