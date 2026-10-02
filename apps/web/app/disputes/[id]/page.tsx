@@ -1,6 +1,12 @@
 'use client';
 
-import { DisputeOutcome, type DisputeDetail, type User } from '@pocket/shared';
+import {
+  DisputeOutcome,
+  POCKET_FEE_PERCENT,
+  TRUSTLESS_WORK_FEE_PERCENT,
+  type DisputeDetail,
+  type User,
+} from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLinkIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -321,7 +327,8 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
         <CardTitle>Decide</CardTitle>
         <CardDescription>
           Pocket executes the decision on the escrow. It can only pay the two parties.
-          Trustless Work keeps 0.3% of what is paid out.
+          Trustless Work keeps {TRUSTLESS_WORK_FEE_PERCENT}% and Pocket {POCKET_FEE_PERCENT}% of
+          what is paid out, from each side.
         </CardDescription>
       </CardHeader>
       <CardContent>

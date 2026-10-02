@@ -33,6 +33,7 @@ export class PlatformMonitorService implements OnApplicationBootstrap, OnModuleD
   private timer?: NodeJS.Timeout;
   private polls = 0;
   private lastLowBalanceAlert = 0;
+  private lastTrustlineAlert = 0;
 
   constructor(
     config: ConfigService,
@@ -116,7 +117,12 @@ export class PlatformMonitorService implements OnApplicationBootstrap, OnModuleD
     }
   }
 
-  /** Alerts when the XLM left for fees falls under the threshold. */
+  /**
+   * Alerts when the XLM left for fees falls under the threshold, and when the
+   * account no longer trusts USDC. Pocket's fee is paid to this account in
+   * USDC on every release and resolution, so without the trustline the
+   * escrow cannot pay it and those steps fail.
+   */
   async checkBalance(): Promise<number> {
     const account = await this.horizon.loadAccount(this.stellar.platformAddress);
     const xlm = Number(
@@ -127,6 +133,20 @@ export class PlatformMonitorService implements OnApplicationBootstrap, OnModuleD
       securityEvent(
         'platform_balance_low',
         { account: this.stellar.platformAddress, xlm, threshold: this.minXlm },
+        'alert',
+      );
+    }
+    const trustsUsdc = account.balances.some(
+      (balance) =>
+        'asset_code' in balance &&
+        balance.asset_code === 'USDC' &&
+        balance.asset_issuer === this.stellar.usdcIssuer,
+    );
+    if (!trustsUsdc && Date.now() - this.lastTrustlineAlert > REALERT_MS) {
+      this.lastTrustlineAlert = Date.now();
+      securityEvent(
+        'platform_usdc_trustline_missing',
+        { account: this.stellar.platformAddress, issuer: this.stellar.usdcIssuer },
         'alert',
       );
     }

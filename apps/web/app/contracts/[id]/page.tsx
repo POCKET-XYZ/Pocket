@@ -1,8 +1,9 @@
 'use client';
 
 import {
+  POCKET_FEE_PERCENT,
   TRUSTLESS_WORK_FEE_PERCENT,
-  totalAfterTrustlessWorkFee,
+  totalAfterFees,
   type ChainOperationKind,
   type ContractDetail,
   type User,
@@ -218,7 +219,7 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
   const fundingPending =
     fund.error instanceof ApiError && [409, 503].includes(fund.error.status);
   const specialistReceives = usdc(
-    totalAfterTrustlessWorkFee(contract.milestones.map((milestone) => milestone.amount)),
+    totalAfterFees(contract.milestones.map((milestone) => milestone.amount)),
   );
 
   if (contract.status === 'awaiting_specialist') {
@@ -238,8 +239,9 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
           <CardDescription>
             If you accept, Pocket deploys an escrow on Stellar with these milestones,
             paying your wallet. Then the startup funds it. Trustless Work, which runs the
-            escrow, keeps {TRUSTLESS_WORK_FEE_PERCENT}% of each payment, so you receive{' '}
-            {specialistReceives} of the {usdc(contract.amount)}.
+            escrow, keeps {TRUSTLESS_WORK_FEE_PERCENT}% of each payment and Pocket{' '}
+            {POCKET_FEE_PERCENT}%, so you receive {specialistReceives} of the{' '}
+            {usdc(contract.amount)}.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
@@ -281,8 +283,8 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
           <CardDescription>
             Sign one transaction to lock {usdc(contract.amount)} in the escrow. Nobody can
             move it alone: each milestone is released when you approve it. Trustless Work
-            keeps {TRUSTLESS_WORK_FEE_PERCENT}% of each payment, so the specialist
-            receives {specialistReceives}. Pocket charges nothing.
+            keeps {TRUSTLESS_WORK_FEE_PERCENT}% of each payment and Pocket{' '}
+            {POCKET_FEE_PERCENT}%, so the specialist receives {specialistReceives}.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

@@ -15,6 +15,7 @@ import {
 } from '@stellar/stellar-sdk';
 
 import { securityEvent } from '../../common/security/security-log';
+import type { StellarNetwork } from '../../config/configuration';
 import { assertPlatformTx, type PlatformTxPolicy } from './platform-tx-policy';
 
 /** Whether an address can receive USDC. */
@@ -33,6 +34,7 @@ const SIGNING_WINDOW_SECONDS = 300;
 @Injectable()
 export class StellarService implements OnApplicationBootstrap {
   private readonly logger = new Logger(StellarService.name);
+  readonly network: StellarNetwork;
   readonly networkPassphrase: string;
   readonly usdc: Asset;
   readonly usdcIssuer: string;
@@ -40,10 +42,10 @@ export class StellarService implements OnApplicationBootstrap {
   private readonly horizon: Horizon.Server;
 
   constructor(config: ConfigService) {
+    this.network =
+      config.get<string>('stellar.network') === 'mainnet' ? 'mainnet' : 'testnet';
     this.networkPassphrase =
-      config.get<string>('stellar.network') === 'mainnet'
-        ? Networks.PUBLIC
-        : Networks.TESTNET;
+      this.network === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
     this.usdcIssuer = config.getOrThrow<string>('stellar.usdcIssuer');
     this.usdc = new Asset('USDC', this.usdcIssuer);
     this.platform = Keypair.fromSecret(
@@ -53,15 +55,23 @@ export class StellarService implements OnApplicationBootstrap {
   }
 
   /**
+   * The platform account receives Pocket's fee in USDC on every payout, and
    * Trustless Work refuses to deploy an escrow whose platform account does not
-   * trust USDC, so say so at boot instead of on the first hire.
+   * trust USDC. Without the trustline no hire can start and no fee can be paid,
+   * so raise an alert at boot instead of failing on the first hire. The
+   * platform monitor keeps checking while the API runs.
    */
   async onApplicationBootstrap(): Promise<void> {
     try {
       const readiness = await this.usdcReadiness(this.platformAddress);
       if (readiness !== 'ready') {
-        this.logger.warn(
+        this.logger.error(
           `Platform account ${this.platformAddress} is not ready for USDC (${readiness}). Run: bun run stellar:setup`,
+        );
+        securityEvent(
+          'platform_usdc_trustline_missing',
+          { account: this.platformAddress, issuer: this.usdcIssuer, readiness },
+          'alert',
         );
       }
     } catch (error) {

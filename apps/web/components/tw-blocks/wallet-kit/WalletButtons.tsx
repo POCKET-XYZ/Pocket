@@ -57,7 +57,7 @@ export const WalletButton = () => {
                 <span className="font-medium">{walletName}</span>
               </div>
               <span className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground">
-                Testnet
+                {process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'mainnet' ? 'Mainnet' : 'Testnet'}
               </span>
             </div>
 
