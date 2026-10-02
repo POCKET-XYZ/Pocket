@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { PrismaService } from '../../prisma/prisma.service';
+import type { NotificationsService } from '../notifications/notifications.service';
 import type { PollarWalletsService } from '../pollar/pollar-wallets.service';
 import { ManagerService } from './manager.service';
 
@@ -15,6 +16,7 @@ describe('ManagerService', () => {
     $transaction: jest.Mock;
   };
   let wallets: { activate: jest.Mock };
+  let notifications: { notifyEmail: jest.Mock; notifyUsers: jest.Mock };
   let service: ManagerService;
 
   beforeEach(() => {
@@ -33,9 +35,11 @@ describe('ManagerService', () => {
       run(prisma),
     );
     wallets = { activate: jest.fn().mockResolvedValue(true) };
+    notifications = { notifyEmail: jest.fn(), notifyUsers: jest.fn() };
     service = new ManagerService(
       prisma as unknown as PrismaService,
       wallets as unknown as PollarWalletsService,
+      notifications as unknown as NotificationsService,
     );
   });
 
@@ -59,6 +63,7 @@ describe('ManagerService', () => {
       id: 'req-1',
       userId: 'user-1',
       status: 'approved',
+      contactEmail: 'ana@example.com',
     });
 
     await service.approve('req-1', 'manager-1', 'Looks good');
@@ -79,6 +84,9 @@ describe('ManagerService', () => {
     });
     // The approval is the business event that activates a Pollar wallet.
     expect(wallets.activate).toHaveBeenCalledWith('user-1');
+    expect(notifications.notifyEmail).toHaveBeenCalledWith('ana@example.com', {
+      type: 'verification_approved',
+    });
   });
 
   it('refuses to reject without a reason', async () => {
@@ -97,6 +105,7 @@ describe('ManagerService', () => {
     prisma.verificationRequest.findUniqueOrThrow.mockResolvedValue({
       id: 'req-1',
       status: 'rejected',
+      contactEmail: 'ana@example.com',
     });
 
     await service.reject('req-1', 'manager-1', 'Company site is offline');
@@ -107,6 +116,11 @@ describe('ManagerService', () => {
     });
     // Nothing is paid for an account that was turned down.
     expect(wallets.activate).not.toHaveBeenCalled();
+    // The request was not approved, so its own contact email is used.
+    expect(notifications.notifyEmail).toHaveBeenCalledWith('ana@example.com', {
+      type: 'verification_rejected',
+      reason: 'Company site is offline',
+    });
   });
 
   it('fails when the request does not exist', async () => {
@@ -140,5 +154,6 @@ describe('ManagerService', () => {
     );
     expect(prisma.user.update).not.toHaveBeenCalled();
     expect(wallets.activate).not.toHaveBeenCalled();
+    expect(notifications.notifyEmail).not.toHaveBeenCalled();
   });
 });

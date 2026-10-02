@@ -32,6 +32,14 @@ export interface AppConfig {
   };
   /** Wallets and logins for users without a Stellar wallet of their own. */
   pollar: { serverUrl: string; secretKey: string };
+  /** Transactional emails through Resend. Off when the API key is empty. */
+  email: {
+    resendApiKey: string;
+    /** Sender, for example "Pocket <hola@example.com>", on a domain verified in Resend. */
+    from: string;
+    /** Public address of the web app, for the links in each email. */
+    webPublicUrl: string;
+  };
 }
 
 const REQUIRED = [
@@ -82,6 +90,19 @@ export function validateEnv(env: Record<string, unknown>): Record<string, unknow
   if (!/^[0-9a-f]{64}$/.test(String(env.TRUSTLESS_WORK_ESCROW_WASM_HASH))) {
     throw new Error('TRUSTLESS_WORK_ESCROW_WASM_HASH must be 64 hex characters');
   }
+  // Emails are optional, but once turned on they need a sender and somewhere
+  // for their links to point: an email with a broken button is worse than none.
+  if (env.RESEND_API_KEY) {
+    if (!env.EMAIL_FROM) {
+      throw new Error('EMAIL_FROM is required when RESEND_API_KEY is set');
+    }
+    const webUrl = typeof env.WEB_PUBLIC_URL === 'string' ? env.WEB_PUBLIC_URL : '';
+    if (!/^https?:\/\/[^\s/]+/.test(webUrl)) {
+      throw new Error(
+        'WEB_PUBLIC_URL must be the http(s) address of the web app when RESEND_API_KEY is set',
+      );
+    }
+  }
   return env;
 }
 
@@ -124,6 +145,12 @@ export default (): AppConfig => {
       ),
       // Optional: without it Pocket only accepts wallet sign-ins.
       secretKey: process.env.POLLAR_SECRET_KEY ?? '',
+    },
+    email: {
+      // Optional: without it no email is sent (local runs, tests).
+      resendApiKey: process.env.RESEND_API_KEY ?? '',
+      from: process.env.EMAIL_FROM ?? '',
+      webPublicUrl: (process.env.WEB_PUBLIC_URL ?? '').replace(/\/+$/, ''),
     },
   };
 };

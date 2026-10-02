@@ -6,6 +6,7 @@ import {
 import { Prisma } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import type { PrismaService } from '../../prisma/prisma.service';
+import type { NotificationsService } from '../notifications/notifications.service';
 import type { EscrowService } from './escrow.service';
 import { MilestonesService } from './milestones.service';
 
@@ -33,6 +34,7 @@ function milestone(status: string) {
   return {
     id: 'milestone-1',
     contractId: 'contract-1',
+    title: 'Lead list',
     position: 0,
     amount: new Prisma.Decimal(100),
     status,
@@ -68,6 +70,7 @@ describe('MilestonesService', () => {
     milestoneFlags: jest.Mock;
     release: jest.Mock;
   };
+  let notifications: { notifyUsers: jest.Mock };
   let service: MilestonesService;
 
   beforeEach(() => {
@@ -111,9 +114,11 @@ describe('MilestonesService', () => {
       milestoneFlags: jest.fn().mockResolvedValue({}),
       release: jest.fn(),
     };
+    notifications = { notifyUsers: jest.fn() };
     service = new MilestonesService(
       prisma as unknown as PrismaService,
       escrow as unknown as EscrowService,
+      notifications as unknown as NotificationsService,
     );
   });
 
@@ -129,6 +134,11 @@ describe('MilestonesService', () => {
       expect(prisma.milestone.update).toHaveBeenCalledWith({
         where: { id: 'milestone-1' },
         data: { status: 'delivered' },
+      });
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(['startup-1'], {
+        type: 'milestone_delivered',
+        contractId: 'contract-1',
+        milestoneTitle: 'Lead list',
       });
     });
 
@@ -170,6 +180,12 @@ describe('MilestonesService', () => {
       where: { id: 'milestone-1', status: 'delivered', revisionsUsed: { lt: 2 } },
       data: { status: 'changes_requested', revisionsUsed: { increment: 1 } },
     });
+    expect(notifications.notifyUsers).toHaveBeenCalledWith(['specialist-1'], {
+      type: 'changes_requested',
+      contractId: 'contract-1',
+      milestoneTitle: 'Lead list',
+      feedback: 'Add sources',
+    });
   });
 
   it('stops asking for changes once the agreed rounds are used', async () => {
@@ -186,6 +202,7 @@ describe('MilestonesService', () => {
     await expect(
       service.requestChanges(startup, 'milestone-1', { feedback: 'Add sources' }),
     ).rejects.toBeInstanceOf(ConflictException);
+    expect(notifications.notifyUsers).not.toHaveBeenCalled();
   });
 
   describe('prepareApprove', () => {
@@ -249,6 +266,12 @@ describe('MilestonesService', () => {
 
       expect(escrow.release).toHaveBeenCalled();
       expect(paid).toEqual(expect.objectContaining({ status: 'paid' }));
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(['specialist-1'], {
+        type: 'milestone_paid',
+        contractId: 'contract-1',
+        milestoneTitle: 'Lead list',
+        amount: '100',
+      });
       expect(prisma.contract.update).toHaveBeenCalledWith({
         where: { id: 'contract-1' },
         data: expect.objectContaining({ status: 'completed' }),
@@ -270,6 +293,7 @@ describe('MilestonesService', () => {
       expect(escrow.release).not.toHaveBeenCalled();
       // The step is freed, or the startup could never approve again.
       expect(escrow.discard).toHaveBeenCalledWith('hash-1', expect.any(String));
+      expect(notifications.notifyUsers).not.toHaveBeenCalled();
     });
 
     it('refuses the specialist', async () => {

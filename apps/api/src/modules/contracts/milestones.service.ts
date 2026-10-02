@@ -8,6 +8,7 @@ import {
 import type { Contract, Deliverable, Milestone } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { PreparedTransaction } from '../stellar/chain-operations.service';
 import { DeliverDto, RequestChangesDto } from './dto/milestone-actions.dto';
 import { EscrowService } from './escrow.service';
@@ -19,6 +20,7 @@ export class MilestonesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly escrow: EscrowService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** The specialist submits the work for a milestone. Every version is kept. */
@@ -46,6 +48,11 @@ export class MilestonesService {
         data: { status: 'delivered' },
       }),
     ]);
+    this.notifications.notifyUsers([milestone.contract.startupId], {
+      type: 'milestone_delivered',
+      contractId: milestone.contractId,
+      milestoneTitle: milestone.title,
+    });
     return deliverable;
   }
 
@@ -75,7 +82,7 @@ export class MilestonesService {
       orderBy: { version: 'desc' },
     });
 
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       // Each round is counted, so both sides can see how many the price
       // included and how many are left. Claimed like any step: two requests
       // at once cannot spend two rounds on one delivery.
@@ -92,6 +99,13 @@ export class MilestonesService {
       });
       return tx.milestone.findUniqueOrThrow({ where: { id: milestoneId } });
     });
+    this.notifications.notifyUsers([milestone.contract.specialistId], {
+      type: 'changes_requested',
+      contractId: milestone.contractId,
+      milestoneTitle: milestone.title,
+      feedback: dto.feedback,
+    });
+    return updated;
   }
 
   /** Approval transaction for the startup's wallet to sign. */
@@ -203,6 +217,12 @@ export class MilestonesService {
     const paid = await this.prisma.milestone.update({
       where: { id: milestoneId },
       data: { status: 'paid', paidAt: new Date() },
+    });
+    this.notifications.notifyUsers([milestone.contract.specialistId], {
+      type: 'milestone_paid',
+      contractId: milestone.contractId,
+      milestoneTitle: milestone.title,
+      amount: milestone.amount.toString(),
     });
     await this.completeIfDone(milestone.contractId);
     return paid;

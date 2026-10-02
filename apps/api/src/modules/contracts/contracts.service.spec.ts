@@ -9,6 +9,7 @@ import type { AuthUser } from '../../common/types/auth';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { StellarService } from '../stellar/stellar.service';
 import { JobsService } from '../jobs/jobs.service';
+import type { NotificationsService } from '../notifications/notifications.service';
 import { ContractsService } from './contracts.service';
 import type { CreateContractDto } from './dto/create-contract.dto';
 import type { EscrowService } from './escrow.service';
@@ -64,6 +65,7 @@ describe('ContractsService', () => {
   };
   let escrow: { deploy: jest.Mock; isFunded: jest.Mock; prepareFund: jest.Mock };
   let stellar: { usdcReadiness: jest.Mock; spendableUsdc: jest.Mock };
+  let notifications: { notifyUsers: jest.Mock };
   let service: ContractsService;
 
   beforeEach(() => {
@@ -83,13 +85,16 @@ describe('ContractsService', () => {
         findUnique: jest.fn().mockResolvedValue({
           id: 'job-1',
           startupId: 'startup-1',
+          title: 'Growth plan',
           status: 'open',
         }),
         update: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       contract: {
-        create: jest.fn().mockReturnValue({ id: 'contract-1' }),
+        create: jest
+          .fn()
+          .mockReturnValue({ id: 'contract-1', specialistId: 'specialist-1' }),
         findUnique: jest.fn(),
         findUniqueOrThrow: jest.fn(),
         update: jest.fn(async ({ data }: { data: object }) => ({
@@ -123,12 +128,14 @@ describe('ContractsService', () => {
       usdcReadiness: jest.fn().mockResolvedValue('ready'),
       spendableUsdc: jest.fn(),
     };
+    notifications = { notifyUsers: jest.fn() };
     const client = prisma as unknown as PrismaService;
     service = new ContractsService(
       client,
       new JobsService(client),
       escrow as unknown as EscrowService,
       stellar as unknown as StellarService,
+      notifications as unknown as NotificationsService,
     );
   });
 
@@ -159,6 +166,11 @@ describe('ContractsService', () => {
         where: { id: 'job-1', status: 'open' },
         data: { status: 'in_progress' },
       });
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(['specialist-1'], {
+        type: 'offer_received',
+        contractId: 'contract-1',
+        jobTitle: 'Growth plan',
+      });
     });
 
     it('hires once when two offers for the same job arrive together', async () => {
@@ -166,6 +178,7 @@ describe('ContractsService', () => {
       prisma.job.updateMany.mockResolvedValue({ count: 0 });
       await expect(service.create(startup, dto)).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.contract.create).not.toHaveBeenCalled();
+      expect(notifications.notifyUsers).not.toHaveBeenCalled();
     });
 
     it('requires the milestones to add up to the agreed price exactly', async () => {
@@ -349,6 +362,7 @@ describe('ContractsService', () => {
     const waiting = {
       id: 'contract-1',
       jobId: 'job-1',
+      startupId: 'startup-1',
       specialistId: 'specialist-1',
       status: 'awaiting_specialist',
     };
@@ -385,6 +399,11 @@ describe('ContractsService', () => {
         where: { jobId: 'job-1', status: 'submitted' },
         data: expect.objectContaining({ status: 'rejected' }),
       });
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(['startup-1'], {
+        type: 'terms_accepted',
+        contractId: 'contract-1',
+        jobTitle: 'A job',
+      });
     });
 
     it('asks for a USDC trustline first, with a code the client can act on', async () => {
@@ -412,6 +431,7 @@ describe('ContractsService', () => {
         where: { id: 'contract-1' },
         data: { acceptedAt: null },
       });
+      expect(notifications.notifyUsers).not.toHaveBeenCalled();
     });
 
     it('refuses the startup', async () => {
@@ -432,13 +452,18 @@ describe('ContractsService', () => {
 
     beforeEach(() => {
       prisma.contract.findUnique.mockResolvedValue(awaiting);
+      prisma.contract.findUniqueOrThrow.mockResolvedValue({
+        ...awaiting,
+        specialistId: 'specialist-1',
+        status: 'active',
+      });
     });
 
     it('does not prepare a second deposit when the escrow already holds the money', async () => {
       escrow.isFunded.mockResolvedValue(true);
       await expect(service.prepareFund(startup, 'contract-1')).rejects.toThrow('already funded');
-      expect(prisma.contract.update).toHaveBeenCalledWith({
-        where: { id: 'contract-1' },
+      expect(prisma.contract.updateMany).toHaveBeenCalledWith({
+        where: { id: 'contract-1', status: 'awaiting_funding' },
         data: expect.objectContaining({ status: 'active' }),
       });
       expect(escrow.prepareFund).not.toHaveBeenCalled();
@@ -486,11 +511,32 @@ describe('ContractsService', () => {
 
     it('activates the contract once the escrow holds the full amount', async () => {
       prisma.contract.findUnique.mockResolvedValue(awaiting);
+      prisma.contract.findUniqueOrThrow.mockResolvedValue({
+        ...awaiting,
+        specialistId: 'specialist-1',
+        status: 'active',
+      });
       escrow.isFunded.mockResolvedValue(true);
 
       const synced = await service.syncFunding(startup, 'contract-1');
 
       expect(synced).toEqual(expect.objectContaining({ status: 'active' }));
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(['specialist-1'], {
+        type: 'escrow_funded',
+        contractId: 'contract-1',
+      });
+    });
+
+    it('tells the specialist once when two syncs activate it together', async () => {
+      prisma.contract.findUnique.mockResolvedValue(awaiting);
+      prisma.contract.findUniqueOrThrow.mockResolvedValue({ ...awaiting, status: 'active' });
+      // The other sync moved it out of awaiting_funding first.
+      prisma.contract.updateMany.mockResolvedValue({ count: 0 });
+      escrow.isFunded.mockResolvedValue(true);
+
+      await service.syncFunding(startup, 'contract-1');
+
+      expect(notifications.notifyUsers).not.toHaveBeenCalled();
     });
 
     it('waits while the chain does not show the deposit', async () => {
@@ -499,7 +545,8 @@ describe('ContractsService', () => {
       await expect(service.syncFunding(startup, 'contract-1')).rejects.toBeInstanceOf(
         ConflictException,
       );
-      expect(prisma.contract.update).not.toHaveBeenCalled();
+      expect(prisma.contract.updateMany).not.toHaveBeenCalled();
+      expect(notifications.notifyUsers).not.toHaveBeenCalled();
     });
   });
 });
