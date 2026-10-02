@@ -7,22 +7,22 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { download, errorMessage, upload } from '@/lib/api';
+import {
+  ATTACHMENT_ACCEPT,
+  ATTACHMENT_EXTENSIONS,
+  FILE_KINDS,
+  MAX_FILE_BYTES,
+  extensionOf,
+  fileSize,
+  saveFile,
+} from '@/lib/files';
 
-/** What a delivery's file can be, as the API checks it. */
-export const ATTACHMENT_TYPES = [
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-];
-export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
-
-/** A file the API would refuse, said before uploading it, or null. */
+/** A delivery's file the API would refuse, said before uploading it, or null. */
 export function attachmentProblem(file: File): string | null {
-  if (!ATTACHMENT_TYPES.includes(file.type)) {
-    return 'Attach a PDF, or a PNG, JPEG or WebP image';
+  if (!ATTACHMENT_EXTENSIONS.includes(extensionOf(file.name))) {
+    return 'Attach a PDF, an Excel (.xlsx), Word (.docx) or CSV file, or a PNG, JPEG or WebP image';
   }
-  if (file.size > MAX_ATTACHMENT_BYTES) return 'The file is too big. The limit is 5 MB';
+  if (file.size > MAX_FILE_BYTES) return 'The file is too big. The limit is 5 MB';
   return null;
 }
 
@@ -103,15 +103,10 @@ export function KpiReport({
   );
 }
 
-function fileSize(bytes: number): string {
-  return bytes >= 1024 * 1024
-    ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
-    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-}
-
 /**
  * The delivery's file. It is private to the contract, so it is fetched with
- * the session rather than linked: a PDF is saved, an image is shown here.
+ * the session rather than linked: an image is shown here, anything else
+ * (a PDF, a filled Excel or Word template, a CSV) is saved.
  */
 function AttachmentView({
   deliverableId,
@@ -124,7 +119,8 @@ function AttachmentView({
 }) {
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
-  const isPdf = attachment.contentType === 'application/pdf';
+  const kind = FILE_KINDS[attachment.contentType];
+  const isImage = attachment.contentType.startsWith('image/');
 
   useEffect(
     () => () => {
@@ -137,16 +133,13 @@ function AttachmentView({
     setLoading(true);
     try {
       const blob = await download(`/deliverables/${deliverableId}/attachment`);
-      // The type the API read from the file, not whatever the response says.
-      const url = URL.createObjectURL(new Blob([blob], { type: attachment.contentType }));
-      if (isPdf) {
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `delivery-v${version}.pdf`;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      if (isImage) {
+        // The type the API read from the file, not whatever the response says.
+        setPreview(
+          URL.createObjectURL(new Blob([blob], { type: attachment.contentType })),
+        );
       } else {
-        setPreview(url);
+        saveFile(blob, attachment.contentType, `delivery-v${version}.${kind.extension}`);
       }
     } catch (error) {
       toast.error(errorMessage(error));
@@ -175,7 +168,7 @@ function AttachmentView({
           <FileIcon />
           {loading
             ? 'Opening...'
-            : `${isPdf ? 'Download attached PDF' : 'Show attached image'} (${fileSize(attachment.size)})`}
+            : `${isImage ? 'Show attached image' : `Download attached ${kind.label}`} (${fileSize(attachment.size)})`}
         </Button>
       )}
     </div>
@@ -227,7 +220,7 @@ export function AttachFileButton({
             : 'Attach a file'}
         <input
           type="file"
-          accept={ATTACHMENT_TYPES.join(',')}
+          accept={ATTACHMENT_ACCEPT}
           className="sr-only"
           disabled={busy}
           onChange={(event) => void onChosen(event)}

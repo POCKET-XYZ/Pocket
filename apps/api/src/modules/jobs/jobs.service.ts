@@ -9,6 +9,8 @@ import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BrowseJobsDto } from './dto/browse-jobs.dto';
 import { CreateJobDto } from './dto/create-job.dto';
+import { cleanKpis } from './kpis';
+import { REPORT_TEMPLATE_INFO } from './report-template-info';
 
 /** What the board shows about who posted a job. */
 const LISTING_INCLUDE = {
@@ -18,6 +20,7 @@ const LISTING_INCLUDE = {
   _count: { select: { applications: true } },
   milestones: { orderBy: { position: 'asc' } },
   kpis: { orderBy: { position: 'asc' } },
+  reportTemplate: { select: REPORT_TEMPLATE_INFO },
 } satisfies Prisma.JobInclude;
 
 type JobWithListing = Prisma.JobGetPayload<{ include: typeof LISTING_INCLUDE }>;
@@ -35,7 +38,7 @@ export class JobsService {
       throw new BadRequestException('The deadline cannot be in the past');
     }
     assertMilestonesMatch(dto);
-    const kpis = cleanKpis(dto);
+    const kpis = cleanKpis(dto.kpis);
     const profile = await this.prisma.startupProfile.findUnique({
       where: { userId: user.sub },
       select: { id: true },
@@ -194,30 +197,4 @@ function assertMilestonesMatch(dto: CreateJobDto): void {
   if (past) {
     throw new BadRequestException(`"${past.title}" is due in the past`);
   }
-}
-
-/**
- * The KPIs as stored: trimmed, without empty optional parts, and each name
- * once, since every delivery reports one result per KPI by name.
- */
-function cleanKpis(
-  dto: CreateJobDto,
-): { name: string; target?: string; unit?: string }[] {
-  const kpis = (dto.kpis ?? []).map((kpi) => ({
-    name: kpi.name.trim(),
-    ...(kpi.target?.trim() ? { target: kpi.target.trim() } : {}),
-    ...(kpi.unit?.trim() ? { unit: kpi.unit.trim() } : {}),
-  }));
-  const seen = new Set<string>();
-  for (const kpi of kpis) {
-    if (kpi.name.length < 2) {
-      throw new BadRequestException('Give every KPI a name of at least 2 characters');
-    }
-    const key = kpi.name.toLowerCase();
-    if (seen.has(key)) {
-      throw new BadRequestException(`"${kpi.name}" is listed twice as a KPI`);
-    }
-    seen.add(key);
-  }
-  return kpis;
 }

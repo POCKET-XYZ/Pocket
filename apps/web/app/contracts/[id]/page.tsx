@@ -15,6 +15,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { MilestoneCard } from '@/components/contract/milestone-card';
 import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
+import { ReportTemplateButton } from '@/components/report-template';
 import { RequireAuth } from '@/components/require-auth';
 import { StatusBadge } from '@/components/status-badge';
 import { UsdcStatus } from '@/components/usdc-status';
@@ -69,7 +70,9 @@ function Contract({ user }: { user: User }) {
   const startupName = data.startup.startupProfile?.companyName ?? 'Startup';
   const specialistName = data.specialist.specialistProfile?.displayName ?? 'Specialist';
   const contactPending =
-    data.status === 'awaiting_specialist' ? 'Shared once the terms are accepted' : 'Not provided';
+    data.status === 'awaiting_specialist'
+      ? 'Shared once the terms are accepted'
+      : 'Not provided';
   const titleFor = (milestoneId: string | null) =>
     data.milestones.find((milestone) => milestone.id === milestoneId)?.title;
 
@@ -126,6 +129,19 @@ function Contract({ user }: { user: User }) {
 
       <section className="space-y-3">
         <h2 className="text-xl font-bold text-navy">Milestones</h2>
+        {data.job.reportTemplate ? (
+          <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              {user.id === data.specialistId
+                ? "Fill in the startup's report template and attach it to each delivery."
+                : 'The specialist fills in this report template and attaches it to each delivery.'}
+            </p>
+            <ReportTemplateButton
+              jobId={data.job.id}
+              template={data.job.reportTemplate}
+            />
+          </div>
+        ) : null}
         {data.milestones.map((milestone) => (
           <MilestoneCard
             key={milestone.id}
@@ -338,7 +354,9 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
           <p>The specialist declined the terms, so the job was opened again.</p>
           {isStartup ? (
             <Button asChild size="sm" className="mt-3">
-              <Link href={`/jobs/${contract.jobId}/applicants`}>Choose another applicant</Link>
+              <Link href={`/jobs/${contract.jobId}/applicants`}>
+                Choose another applicant
+              </Link>
             </Button>
           ) : isSpecialist ? (
             <Button asChild size="sm" variant="outline" className="mt-3">
@@ -418,7 +436,10 @@ function Waiting({ title, text }: { title: string; text: string }) {
 /** Whether the contract is waiting on something the other party does. */
 function waitsForOtherParty(contract: ContractDetail | undefined): boolean {
   if (!contract) return false;
-  if (contract.status === 'awaiting_specialist' || contract.status === 'awaiting_funding') {
+  if (
+    contract.status === 'awaiting_specialist' ||
+    contract.status === 'awaiting_funding'
+  ) {
     return true;
   }
   return (
