@@ -1,8 +1,9 @@
 'use client';
 
 import {
+  POCKET_FEE_PERCENT,
   TRUSTLESS_WORK_FEE_PERCENT,
-  totalAfterTrustlessWorkFee,
+  totalAfterFees,
   type Applicant,
   type JobListing,
 } from '@pocket/shared';
@@ -258,14 +259,15 @@ export function HireDialog({
           {remaining === BigInt(0) ? (
             <p className="rounded-lg bg-celeste-light/40 px-3 py-2 text-sm text-muted-foreground">
               You fund the full {usdc(applicant.price)}. Trustless Work, which runs the
-              escrow, keeps {TRUSTLESS_WORK_FEE_PERCENT}% of each payment, so{' '}
-              {applicant.specialist?.displayName ?? 'the specialist'} receives{' '}
+              escrow, keeps {TRUSTLESS_WORK_FEE_PERCENT}% of each payment and Pocket{' '}
+              {POCKET_FEE_PERCENT}%, so {applicant.specialist?.displayName ?? 'the specialist'}{' '}
+              receives{' '}
               {usdc(
-                totalAfterTrustlessWorkFee(
+                totalAfterFees(
                   milestones.map((milestone) => fromUnits(toUnits(milestone.amount))),
                 ),
               )}{' '}
-              in total. Pocket charges nothing.
+              in total.
             </p>
           ) : null}
 

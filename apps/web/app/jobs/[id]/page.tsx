@@ -1,8 +1,9 @@
 'use client';
 
 import {
+  POCKET_FEE_PERCENT,
   TRUSTLESS_WORK_FEE_PERCENT,
-  afterTrustlessWorkFee,
+  afterFees,
   type JobListing,
   type MyApplication,
   type User,
@@ -357,20 +358,21 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
   );
 }
 
-/** How the offer compares to the budget, and what is left after the escrow fee. */
+/** How the offer compares to the budget, and what is left after the fees. */
 function PriceNote({ price, budget }: { price: string; budget: string }) {
   const offered = Number(price);
   const posted = Number(budget);
   if (!Number.isFinite(offered) || offered <= 0) return null;
   const difference = offered - posted;
-  const net = usdc(afterTrustlessWorkFee(offered));
+  const net = usdc(afterFees(offered));
+  const fees = `Trustless Work keeps ${TRUSTLESS_WORK_FEE_PERCENT}% and Pocket ${POCKET_FEE_PERCENT}%, so you receive ${net}.`;
   return (
     <p className="text-sm text-muted-foreground">
       {difference === 0
-        ? `Same as the budget. You receive ${net} after the ${TRUSTLESS_WORK_FEE_PERCENT}% Trustless Work fee.`
+        ? `Same as the budget. ${fees}`
         : `${difference > 0 ? '+' : '-'}${usdc(Math.abs(difference))} ${
             difference > 0 ? 'over' : 'under'
-          } the ${usdc(budget)} budget. You receive ${net} after the ${TRUSTLESS_WORK_FEE_PERCENT}% Trustless Work fee.`}
+          } the ${usdc(budget)} budget. ${fees}`}
     </p>
   );
 }

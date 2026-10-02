@@ -1,30 +1,46 @@
 /**
- * Trustless Work keeps a fixed 0.3% of every amount its escrow pays out: each
- * released milestone and each side of a resolved dispute. Deploying, funding,
- * approving and disputing pay no fee. Pocket's own fee is 0% during the MVP.
+ * Two fees come out of every amount an escrow pays out: each released
+ * milestone and each side of a resolved dispute. Deploying, funding, approving
+ * and disputing pay neither, only the network's.
+ *
+ * Trustless Work keeps a fixed 0.3% as its protocol fee. Pocket keeps 1% as
+ * its platform fee, which the escrow sends to Pocket's platform account.
  */
 export const TRUSTLESS_WORK_FEE_PERCENT = 0.3;
 
-/** 0.3% expressed as a fraction of 1000, so the math stays in integers. */
-const FEE_PER_THOUSAND = 3n;
+/** Pocket's own fee, as a percent of each payout. */
+export const POCKET_FEE_PERCENT = 1;
+
+/**
+ * Pocket's fee in basis points (hundredths of a percent): 1% is 100. This is
+ * the value the escrow stores as its `platform_fee`, and what the API checks
+ * on chain before and after every deploy.
+ */
+export const POCKET_FEE_BASIS_POINTS = Math.round(POCKET_FEE_PERCENT * 100);
+
+/** Trustless Work's 0.3% in basis points. */
+const TRUSTLESS_WORK_FEE_BASIS_POINTS = 30n;
+const BASIS_POINTS = 10_000n;
 /** USDC on Stellar has 7 decimals. */
 const UNITS_PER_USDC = 10_000_000n;
 
 /**
- * What a payout leaves after Trustless Work's fee, as a decimal string.
- * Each payout is charged on its own, so pass one milestone at a time and add
- * the results.
+ * What a payout leaves after both fees, as a decimal string. The escrow
+ * computes each fee on the full payout and rounds it down to the stroop, so
+ * this does the same, fee by fee. Each payout is charged on its own, so pass
+ * one milestone at a time and add the results.
  */
-export function afterTrustlessWorkFee(amount: string | number): string {
+export function afterFees(amount: string | number): string {
   const units = toUnits(String(amount));
-  const fee = (units * FEE_PER_THOUSAND) / 1000n;
-  return fromUnits(units - fee);
+  const trustlessWork = (units * TRUSTLESS_WORK_FEE_BASIS_POINTS) / BASIS_POINTS;
+  const pocket = (units * BigInt(POCKET_FEE_BASIS_POINTS)) / BASIS_POINTS;
+  return fromUnits(units - trustlessWork - pocket);
 }
 
-/** Sum of each payout after the fee: what the specialist receives in total. */
-export function totalAfterTrustlessWorkFee(amounts: (string | number)[]): string {
+/** Sum of each payout after both fees: what the specialist receives in total. */
+export function totalAfterFees(amounts: (string | number)[]): string {
   const total = amounts.reduce<bigint>(
-    (sum, amount) => sum + toUnits(afterTrustlessWorkFee(amount)),
+    (sum, amount) => sum + toUnits(afterFees(amount)),
     0n,
   );
   return fromUnits(total);
