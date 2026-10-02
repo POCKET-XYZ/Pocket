@@ -3,9 +3,16 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  PayloadTooLargeException,
 } from '@nestjs/common';
 import { Prisma, type SpecialistProfile, type StartupProfile } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
+import {
+  isPdf,
+  sniffImage,
+  type ImageType,
+  type UploadedBytes,
+} from '../../common/uploads/file-type';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BrowseSpecialistsDto } from './dto/browse-specialists.dto';
 import { BrowseStartupsDto } from './dto/browse-startups.dto';
@@ -13,10 +20,7 @@ import { SpecialistProfileDto } from './dto/specialist-profile.dto';
 import { StartupProfileDto } from './dto/startup-profile.dto';
 
 /** An uploaded file as Nest hands it over, kept in memory. */
-export interface UploadedPdf {
-  buffer: Buffer;
-  size: number;
-}
+export type UploadedPdf = UploadedBytes;
 
 /**
  * Optional fields and their empty value. Saving a profile replaces it, so a
@@ -60,6 +64,22 @@ function given<T extends object>(dto: T): Partial<T> {
 /** The largest CV Pocket keeps. */
 export const MAX_CV_BYTES = 4 * 1024 * 1024;
 
+/** The largest logo Pocket keeps. A logo is shown small; 1 MB is plenty. */
+export const MAX_LOGO_BYTES = 1024 * 1024;
+
+/**
+ * Whether a logo link points at the logo this startup uploaded, served by the
+ * API. Anything else is a link the startup pasted.
+ */
+function isUploadedLogo(url: string | undefined, userId: string): boolean {
+  if (!url) return false;
+  try {
+    return new URL(url).pathname.endsWith(`/profiles/${userId}/logo`);
+  } catch {
+    return false;
+  }
+}
+
 @Injectable()
 export class ProfilesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -69,11 +89,17 @@ export class ProfilesService {
     if (user.role !== 'startup') {
       throw new ForbiddenException('Only startups have a startup profile');
     }
-    return await this.prisma.startupProfile.upsert({
+    const profile = await this.prisma.startupProfile.upsert({
       where: { userId: user.sub },
       create: { ...dto, userId: user.sub },
       update: { ...STARTUP_OPTIONAL, ...given(dto) },
     });
+    // The last logo set wins: a pasted link, or none, replaces the uploaded
+    // one, which is then not kept around nor served.
+    if (!isUploadedLogo(dto.logoUrl, user.sub)) {
+      await this.prisma.startupLogo.deleteMany({ where: { userId: user.sub } });
+    }
+    return profile;
   }
 
   /** Create or replace the specialist profile of the signed-in user. */
@@ -205,7 +231,7 @@ export class ProfilesService {
    */
   async saveCv(user: AuthUser, file: UploadedPdf | undefined, cvUrl: string) {
     if (!file?.buffer.length) throw new BadRequestException('Choose a PDF file');
-    if (file.buffer.subarray(0, 5).toString('latin1') !== '%PDF-') {
+    if (!isPdf(file.buffer)) {
       throw new BadRequestException('Upload your CV as a PDF');
     }
     const data = new Uint8Array(file.buffer);
@@ -228,6 +254,60 @@ export class ProfilesService {
     });
     if (!cv) throw new NotFoundException('CV not found');
     return Buffer.from(cv.data);
+  }
+
+  /**
+   * Store the signed-in startup's logo, replacing the one before. Only a real
+   * PNG, JPEG or WebP is kept, read from its bytes: never an SVG, which is a
+   * document that can carry script. The profile then shows it.
+   */
+  async saveLogo(user: AuthUser, file: UploadedBytes | undefined, logoUrl: string) {
+    if (user.role !== 'startup') {
+      throw new ForbiddenException('Only startups have a logo');
+    }
+    if (!file?.buffer.length) throw new BadRequestException('Choose an image file');
+    if (file.buffer.length > MAX_LOGO_BYTES) {
+      throw new PayloadTooLargeException('The logo is too big. The limit is 1 MB');
+    }
+    const contentType = sniffImage(file.buffer);
+    if (!contentType) {
+      throw new BadRequestException('Upload your logo as a PNG, JPEG or WebP image');
+    }
+    const data = new Uint8Array(file.buffer);
+    await this.prisma.startupLogo.upsert({
+      where: { userId: user.sub },
+      create: { userId: user.sub, data, contentType, size: data.length },
+      update: { data, contentType, size: data.length },
+    });
+    await this.prisma.startupProfile.updateMany({
+      where: { userId: user.sub },
+      data: { logoUrl },
+    });
+    return { logoUrl };
+  }
+
+  /** Take the signed-in startup's logo down, uploaded or linked. */
+  async removeLogo(user: AuthUser) {
+    if (user.role !== 'startup') {
+      throw new ForbiddenException('Only startups have a logo');
+    }
+    await this.prisma.startupLogo.deleteMany({ where: { userId: user.sub } });
+    await this.prisma.startupProfile.updateMany({
+      where: { userId: user.sub },
+      data: { logoUrl: null },
+    });
+    return { logoUrl: null };
+  }
+
+  /** The logo an approved startup uploaded, for anyone to see. */
+  async logoOf(userId: string): Promise<{ data: Buffer; contentType: ImageType }> {
+    const logo = await this.prisma.startupLogo.findFirst({
+      where: { userId, user: { verificationStatus: 'approved' } },
+    });
+    // Checked again on the way out: only an image type is ever served.
+    const contentType = logo ? sniffImage(Buffer.from(logo.data)) : null;
+    if (!logo || !contentType) throw new NotFoundException('Logo not found');
+    return { data: Buffer.from(logo.data), contentType };
   }
 
   /** Public profile of an approved user. Unverified accounts stay hidden. */

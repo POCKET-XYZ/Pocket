@@ -60,6 +60,7 @@ describe('MilestonesService', () => {
     };
     contract: { update: jest.Mock };
     job: { update: jest.Mock; findUniqueOrThrow: jest.Mock };
+    jobKpi: { findMany: jest.Mock };
     $transaction: jest.Mock;
   };
   let escrow: {
@@ -98,6 +99,8 @@ describe('MilestonesService', () => {
         update: jest.fn(),
         findUniqueOrThrow: jest.fn().mockResolvedValue({ revisionRounds: 2 }),
       },
+      // Jobs have no KPIs unless a test gives them some.
+      jobKpi: { findMany: jest.fn().mockResolvedValue([]) },
       // A batch runs its operations; an interactive one runs with the client.
       $transaction: jest.fn((arg: unknown) =>
         typeof arg === 'function'
@@ -157,6 +160,122 @@ describe('MilestonesService', () => {
       await expect(
         service.deliver(specialist, 'milestone-1', { url: 'https://example.com' }),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    describe('results report', () => {
+      const LEADS = { id: '11111111-1111-4111-8111-111111111111', name: 'Qualified leads' };
+      const REPLIES = { id: '22222222-2222-4222-8222-222222222222', name: 'Reply rate' };
+      const OTHER_JOB_KPI = '33333333-3333-4333-8333-333333333333';
+      const url = 'https://example.com/report';
+
+      beforeEach(() => {
+        prisma.milestone.findUnique.mockResolvedValue(milestone('pending'));
+        prisma.jobKpi.findMany.mockResolvedValue([LEADS, REPLIES]);
+      });
+
+      it("reads the KPIs of the contract's job", async () => {
+        await service.deliver(specialist, 'milestone-1', {
+          url,
+          results: [
+            { kpiId: LEADS.id, value: '48' },
+            { kpiId: REPLIES.id, value: '12%' },
+          ],
+        });
+        expect(prisma.jobKpi.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({ where: { jobId: 'job-1' } }),
+        );
+      });
+
+      it('stores one result per KPI, in the order the startup listed them', async () => {
+        await service.deliver(specialist, 'milestone-1', {
+          url,
+          results: [
+            { kpiId: REPLIES.id, value: ' Not measurable yet ' },
+            { kpiId: LEADS.id, value: '48 of 50', comment: ' One list bounced ' },
+          ],
+        });
+        const { data } = prisma.deliverable.create.mock.calls[0][0];
+        expect(data.kpiResults).toEqual({
+          create: [
+            { kpiId: LEADS.id, value: '48 of 50', comment: 'One list bounced' },
+            { kpiId: REPLIES.id, value: 'Not measurable yet' },
+          ],
+        });
+        expect(data).not.toHaveProperty('results');
+      });
+
+      it('asks for a result for every KPI of the job', async () => {
+        await expect(
+          service.deliver(specialist, 'milestone-1', {
+            url,
+            results: [{ kpiId: LEADS.id, value: '48' }],
+          }),
+        ).rejects.toThrow('Report a result for "Reply rate"');
+        expect(prisma.deliverable.create).not.toHaveBeenCalled();
+      });
+
+      it('asks for the report when it is missing altogether', async () => {
+        await expect(
+          service.deliver(specialist, 'milestone-1', { url }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(prisma.deliverable.create).not.toHaveBeenCalled();
+      });
+
+      it('refuses a result that is only spaces', async () => {
+        await expect(
+          service.deliver(specialist, 'milestone-1', {
+            url,
+            results: [
+              { kpiId: LEADS.id, value: '   ' },
+              { kpiId: REPLIES.id, value: '12%' },
+            ],
+          }),
+        ).rejects.toThrow('Qualified leads');
+      });
+
+      it('refuses a result for a KPI the job does not have', async () => {
+        await expect(
+          service.deliver(specialist, 'milestone-1', {
+            url,
+            results: [
+              { kpiId: LEADS.id, value: '48' },
+              { kpiId: REPLIES.id, value: '12%' },
+              { kpiId: OTHER_JOB_KPI, value: '1000' },
+            ],
+          }),
+        ).rejects.toThrow('a KPI this job does not have');
+        expect(prisma.deliverable.create).not.toHaveBeenCalled();
+      });
+
+      it('refuses two results for the same KPI', async () => {
+        await expect(
+          service.deliver(specialist, 'milestone-1', {
+            url,
+            results: [
+              { kpiId: LEADS.id, value: '48' },
+              { kpiId: LEADS.id, value: '50' },
+              { kpiId: REPLIES.id, value: '12%' },
+            ],
+          }),
+        ).rejects.toThrow('one result per KPI');
+      });
+
+      it('takes no report when the job has no KPIs', async () => {
+        prisma.jobKpi.findMany.mockResolvedValue([]);
+        await service.deliver(specialist, 'milestone-1', { url });
+        const { data } = prisma.deliverable.create.mock.calls[0][0];
+        expect(data).not.toHaveProperty('kpiResults');
+      });
+
+      it('refuses results when the job has no KPIs', async () => {
+        prisma.jobKpi.findMany.mockResolvedValue([]);
+        await expect(
+          service.deliver(specialist, 'milestone-1', {
+            url,
+            results: [{ kpiId: LEADS.id, value: '48' }],
+          }),
+        ).rejects.toThrow('no KPIs');
+      });
     });
 
     it('refuses a milestone that is already paid', async () => {

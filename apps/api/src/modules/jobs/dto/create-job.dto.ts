@@ -51,6 +51,29 @@ export class JobMilestoneDto {
   dueDate: string;
 }
 
+/** The most KPIs a job can be measured on. */
+export const MAX_JOB_KPIS = 10;
+
+/** Something the work will be measured on, e.g. "Qualified leads". */
+export class JobKpiDto {
+  @ApiProperty({ example: 'Qualified leads' })
+  @IsString()
+  @Length(2, 80)
+  name: string;
+
+  @ApiPropertyOptional({ description: 'Free text', example: '50 per month' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 80)
+  target?: string;
+
+  @ApiPropertyOptional({ example: 'leads' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 30)
+  unit?: string;
+}
+
 /** What a startup fills in to post a job. Budget is in USDC. */
 export class CreateJobDto {
   @ApiProperty({ example: 'Outbound campaign for our B2B wallet' })
@@ -135,4 +158,15 @@ export class CreateJobDto {
   @ValidateNested({ each: true })
   @Type(() => JobMilestoneDto)
   milestones: JobMilestoneDto[];
+
+  @ApiPropertyOptional({
+    type: [JobKpiDto],
+    description: `What the work will be measured on, up to ${MAX_JOB_KPIS}. Each delivery reports a result for every one`,
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_JOB_KPIS)
+  @ValidateNested({ each: true })
+  @Type(() => JobKpiDto)
+  kpis?: JobKpiDto[];
 }

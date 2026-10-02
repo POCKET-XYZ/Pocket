@@ -21,6 +21,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { api, errorMessage, upload } from '@/lib/api';
+import { imageSrc } from '@/lib/links';
 import { TIME_ZONES, guessTimeZone } from '@/lib/timezones';
 import { CATEGORY_LABELS, STAGE_LABELS } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -185,17 +186,7 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
           defaultValue={initial?.websiteUrl ?? known?.websiteUrl ?? ''}
         />
       </Field>
-      <Field label="Logo URL" htmlFor="logoUrl">
-        <Input
-          id="logoUrl"
-          name="logoUrl"
-          type="url"
-          pattern="https://.+"
-          title="A link that starts with https://"
-          placeholder="https://"
-          defaultValue={initial?.logoUrl ?? ''}
-        />
-      </Field>
+      <LogoField initial={initial?.logoUrl} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Registered name"
@@ -245,6 +236,131 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
         {saving ? 'Saving...' : 'Save profile'}
       </Button>
     </form>
+  );
+}
+
+const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const MAX_LOGO_BYTES = 1024 * 1024;
+
+/**
+ * The company logo, as a link or an uploaded image. Uploading fills the link
+ * with the address Pocket serves it at, and typing another link replaces it
+ * when the profile is saved: whichever was set last is the one shown.
+ */
+function LogoField({ initial }: { initial: string | null | undefined }) {
+  const queryClient = useQueryClient();
+  const [logoUrl, setLogoUrl] = useState(initial ?? '');
+  const [busy, setBusy] = useState<'upload' | 'remove' | null>(null);
+  const [broken, setBroken] = useState<string | null>(null);
+  const preview = imageSrc(logoUrl);
+
+  async function onChosen(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!LOGO_TYPES.includes(file.type)) {
+      toast.error('Upload your logo as a PNG, JPEG or WebP image');
+      return;
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      toast.error('The file is too big. The limit is 1 MB');
+      return;
+    }
+    setBusy('upload');
+    try {
+      const { logoUrl: url } = await upload<{ logoUrl: string }>(
+        '/profiles/me/logo',
+        'file',
+        file,
+        '1 MB',
+      );
+      setLogoUrl(url);
+      toast.success('Logo uploaded');
+      await queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onRemove() {
+    if (!window.confirm('Remove your logo? Your profile shows your initial instead.')) {
+      return;
+    }
+    setBusy('remove');
+    try {
+      await api('/profiles/me/logo', { method: 'DELETE' });
+      setLogoUrl('');
+      toast.success('Logo removed');
+      await queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Field
+      label="Logo"
+      htmlFor="logoUrl"
+      hint="Paste a link to it, or upload a PNG, JPEG or WebP image up to 1 MB. Whichever you set last is the one shown."
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-white">
+          {preview && broken !== preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={preview}
+              alt="Your logo"
+              className="size-full object-contain"
+              onError={() => setBroken(preview)}
+            />
+          ) : (
+            <span className="px-1 text-center text-xs text-muted-foreground">
+              {logoUrl ? 'Cannot show it' : 'No logo'}
+            </span>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <Input
+            id="logoUrl"
+            name="logoUrl"
+            type="url"
+            pattern="https://.+"
+            title="A link that starts with https://"
+            placeholder="https://"
+            value={logoUrl}
+            onChange={(event) => setLogoUrl(event.target.value)}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" disabled={busy !== null} asChild>
+              <label className="cursor-pointer whitespace-nowrap">
+                {busy === 'upload' ? 'Uploading...' : 'Upload image'}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="sr-only"
+                  disabled={busy !== null}
+                  onChange={(event) => void onChosen(event)}
+                />
+              </label>
+            </Button>
+            {logoUrl || initial ? (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={busy !== null}
+                onClick={() => void onRemove()}
+              >
+                {busy === 'remove' ? 'Removing...' : 'Remove logo'}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </Field>
   );
 }
 

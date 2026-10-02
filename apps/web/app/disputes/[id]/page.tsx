@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Field, compact, formValues } from '@/components/form';
 import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
+import { KpiReport } from '@/components/contract/kpi-report';
 import { RequireAuth } from '@/components/require-auth';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -129,6 +130,7 @@ function DisputeView({ user }: { user: User }) {
                   <span className="text-xs text-muted-foreground">
                     ({linkHost(deliverable.url)})
                   </span>
+                  <KpiReport kpis={contract.job.kpis} deliverable={deliverable} />
                   {deliverable.feedback ? (
                     <p className="text-muted-foreground">
                       Changes asked: {deliverable.feedback}

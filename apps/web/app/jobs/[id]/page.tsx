@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/auth-provider';
 import { Avatar } from '@/components/avatar';
+import { KpiList } from '@/components/contract/kpi-report';
 import { Field, formValues } from '@/components/form';
 import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { StatusBadge } from '@/components/status-badge';
@@ -104,6 +105,17 @@ export default function JobPage() {
                   </div>
                 ) : null}
               </dl>
+            ) : null}
+            {data.kpis.length > 0 ? (
+              <section>
+                <h2 className="text-lg font-semibold text-navy">
+                  How the work is measured
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Every delivery reports a result for each of these.
+                </p>
+                <KpiList kpis={data.kpis} />
+              </section>
             ) : null}
             {data.milestones.length > 0 ? (
               <section>

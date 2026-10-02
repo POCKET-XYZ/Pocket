@@ -276,6 +276,29 @@ export interface JobInput {
   startupProvides?: string;
   /** The payment plan. Each milestone says what it has to meet to be approved. */
   milestones: JobMilestoneInput[];
+  /**
+   * What the work will be measured on, up to 10. Every delivery reports a
+   * result for each one.
+   */
+  kpis?: JobKpiInput[];
+}
+
+/** Something the work is measured on, e.g. { name: 'Qualified leads', target: '50 per month' }. */
+export interface JobKpiInput {
+  name: string;
+  /** Free text, e.g. "50 per month". */
+  target?: string;
+  /** e.g. "leads", "%". */
+  unit?: string;
+}
+
+export interface JobKpi {
+  id: string;
+  /** Order in which the startup listed it. */
+  position: number;
+  name: string;
+  target: string | null;
+  unit: string | null;
 }
 
 /** A milestone as the startup posts it with the job. */
@@ -311,6 +334,8 @@ export interface Job {
   contentLanguage?: string | null;
   startupProvides?: string | null;
   milestones: JobMilestone[];
+  /** What the work is measured on. Empty when the startup set none. */
+  kpis: JobKpi[];
   status: JobStatus;
   createdAt: IsoDate;
   updatedAt: IsoDate;
@@ -432,6 +457,49 @@ export interface Milestone {
   paidAt: IsoDate | null;
 }
 
+/** POST /milestones/:id/deliveries */
+export interface DeliveryInput {
+  /** Link to the work. */
+  url: string;
+  note?: string;
+  /** One result for each KPI of the job. Required when the job has KPIs. */
+  results?: KpiResultInput[];
+}
+
+/** What a delivery reports for one of the job's KPIs. */
+export interface KpiResultInput {
+  kpiId: string;
+  /** Free text, short: "62", "48 of 50", "Not measurable yet". */
+  value: string;
+  comment?: string;
+}
+
+export interface KpiResult {
+  id: string;
+  deliverableId: string;
+  kpiId: string;
+  value: string;
+  comment: string | null;
+}
+
+/** The types a delivery's file can be. Never SVG. */
+export type AttachmentContentType =
+  | 'application/pdf'
+  | 'image/png'
+  | 'image/jpeg'
+  | 'image/webp';
+
+/**
+ * The file backing a delivery's report, described. Its bytes are at
+ * GET /deliverables/:id/attachment, for the contract's parties and managers.
+ */
+export interface DeliverableAttachment {
+  contentType: AttachmentContentType;
+  /** Bytes. */
+  size: number;
+  uploadedAt: IsoDate;
+}
+
 export interface Deliverable {
   id: string;
   milestoneId: string;
@@ -440,6 +508,10 @@ export interface Deliverable {
   note: string | null;
   /** What the startup asked to change on this version. */
   feedback: string | null;
+  /** The result reported for each KPI of the job, empty when it has none. */
+  kpiResults: KpiResult[];
+  /** The file backing the report, if the specialist attached one. */
+  attachment: DeliverableAttachment | null;
   createdAt: IsoDate;
 }
 
@@ -485,7 +557,10 @@ export interface ContractSummary extends Contract {
 
 /** GET /contracts/:id */
 export interface ContractDetail extends Contract {
-  job: Pick<Job, 'id' | 'title' | 'category' | 'deadline' | 'status' | 'revisionRounds'>;
+  job: Pick<
+    Job,
+    'id' | 'title' | 'category' | 'deadline' | 'status' | 'revisionRounds' | 'kpis'
+  >;
   startup: {
     id: string;
     stellarAddress: string;
@@ -515,7 +590,13 @@ export interface DisputeListItem extends Dispute {
 /** GET /disputes/:id */
 export interface DisputeDetail extends Dispute {
   milestone: Milestone & {
-    contract: { id: string; startupId: string; specialistId: string };
+    contract: {
+      id: string;
+      startupId: string;
+      specialistId: string;
+      /** What the work is measured on, to read each delivery's report. */
+      job: Pick<Job, 'kpis'>;
+    };
     deliverables: Deliverable[];
   };
   evidence: (DisputeEvidence & { author: { id: string; role: UserRole } })[];

@@ -28,7 +28,8 @@ const enforced = [
   // Next.js inlines its bootstrap scripts; nonces would make every page dynamic.
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
+  // Uploaded logos come from the API, which is plain http when run locally.
+  `img-src 'self' ${apiOrigin} data: blob: https:`,
   "font-src 'self' data:",
   `connect-src 'self' ${apiOrigin} https: wss:${isDev ? ' ws:' : ''}`,
   `frame-src 'self' ${FRAMES.join(' ')}`,
