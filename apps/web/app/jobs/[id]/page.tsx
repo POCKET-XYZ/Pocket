@@ -36,7 +36,7 @@ import { CATEGORY_LABELS, date, isoInDays, usdc } from '@/lib/format';
 
 export default function JobPage() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, status } = useAuth();
   const job = useQuery({
     queryKey: ['jobs', id],
     queryFn: () => api<JobListing>(`/jobs/${id}`),
@@ -150,7 +150,8 @@ export default function JobPage() {
       </div>
 
       <aside className="space-y-4">
-        {!user ? (
+        {/* Until the session is known, offer nothing rather than the wrong thing. */}
+        {status === 'loading' ? null : !user ? (
           <Card>
             <CardHeader>
               <CardTitle>Want this job?</CardTitle>
