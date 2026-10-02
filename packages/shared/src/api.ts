@@ -495,3 +495,100 @@ export interface DisputeResolution {
   specialistAmount?: number;
   note: string;
 }
+
+// ---------------------------------------------------------------------------
+// Manager metrics
+// ---------------------------------------------------------------------------
+
+/** Window the metrics dashboard looks at: the last 7, 30 or 90 days, or all time. */
+export const MetricsPeriod = {
+  Week: '7d',
+  Month: '30d',
+  Quarter: '90d',
+  All: 'all',
+} as const;
+export type MetricsPeriod = (typeof MetricsPeriod)[keyof typeof MetricsPeriod];
+
+/** One week of the 12-week series. Weeks start on Monday, 00:00 UTC. */
+export interface MetricsWeek {
+  weekStart: IsoDate;
+  /** Startups and specialists who signed up that week. */
+  newUsers: number;
+  jobsPosted: number;
+  /** USDC that came into escrow: contracts that became active that week. */
+  funded: string;
+  /** USDC paid to specialists: milestones released plus their dispute shares. */
+  released: string;
+}
+
+/**
+ * GET /manager/metrics?period=30d. "In the period" counts happened inside the
+ * window; the others are the state right now. USDC amounts are decimal strings.
+ */
+export interface ManagerMetrics {
+  period: MetricsPeriod;
+  /** Start of the window, null for all time. */
+  since: IsoDate | null;
+  generatedAt: IsoDate;
+  users: {
+    startups: { total: number; newInPeriod: number };
+    specialists: { total: number; newInPeriod: number };
+    verification: {
+      /** Requests waiting for a manager right now. */
+      pending: number;
+      /** Requests decided in the period. */
+      approved: number;
+      rejected: number;
+      /** Median hours from submission to approval, for approvals in the period. */
+      medianHoursToApprove: number | null;
+    };
+  };
+  marketplace: {
+    jobsPosted: number;
+    /** Jobs open for applications right now. */
+    openJobs: number;
+    /** Applications sent in the period, to any job. */
+    applications: number;
+    /** Applications per job, over the jobs posted in the period. */
+    averageApplicationsPerJob: number | null;
+    offers: {
+      sent: number;
+      accepted: number;
+      declined: number;
+      /**
+       * Always null for now: a withdrawn offer is deleted and leaves nothing
+       * behind to count.
+       */
+      withdrawn: number | null;
+      /** Offers waiting for the specialist's answer right now. */
+      awaitingReply: number;
+    };
+    /** Median days from posting a job to its first accepted offer. */
+    medianDaysToFirstHire: number | null;
+  };
+  money: {
+    /** USDC that came into escrow: contracts that became active in the period. */
+    funded: string;
+    contractsFunded: number;
+    /** Average amount of the contracts funded in the period. */
+    averageContract: string | null;
+    /** Paid to specialists, before Trustless Work's fee. */
+    released: string;
+    /** Returned to startups by resolved disputes. */
+    refunded: string;
+    /** Held right now by the escrows of active contracts. */
+    inEscrow: string;
+    /** POCKET_FEE_PERCENT of what was released in the period. */
+    pocketFee: string;
+  };
+  health: {
+    openDisputes: number;
+    disputesResolved: number;
+    /** Milestones of active contracts past their due date and not yet approved. */
+    overdueMilestones: number;
+    /** Contracts accepted more than 3 days ago and still not funded. */
+    staleAwaitingFunding: number;
+  };
+  /** The last 12 weeks, oldest first, the current week last. */
+  weekly: MetricsWeek[];
+}

@@ -5,6 +5,9 @@
  */
 export const TRUSTLESS_WORK_FEE_PERCENT = 0.3;
 
+/** Pocket's own fee, as a percent of every amount released to a specialist. */
+export const POCKET_FEE_PERCENT = 1;
+
 /** 0.3% expressed as a fraction of 1000, so the math stays in integers. */
 const FEE_PER_THOUSAND = 3n;
 /** USDC on Stellar has 7 decimals. */
