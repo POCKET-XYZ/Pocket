@@ -6,9 +6,9 @@ import {
   openAuthModal,
   signTransaction,
 } from '@/components/tw-blocks/wallet-kit/wallet-kit';
-import { Keypair, Networks, TransactionBuilder } from '@stellar/stellar-sdk';
+import { Keypair, TransactionBuilder } from '@stellar/stellar-sdk';
 import { api } from './api';
-import type { TxPurpose } from './tx-check';
+import { NETWORK, type TxPurpose } from './tx-check';
 
 const NETWORK_NAMES: Record<string, string> = {
   'Public Global Stellar Network ; September 2015': 'Mainnet',
@@ -73,10 +73,8 @@ const hex = (bytes: Uint8Array) =>
 function requireSignedBy(signedXdr: string, address: string, networkPassphrase?: string) {
   let hints: string[];
   try {
-    const tx = TransactionBuilder.fromXDR(
-      signedXdr,
-      networkPassphrase ?? Networks.TESTNET,
-    );
+    // Without a passphrase from the API, read it on the network Pocket runs on.
+    const tx = TransactionBuilder.fromXDR(signedXdr, networkPassphrase ?? NETWORK);
     hints = tx.signatures.map((signature) => hex(signature.hint.toBytes()));
   } catch {
     return; // Not readable here: the API still checks the signature.

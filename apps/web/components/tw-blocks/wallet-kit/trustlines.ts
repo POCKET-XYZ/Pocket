@@ -30,11 +30,13 @@ export const trustlines = [
   },
 ];
 
-// TODO: add network dynamic filter
+/** The network Pocket runs on, so mainnet never offers testnet assets. */
+const NETWORK = process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'mainnet' ? 'mainnet' : 'testnet';
+
 export const trustlineOptions = Array.from(
   new Map(
     trustlines
-      .filter((trustline) => trustline.network === 'testnet')
+      .filter((trustline) => trustline.network === NETWORK)
       .map((trustline) => [
         trustline.address,
         { value: trustline.address, label: trustline.symbol },

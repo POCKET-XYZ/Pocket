@@ -11,7 +11,8 @@ import {
 import { toUnits } from './usdc';
 
 const IS_MAINNET = process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'mainnet';
-const NETWORK = IS_MAINNET ? Networks.PUBLIC : Networks.TESTNET;
+/** The network Pocket runs on, from NEXT_PUBLIC_STELLAR_NETWORK. */
+export const NETWORK = IS_MAINNET ? Networks.PUBLIC : Networks.TESTNET;
 /** Circle's USDC on each network. */
 const USDC = new Asset(
   'USDC',
