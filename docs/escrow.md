@@ -66,7 +66,7 @@ The hire, offer, accept, fund and dispute screens show both fees and what the sp
 
 ## Setup
 
-- `USDC_ISSUER`: the USDC issuer of the network in use. On testnet, `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`.
+- `USDC_ISSUER`: the USDC issuer of the network in use. On testnet, `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`; on mainnet, `GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`. The API refuses to start with the other network's issuer.
 - `STELLAR_PLATFORM_SECRET`: Pocket's account. It needs XLM for fees and a USDC trustline, because Pocket's fee is paid to it in USDC and Trustless Work refuses to deploy an escrow whose platform address does not trust the asset. Run `bun run stellar:setup` in `apps/api` once per network. The API raises a `platform_usdc_trustline_missing` alert at boot when the trustline is missing, and the platform monitor checks it again about every ten minutes.
 - `TRUSTLESS_WORK_API_URL` and `TRUSTLESS_WORK_API_KEY`.
 

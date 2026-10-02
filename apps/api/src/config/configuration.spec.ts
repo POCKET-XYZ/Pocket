@@ -38,6 +38,15 @@ describe('validateEnv', () => {
     expect(() => validateEnv(MAINNET_ENV)).not.toThrow();
   });
 
+  it("refuses the other network's USDC", () => {
+    expect(() =>
+      validateEnv({ ...MAINNET_ENV, USDC_ISSUER: TESTNET_ENV.USDC_ISSUER }),
+    ).toThrow('USDC_ISSUER is the testnet issuer, but STELLAR_NETWORK is mainnet');
+    expect(() =>
+      validateEnv({ ...TESTNET_ENV, USDC_ISSUER: MAINNET_ENV.USDC_ISSUER }),
+    ).toThrow('USDC_ISSUER is the mainnet issuer, but STELLAR_NETWORK is testnet');
+  });
+
   it('still needs its own RPC on mainnet', () => {
     expect(() => validateEnv({ ...MAINNET_ENV, SOROBAN_RPC_URL: undefined })).toThrow(
       'SOROBAN_RPC_URL',

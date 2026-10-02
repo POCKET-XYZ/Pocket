@@ -57,6 +57,12 @@ const REQUIRED = [
  * it written in and the calls do not carry it.
  */
 const REQUIRED_ON_TESTNET = ['TRUSTLESS_WORK_FEE_ADDRESS'] as const;
+
+/** Circle's USDC issuer on each network. */
+export const USDC_ISSUERS: Record<StellarNetwork, string> = {
+  testnet: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
+  mainnet: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+};
 /** Pollar's backend API. Secret-key routes only. */
 const DEFAULT_POLLAR_SERVER = 'https://server.api.pollar.xyz';
 
@@ -94,6 +100,15 @@ export function validateEnv(env: Record<string, unknown>): Record<string, unknow
   }
   if (network === 'mainnet' && !env.SOROBAN_RPC_URL) {
     throw new Error('SOROBAN_RPC_URL is required on mainnet');
+  }
+  // The other network's USDC is another asset: escrows would hold it and users
+  // would be asked to trust it. A known issuer of the wrong network is always a
+  // configuration mistake.
+  const otherNetwork: StellarNetwork = network === 'mainnet' ? 'testnet' : 'mainnet';
+  if (env.USDC_ISSUER === USDC_ISSUERS[otherNetwork]) {
+    throw new Error(
+      `USDC_ISSUER is the ${otherNetwork} issuer, but STELLAR_NETWORK is ${network}`,
+    );
   }  if (!/^[0-9a-f]{64}$/.test(String(env.TRUSTLESS_WORK_ESCROW_WASM_HASH))) {
     throw new Error('TRUSTLESS_WORK_ESCROW_WASM_HASH must be 64 hex characters');
   }

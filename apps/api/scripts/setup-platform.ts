@@ -1,7 +1,7 @@
 // One-time setup of Pocket's platform account: Trustless Work requires the
 // account in the escrow's `platformAddress` role to trust the escrow asset,
-// even with a 0% platform fee. Safe to run again: it does nothing when the
-// trustline is already there.
+// and Pocket's 1% fee is paid to it in USDC. Safe to run again: it does
+// nothing when the trustline is already there.
 //
 //   bun run stellar:setup
 import {
