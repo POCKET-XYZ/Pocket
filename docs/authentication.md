@@ -42,7 +42,7 @@ The API accepts the signed transaction only if it is the exact challenge issued 
 
 The first login creates the account, so it must include `role`: `startup` or `specialist`. Without it the API answers `400` with `code: "ROLE_REQUIRED"` and keeps the challenge, so the client can ask the user for a role and resend the same signed transaction without a second wallet prompt.
 
-Managers cannot sign up. They are created by the seed script from `MANAGER_STELLAR_ADDRESSES`.
+Managers cannot sign up. The seed script makes the database match `MANAGER_STELLAR_ADDRESSES`, and Railway runs it on every deploy right after the migrations: listed addresses become approved managers, and managers no longer listed are demoted (the user row stays for the records that point at it, the role becomes `specialist`, the verification `rejected`, and their sessions end). An empty or unset list changes nothing and prints a warning, so a missing variable cannot lock the team out. See `apps/api/prisma/seed.ts`.
 
 ## Replay protection
 
