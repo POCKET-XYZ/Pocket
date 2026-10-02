@@ -68,7 +68,8 @@ model User {
   startupProfile        StartupProfile?
   specialistProfile     SpecialistProfile?
   cv                    SpecialistCv?
-  jobs                  Job[]
+  logo                  StartupLogo?
+  jobs                 Job[]
   applications          Application[]
   contractsAsStartup    Contract[]            @relation("ContractStartup")
   contractsAsSpecialist Contract[]            @relation("ContractSpecialist")
@@ -175,6 +176,22 @@ model StartupProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("startup_profiles")
+}
+
+// A startup's logo as the image it uploaded: PNG, JPEG or WebP, never SVG.
+// One per startup, kept in the database like the CVs. Only company logos:
+// people have no profile photo on Pocket.
+model StartupLogo {
+  userId      String   @id @map("user_id") @db.Uuid
+  data        Bytes
+  // The type read from the file's own bytes, served as is.
+  contentType String   @map("content_type")
+  size        Int
+  uploadedAt  DateTime @default(now()) @updatedAt @map("uploaded_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("startup_logos")
 }
 
 // A specialist's CV as the PDF they uploaded. Kept in the database, one per
