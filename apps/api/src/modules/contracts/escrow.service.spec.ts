@@ -19,7 +19,8 @@ const onChain = (): ChainEscrow => ({
     dispute_resolver: 'GPOCKET',
   },
   trustline: 'CUSDC',
-  platformFee: 0n,
+  // Pocket's 1%, in basis points.
+  platformFee: 100n,
   milestones: [
     { amount: 4_505_000_000n, receiver: 'GSPECIALIST', flags: untouched() },
     { amount: 495_000_000n, receiver: 'GSPECIALIST', flags: untouched() },
@@ -94,7 +95,7 @@ describe('EscrowService', () => {
             releaseSigner: 'GPOCKET',
             disputeResolver: 'GPOCKET',
           },
-          platformFee: 0,
+          platformFee: 1,
           milestones: [
             { description: 'Lead list', amount: 450.5, receiver: 'GSPECIALIST' },
             { description: 'Report', amount: 49.5, receiver: 'GSPECIALIST' },
@@ -119,6 +120,10 @@ describe('EscrowService', () => {
         'has another approver',
         () => chain.escrow.mockResolvedValue({ ...onChain(), roles: { ...onChain().roles, approver: 'GTHIEF' } }),
       ],
+      ['charges no fee', () => chain.escrow.mockResolvedValue({ ...onChain(), platformFee: 0n })],
+      ['charges 2%', () => chain.escrow.mockResolvedValue({ ...onChain(), platformFee: 200n })],
+      ['charges 1% read as a percent', () => chain.escrow.mockResolvedValue({ ...onChain(), platformFee: 1n })],
+      ['holds another asset', () => chain.escrow.mockResolvedValue({ ...onChain(), trustline: 'CEURC' })],
       [
         'asks for another amount',
         () => {

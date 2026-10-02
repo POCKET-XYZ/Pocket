@@ -1,3 +1,4 @@
+import { POCKET_FEE_BASIS_POINTS, POCKET_FEE_PERCENT } from '@pocket/shared';
 import { Address, hash, StrKey, xdr } from '@stellar/stellar-sdk';
 import {
   expect,
@@ -12,6 +13,31 @@ import {
  * fee, it is a drain.
  */
 export const MAX_PLATFORM_FEE_STROOPS = 20_000_000;
+
+/**
+ * The `platform_fee` every Pocket escrow must store: Pocket's 1% in basis
+ * points (hundredths of a percent), so 100. The V1 contract checks the fee
+ * against a basis-point cap together with Trustless Work's 0.3% (30), which
+ * is why this reads it in basis points.
+ *
+ * NOT CONFIRMED ON CHAIN YET. Confirm with a real testnet deploy read back from
+ * the chain (`get_escrow`) before relying on it. A wrong unit fails closed: the
+ * deploy policy refuses to sign and names the fee it found.
+ */
+export const POCKET_PLATFORM_FEE_ON_CHAIN = POCKET_FEE_BASIS_POINTS;
+
+/**
+ * What Pocket sends as `platformFee` in the body of Trustless Work's V1 deploy
+ * endpoint. Trustless Work documents it as a percent that the API scales to
+ * basis points (its V2 docs say so outright, and the API refuses fees over
+ * "99%"), though some V1 examples send 100 or 200. Kept apart from the
+ * on-chain value so that, if the API turns out to pass the number through
+ * untouched, only this line changes.
+ *
+ * NOT CONFIRMED YET, like the on-chain value: confirm with a real testnet
+ * deploy before the first hire that charges the fee.
+ */
+export const TW_API_PLATFORM_FEE = POCKET_FEE_PERCENT;
 
 /** Addresses the platform's transactions are checked against. */
 export interface PlatformAddresses {
@@ -134,7 +160,11 @@ export function deployPolicy(
           roles.dispute_resolver === platform,
         'a platform role is held by someone else',
       );
-      expect(sameInteger(deployed.platform_fee, 0), 'the escrow charges a platform fee');
+      // Pocket's fee, exactly: neither none nor more than Pocket charges.
+      expect(
+        sameInteger(deployed.platform_fee, POCKET_PLATFORM_FEE_ON_CHAIN),
+        `the escrow's platform fee is ${String(deployed.platform_fee)}, not Pocket's ${POCKET_PLATFORM_FEE_ON_CHAIN}`,
+      );
       expect(
         deployed.trustline?.address === addresses.usdcContract,
         'the escrow holds an asset other than USDC',
@@ -165,7 +195,11 @@ export function deployPolicy(
   };
 }
 
-/** Releasing a milestone: that escrow, that milestone, fee to Trustless Work. */
+/**
+ * Releasing a milestone: that escrow, that milestone, fee to Trustless Work.
+ * The call carries no amount: the contract pays the milestone's configured
+ * amount, minus both fees, to the receiver fixed at deploy.
+ */
 export function releasePolicy(
   addresses: PlatformAddresses,
   escrowId: string,
@@ -187,7 +221,9 @@ export function releasePolicy(
 /**
  * Resolving a dispute: the call names who gets paid, and the contract pays
  * whoever it names. Only the two parties, with exactly the amounts the
- * manager decided.
+ * manager decided. Those are amounts before fees: the contract takes
+ * Trustless Work's and Pocket's fee out of each share as it pays it, so the
+ * call carries the gross shares and so does this check.
  */
 export function resolvePolicy(
   addresses: PlatformAddresses,

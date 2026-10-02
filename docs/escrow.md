@@ -11,7 +11,7 @@ Every contract gets its own multi-release escrow on Stellar, deployed and operat
 | Milestone `receiver` | Specialist | Receives each released milestone. Fixed at deploy time.                         |
 | `releaseSigner`      | Pocket     | Executes the release once the milestone is approved on chain.                   |
 | `disputeResolver`    | Pocket     | Executes a manager's decision, splitting the milestone between the two parties. |
-| `platformAddress`    | Pocket     | Would receive a platform fee. The fee is 0% during the MVP.                     |
+| `platformAddress`    | Pocket     | Receives Pocket's 1% platform fee on every payout.                              |
 
 Receivers are set when the escrow is deployed and cannot change once it holds funds, so Pocket decides _when_ money moves but never _where_: a release can only pay the specialist, and a dispute resolution can only split between the specialist and the startup.
 
@@ -49,18 +49,25 @@ Delivery stays off chain: the escrow contract does not require the milestone sta
 
 ## Leftover funds
 
-Pocket funds each escrow with exactly the sum of its milestones, and releases and resolutions pay out each milestone in full, so a finished escrow holds nothing. A balance can only be left over if someone deposits into the escrow outside Pocket (anyone can call `fund-escrow`). V1's `withdraw-remaining-funds` can return it: only the dispute resolver (Pocket) can call it, once every milestone is released, resolved or disputed, and it pays the same 0.3% fee. Pocket does not expose it yet; if it happens, a manager can run it by hand with the platform key.
+Pocket funds each escrow with exactly the sum of its milestones, and releases and resolutions pay out each milestone in full, so a finished escrow holds nothing. A balance can only be left over if someone deposits into the escrow outside Pocket (anyone can call `fund-escrow`). V1's `withdraw-remaining-funds` can return it: only the dispute resolver (Pocket) can call it, once every milestone is released, resolved or disputed, and it pays the same two fees. Pocket does not expose it yet; if it happens, a manager can run it by hand with the platform key.
 
 ## Fees
 
-Trustless Work keeps a fixed 0.3% of every amount it pays out, on releases and on dispute resolutions, on testnet as well ([release phase](https://docs.trustlesswork.com/trustless-work/v2-en/introduction/technology-overview/escrow-lifecycle/release-phase.md)). Deploying, funding, approving and opening a dispute pay no fee, only the network's. Measured on testnet: a 1 USDC milestone paid the specialist 0.997 USDC, and a 2 USDC milestone split 1.5 and 0.5 paid 1.4955 and 0.4985. Pocket's own fee is 0%.
+Two fees come out of every amount the escrow pays out, on releases and on dispute resolutions (each side of a split pays them on its share). Deploying, funding, approving and opening a dispute pay neither, only the network's.
 
-The hire, accept and fund screens show what the specialist receives after the fee. The math lives in `@pocket/shared` (`afterTrustlessWorkFee`, `totalAfterTrustlessWorkFee`), charged on each payout on its own.
+- **Trustless Work: 0.3%**, its protocol fee, on testnet as well ([release phase](https://docs.trustlesswork.com/trustless-work/v2-en/introduction/technology-overview/escrow-lifecycle/release-phase.md)). Measured on testnet with no platform fee: a 1 USDC milestone paid the specialist 0.997 USDC, and a 2 USDC milestone split 1.5 and 0.5 paid 1.4955 and 0.4985.
+- **Pocket: 1%**, the escrow's `platformFee`, paid to the platform account (`platformAddress`). It is set at deploy and frozen once the escrow holds funds. The deploy policy and the read-back after the deploy both require exactly Pocket's fee: an escrow with no fee or another fee is refused.
+
+Each fee is computed on the full payout and rounded down to the stroop, so a 1 USDC milestone pays the specialist 0.987 USDC.
+
+The unit of `platformFee` is not confirmed on chain yet. Pocket sends `1` (percent) to Trustless Work's deploy endpoint and requires the escrow to store `100` (basis points); both are named constants in `escrow-policies.ts` (`TW_API_PLATFORM_FEE`, `POCKET_PLATFORM_FEE_ON_CHAIN`). Confirm both with one real testnet deploy read back with `get_escrow` before relying on the fee. A wrong guess fails closed: the platform refuses to sign the deploy and the security log names the fee it found.
+
+The hire, offer, accept, fund and dispute screens show both fees and what the specialist receives after them. The math lives in `@pocket/shared` (`afterFees`, `totalAfterFees`, `POCKET_FEE_PERCENT`), charged on each payout on its own.
 
 ## Setup
 
 - `USDC_ISSUER`: the USDC issuer of the network in use. On testnet, `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`.
-- `STELLAR_PLATFORM_SECRET`: Pocket's account. It needs XLM for fees and a USDC trustline, because Trustless Work refuses to deploy an escrow whose platform address does not trust the asset, even with a 0% fee. Run `bun run stellar:setup` in `apps/api` once per network; the API warns at boot when the trustline is missing.
+- `STELLAR_PLATFORM_SECRET`: Pocket's account. It needs XLM for fees and a USDC trustline, because Pocket's fee is paid to it in USDC and Trustless Work refuses to deploy an escrow whose platform address does not trust the asset. Run `bun run stellar:setup` in `apps/api` once per network. The API raises a `platform_usdc_trustline_missing` alert at boot when the trustline is missing, and the platform monitor checks it again about every ten minutes.
 - `TRUSTLESS_WORK_API_URL` and `TRUSTLESS_WORK_API_KEY`.
 
 Trustless Work details that are easy to get wrong, all checked against the live API:

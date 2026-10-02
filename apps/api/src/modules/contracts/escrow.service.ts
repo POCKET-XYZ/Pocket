@@ -16,8 +16,10 @@ import { StellarService } from '../stellar/stellar.service';
 import { TrustlessWorkClient, type Distribution } from '../stellar/trustless-work.client';
 import {
   deployPolicy,
+  POCKET_PLATFORM_FEE_ON_CHAIN,
   releasePolicy,
   resolvePolicy,
+  TW_API_PLATFORM_FEE,
   type PlatformAddresses,
 } from './escrow-policies';
 
@@ -69,7 +71,9 @@ export class EscrowService {
         releaseSigner: platform,
         disputeResolver: platform,
       },
-      platformFee: 0,
+      // Pocket's 1%, which the escrow sends to the platform account on every
+      // payout. The deploy policy checks the fee the transaction really sets.
+      platformFee: TW_API_PLATFORM_FEE,
       milestones: [...input.milestones]
         .sort((a, b) => a.position - b.position)
         .map((milestone) => ({
@@ -156,8 +160,11 @@ export class EscrowService {
     ) {
       return 'the escrow has other roles';
     }
-    if (escrow.trustline !== this.stellar.usdcContractId || escrow.platformFee !== 0n) {
-      return 'the escrow holds another asset or charges a fee';
+    if (escrow.trustline !== this.stellar.usdcContractId) {
+      return 'the escrow holds another asset';
+    }
+    if (escrow.platformFee !== BigInt(POCKET_PLATFORM_FEE_ON_CHAIN)) {
+      return `the escrow's platform fee is ${escrow.platformFee}, not Pocket's ${POCKET_PLATFORM_FEE_ON_CHAIN}`;
     }
     const milestonesMatch =
       escrow.milestones.length === amounts.length &&

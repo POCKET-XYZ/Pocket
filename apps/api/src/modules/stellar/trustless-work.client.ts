@@ -30,7 +30,10 @@ export interface DeployEscrowInput {
   title: string;
   description: string;
   roles: EscrowRoles;
-  /** Pocket's commission. 0 during the MVP. */
+  /**
+   * Pocket's commission, kept by the escrow from each payout and sent to the
+   * platform address. See TW_API_PLATFORM_FEE for the unit.
+   */
   platformFee: number;
   milestones: EscrowMilestoneInput[];
   trustline: { address: string; symbol: string };
