@@ -16,6 +16,16 @@ import { TrustlessWorkClient } from './trustless-work.client';
  * The transaction was sent but the chain has not shown it yet. It may still
  * land, so its step stays taken and nothing that depends on it is undone.
  */
+/**
+ * How long one request may spend sending and confirming a transaction. The
+ * host's proxy cuts requests at about a minute and answers with its own page,
+ * so Pocket answers well before that: a transaction still on its way becomes
+ * NotYetConfirmed, which the client shows and lets the user check again.
+ */
+export const CHAIN_REQUEST_BUDGET_MS = 35_000;
+/** The least time spent waiting for the ledger, even when the send was slow. */
+const MIN_CONFIRM_WAIT_MS = 5_000;
+
 export class NotYetConfirmed extends ServiceUnavailableException {
   constructor() {
     super('The network has not confirmed the transaction yet. Refresh in a minute');
@@ -100,6 +110,7 @@ export class ChainOperationsService {
     signedXdr: string,
     signerId: string,
   ): Promise<ChainOperation> {
+    const startedAt = Date.now();
     let txHash: string;
     try {
       txHash = this.stellar.hashOf(signedXdr);
@@ -132,7 +143,7 @@ export class ChainOperationsService {
         await this.submitClassic(signedXdr);
       } else {
         await this.trustlessWork.send(signedXdr);
-        await this.confirmOnChain(txHash);
+        await this.confirmOnChain(txHash, startedAt);
       }
     } catch (error) {
       // Not confirmed yet is not failed: the transaction may still land, so
@@ -153,6 +164,7 @@ export class ChainOperationsService {
     policy: PlatformTxPolicy,
     amount?: Prisma.Decimal.Value,
   ): Promise<{ operation: ChainOperation; contractId?: string }> {
+    const startedAt = Date.now();
     const signed = this.stellar.signAsPlatform(unsignedXdr, policy);
     securityEvent('platform_signed', {
       kind: scope.kind,
@@ -179,7 +191,7 @@ export class ChainOperationsService {
 
     try {
       const { contractId } = await this.trustlessWork.send(signed);
-      await this.confirmOnChain(operation.txHash);
+      await this.confirmOnChain(operation.txHash, startedAt);
       const confirmed = await this.prisma.chainOperation.update({
         where: { id: operation.id },
         data: { confirmedAt: new Date() },
@@ -222,8 +234,12 @@ export class ChainOperationsService {
    * transaction moved nothing and frees its step; one that has not landed yet
    * keeps its step until it does or can no longer land.
    */
-  private async confirmOnChain(txHash: string): Promise<void> {
-    const status = await this.chain.waitForTransaction(txHash);
+  private async confirmOnChain(txHash: string, startedAt: number): Promise<void> {
+    const left = CHAIN_REQUEST_BUDGET_MS - (Date.now() - startedAt);
+    const status = await this.chain.waitForTransaction(
+      txHash,
+      Math.max(left, MIN_CONFIRM_WAIT_MS),
+    );
     if (status === 'FAILED') {
       throw new BadRequestException(
         'The transaction failed on the network, so nothing moved. Try again',
