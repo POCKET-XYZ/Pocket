@@ -34,7 +34,12 @@ export type TxPurpose =
   | { kind: 'usdc-trustline' }
   /** A deposit: the page knows how much the startup agreed to put in. */
   | { kind: 'fund'; escrowId: string | null | undefined; amount: string }
-  | { kind: 'approve' | 'dispute'; escrowId: string | null | undefined };
+  | { kind: 'approve' | 'dispute'; escrowId: string | null | undefined }
+  /**
+   * USDC sent from the wallet to another address: exactly what the user
+   * confirmed. An empty memo means none.
+   */
+  | { kind: 'usdc-payment'; destination: string; amount: string; memo: string };
 
 /** Thrown when a transaction is not the one the page asked for. */
 export class UnexpectedTransaction extends Error {
@@ -49,7 +54,8 @@ export class UnexpectedTransaction extends Error {
 /**
  * Checks, before the wallet sees it, that a transaction from the API is the
  * step the user pressed: their own account, this network, one operation, and
- * either the USDC trustline or the expected call on this contract's escrow.
+ * either the USDC trustline, the USDC payment they confirmed, or the expected
+ * call on this contract's escrow.
  * The wallet shows raw XDR most users cannot read, so this is what stands
  * between a compromised API and a signature that moves their money.
  */
@@ -90,6 +96,15 @@ export function checkTransaction(
     ) {
       refuse('it is not the USDC trustline');
     }
+    return;
+  }
+
+  if (purpose.kind === 'usdc-payment') {
+    if (op.type !== 'payment') return refuse('it is not a payment');
+    if (!op.asset.equals(USDC)) refuse('it pays in another asset');
+    if (op.destination !== purpose.destination) refuse('it pays someone else');
+    if (toUnits(op.amount) !== toUnits(purpose.amount)) refuse('it pays another amount');
+    if (memoText(tx) !== purpose.memo) refuse('its memo is not the one you entered');
     return;
   }
 
@@ -164,6 +179,25 @@ export function checkLoginChallenge(
     refuse('the sign-in challenge is not a sign-in challenge');
   }
   if (op.source && op.source !== signer) refuse('it acts for another account');
+}
+
+/**
+ * A transaction's memo as text: empty for none, null for a memo that is not
+ * text (an id or hash), which never matches what the user typed.
+ */
+function memoText(tx: Transaction): string | null {
+  if (tx.memo.type === 'none') return '';
+  if (tx.memo.type !== 'text') return null;
+  const value = tx.memo.value;
+  if (typeof value === 'string') return value;
+  if (value instanceof Uint8Array) {
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 /** The from, to and amount of an authorized token transfer. */
