@@ -8,6 +8,8 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import type { AuthUser } from '../../common/types/auth';
 import type { PrismaService } from '../../prisma/prisma.service';
+import { DOCX_TYPE, XLSX_TYPE } from '../../common/uploads/file-type';
+import { docm, docx, xlsm, xlsx } from '../../testing/office-files';
 import { DeliverablesService } from './deliverables.service';
 import { DeliverDto } from './dto/milestone-actions.dto';
 
@@ -83,6 +85,9 @@ describe('DeliverablesService', () => {
       ['a PNG', PNG, 'image/png'],
       ['a JPEG', JPEG, 'image/jpeg'],
       ['a WebP', WEBP, 'image/webp'],
+      ['a filled Excel template', xlsx(true), XLSX_TYPE],
+      ['a filled Word template', docx(true), DOCX_TYPE],
+      ['a CSV', Buffer.from('KPI,Result\nQualified leads,48\n'), 'text/csv'],
     ])('keeps %s with the type read from its bytes', async (_label, bytes, type) => {
       await service.saveAttachment(specialist, 'deliverable-2', file(bytes));
       expect(prisma.deliverableAttachment.upsert).toHaveBeenCalledWith(
@@ -95,7 +100,12 @@ describe('DeliverablesService', () => {
 
     it.each([
       ['an SVG', Buffer.from('<svg><script>alert(1)</script></svg>')],
-      ['a GIF', Buffer.from('GIF89a and the rest')],
+      [
+        'a GIF',
+        Buffer.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 1, 0, 1, 0, 0x80, 0, 0]),
+      ],
+      ['a macro-enabled workbook', xlsm()],
+      ['a macro-enabled document', docm()],
       ['a page renamed to .pdf', Buffer.from('<html><body>report</body></html>')],
       ['a zip', Buffer.from('PK\u0003\u0004 archive')],
       ['an empty file', Buffer.alloc(0)],
@@ -165,6 +175,13 @@ describe('DeliverablesService', () => {
         contentType: 'application/pdf',
         fileName: 'delivery-v2.pdf',
       });
+    });
+
+    it('names a filled template after its real type, as a download', async () => {
+      stored(xlsx());
+      await expect(service.attachmentOf(startup, 'deliverable-2')).resolves.toMatchObject(
+        { contentType: XLSX_TYPE, fileName: 'delivery-v2.xlsx' },
+      );
     });
 
     it('names an image after its real type', async () => {

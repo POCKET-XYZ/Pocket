@@ -9,25 +9,25 @@ import type { AuthUser } from '../../common/types/auth';
 import {
   EXTENSIONS,
   sniffAttachment,
-  type AttachmentType,
   type UploadedBytes,
 } from '../../common/uploads/file-type';
+import type { PrivateFile } from '../../common/uploads/send-file';
 import { PrismaService } from '../../prisma/prisma.service';
 import { assertCanView } from './contracts.service';
 
 /** The largest file a delivery report can carry. */
 export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
+/** What to say when a delivery's file is none of the types it can be. */
+export const ATTACHMENT_TYPES_MESSAGE =
+  'Attach a PDF, an Excel (.xlsx), Word (.docx) or CSV file, or a PNG, JPEG or WebP image';
+
 /** A delivery's file, ready to be sent. */
-export interface AttachmentFile {
-  data: Buffer;
-  contentType: AttachmentType;
-  fileName: string;
-}
+export type AttachmentFile = PrivateFile;
 
 /**
- * The file that backs a delivery's results report: a PDF export or a
- * screenshot of the dashboard. Private to the contract: only its two parties
+ * The file that backs a delivery's results report: the startup's report
+ * template filled in, a PDF export or a screenshot of the dashboard. Private to the contract: only its two parties
  * and managers ever read it.
  */
 @Injectable()
@@ -36,8 +36,8 @@ export class DeliverablesService {
 
   /**
    * Attach a file to the specialist's latest delivery, replacing the one
-   * before, while the startup has not answered it yet. Only a real PDF, PNG,
-   * JPEG or WebP is kept, read from its bytes.
+   * before, while the startup has not answered it yet. Only a real PDF, Excel
+   * (.xlsx), Word (.docx), CSV, PNG, JPEG or WebP is kept, read from its bytes.
    */
   async saveAttachment(
     user: AuthUser,
@@ -77,7 +77,7 @@ export class DeliverablesService {
     }
     const contentType = sniffAttachment(file.buffer);
     if (!contentType) {
-      throw new BadRequestException('Attach a PDF, or a PNG, JPEG or WebP image');
+      throw new BadRequestException(ATTACHMENT_TYPES_MESSAGE);
     }
 
     const data = new Uint8Array(file.buffer);

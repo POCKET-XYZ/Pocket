@@ -301,6 +301,27 @@ export interface JobKpi {
   unit: string | null;
 }
 
+/**
+ * A named set of KPIs a startup saves to reuse when posting jobs.
+ * GET /kpi-templates lists the signed-in startup's, POST creates one, PUT
+ * /kpi-templates/:id replaces one and DELETE removes it. Up to 20 per startup.
+ */
+export interface KpiTemplate {
+  id: string;
+  /** 2 to 80 characters, unique per startup ignoring case. */
+  name: string;
+  /** 1 to 10, each name once, ignoring case. */
+  kpis: JobKpiInput[];
+  createdAt: IsoDate;
+  updatedAt: IsoDate;
+}
+
+/** POST /kpi-templates, PUT /kpi-templates/:id */
+export interface KpiTemplateInput {
+  name: string;
+  kpis: JobKpiInput[];
+}
+
 /** A milestone as the startup posts it with the job. */
 export interface JobMilestoneInput {
   title: string;
@@ -317,6 +338,29 @@ export interface JobMilestone extends Omit<JobMilestoneInput, 'amount' | 'dueDat
   /** USDC, serialized as a string to keep decimal precision. */
   amount: string;
   dueDate: IsoDate;
+}
+
+/** The types a report template can be: PDF, Excel (.xlsx), Word (.docx) or CSV. */
+export type ReportFileContentType =
+  | 'application/pdf'
+  | 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  | 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  | 'text/csv';
+
+/**
+ * The report a startup wants back, as a file the specialist fills in and
+ * attaches to each delivery. Described here; its bytes are at
+ * GET /jobs/:id/report-template, for the startup, verified specialists and
+ * managers. POST (multipart, field "file") attaches or replaces it while the
+ * job is open, DELETE removes it.
+ */
+export interface JobReportTemplate {
+  /** The name it was uploaded with, kept to plain characters. */
+  fileName: string;
+  contentType: ReportFileContentType;
+  /** Bytes. */
+  size: number;
+  uploadedAt: IsoDate;
 }
 
 export interface Job {
@@ -336,6 +380,8 @@ export interface Job {
   milestones: JobMilestone[];
   /** What the work is measured on. Empty when the startup set none. */
   kpis: JobKpi[];
+  /** The report file the specialist fills in, if the startup attached one. */
+  reportTemplate: JobReportTemplate | null;
   status: JobStatus;
   createdAt: IsoDate;
   updatedAt: IsoDate;
@@ -482,12 +528,12 @@ export interface KpiResult {
   comment: string | null;
 }
 
-/** The types a delivery's file can be. Never SVG. */
+/**
+ * The types a delivery's file can be: a report file, such as the startup's
+ * template filled in, or an image. Never SVG.
+ */
 export type AttachmentContentType =
-  | 'application/pdf'
-  | 'image/png'
-  | 'image/jpeg'
-  | 'image/webp';
+  ReportFileContentType | 'image/png' | 'image/jpeg' | 'image/webp';
 
 /**
  * The file backing a delivery's report, described. Its bytes are at
@@ -559,7 +605,14 @@ export interface ContractSummary extends Contract {
 export interface ContractDetail extends Contract {
   job: Pick<
     Job,
-    'id' | 'title' | 'category' | 'deadline' | 'status' | 'revisionRounds' | 'kpis'
+    | 'id'
+    | 'title'
+    | 'category'
+    | 'deadline'
+    | 'status'
+    | 'revisionRounds'
+    | 'kpis'
+    | 'reportTemplate'
   >;
   startup: {
     id: string;

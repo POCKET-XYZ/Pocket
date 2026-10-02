@@ -16,6 +16,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Verified } from '../../common/decorators/verified.decorator';
 import type { AuthUser } from '../../common/types/auth';
 import type { UploadedBytes } from '../../common/uploads/file-type';
+import { sendPrivateFile } from '../../common/uploads/send-file';
 import { DeliverablesService, MAX_ATTACHMENT_BYTES } from './deliverables.service';
 
 @ApiTags('deliverables')
@@ -24,7 +25,11 @@ import { DeliverablesService, MAX_ATTACHMENT_BYTES } from './deliverables.servic
 export class DeliverablesController {
   constructor(private readonly deliverables: DeliverablesService) {}
 
-  /** Attach a PDF or an image, up to 5 MB, to the latest delivery's report. */
+  /**
+   * Attach a file, up to 5 MB, to the latest delivery's report: a PDF, an
+   * Excel, Word or CSV file such as the startup's filled report template, or
+   * an image.
+   */
   @ApiConsumes('multipart/form-data')
   @Roles('specialist')
   @Verified()
@@ -49,17 +54,6 @@ export class DeliverablesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Res() res: Response,
   ) {
-    const file = await this.deliverables.attachmentOf(user, id);
-    // A PDF is saved, never opened as a page of the API; an image may show.
-    const disposition = file.contentType === 'application/pdf' ? 'attachment' : 'inline';
-    res.set({
-      'Content-Type': file.contentType,
-      'Content-Disposition': `${disposition}; filename="${file.fileName}"`,
-      'X-Content-Type-Options': 'nosniff',
-      // Private to the contract: no shared cache keeps a copy.
-      'Cache-Control': 'private, no-store',
-      'Content-Security-Policy': "sandbox; default-src 'none'",
-    });
-    res.send(file.data);
+    sendPrivateFile(res, await this.deliverables.attachmentOf(user, id));
   }
 }
