@@ -81,7 +81,9 @@ export class NotificationsService {
       });
       if (!response.ok) {
         // The status says enough; Resend's error body can echo the address.
-        this.logger.warn(`Email ${event.type}${who} refused by Resend: HTTP ${response.status}`);
+        this.logger.warn(
+          `Email ${event.type}${who} refused by Resend: HTTP ${response.status}`,
+        );
       }
     } catch (error) {
       this.logger.warn(`Email ${event.type}${who} not sent: ${describe(error)}`);

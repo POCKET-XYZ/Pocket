@@ -38,9 +38,11 @@ describe('NotificationsService', () => {
     jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
     prisma = {
       verificationRequest: {
-        findMany: jest.fn().mockResolvedValue([
-          { userId: 'specialist-1', contactEmail: 'ana@example.com' },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { userId: 'specialist-1', contactEmail: 'ana@example.com' },
+          ]),
       },
     };
   });
@@ -97,7 +99,9 @@ describe('NotificationsService', () => {
   });
 
   it('never throws when Resend refuses the email', async () => {
-    fetchMock.mockResolvedValue(new Response('{"message":"bad ana@example.com"}', { status: 422 }));
+    fetchMock.mockResolvedValue(
+      new Response('{"message":"bad ana@example.com"}', { status: 422 }),
+    );
     await expect(
       serviceWith(ON, prisma).send('ana@example.com', { type: 'verification_approved' }),
     ).resolves.toBeUndefined();
@@ -117,7 +121,9 @@ describe('NotificationsService', () => {
     fetchMock.mockRejectedValue(new Error('down'));
     const service = serviceWith(ON, prisma);
     expect(service.notifyUsers(['specialist-1'], paid)).toBeUndefined();
-    expect(service.notifyEmail('ana@example.com', { type: 'verification_approved' })).toBeUndefined();
+    expect(
+      service.notifyEmail('ana@example.com', { type: 'verification_approved' }),
+    ).toBeUndefined();
   });
 });
 
@@ -131,7 +137,9 @@ describe('templates', () => {
       'https://pocket.example/',
     );
     expect(email.html).not.toContain('<script>');
-    expect(email.html).toContain('&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; more');
+    expect(email.html).toContain(
+      '&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; more',
+    );
     expect(email.text).toContain('<script>alert("x")</script> & more');
     expect(email.html).toContain('href="https://pocket.example/verification"');
   });

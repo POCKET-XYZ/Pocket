@@ -1,7 +1,9 @@
 import type { PrismaClient } from '@prisma/client';
 import { StrKey } from '@stellar/stellar-sdk';
 
-type UserWriter = { user: Pick<PrismaClient['user'], 'upsert' | 'findMany' | 'updateMany'> };
+type UserWriter = {
+  user: Pick<PrismaClient['user'], 'upsert' | 'findMany' | 'updateMany'>;
+};
 
 export interface SyncResult {
   /** Addresses now managers, in the order listed. */
