@@ -75,9 +75,14 @@ jobs:
 
           if [ -n "$DISCORD_WEBHOOK" ]; then
             message="$(printf 'Pocket uptime alert\n%s(000 means no answer within 20 seconds)\n%s' "$failures" "$RUN_URL")"
-            jq -n --arg content "$message" '{content: $content}' \
-              | curl -sS -o /dev/null --max-time 15 -H 'content-type: application/json' -d @- "$DISCORD_WEBHOOK" \
-              || echo "::warning::Could not post the alert to Discord"
+            # Discord carries the alert; the run passes so GitHub does not
+            # also email every five minutes. Only when Discord cannot be
+            # reached does the run fail, so the alert still gets out.
+            if jq -n --arg content "$message" '{content: $content}' \
+              | curl -sSf -o /dev/null --max-time 15 -H 'content-type: application/json' -d @- "$DISCORD_WEBHOOK"; then
+              exit 0
+            fi
+            echo "::warning::Could not post the alert to Discord"
           else
             echo "::warning::UPTIME_DISCORD_WEBHOOK is not set, no alert sent"
           fi

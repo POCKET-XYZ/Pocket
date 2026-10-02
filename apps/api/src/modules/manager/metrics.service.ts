@@ -169,7 +169,9 @@ export class MetricsService {
             ), 0) AS in_escrow,
             COUNT(*) FILTER (
               WHERE c.status = 'active'
-                AND m.status NOT IN ('approved', 'paid', 'resolved')
+                -- Work still owed by the specialist: delivered ones wait on
+                -- the startup, disputed ones are counted as disputes.
+                AND m.status IN ('pending', 'changes_requested')
                 AND m.due_date < ${today}::date
             )::int AS overdue
           FROM milestones m JOIN contracts c ON c.id = m.contract_id`,

@@ -220,7 +220,7 @@ function Dashboard({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string 
         <StatTile
           label="Overdue milestones"
           value={count(health.overdueMilestones)}
-          hint="Active contracts, past the due date and not approved"
+          hint="Past the due date and not delivered yet"
           attention={health.overdueMilestones > 0}
         />
         <StatTile
