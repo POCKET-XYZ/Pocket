@@ -4,7 +4,6 @@ import type { User } from '@pocket/shared';
 import {
   ArrowDownToLineIcon,
   ArrowLeftRightIcon,
-  CopyIcon,
   EyeIcon,
   EyeOffIcon,
   HistoryIcon,
@@ -12,11 +11,16 @@ import {
   WalletIcon,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 import { PageHeader } from '@/components/page';
 import { usePollarSession, type PollarSession } from '@/components/pollar-session';
 import { RequireAuth } from '@/components/require-auth';
 import { UsdcStatus } from '@/components/usdc-status';
+import {
+  ReceiveUsdcCard,
+  USDC_STATUS_ANCHOR,
+} from '@/components/wallet/receive-usdc-card';
+import { SendUsdcCard } from '@/components/wallet/send-usdc-card';
+import { UsdcHistoryCard } from '@/components/wallet/usdc-history-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -131,11 +135,6 @@ function WalletView({ user }: { user: User }) {
   const throughPollar =
     user.walletCustody === 'pollar' && pollar.ready && pollar.address === user.stellarAddress;
 
-  async function copyAddress() {
-    await navigator.clipboard.writeText(user.stellarAddress);
-    toast.success('Address copied');
-  }
-
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader
@@ -151,33 +150,35 @@ function WalletView({ user }: { user: User }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="break-all font-mono text-sm">{user.stellarAddress}</p>
           <p className="text-sm text-muted-foreground">
             {user.walletCustody === 'pollar'
               ? `Created for you when you signed in with ${PROVIDER_NAMES[user.walletProvider ?? ''] ?? 'Pollar'}. You approve every payment from Pocket and the network fees are covered for you.`
               : 'A wallet you hold yourself. Every payment is signed in your wallet.'}
           </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={copyAddress}>
-              <CopyIcon className="size-4" /> Copy address
-            </Button>
-            {throughPollar ? (
-              <>
-                <Button variant="outline" size="sm" onClick={pollar.openReceive}>
-                  <ArrowDownToLineIcon className="size-4" /> Receive
-                </Button>
-                <Button variant="outline" size="sm" onClick={pollar.openHistory}>
-                  <HistoryIcon className="size-4" /> History
-                </Button>
-              </>
-            ) : null}
-          </div>
+          {throughPollar ? (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={pollar.openReceive}>
+                <ArrowDownToLineIcon className="size-4" /> Receive in Pollar
+              </Button>
+              <Button variant="outline" size="sm" onClick={pollar.openHistory}>
+                <HistoryIcon className="size-4" /> History in Pollar
+              </Button>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
       {throughPollar ? <BalanceCard pollar={pollar} /> : null}
 
-      <UsdcStatus user={user} showReady />
+      <div id={USDC_STATUS_ANCHOR} className="scroll-mt-24 empty:hidden">
+        <UsdcStatus user={user} showReady />
+      </div>
+
+      <ReceiveUsdcCard address={user.stellarAddress} />
+
+      <SendUsdcCard user={user} />
+
+      <UsdcHistoryCard />
 
       {throughPollar ? (
         <Card>
