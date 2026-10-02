@@ -1,6 +1,11 @@
 'use client';
 
-import { ServiceCategory, type Job, type JobMilestoneInput } from '@pocket/shared';
+import {
+  ServiceCategory,
+  type Job,
+  type JobKpiInput,
+  type JobMilestoneInput,
+} from '@pocket/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, Trash2Icon } from 'lucide-react';
 import Link from 'next/link';
@@ -21,6 +26,15 @@ import { fromUnits, toUnits } from '@/lib/usdc';
 import { useMyProfile } from '@/lib/use-my-profile';
 
 const MAX_MILESTONES = 5;
+const MAX_KPIS = 10;
+
+interface KpiDraft {
+  name: string;
+  target: string;
+  unit: string;
+}
+
+const EMPTY_KPI: KpiDraft = { name: '', target: '', unit: '' };
 
 interface MilestoneDraft {
   title: string;
@@ -75,6 +89,7 @@ function NewJob() {
   const router = useRouter();
   const [budget, setBudget] = useState('');
   const [milestones, setMilestones] = useState<MilestoneDraft[]>([{ ...EMPTY }]);
+  const [kpis, setKpis] = useState<KpiDraft[]>([]);
 
   const assigned = milestones.reduce((sum, m) => sum + toUnits(m.amount), BigInt(0));
   const remaining = toUnits(budget) - assigned;
@@ -107,10 +122,22 @@ function NewJob() {
     );
   }
 
+  function updateKpi(index: number, patch: Partial<KpiDraft>) {
+    setKpis((current) =>
+      current.map((kpi, i) => (i === index ? { ...kpi, ...patch } : kpi)),
+    );
+  }
+
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (remaining !== BigInt(0)) {
       toast.error(`The milestones must add up to the ${usdc(budget)} budget`);
+      return;
+    }
+    const names = kpis.map((kpi) => kpi.name.trim().toLowerCase());
+    const repeated = names.find((name, i) => names.indexOf(name) !== i);
+    if (repeated) {
+      toast.error(`"${repeated}" is listed twice as a KPI`);
       return;
     }
     const values = formValues(event.currentTarget);
@@ -132,6 +159,15 @@ function NewJob() {
         amount: Number(milestone.amount),
         dueDate: milestone.dueDate,
       })),
+      ...(kpis.length > 0
+        ? {
+            kpis: kpis.map((kpi): JobKpiInput => ({
+              name: kpi.name.trim(),
+              ...(kpi.target.trim() ? { target: kpi.target.trim() } : {}),
+              ...(kpi.unit.trim() ? { unit: kpi.unit.trim() } : {}),
+            })),
+          }
+        : {}),
     });
   }
 
@@ -395,6 +431,77 @@ function NewJob() {
                       ? `${usdc(fromUnits(remaining))} of the budget still to assign.`
                       : `${usdc(fromUnits(-remaining))} over the budget.`}
                 </p>
+              ) : null}
+            </section>
+
+            <section className="space-y-3 rounded-2xl border border-border p-4">
+              <div>
+                <h2 className="font-heading text-lg font-semibold text-navy">
+                  How you will measure it{' '}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Up to {MAX_KPIS} KPIs. Applicants see them before applying, and every
+                  delivery reports a result for each one.
+                </p>
+              </div>
+
+              {kpis.map((kpi, index) => (
+                <div
+                  key={index}
+                  className="flex items-start gap-2 rounded-xl bg-muted/40 p-3"
+                >
+                  <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[2fr_1.5fr_1fr]">
+                    <Input
+                      aria-label={`KPI ${index + 1} name`}
+                      placeholder="Name, e.g. Qualified leads"
+                      required
+                      minLength={2}
+                      maxLength={80}
+                      value={kpi.name}
+                      onChange={(event) => updateKpi(index, { name: event.target.value })}
+                    />
+                    <Input
+                      aria-label={`KPI ${index + 1} target`}
+                      placeholder="Target, e.g. 50 per month"
+                      maxLength={80}
+                      value={kpi.target}
+                      onChange={(event) =>
+                        updateKpi(index, { target: event.target.value })
+                      }
+                    />
+                    <Input
+                      aria-label={`KPI ${index + 1} unit`}
+                      placeholder="Unit, e.g. leads"
+                      maxLength={30}
+                      value={kpi.unit}
+                      onChange={(event) => updateKpi(index, { unit: event.target.value })}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Remove KPI"
+                    onClick={() =>
+                      setKpis((current) => current.filter((_, i) => i !== index))
+                    }
+                  >
+                    <Trash2Icon />
+                  </Button>
+                </div>
+              ))}
+
+              {kpis.length < MAX_KPIS ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setKpis((current) => [...current, { ...EMPTY_KPI }])}
+                >
+                  <PlusIcon /> Add KPI
+                </Button>
               ) : null}
             </section>
 
