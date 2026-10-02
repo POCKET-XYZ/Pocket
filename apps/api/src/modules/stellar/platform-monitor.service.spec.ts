@@ -6,9 +6,10 @@ import type { StellarService } from './stellar.service';
 
 const PLATFORM = 'GD6GR4SHFZENIND6EIU2M4MTWNNHOGL6JC6ZUYWBPVPQUG7XDXED3FNO';
 const OTHER = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
+const USDC_ISSUER = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
 
 /** A Horizon stand-in that serves `pages` of operations in order. */
-function fakeHorizon(pages: object[][], xlm = '100') {
+function fakeHorizon(pages: object[][], xlm = '100', trustsUsdc = true) {
   const queue = [...pages];
   const builder = {
     forAccount: () => builder,
@@ -20,7 +21,21 @@ function fakeHorizon(pages: object[][], xlm = '100') {
   return {
     operations: () => builder,
     loadAccount: jest.fn(() =>
-      Promise.resolve({ balances: [{ asset_type: 'native', balance: xlm }] }),
+      Promise.resolve({
+        balances: [
+          { asset_type: 'native', balance: xlm },
+          ...(trustsUsdc
+            ? [
+                {
+                  asset_type: 'credit_alphanum4',
+                  asset_code: 'USDC',
+                  asset_issuer: USDC_ISSUER,
+                  balance: '12.5',
+                },
+              ]
+            : []),
+        ],
+      }),
     ),
   };
 }
@@ -42,7 +57,7 @@ describe('PlatformMonitorService', () => {
     const service = new PlatformMonitorService(
       config as unknown as ConfigService,
       prisma as unknown as PrismaService,
-      { platformAddress: PLATFORM } as unknown as StellarService,
+      { platformAddress: PLATFORM, usdcIssuer: USDC_ISSUER } as unknown as StellarService,
     );
     (service as unknown as { horizon: object }).horizon = horizon;
     return service;
@@ -98,5 +113,17 @@ describe('PlatformMonitorService', () => {
   it('stays quiet while the balance is healthy', async () => {
     await monitor(fakeHorizon([], '250')).checkBalance();
     expect(alerts).not.toHaveBeenCalled();
+  });
+
+  it("alerts once when the account cannot receive Pocket's fee in USDC", async () => {
+    const service = monitor(fakeHorizon([], '250', false));
+    await service.checkBalance();
+    await service.checkBalance();
+    expect(alerts).toHaveBeenCalledTimes(1);
+    expect(alerts).toHaveBeenCalledWith(
+      'platform_usdc_trustline_missing',
+      expect.objectContaining({ account: PLATFORM, issuer: USDC_ISSUER }),
+      'alert',
+    );
   });
 });
