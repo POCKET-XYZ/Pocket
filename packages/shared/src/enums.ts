@@ -128,6 +128,8 @@ export const ChainOperationKind = {
   Release: 'release',
   Dispute: 'dispute',
   Resolve: 'resolve',
+  /** USDC the user sends from their wallet to another address. */
+  Payment: 'payment',
 } as const;
 export type ChainOperationKind =
   (typeof ChainOperationKind)[keyof typeof ChainOperationKind];

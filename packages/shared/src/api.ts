@@ -78,6 +78,39 @@ export interface WalletStatus {
    * on the network yet. Every escrow step its owner signs pays a small fee.
    */
   xlmForFees: string | null;
+  /**
+   * USDC the wallet can send right now (its balance minus what open offers
+   * lock), with up to 7 decimals. Null when the wallet does not hold USDC yet.
+   */
+  usdcSpendable: string | null;
+}
+
+/** POST /wallet/usdc-payment/prepare */
+export interface UsdcPaymentRequest {
+  /** The Stellar account (G...) that receives the USDC. */
+  destination: string;
+  /** Decimal string, more than zero, up to 7 decimals. */
+  amount: string;
+  /** Text memo, up to 28 bytes. Exchanges use it to tell deposits apart. */
+  memo?: string;
+}
+
+/** POST /wallet/usdc-payment/submit */
+export interface UsdcPaymentResult {
+  txHash: string;
+  amount: string;
+  destination: string;
+}
+
+/** One USDC movement in or out of the wallet, GET /wallet/usdc-payments */
+export interface UsdcPaymentRecord {
+  id: string;
+  txHash: string;
+  createdAt: IsoDate;
+  direction: 'in' | 'out';
+  /** Who paid or got paid: an account (G...) or a contract such as an escrow (C...). */
+  counterparty: string;
+  amount: string;
 }
 
 /** Error codes the API returns in the `code` field of a 4xx body. */
