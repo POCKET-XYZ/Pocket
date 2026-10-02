@@ -14,6 +14,7 @@ import {
   type PreparedTransaction,
 } from '../stellar/chain-operations.service';
 import { AddEvidenceDto, OpenDisputeDto, ResolveDisputeDto } from './dto/dispute.dto';
+import { DELIVERABLE_REPORT } from './deliverable-report';
 import { EscrowService } from './escrow.service';
 import { MilestonesService } from './milestones.service';
 
@@ -131,8 +132,15 @@ export class DisputesService {
       include: {
         milestone: {
           include: {
-            contract: { select: { id: true, startupId: true, specialistId: true } },
-            deliverables: { orderBy: { version: 'asc' } },
+            contract: {
+              select: {
+                id: true,
+                startupId: true,
+                specialistId: true,
+                job: { select: { kpis: { orderBy: { position: 'asc' } } } },
+              },
+            },
+            deliverables: { orderBy: { version: 'asc' }, include: DELIVERABLE_REPORT },
           },
         },
         evidence: {

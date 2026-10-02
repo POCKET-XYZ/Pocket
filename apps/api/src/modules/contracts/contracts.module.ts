@@ -3,6 +3,8 @@ import { JobsModule } from '../jobs/jobs.module';
 import { StellarModule } from '../stellar/stellar.module';
 import { ContractsController } from './contracts.controller';
 import { ContractsService } from './contracts.service';
+import { DeliverablesController } from './deliverables.controller';
+import { DeliverablesService } from './deliverables.service';
 import { DisputesController, ManagerDisputesController } from './disputes.controller';
 import { DisputesService } from './disputes.service';
 import { EscrowService } from './escrow.service';
@@ -14,9 +16,16 @@ import { MilestonesService } from './milestones.service';
   controllers: [
     ContractsController,
     MilestonesController,
+    DeliverablesController,
     DisputesController,
     ManagerDisputesController,
   ],
-  providers: [ContractsService, EscrowService, MilestonesService, DisputesService],
+  providers: [
+    ContractsService,
+    EscrowService,
+    MilestonesService,
+    DeliverablesService,
+    DisputesService,
+  ],
 })
 export class ContractsModule {}

@@ -69,7 +69,7 @@ model User {
   specialistProfile     SpecialistProfile?
   cv                    SpecialistCv?
   logo                  StartupLogo?
-  jobs                 Job[]
+  jobs                  Job[]
   applications          Application[]
   contractsAsStartup    Contract[]            @relation("ContractStartup")
   contractsAsSpecialist Contract[]            @relation("ContractSpecialist")
@@ -331,7 +331,8 @@ model JobKpi {
   // e.g. "leads", "%", "USD".
   unit     String?
 
-  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  job     Job                    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  results DeliverableKpiResult[]
 
   @@unique([jobId, position])
   @@map("job_kpis")
@@ -461,10 +462,45 @@ model Deliverable {
   feedback    String?
   createdAt   DateTime @default(now()) @map("created_at")
 
-  milestone Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  milestone  Milestone              @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  kpiResults DeliverableKpiResult[]
+  attachment DeliverableAttachment?
 
   @@unique([milestoneId, version])
   @@map("deliverables")
+}
+
+// The result a delivery reports for one of the job's KPIs. Every version of a
+// delivery has its own, so the startup sees how the numbers moved.
+model DeliverableKpiResult {
+  id            String  @id @default(uuid()) @db.Uuid
+  deliverableId String  @map("deliverable_id") @db.Uuid
+  kpiId         String  @map("kpi_id") @db.Uuid
+  // Free text, short: "62", "48 of 50", "Not measurable yet".
+  value         String
+  comment       String?
+
+  deliverable Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  kpi         JobKpi      @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+
+  @@unique([deliverableId, kpiId])
+  @@index([kpiId])
+  @@map("deliverable_kpi_results")
+}
+
+// A file backing a delivery's report: a PDF or a PNG, JPEG or WebP image, up
+// to 5 MB, one per version. Only the two parties and managers can read it.
+model DeliverableAttachment {
+  deliverableId String   @id @map("deliverable_id") @db.Uuid
+  data          Bytes
+  // The type read from the file's own bytes, served as is.
+  contentType   String   @map("content_type")
+  size          Int
+  uploadedAt    DateTime @default(now()) @updatedAt @map("uploaded_at")
+
+  deliverable Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+
+  @@map("deliverable_attachments")
 }
 
 // ---------------------------------------------------------------------------

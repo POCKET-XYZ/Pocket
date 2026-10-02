@@ -13,6 +13,7 @@ import type { PreparedTransaction } from '../stellar/chain-operations.service';
 import { StellarService } from '../stellar/stellar.service';
 import { JobsService } from '../jobs/jobs.service';
 import { CreateContractDto } from './dto/create-contract.dto';
+import { DELIVERABLE_REPORT } from './deliverable-report';
 import { EscrowService } from './escrow.service';
 
 const DETAIL_INCLUDE = {
@@ -24,6 +25,7 @@ const DETAIL_INCLUDE = {
       deadline: true,
       status: true,
       revisionRounds: true,
+      kpis: { orderBy: { position: 'asc' } },
     },
   },
   startup: {
@@ -43,7 +45,7 @@ const DETAIL_INCLUDE = {
   milestones: {
     orderBy: { position: 'asc' },
     include: {
-      deliverables: { orderBy: { version: 'asc' } },
+      deliverables: { orderBy: { version: 'asc' }, include: DELIVERABLE_REPORT },
       disputes: { orderBy: { createdAt: 'asc' } },
     },
   },

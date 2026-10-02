@@ -9,7 +9,7 @@ import type { Contract, Deliverable, Milestone } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { PreparedTransaction } from '../stellar/chain-operations.service';
-import { DeliverDto, RequestChangesDto } from './dto/milestone-actions.dto';
+import { DeliverDto, KpiResultDto, RequestChangesDto } from './dto/milestone-actions.dto';
 import { EscrowService } from './escrow.service';
 
 type MilestoneWithContract = Milestone & { contract: Contract };
@@ -36,10 +36,19 @@ export class MilestonesService {
       throw new BadRequestException('This milestone is not waiting for a delivery');
     }
 
+    const { results, ...delivery } = dto;
+    const report = await this.kpiReport(milestone.contract.jobId, results ?? []);
+
     const versions = await this.prisma.deliverable.count({ where: { milestoneId } });
     const [deliverable] = await this.prisma.$transaction([
       this.prisma.deliverable.create({
-        data: { ...dto, milestoneId, version: versions + 1 },
+        data: {
+          ...delivery,
+          milestoneId,
+          version: versions + 1,
+          ...(report.length > 0 ? { kpiResults: { create: report } } : {}),
+        },
+        include: { kpiResults: true },
       }),
       this.prisma.milestone.update({
         where: { id: milestoneId },
@@ -254,6 +263,50 @@ export class MilestonesService {
         'This milestone is already approved on the escrow. Release its payment instead',
       );
     }
+  }
+
+  /**
+   * The results a delivery reports, checked against the job's KPIs: one for
+   * each KPI the job has, none for a KPI it does not. A job without KPIs takes
+   * no report. Returned in the order the startup listed the KPIs.
+   */
+  private async kpiReport(
+    jobId: string,
+    results: KpiResultDto[],
+  ): Promise<{ kpiId: string; value: string; comment?: string }[]> {
+    const kpis = await this.prisma.jobKpi.findMany({
+      where: { jobId },
+      orderBy: { position: 'asc' },
+      select: { id: true, name: true },
+    });
+    if (kpis.length === 0) {
+      if (results.length > 0) {
+        throw new BadRequestException('This job has no KPIs to report results on');
+      }
+      return [];
+    }
+
+    const byKpi = new Map<string, KpiResultDto>();
+    for (const result of results) {
+      if (!kpis.some((kpi) => kpi.id === result.kpiId)) {
+        throw new BadRequestException('A result is for a KPI this job does not have');
+      }
+      if (byKpi.has(result.kpiId)) {
+        throw new BadRequestException('Report one result per KPI');
+      }
+      byKpi.set(result.kpiId, result);
+    }
+
+    return kpis.map((kpi) => {
+      const value = byKpi.get(kpi.id)?.value.trim();
+      if (!value) {
+        throw new BadRequestException(
+          `Report a result for "${kpi.name}". If it cannot be measured yet, say so`,
+        );
+      }
+      const comment = byKpi.get(kpi.id)?.comment?.trim();
+      return { kpiId: kpi.id, value, ...(comment ? { comment } : {}) };
+    });
   }
 
   async load(milestoneId: string): Promise<MilestoneWithContract> {
