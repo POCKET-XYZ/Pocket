@@ -3,7 +3,14 @@
   "build": {
     "builder": "RAILPACK",
     "buildCommand": "bun run --filter @pocket/shared build && cd apps/api && bun run db:generate && bun run build",
-    "watchPatterns": ["apps/api/**", "packages/shared/**", "bun.lock", "railway.json"]
+    "watchPatterns": [
+      "apps/api/**",
+      "packages/shared/**",
+      "/bun.lock",
+      "/package.json",
+      "/tsconfig.base.json",
+      "/railway.json"
+    ]
   },
   "deploy": {
     "startCommand": "cd apps/api && bun run db:deploy && bun run db:seed && bun run start",
