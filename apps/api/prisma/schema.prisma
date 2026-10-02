@@ -290,6 +290,7 @@ model Job {
   applications Application[]
   contracts    Contract[]
   milestones   JobMilestone[]
+  kpis         JobKpi[]
 
   @@index([status, category])
   @@index([startupId])
@@ -314,6 +315,26 @@ model JobMilestone {
 
   @@unique([jobId, position])
   @@map("job_milestones")
+}
+
+// What the work will be measured on, posted with the job so applicants know
+// before applying: "Qualified leads", target "50 per month". Up to 10 per job.
+// A table rather than JSON on the job, so each delivery's results point at a
+// KPI that exists through a foreign key.
+model JobKpi {
+  id       String  @id @default(uuid()) @db.Uuid
+  jobId    String  @map("job_id") @db.Uuid
+  position Int
+  name     String
+  // Free text, e.g. "50 per month". Optional: some KPIs are only tracked.
+  target   String?
+  // e.g. "leads", "%", "USD".
+  unit     String?
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, position])
+  @@map("job_kpis")
 }
 
 // A specialist's offer on a job. One per specialist and job; the price may

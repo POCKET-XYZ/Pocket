@@ -17,6 +17,7 @@ const LISTING_INCLUDE = {
   },
   _count: { select: { applications: true } },
   milestones: { orderBy: { position: 'asc' } },
+  kpis: { orderBy: { position: 'asc' } },
 } satisfies Prisma.JobInclude;
 
 type JobWithListing = Prisma.JobGetPayload<{ include: typeof LISTING_INCLUDE }>;
@@ -34,6 +35,7 @@ export class JobsService {
       throw new BadRequestException('The deadline cannot be in the past');
     }
     assertMilestonesMatch(dto);
+    const kpis = cleanKpis(dto);
     const profile = await this.prisma.startupProfile.findUnique({
       where: { userId: user.sub },
       select: { id: true },
@@ -54,6 +56,10 @@ export class JobsService {
             position,
             dueDate: new Date(milestone.dueDate),
           })),
+        },
+        // Replaces the raw list from the form with the cleaned one.
+        kpis: {
+          create: kpis.map((kpi, position) => ({ ...kpi, position })),
         },
       },
     });
@@ -188,4 +194,28 @@ function assertMilestonesMatch(dto: CreateJobDto): void {
   if (past) {
     throw new BadRequestException(`"${past.title}" is due in the past`);
   }
+}
+
+/**
+ * The KPIs as stored: trimmed, without empty optional parts, and each name
+ * once, since every delivery reports one result per KPI by name.
+ */
+function cleanKpis(dto: CreateJobDto): { name: string; target?: string; unit?: string }[] {
+  const kpis = (dto.kpis ?? []).map((kpi) => ({
+    name: kpi.name.trim(),
+    ...(kpi.target?.trim() ? { target: kpi.target.trim() } : {}),
+    ...(kpi.unit?.trim() ? { unit: kpi.unit.trim() } : {}),
+  }));
+  const seen = new Set<string>();
+  for (const kpi of kpis) {
+    if (kpi.name.length < 2) {
+      throw new BadRequestException('Give every KPI a name of at least 2 characters');
+    }
+    const key = kpi.name.toLowerCase();
+    if (seen.has(key)) {
+      throw new BadRequestException(`"${kpi.name}" is listed twice as a KPI`);
+    }
+    seen.add(key);
+  }
+  return kpis;
 }

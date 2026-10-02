@@ -243,6 +243,29 @@ export interface JobInput {
   startupProvides?: string;
   /** The payment plan. Each milestone says what it has to meet to be approved. */
   milestones: JobMilestoneInput[];
+  /**
+   * What the work will be measured on, up to 10. Every delivery reports a
+   * result for each one.
+   */
+  kpis?: JobKpiInput[];
+}
+
+/** Something the work is measured on, e.g. { name: 'Qualified leads', target: '50 per month' }. */
+export interface JobKpiInput {
+  name: string;
+  /** Free text, e.g. "50 per month". */
+  target?: string;
+  /** e.g. "leads", "%". */
+  unit?: string;
+}
+
+export interface JobKpi {
+  id: string;
+  /** Order in which the startup listed it. */
+  position: number;
+  name: string;
+  target: string | null;
+  unit: string | null;
 }
 
 /** A milestone as the startup posts it with the job. */
@@ -278,6 +301,8 @@ export interface Job {
   contentLanguage?: string | null;
   startupProvides?: string | null;
   milestones: JobMilestone[];
+  /** What the work is measured on. Empty when the startup set none. */
+  kpis: JobKpi[];
   status: JobStatus;
   createdAt: IsoDate;
   updatedAt: IsoDate;

@@ -5,7 +5,9 @@ import {
 } from '@nestjs/common';
 import type { AuthUser } from '../../common/types/auth';
 import type { PrismaService } from '../../prisma/prisma.service';
-import type { CreateJobDto } from './dto/create-job.dto';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { CreateJobDto } from './dto/create-job.dto';
 import { JobsService } from './jobs.service';
 
 const startup: AuthUser = {
@@ -84,6 +86,80 @@ describe('JobsService', () => {
       ),
     };
     service = new JobsService(prisma as unknown as PrismaService);
+  });
+
+  describe('KPIs', () => {
+    /** The errors the validation pipe would answer for this body. */
+    async function problems(body: object): Promise<string[]> {
+      const errors = await validate(plainToInstance(CreateJobDto, body), {
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      });
+      const flatten = (list: typeof errors): string[] =>
+        list.flatMap((error) => [
+          ...Object.values(error.constraints ?? {}),
+          ...flatten(error.children ?? []),
+        ]);
+      return flatten(errors);
+    }
+
+    it('takes a job with no KPIs', async () => {
+      await expect(problems(dto)).resolves.toEqual([]);
+    });
+
+    it('takes up to 10 KPIs with an optional target and unit', async () => {
+      const kpis: object[] = Array.from({ length: 10 }, (_, i) => ({ name: `KPI ${i + 1}` }));
+      kpis[0] = { name: 'Qualified leads', target: '50 per month', unit: 'leads' };
+      await expect(problems({ ...dto, kpis })).resolves.toEqual([]);
+    });
+
+    it('refuses more than 10 KPIs', async () => {
+      const kpis = Array.from({ length: 11 }, (_, i) => ({ name: `KPI ${i + 1}` }));
+      await expect(problems({ ...dto, kpis })).resolves.not.toEqual([]);
+    });
+
+    it.each([
+      ['without a name', { target: '50' }],
+      ['with a one letter name', { name: 'x' }],
+      ['with a target too long', { name: 'Leads', target: 'x'.repeat(81) }],
+      ['with a unit too long', { name: 'Leads', unit: 'x'.repeat(31) }],
+      ['with a field nobody asked for', { name: 'Leads', weight: 3 }],
+    ])('refuses a KPI %s', async (_label, kpi) => {
+      await expect(problems({ ...dto, kpis: [kpi] })).resolves.not.toEqual([]);
+    });
+
+    it('stores the KPIs in order, trimmed', async () => {
+      await service.create(startup, {
+        ...dto,
+        kpis: [
+          { name: ' Qualified leads ', target: '50 per month', unit: 'leads' },
+          { name: 'Reply rate', target: '  ', unit: '%' },
+        ],
+      });
+      const { data } = prisma.job.create.mock.calls[0][0];
+      expect(data.kpis).toEqual({
+        create: [
+          { name: 'Qualified leads', target: '50 per month', unit: 'leads', position: 0 },
+          { name: 'Reply rate', unit: '%', position: 1 },
+        ],
+      });
+    });
+
+    it('refuses the same KPI twice', async () => {
+      await expect(
+        service.create(startup, {
+          ...dto,
+          kpis: [{ name: 'Qualified leads' }, { name: 'qualified LEADS' }],
+        }),
+      ).rejects.toThrow('listed twice');
+      expect(prisma.job.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses a name that is only spaces', async () => {
+      await expect(
+        service.create(startup, { ...dto, kpis: [{ name: '    ' }] }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
   });
 
   describe('create', () => {
