@@ -393,7 +393,7 @@ describe('ContractsService', () => {
       );
       expect(prisma.contract.updateMany).toHaveBeenCalledWith({
         where: { id: 'contract-1', status: 'awaiting_specialist' },
-        data: { status: 'awaiting_funding', escrowId: 'CESCROW' },
+        data: { status: 'awaiting_funding', escrowId: 'CESCROW', platformFeeBps: 100 },
       });
       expect(prisma.application.updateMany).toHaveBeenCalledWith({
         where: { jobId: 'job-1', status: 'submitted' },

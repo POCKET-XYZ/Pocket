@@ -433,22 +433,25 @@ enum MilestoneStatus {
 // The agreement between a startup and the specialist it chose. Each contract
 // gets its own multi-release escrow on Stellar, one release per milestone.
 model Contract {
-  id            String         @id @default(uuid()) @db.Uuid
-  jobId         String         @map("job_id") @db.Uuid
-  applicationId String         @unique @map("application_id") @db.Uuid
-  startupId     String         @map("startup_id") @db.Uuid
-  specialistId  String         @map("specialist_id") @db.Uuid
+  id             String         @id @default(uuid()) @db.Uuid
+  jobId          String         @map("job_id") @db.Uuid
+  applicationId  String         @unique @map("application_id") @db.Uuid
+  startupId      String         @map("startup_id") @db.Uuid
+  specialistId   String         @map("specialist_id") @db.Uuid
   // USDC. Always equals the sum of the milestones.
-  amount        Decimal        @db.Decimal(20, 7)
-  status        ContractStatus @default(awaiting_specialist)
+  amount         Decimal        @db.Decimal(20, 7)
+  status         ContractStatus @default(awaiting_specialist)
   // Soroban contract id (C...) of the Trustless Work escrow, once deployed.
-  escrowId      String?        @unique @map("escrow_id")
-  acceptedAt    DateTime?      @map("accepted_at")
-  fundedAt      DateTime?      @map("funded_at")
-  completedAt   DateTime?      @map("completed_at")
-  cancelledAt   DateTime?      @map("cancelled_at")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  escrowId       String?        @unique @map("escrow_id")
+  // Pocket's fee the escrow was deployed with, in basis points (100 = 1%).
+  // 0 for escrows deployed before the fee existed and contracts not deployed.
+  platformFeeBps Int            @default(0) @map("platform_fee_bps")
+  acceptedAt     DateTime?      @map("accepted_at")
+  fundedAt       DateTime?      @map("funded_at")
+  completedAt    DateTime?      @map("completed_at")
+  cancelledAt    DateTime?      @map("cancelled_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
 
   job             Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
   application     Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)

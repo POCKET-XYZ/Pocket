@@ -682,10 +682,16 @@ export interface MetricsWeek {
   /** Startups and specialists who signed up that week. */
   newUsers: number;
   jobsPosted: number;
+  /** Contracts completed that week (one contract per job). */
+  jobsCompleted: number;
   /** USDC that came into escrow: contracts that became active that week. */
   funded: string;
   /** USDC paid to specialists: milestones released plus their dispute shares. */
   released: string;
+  /** USDC users sent from Pocket wallets to other Stellar addresses. */
+  walletPayments: string;
+  /** Pocket's fee on that week's payouts, worked out like `money.pocketFee`. */
+  pocketFee: string;
 }
 
 /**
@@ -712,6 +718,8 @@ export interface ManagerMetrics {
   };
   marketplace: {
     jobsPosted: number;
+    /** Contracts completed in the period. One contract per job, so jobs done. */
+    jobsCompleted: number;
     /** Jobs open for applications right now. */
     openJobs: number;
     /** Applications sent in the period, to any job. */
@@ -745,8 +753,19 @@ export interface ManagerMetrics {
     refunded: string;
     /** Held right now by the escrows of active contracts. */
     inEscrow: string;
-    /** POCKET_FEE_PERCENT of what was released in the period. */
+    /**
+     * Pocket's fee on every payout in the period: released milestones and
+     * both sides of resolved disputes. Each payout is charged its contract's
+     * fee (0 before the fee existed, 1% after) and rounded down on its own.
+     */
     pocketFee: string;
+    /**
+     * USDC users sent from their Pocket wallet to other Stellar addresses in
+     * the period. Money arriving from outside is not recorded by Pocket.
+     */
+    walletPayments: string;
+    /** How many of those payments there were. */
+    walletPaymentCount: number;
   };
   health: {
     openDisputes: number;
