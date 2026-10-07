@@ -1,11 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import {
-  MetricsPeriod,
-  POCKET_FEE_PERCENT,
-  type ManagerMetrics,
-  type MetricsWeek,
-} from '@pocket/shared';
+import { MetricsPeriod, type ManagerMetrics, type MetricsWeek } from '@pocket/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const DAY_MS = 86_400_000;
@@ -27,6 +22,20 @@ export const STALE_FUNDING_DAYS = 3;
 
 /** Contract statuses reached only once the specialist accepted the offer. */
 const ACCEPTED_STATUSES = Prisma.sql`('awaiting_funding', 'active', 'completed')`;
+
+/**
+ * Pocket's fee on one payout: the payout times its contract's fee in basis
+ * points, cut down to the stroop like the escrow does. Multiplying by 0.0001
+ * keeps numeric math exact (dividing could round first); trunc then drops
+ * what is below 7 decimals, never rounding up. Summed row by row, so every
+ * payout is rounded on its own. `c` is the payout's contract.
+ */
+export function payoutFeeSql(amount: Prisma.Sql): Prisma.Sql {
+  return Prisma.sql`trunc(COALESCE(${amount}, 0) * c.platform_fee_bps * 0.0001, 7)`;
+}
+const MILESTONE_FEE = payoutFeeSql(Prisma.sql`m.amount`);
+/** Each side of a resolution is a payout of its own and pays its own fee. */
+const DISPUTE_FEE = Prisma.sql`(${payoutFeeSql(Prisma.sql`d.specialist_amount`)} + ${payoutFeeSql(Prisma.sql`d.startup_amount`)})`;
 
 /** Count columns come back as int; sums of money as numeric (a Decimal). */
 type Count = number | bigint | null;
@@ -57,11 +66,13 @@ interface ContractRow {
   awaiting_reply: Count;
   funded_count: Count;
   funded: Amount;
+  jobs_completed: Count;
   stale_awaiting_funding: Count;
   median_days_to_first_hire: number | null;
 }
 interface MilestoneRow {
   released: Amount;
+  pocket_fee: Amount;
   in_escrow: Amount;
   overdue: Count;
 }
@@ -70,9 +81,14 @@ interface DisputeRow {
   resolved: Count;
   to_specialists: Amount;
   to_startups: Amount;
+  pocket_fee: Amount;
+}
+interface PaymentRow {
+  payments: Count;
+  sent: Amount;
 }
 interface WeekRow {
-  series: 'users' | 'jobs' | 'funded' | 'released';
+  series: 'users' | 'jobs' | 'completed' | 'funded' | 'released' | 'payments' | 'fee';
   week: Date;
   count: Count;
   amount: Amount;
@@ -80,7 +96,7 @@ interface WeekRow {
 
 /**
  * Platform metrics for managers. Each table is read once with every count it
- * feeds computed in the same pass, so the whole dashboard is seven queries.
+ * feeds computed in the same pass, so the whole dashboard is eight queries.
  * Timestamps are stored in UTC; dates passed in are ISO strings cast to
  * timestamp, so the result never depends on the session's time zone.
  */
@@ -103,7 +119,7 @@ export class MetricsService {
     const weekStarts = weeksEndingAt(now);
     const seriesFrom = weekStarts[0].toISOString();
 
-    const [users, verification, jobs, contracts, milestones, disputes, weeks] =
+    const [users, verification, jobs, contracts, milestones, disputes, payments, weeks] =
       await Promise.all([
         this.prisma.$queryRaw<UserRow[]>`
           SELECT
@@ -143,6 +159,10 @@ export class MetricsService {
             COUNT(*) FILTER (WHERE status = 'awaiting_specialist')::int AS awaiting_reply,
             COUNT(*) FILTER (WHERE funded_at >= ${since}::timestamp)::int AS funded_count,
             COALESCE(SUM(amount) FILTER (WHERE funded_at >= ${since}::timestamp), 0) AS funded,
+            -- One contract per job, so a completed contract is a completed job.
+            COUNT(*) FILTER (
+              WHERE status = 'completed' AND completed_at >= ${since}::timestamp
+            )::int AS jobs_completed,
             COUNT(*) FILTER (
               WHERE status = 'awaiting_funding' AND accepted_at < ${staleBefore}::timestamp
             )::int AS stale_awaiting_funding,
@@ -164,6 +184,9 @@ export class MetricsService {
             COALESCE(SUM(m.amount) FILTER (
               WHERE m.status = 'paid' AND m.paid_at >= ${since}::timestamp
             ), 0) AS released,
+            COALESCE(SUM(${MILESTONE_FEE}) FILTER (
+              WHERE m.status = 'paid' AND m.paid_at >= ${since}::timestamp
+            ), 0) AS pocket_fee,
             COALESCE(SUM(m.amount) FILTER (
               WHERE c.status = 'active' AND m.status NOT IN ('paid', 'resolved')
             ), 0) AS in_escrow,
@@ -177,17 +200,31 @@ export class MetricsService {
           FROM milestones m JOIN contracts c ON c.id = m.contract_id`,
         this.prisma.$queryRaw<DisputeRow[]>`
           SELECT
-            COUNT(*) FILTER (WHERE status = 'open')::int AS open,
+            COUNT(*) FILTER (WHERE d.status = 'open')::int AS open,
             COUNT(*) FILTER (
-              WHERE status = 'resolved' AND resolved_at >= ${since}::timestamp
+              WHERE d.status = 'resolved' AND d.resolved_at >= ${since}::timestamp
             )::int AS resolved,
-            COALESCE(SUM(specialist_amount) FILTER (
-              WHERE status = 'resolved' AND resolved_at >= ${since}::timestamp
+            COALESCE(SUM(d.specialist_amount) FILTER (
+              WHERE d.status = 'resolved' AND d.resolved_at >= ${since}::timestamp
             ), 0) AS to_specialists,
-            COALESCE(SUM(startup_amount) FILTER (
-              WHERE status = 'resolved' AND resolved_at >= ${since}::timestamp
-            ), 0) AS to_startups
-          FROM disputes`,
+            COALESCE(SUM(d.startup_amount) FILTER (
+              WHERE d.status = 'resolved' AND d.resolved_at >= ${since}::timestamp
+            ), 0) AS to_startups,
+            COALESCE(SUM(${DISPUTE_FEE}) FILTER (
+              WHERE d.status = 'resolved' AND d.resolved_at >= ${since}::timestamp
+            ), 0) AS pocket_fee
+          FROM disputes d
+            JOIN milestones m ON m.id = d.milestone_id
+            JOIN contracts c ON c.id = m.contract_id`,
+        // USDC users sent from their Pocket wallet to another Stellar address.
+        // Money that arrives from outside is not recorded by Pocket.
+        this.prisma.$queryRaw<PaymentRow[]>`
+          SELECT
+            COUNT(*)::int AS payments,
+            COALESCE(SUM(amount), 0) AS sent
+          FROM chain_operations
+          WHERE kind = 'payment' AND status = 'confirmed'
+            AND confirmed_at >= ${since}::timestamp`,
         this.prisma.$queryRaw<WeekRow[]>`
           SELECT 'users' AS series, date_trunc('week', created_at) AS week,
             COUNT(*)::int AS count, NULL::numeric AS amount
@@ -197,6 +234,11 @@ export class MetricsService {
           UNION ALL
           SELECT 'jobs', date_trunc('week', created_at), COUNT(*)::int, NULL
           FROM jobs WHERE created_at >= ${seriesFrom}::timestamp
+          GROUP BY 2
+          UNION ALL
+          SELECT 'completed', date_trunc('week', completed_at), COUNT(*)::int, NULL
+          FROM contracts
+          WHERE status = 'completed' AND completed_at >= ${seriesFrom}::timestamp
           GROUP BY 2
           UNION ALL
           SELECT 'funded', date_trunc('week', funded_at), COUNT(*)::int, SUM(amount)
@@ -209,6 +251,24 @@ export class MetricsService {
           UNION ALL
           SELECT 'released', date_trunc('week', resolved_at), COUNT(*)::int, SUM(specialist_amount)
           FROM disputes WHERE status = 'resolved' AND resolved_at >= ${seriesFrom}::timestamp
+          GROUP BY 2
+          UNION ALL
+          SELECT 'payments', date_trunc('week', confirmed_at), COUNT(*)::int, SUM(amount)
+          FROM chain_operations
+          WHERE kind = 'payment' AND status = 'confirmed'
+            AND confirmed_at >= ${seriesFrom}::timestamp
+          GROUP BY 2
+          UNION ALL
+          SELECT 'fee', date_trunc('week', m.paid_at), COUNT(*)::int, SUM(${MILESTONE_FEE})
+          FROM milestones m JOIN contracts c ON c.id = m.contract_id
+          WHERE m.status = 'paid' AND m.paid_at >= ${seriesFrom}::timestamp
+          GROUP BY 2
+          UNION ALL
+          SELECT 'fee', date_trunc('week', d.resolved_at), COUNT(*)::int, SUM(${DISPUTE_FEE})
+          FROM disputes d
+            JOIN milestones m ON m.id = d.milestone_id
+            JOIN contracts c ON c.id = m.contract_id
+          WHERE d.status = 'resolved' AND d.resolved_at >= ${seriesFrom}::timestamp
           GROUP BY 2`,
       ]);
 
@@ -218,11 +278,13 @@ export class MetricsService {
     const c = contracts[0];
     const m = milestones[0];
     const d = disputes[0];
+    const p = payments[0];
 
     const jobsPosted = count(j?.posted);
     const fundedCount = count(c?.funded_count);
     const funded = decimal(c?.funded);
     const released = decimal(m?.released).plus(decimal(d?.to_specialists));
+    const pocketFee = decimal(m?.pocket_fee).plus(decimal(d?.pocket_fee));
 
     return {
       period,
@@ -243,6 +305,7 @@ export class MetricsService {
       },
       marketplace: {
         jobsPosted,
+        jobsCompleted: count(c?.jobs_completed),
         openJobs: count(j?.open),
         applications: count(j?.applications),
         averageApplicationsPerJob:
@@ -265,7 +328,9 @@ export class MetricsService {
         released: usdc(released),
         refunded: usdc(decimal(d?.to_startups)),
         inEscrow: usdc(decimal(m?.in_escrow)),
-        pocketFee: pocketFeeOf(released),
+        pocketFee: usdc(pocketFee),
+        walletPayments: usdc(decimal(p?.sent)),
+        walletPaymentCount: count(p?.payments),
       },
       health: {
         openDisputes: count(d?.open),
@@ -276,15 +341,6 @@ export class MetricsService {
       weekly: weeklySeries(weekStarts, weeks),
     };
   }
-}
-
-/** Pocket's fee on an amount, cut down to USDC's 7 decimals, never rounded up. */
-export function pocketFeeOf(released: Prisma.Decimal): string {
-  return released
-    .times(POCKET_FEE_PERCENT)
-    .div(100)
-    .toDecimalPlaces(7, Prisma.Decimal.ROUND_DOWN)
-    .toFixed();
 }
 
 /** Monday 00:00 UTC of each of the last SERIES_WEEKS weeks, oldest first. */
@@ -305,25 +361,51 @@ function weeklySeries(weekStarts: Date[], rows: WeekRow[]): MetricsWeek[] {
       {
         newUsers: 0,
         jobsPosted: 0,
+        jobsCompleted: 0,
         funded: new Prisma.Decimal(0),
         released: new Prisma.Decimal(0),
+        walletPayments: new Prisma.Decimal(0),
+        pocketFee: new Prisma.Decimal(0),
       },
     ]),
   );
   for (const row of rows) {
     const week = byWeek.get(new Date(row.week).toISOString());
     if (!week) continue;
-    if (row.series === 'users') week.newUsers += count(row.count);
-    else if (row.series === 'jobs') week.jobsPosted += count(row.count);
-    else if (row.series === 'funded') week.funded = week.funded.plus(decimal(row.amount));
-    else week.released = week.released.plus(decimal(row.amount));
+    const amount = decimal(row.amount);
+    switch (row.series) {
+      case 'users':
+        week.newUsers += count(row.count);
+        break;
+      case 'jobs':
+        week.jobsPosted += count(row.count);
+        break;
+      case 'completed':
+        week.jobsCompleted += count(row.count);
+        break;
+      case 'funded':
+        week.funded = week.funded.plus(amount);
+        break;
+      case 'released':
+        week.released = week.released.plus(amount);
+        break;
+      case 'payments':
+        week.walletPayments = week.walletPayments.plus(amount);
+        break;
+      case 'fee':
+        week.pocketFee = week.pocketFee.plus(amount);
+        break;
+    }
   }
   return [...byWeek].map(([weekStart, week]) => ({
     weekStart,
     newUsers: week.newUsers,
     jobsPosted: week.jobsPosted,
+    jobsCompleted: week.jobsCompleted,
     funded: usdc(week.funded),
     released: usdc(week.released),
+    walletPayments: usdc(week.walletPayments),
+    pocketFee: usdc(week.pocketFee),
   }));
 }
 

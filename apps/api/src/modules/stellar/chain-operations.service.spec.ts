@@ -6,7 +6,7 @@ import {
 import { Prisma } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { PlatformTxPolicy } from './platform-tx-policy';
-import { ChainOperationsService, stepKeyOf } from './chain-operations.service';
+import { CHAIN_REQUEST_BUDGET_MS, ChainOperationsService, stepKeyOf } from './chain-operations.service';
 import type { SorobanReader } from './soroban-reader.service';
 import type { StellarService } from './stellar.service';
 import type { TrustlessWorkClient } from './trustless-work.client';
@@ -381,6 +381,28 @@ describe('ChainOperationsService', () => {
       ).rejects.toBeInstanceOf(ServiceUnavailableException);
       // The step stays taken: freeing it would let a second deposit through.
       expect(prisma.chainOperation.update).not.toHaveBeenCalled();
+    });
+
+    it('answers before the host proxy cuts the request, even after a slow send', async () => {
+      // The send itself took 33 of the 35 seconds a request may use.
+      const now = jest.spyOn(Date, 'now');
+      now.mockReturnValueOnce(1_000).mockReturnValue(34_000);
+      chain.waitForTransaction.mockResolvedValue('NOT_FOUND');
+      await expect(
+        service.submitSigned({ kind: 'fund', contractId: 'contract-1' }, 'signed-xdr', 'user-1'),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+      const [, waitMs] = chain.waitForTransaction.mock.calls[0];
+      expect(waitMs).toBeGreaterThanOrEqual(5_000);
+      expect(waitMs).toBeLessThanOrEqual(CHAIN_REQUEST_BUDGET_MS);
+      now.mockRestore();
+    });
+
+    it('waits up to the whole budget when the send was quick', async () => {
+      chain.waitForTransaction.mockResolvedValue('SUCCESS');
+      await service.submitSigned({ kind: 'fund', contractId: 'contract-1' }, 'signed-xdr', 'user-1');
+      const [, waitMs] = chain.waitForTransaction.mock.calls[0];
+      expect(waitMs).toBeGreaterThan(CHAIN_REQUEST_BUDGET_MS - 1_000);
+      expect(waitMs).toBeLessThanOrEqual(CHAIN_REQUEST_BUDGET_MS);
     });
 
     it('does not count a platform step until the chain shows it', async () => {

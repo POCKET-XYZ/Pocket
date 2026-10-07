@@ -24,6 +24,8 @@
     "typescript": "~5.9"
   },
   "overrides": {
-    "deepmerge-ts": "^8.0.2"
+    "deepmerge-ts": "^8.0.2",
+    "seroval": "^1.6.8",
+    "seroval-plugins": "^1.6.8"
   }
 }

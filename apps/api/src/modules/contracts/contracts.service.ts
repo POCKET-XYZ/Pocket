@@ -12,10 +12,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 import type { PreparedTransaction } from '../stellar/chain-operations.service';
 import { StellarService } from '../stellar/stellar.service';
 import { JobsService } from '../jobs/jobs.service';
+import { REPORT_TEMPLATE_INFO } from '../jobs/report-template-info';
 import { NotificationsService } from '../notifications/notifications.service';
 import { contactEmails } from '../users/contact-emails';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { DELIVERABLE_REPORT } from './deliverable-report';
+import { POCKET_PLATFORM_FEE_ON_CHAIN } from './escrow-policies';
 import { EscrowService } from './escrow.service';
 
 const DETAIL_INCLUDE = {
@@ -28,6 +30,7 @@ const DETAIL_INCLUDE = {
       status: true,
       revisionRounds: true,
       kpis: { orderBy: { position: 'asc' } },
+      reportTemplate: { select: REPORT_TEMPLATE_INFO },
     },
   },
   startup: {
@@ -236,7 +239,9 @@ export class ContractsService {
   async withdrawOffer(user: AuthUser, contractId: string): Promise<{ jobId: string }> {
     const contract = await this.startupContract(user, contractId);
     if (contract.status !== 'awaiting_specialist') {
-      throw new BadRequestException('Only terms the specialist has not accepted can be withdrawn');
+      throw new BadRequestException(
+        'Only terms the specialist has not accepted can be withdrawn',
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -306,7 +311,12 @@ export class ContractsService {
     const [, accepted] = await this.prisma.$transaction([
       this.prisma.contract.updateMany({
         where: { id: contractId, status: 'awaiting_specialist' },
-        data: { status: 'awaiting_funding', escrowId },
+        // The deploy policy refused to sign unless the escrow carries this fee.
+        data: {
+          status: 'awaiting_funding',
+          escrowId,
+          platformFeeBps: POCKET_PLATFORM_FEE_ON_CHAIN,
+        },
       }),
       this.prisma.contract.findUniqueOrThrow({ where: { id: contractId } }),
       // The hire is final now: the applicants who were on hold are turned down.
@@ -333,7 +343,9 @@ export class ContractsService {
     // and not while a deposit already sent is still being confirmed.
     if (await this.escrow.isFunded(contract)) {
       await this.activate(contractId);
-      throw new ConflictException('This escrow is already funded. The contract is active now');
+      throw new ConflictException(
+        'This escrow is already funded. The contract is active now',
+      );
     }
     const sent = await this.prisma.chainOperation.findUnique({
       where: { stepKey: `fund:${contractId}` },

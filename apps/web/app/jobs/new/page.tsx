@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  ServiceCategory,
-  type Job,
-  type JobKpiInput,
-  type JobMilestoneInput,
-} from '@pocket/shared';
+import { ServiceCategory, type Job, type JobMilestoneInput } from '@pocket/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, Trash2Icon } from 'lucide-react';
 import Link from 'next/link';
@@ -13,6 +8,15 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Field, formValues } from '@/components/form';
+import {
+  KpiRows,
+  MAX_KPIS,
+  kpiInputs,
+  repeatedKpi,
+  type KpiDraft,
+} from '@/components/kpi-rows';
+import { KpiTemplateTools } from '@/components/kpi-template-tools';
+import { uploadReportTemplate } from '@/components/report-template';
 import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
 import { Button } from '@/components/ui/button';
@@ -20,21 +24,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiError, api, errorMessage } from '@/lib/api';
+import { REPORT_ACCEPT, reportTemplateProblem } from '@/lib/files';
 import { CATEGORY_LABELS, todayIso, usdc } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { fromUnits, toUnits } from '@/lib/usdc';
 import { useMyProfile } from '@/lib/use-my-profile';
 
 const MAX_MILESTONES = 5;
-const MAX_KPIS = 10;
-
-interface KpiDraft {
-  name: string;
-  target: string;
-  unit: string;
-}
-
-const EMPTY_KPI: KpiDraft = { name: '', target: '', unit: '' };
 
 interface MilestoneDraft {
   title: string;
@@ -90,14 +86,27 @@ function NewJob() {
   const [budget, setBudget] = useState('');
   const [milestones, setMilestones] = useState<MilestoneDraft[]>([{ ...EMPTY }]);
   const [kpis, setKpis] = useState<KpiDraft[]>([]);
+  const [reportTemplate, setReportTemplate] = useState<File | null>(null);
 
   const assigned = milestones.reduce((sum, m) => sum + toUnits(m.amount), BigInt(0));
   const remaining = toUnits(budget) - assigned;
 
   const queryClient = useQueryClient();
   const create = useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      api<Job>('/jobs', { method: 'POST', body }),
+    mutationFn: async (body: Record<string, unknown>) => {
+      const job = await api<Job>('/jobs', { method: 'POST', body });
+      if (reportTemplate) {
+        try {
+          await uploadReportTemplate(job.id, reportTemplate);
+        } catch (error) {
+          // The job itself is posted; only the file is missing.
+          toast.error(
+            `Job posted, but the report template did not upload: ${errorMessage(error)}. Attach it again from the job page.`,
+          );
+        }
+      }
+      return job;
+    },
     onSuccess: async (job) => {
       toast.success('Job posted');
       await queryClient.invalidateQueries({ queryKey: ['jobs'] });
@@ -122,10 +131,16 @@ function NewJob() {
     );
   }
 
-  function updateKpi(index: number, patch: Partial<KpiDraft>) {
-    setKpis((current) =>
-      current.map((kpi, i) => (i === index ? { ...kpi, ...patch } : kpi)),
-    );
+  function onReportTemplateChosen(event: React.ChangeEvent<HTMLInputElement>) {
+    const chosen = event.target.files?.[0] ?? null;
+    const problem = chosen ? reportTemplateProblem(chosen) : null;
+    if (problem) {
+      toast.error(problem);
+      event.target.value = '';
+      setReportTemplate(null);
+      return;
+    }
+    setReportTemplate(chosen);
   }
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -134,8 +149,7 @@ function NewJob() {
       toast.error(`The milestones must add up to the ${usdc(budget)} budget`);
       return;
     }
-    const names = kpis.map((kpi) => kpi.name.trim().toLowerCase());
-    const repeated = names.find((name, i) => names.indexOf(name) !== i);
+    const repeated = repeatedKpi(kpis);
     if (repeated) {
       toast.error(`"${repeated}" is listed twice as a KPI`);
       return;
@@ -159,15 +173,7 @@ function NewJob() {
         amount: Number(milestone.amount),
         dueDate: milestone.dueDate,
       })),
-      ...(kpis.length > 0
-        ? {
-            kpis: kpis.map((kpi): JobKpiInput => ({
-              name: kpi.name.trim(),
-              ...(kpi.target.trim() ? { target: kpi.target.trim() } : {}),
-              ...(kpi.unit.trim() ? { unit: kpi.unit.trim() } : {}),
-            })),
-          }
-        : {}),
+      ...(kpis.length > 0 ? { kpis: kpiInputs(kpis) } : {}),
     });
   }
 
@@ -379,7 +385,7 @@ function NewJob() {
                       update(index, { acceptanceCriteria: event.target.value })
                     }
                   />
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <Input
                       type="number"
                       placeholder="Amount (USDC)"
@@ -448,61 +454,36 @@ function NewJob() {
                 </p>
               </div>
 
-              {kpis.map((kpi, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-2 rounded-xl bg-muted/40 p-3"
-                >
-                  <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[2fr_1.5fr_1fr]">
-                    <Input
-                      aria-label={`KPI ${index + 1} name`}
-                      placeholder="Name, e.g. Qualified leads"
-                      required
-                      minLength={2}
-                      maxLength={80}
-                      value={kpi.name}
-                      onChange={(event) => updateKpi(index, { name: event.target.value })}
-                    />
-                    <Input
-                      aria-label={`KPI ${index + 1} target`}
-                      placeholder="Target, e.g. 50 per month"
-                      maxLength={80}
-                      value={kpi.target}
-                      onChange={(event) =>
-                        updateKpi(index, { target: event.target.value })
-                      }
-                    />
-                    <Input
-                      aria-label={`KPI ${index + 1} unit`}
-                      placeholder="Unit, e.g. leads"
-                      maxLength={30}
-                      value={kpi.unit}
-                      onChange={(event) => updateKpi(index, { unit: event.target.value })}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Remove KPI"
-                    onClick={() =>
-                      setKpis((current) => current.filter((_, i) => i !== index))
-                    }
-                  >
-                    <Trash2Icon />
-                  </Button>
-                </div>
-              ))}
+              <KpiTemplateTools kpis={kpis} onUse={setKpis} />
+              <KpiRows kpis={kpis} onChange={setKpis} />
+            </section>
 
-              {kpis.length < MAX_KPIS ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setKpis((current) => [...current, { ...EMPTY_KPI }])}
-                >
-                  <PlusIcon /> Add KPI
-                </Button>
-              ) : null}
+            <section className="space-y-3 rounded-2xl border border-border p-4">
+              <div>
+                <h2 className="font-heading text-lg font-semibold text-navy">
+                  Report template{' '}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  The file you want the specialist to fill in and attach to each delivery,
+                  such as your KPI spreadsheet. Verified specialists can download it with
+                  the brief.
+                </p>
+              </div>
+              <Field
+                label="File"
+                htmlFor="reportTemplate"
+                hint="Excel (.xlsx), Word (.docx), PDF or CSV, up to 5 MB. Files with macros (.xlsm, .docm) are not accepted."
+              >
+                <Input
+                  id="reportTemplate"
+                  type="file"
+                  accept={REPORT_ACCEPT}
+                  onChange={onReportTemplateChosen}
+                />
+              </Field>
             </section>
 
             <Button type="submit" size="lg" disabled={create.isPending}>

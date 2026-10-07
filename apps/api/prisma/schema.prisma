@@ -69,6 +69,7 @@ model User {
   specialistProfile     SpecialistProfile?
   cv                    SpecialistCv?
   logo                  StartupLogo?
+  kpiTemplates          KpiTemplate[]
   jobs                  Job[]
   applications          Application[]
   contractsAsStartup    Contract[]            @relation("ContractStartup")
@@ -286,11 +287,12 @@ model Job {
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
-  startup      User           @relation(fields: [startupId], references: [id], onDelete: Cascade)
-  applications Application[]
-  contracts    Contract[]
-  milestones   JobMilestone[]
-  kpis         JobKpi[]
+  startup        User               @relation(fields: [startupId], references: [id], onDelete: Cascade)
+  applications   Application[]
+  contracts      Contract[]
+  milestones     JobMilestone[]
+  kpis           JobKpi[]
+  reportTemplate JobReportTemplate?
 
   @@index([status, category])
   @@index([startupId])
@@ -336,6 +338,45 @@ model JobKpi {
 
   @@unique([jobId, position])
   @@map("job_kpis")
+}
+
+// The report a startup wants back, as a file the specialist fills in and
+// attaches to each delivery: a PDF, Excel (.xlsx), Word (.docx) or CSV file,
+// never macro-enabled, up to 5 MB, one per job. Part of the brief: the startup,
+// verified specialists and managers can download it.
+model JobReportTemplate {
+  jobId       String   @id @map("job_id") @db.Uuid
+  data        Bytes
+  // The type read from the file's own bytes, served as is.
+  contentType String   @map("content_type")
+  // The name it was uploaded with, kept to plain characters.
+  fileName    String   @map("file_name")
+  size        Int
+  uploadedAt  DateTime @default(now()) @updatedAt @map("uploaded_at")
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("job_report_templates")
+}
+
+// A named set of KPIs a startup saves to reuse when posting jobs, e.g.
+// "Outbound campaign". Only a starting point: posting a job copies the KPIs,
+// so editing or deleting a template never changes a posted job. Up to 20 per
+// startup.
+model KpiTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  startupId String   @map("startup_id") @db.Uuid
+  name      String
+  // The KPIs in order, as [{ name, target?, unit? }], with the same limits as
+  // a job's: up to 10, each name once.
+  kpis      Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  startup User @relation(fields: [startupId], references: [id], onDelete: Cascade)
+
+  @@index([startupId])
+  @@map("kpi_templates")
 }
 
 // A specialist's offer on a job. One per specialist and job; the price may
@@ -392,22 +433,25 @@ enum MilestoneStatus {
 // The agreement between a startup and the specialist it chose. Each contract
 // gets its own multi-release escrow on Stellar, one release per milestone.
 model Contract {
-  id            String         @id @default(uuid()) @db.Uuid
-  jobId         String         @map("job_id") @db.Uuid
-  applicationId String         @unique @map("application_id") @db.Uuid
-  startupId     String         @map("startup_id") @db.Uuid
-  specialistId  String         @map("specialist_id") @db.Uuid
+  id             String         @id @default(uuid()) @db.Uuid
+  jobId          String         @map("job_id") @db.Uuid
+  applicationId  String         @unique @map("application_id") @db.Uuid
+  startupId      String         @map("startup_id") @db.Uuid
+  specialistId   String         @map("specialist_id") @db.Uuid
   // USDC. Always equals the sum of the milestones.
-  amount        Decimal        @db.Decimal(20, 7)
-  status        ContractStatus @default(awaiting_specialist)
+  amount         Decimal        @db.Decimal(20, 7)
+  status         ContractStatus @default(awaiting_specialist)
   // Soroban contract id (C...) of the Trustless Work escrow, once deployed.
-  escrowId      String?        @unique @map("escrow_id")
-  acceptedAt    DateTime?      @map("accepted_at")
-  fundedAt      DateTime?      @map("funded_at")
-  completedAt   DateTime?      @map("completed_at")
-  cancelledAt   DateTime?      @map("cancelled_at")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  escrowId       String?        @unique @map("escrow_id")
+  // Pocket's fee the escrow was deployed with, in basis points (100 = 1%).
+  // 0 for escrows deployed before the fee existed and contracts not deployed.
+  platformFeeBps Int            @default(0) @map("platform_fee_bps")
+  acceptedAt     DateTime?      @map("accepted_at")
+  fundedAt       DateTime?      @map("funded_at")
+  completedAt    DateTime?      @map("completed_at")
+  cancelledAt    DateTime?      @map("cancelled_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
 
   job             Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
   application     Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
@@ -488,8 +532,10 @@ model DeliverableKpiResult {
   @@map("deliverable_kpi_results")
 }
 
-// A file backing a delivery's report: a PDF or a PNG, JPEG or WebP image, up
-// to 5 MB, one per version. Only the two parties and managers can read it.
+// A file backing a delivery's report: a PDF, an Excel (.xlsx), Word (.docx) or
+// CSV file such as the startup's report template filled in, or a PNG, JPEG or
+// WebP image, up to 5 MB, one per version. Only the two parties and managers
+// can read it.
 model DeliverableAttachment {
   deliverableId String   @id @map("deliverable_id") @db.Uuid
   data          Bytes

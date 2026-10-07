@@ -16,6 +16,10 @@ import { toast } from 'sonner';
 import { useAuth } from '@/components/auth-provider';
 import { Avatar } from '@/components/avatar';
 import { KpiList } from '@/components/contract/kpi-report';
+import {
+  ReportTemplateButton,
+  ReportTemplateManager,
+} from '@/components/report-template';
 import { Field, formValues } from '@/components/form';
 import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { StatusBadge } from '@/components/status-badge';
@@ -115,6 +119,35 @@ export default function JobPage() {
                   Every delivery reports a result for each of these.
                 </p>
                 <KpiList kpis={data.kpis} />
+              </section>
+            ) : null}
+            {data.reportTemplate ? (
+              <section>
+                <h2 className="text-lg font-semibold text-navy">Report template</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  The startup wants it filled in and attached to every delivery.
+                </p>
+                <div className="mt-3">
+                  {status === 'loading' ? null : user &&
+                    (user.id === data.startupId ||
+                      user.role === 'manager' ||
+                      (user.role === 'specialist' &&
+                        user.verificationStatus === 'approved')) ? (
+                    <ReportTemplateButton
+                      jobId={data.id}
+                      template={data.reportTemplate}
+                    />
+                  ) : (
+                    <p className="break-all rounded-xl border border-border p-3 text-sm">
+                      {data.reportTemplate.fileName}
+                      <span className="block text-muted-foreground">
+                        {user
+                          ? 'Verified specialists can download it.'
+                          : 'Sign in as a verified specialist to download it.'}
+                      </span>
+                    </p>
+                  )}
+                </div>
               </section>
             ) : null}
             {data.milestones.length > 0 ? (
@@ -428,6 +461,11 @@ function OwnerCard({ job }: { job: JobListing }) {
         <Button asChild className="w-full">
           <Link href={`/jobs/${job.id}/applicants`}>Review applicants</Link>
         </Button>
+        {job.status === 'open' ? (
+          <div className="border-t border-border pt-3">
+            <ReportTemplateManager jobId={job.id} template={job.reportTemplate} />
+          </div>
+        ) : null}
         {job.status === 'open' ? (
           <Button
             variant="outline"

@@ -134,7 +134,7 @@ export default function LoginPage() {
             <MailIcon className="mt-1 size-6 shrink-0 text-navy" />
             <span>
               <span className="block font-heading text-lg font-semibold text-navy">
-                Continue with email, Google or GitHub
+                Continue with email or Google
               </span>
               <span className="mt-1 block text-sm text-muted-foreground">
                 Recommended if you are new to crypto. You get a Stellar wallet ready to

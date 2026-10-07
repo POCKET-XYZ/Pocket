@@ -10,7 +10,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import type { PrismaService } from '../../prisma/prisma.service';
 import { MetricsQueryDto } from './dto/metrics-query.dto';
 import { MetricsController } from './metrics.controller';
-import { MetricsService, pocketFeeOf, weeksEndingAt } from './metrics.service';
+import { MetricsService, payoutFeeSql, weeksEndingAt } from './metrics.service';
 
 /** A Thursday, so the current week started on Monday 2026-09-28. */
 const NOW = new Date('2026-10-01T12:00:00.000Z');
@@ -26,6 +26,7 @@ const QUERY_MARKERS: [string, string][] = [
   ['contracts', 'AS offers_sent'],
   ['milestones', 'AS in_escrow'],
   ['disputes', 'AS to_startups'],
+  ['payments', 'FROM chain_operations'],
 ];
 
 function queryName(strings: TemplateStringsArray): string {
@@ -52,19 +53,29 @@ const FULL: Rows = {
       awaiting_reply: 2,
       funded_count: 3,
       funded: decimal('1000.0000001'),
+      jobs_completed: 2,
       stale_awaiting_funding: 1,
       median_days_to_first_hire: 2.25,
     },
   ],
-  milestones: [{ released: decimal('0.1'), in_escrow: decimal('750.5'), overdue: 2 }],
+  milestones: [
+    {
+      released: decimal('0.1'),
+      pocket_fee: decimal('0.0010001'),
+      in_escrow: decimal('750.5'),
+      overdue: 2,
+    },
+  ],
   disputes: [
     {
       open: 1,
       resolved: 2,
       to_specialists: decimal('0.2'),
       to_startups: decimal('99.9999999'),
+      pocket_fee: decimal('0.0000002'),
     },
   ],
+  payments: [{ payments: 4, sent: decimal('120.0000005') }],
   weekly: [],
 };
 
@@ -81,14 +92,29 @@ const EMPTY: Rows = {
       awaiting_reply: 0,
       funded_count: 0,
       funded: decimal('0'),
+      jobs_completed: 0,
       stale_awaiting_funding: 0,
       median_days_to_first_hire: null,
     },
   ],
-  milestones: [{ released: decimal('0'), in_escrow: decimal('0'), overdue: 0 }],
-  disputes: [
-    { open: 0, resolved: 0, to_specialists: decimal('0'), to_startups: decimal('0') },
+  milestones: [
+    {
+      released: decimal('0'),
+      pocket_fee: decimal('0'),
+      in_escrow: decimal('0'),
+      overdue: 0,
+    },
   ],
+  disputes: [
+    {
+      open: 0,
+      resolved: 0,
+      to_specialists: decimal('0'),
+      to_startups: decimal('0'),
+      pocket_fee: decimal('0'),
+    },
+  ],
+  payments: [{ payments: 0, sent: decimal('0') }],
   weekly: [],
 };
 
@@ -107,16 +133,29 @@ describe('MetricsService', () => {
 
   /** The values bound to the named query, in order. */
   function valuesOf(name: string): unknown[] {
-    const call = queryRaw.mock.calls.find(([strings]) => queryName(strings) === name);
-    if (!call) throw new Error(`${name} query not run`);
-    return call.slice(1);
+    return callOf(name).slice(1);
   }
 
-  it('reads every table once, in seven queries', async () => {
+  function callOf(name: string): [TemplateStringsArray, ...unknown[]] {
+    const call = queryRaw.mock.calls.find(([strings]) => queryName(strings) === name);
+    if (!call) throw new Error(`${name} query not run`);
+    return call;
+  }
+
+  /**
+   * The named query as Postgres would run it, with ? where values
+   * are bound. Fragments built with Prisma.sql are expanded the same way.
+   */
+  function sqlOf(name: string): string {
+    const [strings, ...values] = callOf(name);
+    return Prisma.sql(strings, ...values).sql;
+  }
+
+  it('reads every table once, in eight queries', async () => {
     await service.metrics('30d', NOW);
-    expect(queryRaw).toHaveBeenCalledTimes(7);
+    expect(queryRaw).toHaveBeenCalledTimes(8);
     const names = queryRaw.mock.calls.map(([strings]) => queryName(strings));
-    expect(new Set(names).size).toBe(7);
+    expect(new Set(names).size).toBe(8);
   });
 
   it('binds every input as a parameter, never in the SQL text', async () => {
@@ -141,6 +180,7 @@ describe('MetricsService', () => {
       applications: 13,
       // 10 applications on the 4 jobs posted in the period.
       averageApplicationsPerJob: 2.5,
+      jobsCompleted: 2,
       offers: { sent: 5, accepted: 3, declined: 1, withdrawn: null, awaitingReply: 2 },
       medianDaysToFirstHire: 2.3,
     });
@@ -164,19 +204,92 @@ describe('MetricsService', () => {
       released: '0.3',
       refunded: '99.9999999',
       inEscrow: '750.5',
-      pocketFee: '0.003',
+      // Milestone fees plus dispute fees, added exactly.
+      pocketFee: '0.0010003',
+      walletPayments: '120.0000005',
+      walletPaymentCount: 4,
     });
     for (const value of Object.values(money)) {
       if (typeof value !== 'number') expect(typeof value).toBe('string');
     }
   });
 
-  it('charges the Pocket fee at 1% and never rounds it up', () => {
-    expect(pocketFeeOf(decimal('1000'))).toBe('10');
-    expect(pocketFeeOf(decimal('1234.5678901'))).toBe('12.3456789');
-    // 1% of 0.0000099 is 0.000000099, below one stroop.
-    expect(pocketFeeOf(decimal('0.0000099'))).toBe('0');
-    expect(pocketFeeOf(decimal('0'))).toBe('0');
+  describe('Pocket fee', () => {
+    const MILESTONE_FEE = 'trunc(COALESCE(m.amount, 0) * c.platform_fee_bps * 0.0001, 7)';
+    const fee = (column: string) =>
+      `trunc(COALESCE(${column}, 0) * c.platform_fee_bps * 0.0001, 7)`;
+
+    it("charges each payout its own contract's fee, rounded down to the stroop", () => {
+      // Basis points times 0.0001 is exact numeric math, and trunc to 7
+      // decimals drops anything below a stroop instead of rounding it up.
+      expect(payoutFeeSql(Prisma.sql`m.amount`).sql).toBe(MILESTONE_FEE);
+    });
+
+    it('sums the fee payout by payout over the paid milestones of the period', async () => {
+      await service.metrics('30d', NOW);
+      const sql = sqlOf('milestones');
+      // Rounded inside the SUM, so per payout, not once on the total.
+      expect(sql).toContain(
+        `SUM(${MILESTONE_FEE}) FILTER (\n              WHERE m.status = 'paid' AND m.paid_at >= ?::timestamp`,
+      );
+      expect(sql).toContain('JOIN contracts c ON c.id = m.contract_id');
+    });
+
+    it("charges both sides of a resolved dispute, each at its contract's fee", async () => {
+      await service.metrics('30d', NOW);
+      const sql = sqlOf('disputes');
+      expect(sql).toContain(
+        `SUM((${fee('d.specialist_amount')} + ${fee('d.startup_amount')})) FILTER (`,
+      );
+      expect(sql).toContain('JOIN milestones m ON m.id = d.milestone_id');
+      expect(sql).toContain('JOIN contracts c ON c.id = m.contract_id');
+    });
+
+    it('adds milestone and dispute fees exactly, as contracts at 0 and at 1% report them', async () => {
+      // A contract from before the fee (0 bps) adds nothing; one at 100 bps
+      // adds its 1%. Postgres sums per payout; the service adds both sums.
+      rows = {
+        ...EMPTY,
+        milestones: [
+          {
+            released: decimal('1500'),
+            pocket_fee: decimal('5'),
+            in_escrow: decimal('0'),
+            overdue: 0,
+          },
+        ],
+        disputes: [
+          {
+            open: 0,
+            resolved: 1,
+            to_specialists: decimal('60'),
+            to_startups: decimal('40'),
+            // 1% of 60 plus 1% of 40.
+            pocket_fee: decimal('1'),
+          },
+        ],
+      };
+      const { money } = await service.metrics('30d', NOW);
+      expect(money.released).toBe('1560');
+      expect(money.pocketFee).toBe('6');
+    });
+  });
+
+  it('counts jobs completed in the period, one contract per job', async () => {
+    await service.metrics('7d', NOW);
+    expect(sqlOf('contracts')).toContain(
+      "WHERE status = 'completed' AND completed_at >= ?::timestamp\n            )::int AS jobs_completed",
+    );
+  });
+
+  it('counts confirmed payments sent from Pocket wallets in the period', async () => {
+    const { money } = await service.metrics('7d', NOW);
+    expect(sqlOf('payments')).toContain(
+      "WHERE kind = 'payment' AND status = 'confirmed'\n            AND confirmed_at >= ?::timestamp",
+    );
+    expect(valuesOf('payments')).toEqual(['2026-09-24T12:00:00.000Z']);
+    expect(money.walletPayments).toBe('120.0000005');
+    expect(money.walletPaymentCount).toBe(4);
   });
 
   it('answers an empty platform with zeros and no medians', async () => {
@@ -194,7 +307,10 @@ describe('MetricsService', () => {
       refunded: '0',
       inEscrow: '0',
       pocketFee: '0',
+      walletPayments: '0',
+      walletPaymentCount: 0,
     });
+    expect(result.marketplace.jobsCompleted).toBe(0);
     expect(result.weekly).toHaveLength(12);
   });
 
@@ -217,7 +333,7 @@ describe('MetricsService', () => {
 
       expect(result.period).toBe(period);
       expect(result.since).toBe(since);
-      for (const name of ['users', 'verification', 'jobs', 'disputes']) {
+      for (const name of ['users', 'verification', 'jobs', 'disputes', 'payments']) {
         expect(valuesOf(name)).toContain(since);
       }
       expect(valuesOf('contracts')).toContain(since);
@@ -244,7 +360,8 @@ describe('MetricsService', () => {
 
     it('the weekly series ignores the period', async () => {
       await service.metrics('7d', NOW);
-      expect(valuesOf('weekly')).toEqual(Array(5).fill('2026-07-13T00:00:00.000Z'));
+      const dates = valuesOf('weekly').filter((value) => typeof value === 'string');
+      expect(dates).toEqual(Array(9).fill('2026-07-13T00:00:00.000Z'));
     });
   });
 
@@ -260,6 +377,21 @@ describe('MetricsService', () => {
       );
       expect(weeksEndingAt(new Date('2026-09-27T23:59:59Z'))[11].toISOString()).toBe(
         '2026-09-21T00:00:00.000Z',
+      );
+    });
+
+    it('computes the new weekly series the same way as the period numbers', async () => {
+      await service.metrics('30d', NOW);
+      const sql = sqlOf('weekly');
+      expect(sql).toContain(
+        "SELECT 'completed', date_trunc('week', completed_at), COUNT(*)::int, NULL\n          FROM contracts\n          WHERE status = 'completed'",
+      );
+      expect(sql).toContain("WHERE kind = 'payment' AND status = 'confirmed'");
+      expect(sql).toContain(
+        "SELECT 'fee', date_trunc('week', m.paid_at), COUNT(*)::int, SUM(trunc(COALESCE(m.amount, 0) * c.platform_fee_bps * 0.0001, 7))",
+      );
+      expect(sql).toContain(
+        "SELECT 'fee', date_trunc('week', d.resolved_at), COUNT(*)::int, SUM((trunc(COALESCE(d.specialist_amount, 0) * c.platform_fee_bps * 0.0001, 7) + trunc(COALESCE(d.startup_amount, 0) * c.platform_fee_bps * 0.0001, 7)))",
       );
     });
 
@@ -288,6 +420,31 @@ describe('MetricsService', () => {
             count: 1,
             amount: decimal('0.2'),
           },
+          {
+            series: 'completed',
+            week: week('2026-09-28T00:00:00Z'),
+            count: 1,
+            amount: null,
+          },
+          {
+            series: 'payments',
+            week: week('2026-09-28T00:00:00Z'),
+            count: 2,
+            amount: decimal('25.5'),
+          },
+          // Paid milestones and resolved disputes of the same week add up.
+          {
+            series: 'fee',
+            week: week('2026-09-21T00:00:00Z'),
+            count: 1,
+            amount: decimal('0.0000001'),
+          },
+          {
+            series: 'fee',
+            week: week('2026-09-21T00:00:00Z'),
+            count: 1,
+            amount: decimal('0.0000002'),
+          },
           // Outside the 12 weeks: ignored.
           {
             series: 'users',
@@ -305,15 +462,21 @@ describe('MetricsService', () => {
         weekStart: '2026-09-28T00:00:00.000Z',
         newUsers: 3,
         jobsPosted: 2,
+        jobsCompleted: 1,
         funded: '0',
         released: '0',
+        walletPayments: '25.5',
+        pocketFee: '0',
       });
       expect(weekly[10]).toEqual({
         weekStart: '2026-09-21T00:00:00.000Z',
         newUsers: 0,
         jobsPosted: 0,
+        jobsCompleted: 0,
         funded: '500.25',
         released: '0.3',
+        walletPayments: '0',
+        pocketFee: '0.0000003',
       });
       expect(weekly.reduce((sum, w) => sum + w.newUsers, 0)).toBe(3);
     });

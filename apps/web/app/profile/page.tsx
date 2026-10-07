@@ -10,6 +10,7 @@ import {
   type VerificationRequest,
 } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Field, compact, formValues } from '@/components/form';
@@ -89,6 +90,23 @@ function Profile({ user }: { user: User }) {
           </CardContent>
         </Card>
       )}
+      {user.role === 'startup' ? (
+        <Card className="mt-6">
+          <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-heading text-lg font-semibold text-navy">
+                KPI templates
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Sets of KPIs you reuse when posting jobs.
+              </p>
+            </div>
+            <Button asChild variant="outline">
+              <Link href="/profile/kpi-templates">Manage KPI templates</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

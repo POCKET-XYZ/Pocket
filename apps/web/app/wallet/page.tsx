@@ -3,7 +3,6 @@
 import type { User } from '@pocket/shared';
 import {
   ArrowDownToLineIcon,
-  ArrowLeftRightIcon,
   EyeIcon,
   EyeOffIcon,
   HistoryIcon,
@@ -204,27 +203,8 @@ function WalletView({ user }: { user: User }) {
 
       <SendUsdcCard user={user} />
 
+      {/* No conversion to or from local currency: users bring their own USDC. */}
       <UsdcHistoryCard />
-
-      {throughPollar ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ArrowLeftRightIcon className="size-5 text-navy" />
-              Money in and out
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Turn local currency into the USDC you pay with, or cash out what you earned
-              to your bank account. The rails available depend on your country.
-            </p>
-            <Button variant="outline" size="sm" onClick={pollar.openRamp}>
-              Deposit or withdraw
-            </Button>
-          </CardContent>
-        </Card>
-      ) : null}
     </div>
   );
 }

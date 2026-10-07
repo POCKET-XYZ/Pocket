@@ -6,6 +6,7 @@ import type {
   DeliveryInput,
   Dispute,
   JobKpi,
+  JobReportTemplate,
   User,
 } from '@pocket/shared';
 import { ExternalLinkIcon } from 'lucide-react';
@@ -26,14 +27,15 @@ import {
 } from '@/components/ui/dialog';
 import {
   AttachFileButton,
-  ATTACHMENT_TYPES,
   KpiReport,
   attachmentProblem,
   kpiTarget,
 } from '@/components/contract/kpi-report';
+import { ReportTemplateButton } from '@/components/report-template';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { api, errorMessage, upload } from '@/lib/api';
+import { ATTACHMENT_ACCEPT } from '@/lib/files';
 import { toast } from 'sonner';
 import { date, dateTime, usdc } from '@/lib/format';
 import { useContractAction } from '@/lib/use-contract-action';
@@ -170,6 +172,8 @@ export function MilestoneCard({
               contractId={contract.id}
               milestoneId={milestone.id}
               kpis={contract.job.kpis}
+              jobId={contract.job.id}
+              reportTemplate={contract.job.reportTemplate}
             />
           ) : null}
 
@@ -248,10 +252,14 @@ function DeliverDialog({
   contractId,
   milestoneId,
   kpis,
+  jobId,
+  reportTemplate,
 }: {
   contractId: string;
   milestoneId: string;
   kpis: JobKpi[];
+  jobId: string;
+  reportTemplate: JobReportTemplate | null;
 }) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -387,15 +395,25 @@ function DeliverDialog({
             <label htmlFor="attachment" className="block text-sm font-medium text-navy">
               A file backing it (optional)
             </label>
+            {reportTemplate ? (
+              <div className="space-y-2 rounded-xl bg-celeste-light/40 p-3 text-sm">
+                <p>
+                  The startup asked for its report template: download it, fill it in and
+                  attach it here.
+                </p>
+                <ReportTemplateButton jobId={jobId} template={reportTemplate} />
+              </div>
+            ) : null}
             <Input
               id="attachment"
               type="file"
-              accept={ATTACHMENT_TYPES.join(',')}
+              accept={ATTACHMENT_ACCEPT}
               onChange={onFileChosen}
             />
             <p className="text-xs text-muted-foreground">
-              A PDF report or a screenshot (PNG, JPEG or WebP), up to 5 MB. Only the
-              startup and Pocket managers can open it.
+              A filled report template, a PDF or a screenshot: Excel (.xlsx), Word
+              (.docx), CSV, PDF, PNG, JPEG or WebP, up to 5 MB. Only the startup and
+              Pocket managers can open it.
             </p>
           </div>
 
