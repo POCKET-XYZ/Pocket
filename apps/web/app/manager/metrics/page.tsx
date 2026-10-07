@@ -175,43 +175,43 @@ function Dashboard({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string 
       <Section title="Money">
         <StatTile
           label="Funded into escrow"
-          value={exactUsdc(money.funded)}
+          value={<Usdc amount={money.funded} />}
           unit="USDC"
           hint={`${count(money.contractsFunded)} ${money.contractsFunded === 1 ? 'contract' : 'contracts'} funded ${inPeriod}`}
         />
         <StatTile
           label="Released to specialists"
-          value={exactUsdc(money.released)}
+          value={<Usdc amount={money.released} />}
           unit="USDC"
           hint={`${inPeriod}, before Trustless Work's ${TRUSTLESS_WORK_FEE_PERCENT}% fee`}
         />
         <StatTile
           label="Pocket fee earned"
-          value={exactUsdc(money.pocketFee)}
+          value={<Usdc amount={money.pocketFee} />}
           unit="USDC"
           hint={`${POCKET_FEE_PERCENT}% of each payout on contracts created with the fee, ${inPeriod}`}
         />
         <StatTile
           label="Sent from Pocket wallets"
-          value={exactUsdc(money.walletPayments)}
+          value={<Usdc amount={money.walletPayments} />}
           unit="USDC"
           hint={`${count(money.walletPaymentCount)} ${money.walletPaymentCount === 1 ? 'payment' : 'payments'} users sent from Pocket to other wallets ${inPeriod}. Money arriving from outside is not recorded`}
         />
         <StatTile
           label="Held in escrow"
-          value={exactUsdc(money.inEscrow)}
+          value={<Usdc amount={money.inEscrow} />}
           unit="USDC"
           hint="Right now, across active contracts"
         />
         <StatTile
           label="Average contract"
-          value={money.averageContract === null ? '-' : exactUsdc(money.averageContract)}
+          value={money.averageContract === null ? '-' : <Usdc amount={money.averageContract} />}
           unit={money.averageContract === null ? undefined : 'USDC'}
           hint={`Of the contracts funded ${inPeriod}`}
         />
         <StatTile
           label="Refunded to startups"
-          value={exactUsdc(money.refunded)}
+          value={<Usdc amount={money.refunded} />}
           unit="USDC"
           hint={`By resolved disputes, ${inPeriod}`}
         />
@@ -323,7 +323,7 @@ function Overview({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string }
         />
         <WeeklyLine
           title="USDC funded into escrow"
-          headline={exactUsdc(money.funded)}
+          headline={<Usdc amount={money.funded} />}
           unit="USDC"
           hint={inPeriod}
           weeks={weekly}
@@ -332,7 +332,7 @@ function Overview({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string }
         />
         <WeeklyLine
           title="USDC released"
-          headline={exactUsdc(money.released)}
+          headline={<Usdc amount={money.released} />}
           unit="USDC"
           hint={`To specialists ${inPeriod}`}
           weeks={weekly}
@@ -341,7 +341,7 @@ function Overview({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string }
         />
         <WeeklyLine
           title="Sent between wallets"
-          headline={exactUsdc(money.walletPayments)}
+          headline={<Usdc amount={money.walletPayments} />}
           unit="USDC"
           hint={`From Pocket wallets to other addresses ${inPeriod}`}
           weeks={weekly}
@@ -350,7 +350,7 @@ function Overview({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string }
         />
         <WeeklyLine
           title="Pocket fee earned"
-          headline={exactUsdc(money.pocketFee)}
+          headline={<Usdc amount={money.pocketFee} />}
           unit="USDC"
           hint={inPeriod}
           weeks={weekly}
@@ -383,7 +383,7 @@ function WeeklyLine({
   format,
 }: {
   title: string;
-  headline: string;
+  headline: React.ReactNode;
   unit?: string;
   hint: string;
   weeks: MetricsWeek[];
@@ -564,7 +564,7 @@ function StatTile({
   href,
 }: {
   label: string;
-  value: string | number;
+  value: React.ReactNode;
   unit?: string;
   hint?: string;
   /** Something a manager should look at: shown with an icon and words, not color alone. */
@@ -730,6 +730,16 @@ function count(value: number): string {
  * A USDC amount exactly as the API sent it, with thousands separators. Never
  * through a float, so no decimal is lost or invented.
  */
+/** An amount rounded to cents to read at a glance; the exact one on hover. */
+function Usdc({ amount }: { amount: string }) {
+  const value = Number(amount);
+  const short =
+    value > 0 && value < 0.01
+      ? '<0.01'
+      : value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return <span title={`${exactUsdc(amount)} USDC`}>{short}</span>;
+}
+
 function exactUsdc(amount: string): string {
   const [whole, fraction] = amount.split('.');
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
