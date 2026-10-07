@@ -266,13 +266,13 @@ function Dashboard({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string 
             title="USDC funded into escrow"
             weeks={data.weekly}
             pick={(week) => week.funded}
-            format={(value) => `${exactUsdc(value as string)} USDC`}
+            format={(value) => `${shortUsdc(String(value))} USDC`}
           />
           <WeeklyBars
             title="USDC released to specialists"
             weeks={data.weekly}
             pick={(week) => week.released}
-            format={(value) => `${exactUsdc(value as string)} USDC`}
+            format={(value) => `${shortUsdc(String(value))} USDC`}
           />
         </div>
       </section>
@@ -286,7 +286,7 @@ function Dashboard({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string 
  */
 function Overview({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string }) {
   const { users, marketplace, money, weekly } = data;
-  const usdcValue = (value: number | string) => `${exactUsdc(value as string)} USDC`;
+  const usdcValue = (value: number | string) => `${shortUsdc(String(value))} USDC`;
   const countValue = (value: number | string) => count(value as number);
 
   return (
@@ -730,14 +730,17 @@ function count(value: number): string {
  * A USDC amount exactly as the API sent it, with thousands separators. Never
  * through a float, so no decimal is lost or invented.
  */
-/** An amount rounded to cents to read at a glance; the exact one on hover. */
-function Usdc({ amount }: { amount: string }) {
+/** An amount rounded to cents, to read at a glance. */
+function shortUsdc(amount: string): string {
   const value = Number(amount);
-  const short =
-    value > 0 && value < 0.01
-      ? '<0.01'
-      : value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-  return <span title={`${exactUsdc(amount)} USDC`}>{short}</span>;
+  return value > 0 && value < 0.01
+    ? '<0.01'
+    : value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+/** An amount rounded to cents; the exact one on hover. */
+function Usdc({ amount }: { amount: string }) {
+  return <span title={`${exactUsdc(amount)} USDC`}>{shortUsdc(amount)}</span>;
 }
 
 function exactUsdc(amount: string): string {
