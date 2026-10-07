@@ -88,6 +88,8 @@ function Dashboard({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string 
 
   return (
     <>
+      <Overview data={data} inPeriod={inPeriod} />
+
       <Section title="Users">
         <StatTile
           label="Startups"
@@ -120,6 +122,11 @@ function Dashboard({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string 
           label="Jobs posted"
           value={count(marketplace.jobsPosted)}
           hint={inPeriod}
+        />
+        <StatTile
+          label="Jobs completed"
+          value={count(marketplace.jobsCompleted)}
+          hint={`Contracts finished ${inPeriod}, one per job`}
         />
         <StatTile
           label="Open jobs"
@@ -182,7 +189,13 @@ function Dashboard({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string 
           label="Pocket fee earned"
           value={exactUsdc(money.pocketFee)}
           unit="USDC"
-          hint={`${POCKET_FEE_PERCENT}% of what was released ${inPeriod}`}
+          hint={`${POCKET_FEE_PERCENT}% of each payout on contracts created with the fee, ${inPeriod}`}
+        />
+        <StatTile
+          label="Sent from Pocket wallets"
+          value={exactUsdc(money.walletPayments)}
+          unit="USDC"
+          hint={`${count(money.walletPaymentCount)} ${money.walletPaymentCount === 1 ? 'payment' : 'payments'} users sent from Pocket to other wallets ${inPeriod}. Money arriving from outside is not recorded`}
         />
         <StatTile
           label="Held in escrow"
@@ -264,6 +277,269 @@ function Dashboard({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string 
         </div>
       </section>
     </>
+  );
+}
+
+/**
+ * Small line charts of the last 12 weeks, one per headline number, so the
+ * trend reads at a glance. Each card leads with the number for the period.
+ */
+function Overview({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string }) {
+  const { users, marketplace, money, weekly } = data;
+  const usdcValue = (value: number | string) => `${exactUsdc(value as string)} USDC`;
+  const countValue = (value: number | string) => count(value as number);
+
+  return (
+    <section>
+      <h2 className="mb-1 text-xl font-semibold text-navy">Overview</h2>
+      <p className="mb-4 text-sm text-muted-foreground">
+        The big number is for the period; the line is the last 12 weeks. Hover or tap the
+        line to read a week.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <WeeklyLine
+          title="New users"
+          headline={count(users.startups.newInPeriod + users.specialists.newInPeriod)}
+          hint={`Startups and specialists who signed up ${inPeriod}`}
+          weeks={weekly}
+          pick={(week) => week.newUsers}
+          format={countValue}
+        />
+        <WeeklyLine
+          title="Jobs posted"
+          headline={count(marketplace.jobsPosted)}
+          hint={inPeriod}
+          weeks={weekly}
+          pick={(week) => week.jobsPosted}
+          format={countValue}
+        />
+        <WeeklyLine
+          title="Jobs completed"
+          headline={count(marketplace.jobsCompleted)}
+          hint={inPeriod}
+          weeks={weekly}
+          pick={(week) => week.jobsCompleted}
+          format={countValue}
+        />
+        <WeeklyLine
+          title="USDC funded into escrow"
+          headline={exactUsdc(money.funded)}
+          unit="USDC"
+          hint={inPeriod}
+          weeks={weekly}
+          pick={(week) => week.funded}
+          format={usdcValue}
+        />
+        <WeeklyLine
+          title="USDC released"
+          headline={exactUsdc(money.released)}
+          unit="USDC"
+          hint={`To specialists ${inPeriod}`}
+          weeks={weekly}
+          pick={(week) => week.released}
+          format={usdcValue}
+        />
+        <WeeklyLine
+          title="Sent between wallets"
+          headline={exactUsdc(money.walletPayments)}
+          unit="USDC"
+          hint={`From Pocket wallets to other addresses ${inPeriod}`}
+          weeks={weekly}
+          pick={(week) => week.walletPayments}
+          format={usdcValue}
+        />
+        <WeeklyLine
+          title="Pocket fee earned"
+          headline={exactUsdc(money.pocketFee)}
+          unit="USDC"
+          hint={inPeriod}
+          weeks={weekly}
+          pick={(week) => week.pocketFee}
+          format={usdcValue}
+        />
+      </div>
+    </section>
+  );
+}
+
+/** Plot size in SVG units. The SVG stretches to the card; lines keep 2px. */
+const PLOT_WIDTH = 300;
+const PLOT_HEIGHT = 80;
+
+/**
+ * One series over the last 12 weeks as a 2px line with a faint wash under it.
+ * A column per week takes the pointer, so the reader aims at a week rather
+ * than at the line; the hovered week gets a hairline and a dot, and its value
+ * shows in a tooltip. The latest week is labeled under the headline, and every
+ * week is in the table below.
+ */
+function WeeklyLine({
+  title,
+  headline,
+  unit,
+  hint,
+  weeks,
+  pick,
+  format,
+}: {
+  title: string;
+  headline: string;
+  unit?: string;
+  hint: string;
+  weeks: MetricsWeek[];
+  pick: (week: MetricsWeek) => number | string;
+  format: (value: number | string) => string;
+}) {
+  const [selected, setSelected] = useState<number | null>(null);
+  const latest = weeks.length - 1;
+  const values = weeks.map(pick);
+  // Geometry only: the numbers shown always come from the exact values.
+  const heights = values.map(Number);
+  const max = Math.max(...heights, 0);
+  const peak = heights.indexOf(max);
+
+  const xOf = (index: number) =>
+    weeks.length > 1 ? (index / (weeks.length - 1)) * PLOT_WIDTH : PLOT_WIDTH / 2;
+  // A flat line of zeros sits on the baseline.
+  const yOf = (index: number) =>
+    max > 0 ? PLOT_HEIGHT - (heights[index] / max) * PLOT_HEIGHT : PLOT_HEIGHT;
+  const line = weeks
+    .map((_, index) => `${index === 0 ? 'M' : 'L'}${xOf(index)},${yOf(index)}`)
+    .join(' ');
+  const area = `${line} L${xOf(latest)},${PLOT_HEIGHT} L${xOf(0)},${PLOT_HEIGHT} Z`;
+
+  const summary =
+    weeks.length === 0
+      ? `${title}: no data`
+      : max === 0
+        ? `${title}, last 12 weeks: nothing in any week.`
+        : `${title}, last 12 weeks: ${format(values[0])} in the week of ${weekLabel(weeks[0].weekStart)}, ${format(values[latest])} this week, highest ${format(values[peak])} in the week of ${weekLabel(weeks[peak].weekStart)}.`;
+
+  const shown = selected ?? latest;
+  const left = `${(xOf(shown) / PLOT_WIDTH) * 100}%`;
+  const top = `${(yOf(shown) / PLOT_HEIGHT) * 100}%`;
+  // Keep the tooltip inside the card: it hangs right of the points in the
+  // first third, left of them in the last, and centered in between.
+  const third = weeks.length / 3;
+  const shift =
+    shown < third
+      ? 'translate-x-0'
+      : shown >= weeks.length - third
+        ? '-translate-x-full'
+        : '-translate-x-1/2';
+
+  return (
+    <figure className="min-w-0 rounded-2xl border border-border bg-card p-4">
+      <figcaption>
+        <h3 className="font-sans text-sm font-medium text-muted-foreground">{title}</h3>
+        <p className="mt-1 font-heading text-2xl leading-tight font-semibold text-navy wrap-anywhere">
+          {headline}
+          {unit ? (
+            <span className="ml-1 font-sans text-sm font-normal text-muted-foreground">
+              {unit}
+            </span>
+          ) : null}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">{capitalize(hint)}</p>
+      </figcaption>
+
+      {weeks.length > 0 ? (
+        <>
+          <div className="relative mt-4 h-20" onMouseLeave={() => setSelected(null)}>
+            <svg
+              role="img"
+              aria-label={summary}
+              viewBox={`0 0 ${PLOT_WIDTH} ${PLOT_HEIGHT}`}
+              preserveAspectRatio="none"
+              className="absolute inset-0 size-full overflow-visible"
+            >
+              <line
+                x1={0}
+                x2={PLOT_WIDTH}
+                y1={PLOT_HEIGHT}
+                y2={PLOT_HEIGHT}
+                className="stroke-border"
+                strokeWidth={1}
+                vectorEffect="non-scaling-stroke"
+              />
+              <path d={area} className="fill-chart-1/10" />
+              <path
+                d={line}
+                fill="none"
+                className="stroke-chart-1"
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+
+            {selected !== null ? (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-muted-foreground/40"
+                style={{ left }}
+              />
+            ) : null}
+            {/* The dot is HTML so the stretched SVG cannot squash it into an oval. */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card bg-chart-1"
+              style={{ left, top }}
+            />
+            {selected !== null ? (
+              <span
+                aria-hidden
+                className={cn(
+                  'pointer-events-none absolute -top-2 z-10 w-max max-w-40 -translate-y-full rounded-lg border border-border bg-card px-2 py-1 text-xs shadow-sm wrap-anywhere',
+                  shift,
+                )}
+                style={{ left }}
+              >
+                <span className="block font-semibold text-navy">
+                  {format(values[selected])}
+                </span>
+                <span className="block text-muted-foreground">
+                  {selected === latest
+                    ? 'This week'
+                    : `Week of ${weekLabel(weeks[selected].weekStart)}`}
+                </span>
+              </span>
+            ) : null}
+
+            {/* One hit area per week, centered on its point and as wide as the gap between points. */}
+            <div className="absolute inset-0">
+              {weeks.map((week, index) => (
+                <button
+                  key={week.weekStart}
+                  type="button"
+                  aria-label={`${title}, week of ${weekLabel(week.weekStart)}: ${format(values[index])}`}
+                  aria-pressed={index === selected}
+                  onMouseEnter={() => setSelected(index)}
+                  onFocus={() => setSelected(index)}
+                  onBlur={() => setSelected(null)}
+                  onClick={() => setSelected(index)}
+                  className="absolute inset-y-0 -translate-x-1/2 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  style={{
+                    left: `${(xOf(index) / PLOT_WIDTH) * 100}%`,
+                    width: `${100 / Math.max(weeks.length - 1, 1)}%`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="mt-1 flex justify-between gap-2 text-xs text-muted-foreground">
+            <span>{weekLabel(weeks[0].weekStart)}</span>
+            <span>
+              This week:{' '}
+              <span className="font-medium text-navy">{format(values[latest])}</span>
+            </span>
+          </div>
+        </>
+      ) : null}
+
+      <WeeksTable title={title} weeks={weeks} values={values} format={format} />
+    </figure>
   );
 }
 
@@ -404,28 +680,45 @@ function WeeklyBars({
         <span>This week</span>
       </div>
 
-      <details className="mt-3 text-sm">
-        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-navy">
-          Show as table
-        </summary>
-        <table className="mt-2 w-full text-xs">
-          <thead>
-            <tr className="text-left text-muted-foreground">
-              <th className="py-1 font-medium">Week of</th>
-              <th className="py-1 text-right font-medium">{title}</th>
-            </tr>
-          </thead>
-          <tbody className="tabular-nums">
-            {weeks.map((week, index) => (
-              <tr key={week.weekStart} className="border-t border-border">
-                <td className="py-1">{weekLabel(week.weekStart)}</td>
-                <td className="py-1 text-right">{format(values[index])}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </details>
+      <WeeksTable title={title} weeks={weeks} values={values} format={format} />
     </div>
+  );
+}
+
+/** Every week of a chart as numbers, folded away until asked for. */
+function WeeksTable({
+  title,
+  weeks,
+  values,
+  format,
+}: {
+  title: string;
+  weeks: MetricsWeek[];
+  values: (number | string)[];
+  format: (value: number | string) => string;
+}) {
+  return (
+    <details className="mt-3 text-sm">
+      <summary className="cursor-pointer text-xs text-muted-foreground hover:text-navy">
+        Show as table
+      </summary>
+      <table className="mt-2 w-full text-xs">
+        <thead>
+          <tr className="text-left text-muted-foreground">
+            <th className="py-1 font-medium">Week of</th>
+            <th className="py-1 text-right font-medium">{title}</th>
+          </tr>
+        </thead>
+        <tbody className="tabular-nums">
+          {weeks.map((week, index) => (
+            <tr key={week.weekStart} className="border-t border-border">
+              <td className="py-1">{weekLabel(week.weekStart)}</td>
+              <td className="py-1 text-right">{format(values[index])}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
   );
 }
 
