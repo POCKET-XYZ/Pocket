@@ -232,11 +232,9 @@ function expectFeeAddress(addresses: PlatformAddresses, value: unknown): void {
  *
  * Arguments on testnet, read from real testnet releases:
  *   (release_signer, trustless_work_address, milestone_index)
- * On mainnet: (release_signer, milestone_index), the testnet order without the
- * fee address. That mainnet order is inferred, not read from the mainnet
- * contract: confirm it against the `multi-release-main` contract spec before
- * the first mainnet release. Until then a different shape is refused, so the
- * worst case is a release that waits, never one that pays someone else.
+ * On mainnet: (release_signer, milestone_index), read from the spec of the
+ * mainnet escrow code (wasm 2ddb5ef1...dc1f). A different shape is refused, so
+ * a contract change makes a release wait, never pay someone else.
  */
 export function releasePolicy(
   addresses: PlatformAddresses,
@@ -272,10 +270,8 @@ export function releasePolicy(
  *
  * Arguments on testnet, read from a real testnet resolution:
  *   (dispute_resolver, milestone_index, trustless_work_address, distributions)
- * On mainnet: (dispute_resolver, milestone_index, distributions), the testnet
- * order without the fee address. Like the release, that mainnet order is
- * inferred: confirm it against the `multi-release-main` contract spec before
- * the first mainnet resolution.
+ * On mainnet: (dispute_resolver, milestone_index, distributions), read from the
+ * spec of the mainnet escrow code, like the release.
  */
 export function resolvePolicy(
   addresses: PlatformAddresses,
