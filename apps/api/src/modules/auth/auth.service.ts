@@ -16,6 +16,7 @@ import { PollarClient, type PollarSession } from '../pollar/pollar.client';
 import { LoginDto } from './dto/login.dto';
 import { PollarLoginDto } from './dto/pollar-login.dto';
 import { WalletChallengeService } from './wallet-challenge.service';
+import { MigratedAccountsService } from './migrated-accounts.service';
 
 export interface LoginResult {
   accessToken: string;
@@ -30,6 +31,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly challenges: WalletChallengeService,
     private readonly pollar: PollarClient,
+    private readonly migrated: MigratedAccountsService,
   ) {}
 
   /**
@@ -115,6 +117,17 @@ export class AuthService {
     }
 
     if (!existing) {
+      // An account approved on testnet waits for this email: it arrives with
+      // its role, approval and profile, on the wallet Pollar gave on mainnet.
+      const claimed = await this.migrated.claim({
+        email: session.email,
+        stellarAddress: session.stellarAddress,
+        userFields: pollarFields(session),
+      });
+      if (claimed) {
+        securityEvent('login', { method: 'pollar', userId: claimed.id, isNewUser: true });
+        return { accessToken: await this.sign(claimed), user: claimed, isNewUser: true };
+      }
       if (!dto.role) {
         throw new BadRequestException({
           code: ApiErrorCode.RoleRequired,

@@ -667,3 +667,25 @@ model ChainOperation {
   @@index([signerId])
   @@map("chain_operations")
 }
+
+// Accounts approved on testnet and carried to mainnet. A Pollar login gets a
+// new wallet on mainnet, so the account is matched by the email Pollar
+// verified, and handed over (approved, with its profile) on the first login.
+model MigratedAccount {
+  id              String    @id @default(uuid()) @db.Uuid
+  // Lowercase.
+  email           String    @unique
+  role            UserRole
+  // The approved verification request, as submitted: names, links, country.
+  verification    Json
+  // The startup or specialist profile fields, without ids or dates.
+  profile         Json
+  cv              Bytes?
+  logo            Bytes?
+  logoContentType String?   @map("logo_content_type")
+  claimedById     String?   @unique @map("claimed_by") @db.Uuid
+  claimedAt       DateTime? @map("claimed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@map("migrated_accounts")
+}
