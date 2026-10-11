@@ -1,4 +1,9 @@
-import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+  type OnApplicationBootstrap,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import {
@@ -126,7 +131,12 @@ export class StellarService implements OnApplicationBootstrap {
         { contract: policy.contractId, fn: policy.fn, reason: (error as Error).message },
         'alert',
       );
-      throw error;
+      // The reason goes to the alert, not to the user: it describes what a
+      // tampered transaction tried, and the user can only wait for a manager.
+      throw new ServiceUnavailableException(
+        'Pocket paused this payment step for a safety check. Nothing was signed and no money moved. Please try again later.',
+        { cause: error },
+      );
     }
     tx.sign(this.platform);
     return tx.toXDR();

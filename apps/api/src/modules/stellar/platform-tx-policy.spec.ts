@@ -148,7 +148,7 @@ describe('assertPlatformTx against what an attacker could send', () => {
         PLATFORM,
         policy,
       ),
-    ).toThrow('too high');
+    ).toThrow(`the fee of 90 XLM is too high (limit ${policy.maxFeeStroops / 10_000_000} XLM)`);
   });
 
   it('refuses a transaction from another account', () => {
