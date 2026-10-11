@@ -11,7 +11,9 @@ import {
 /**
  * The most the platform pays in fees for one escrow step: 2 XLM, about thirty
  * times what a deploy costs on testnet. A transaction asking for more is not a
- * fee, it is a drain.
+ * fee, it is a drain, or Trustless Work's code was archived and the deploy
+ * would pay its restore (about 33 XLM on mainnet in October 2026): that is
+ * theirs to do, so the step waits and the alert says why.
  */
 export const MAX_PLATFORM_FEE_STROOPS = 20_000_000;
 
@@ -21,22 +23,19 @@ export const MAX_PLATFORM_FEE_STROOPS = 20_000_000;
  * against a basis-point cap together with Trustless Work's 0.3% (30), which
  * is why this reads it in basis points.
  *
- * NOT CONFIRMED ON CHAIN YET. Confirm with a real testnet deploy read back from
- * the chain (`get_escrow`) before relying on it. A wrong unit fails closed: the
- * deploy policy refuses to sign and names the fee it found.
+ * Read back from real deploys on testnet and from a mainnet deploy built by
+ * Trustless Work's mainnet API. A wrong unit fails closed: the deploy policy
+ * refuses to sign and names the fee it found.
  */
 export const POCKET_PLATFORM_FEE_ON_CHAIN = POCKET_FEE_BASIS_POINTS;
 
 /**
  * What Pocket sends as `platformFee` in the body of Trustless Work's V1 deploy
  * endpoint. Trustless Work documents it as a percent that the API scales to
- * basis points (its V2 docs say so outright, and the API refuses fees over
- * "99%"), though some V1 examples send 100 or 200. Kept apart from the
- * on-chain value so that, if the API turns out to pass the number through
+ * basis points, though some V1 examples send 100 or 200. Confirmed on both
+ * networks: 1 here becomes a `platform_fee` of 100 on chain. Kept apart from
+ * the on-chain value so that, if the API ever passes the number through
  * untouched, only this line changes.
- *
- * NOT CONFIRMED YET, like the on-chain value: confirm with a real testnet
- * deploy before the first hire that charges the fee.
  */
 export const TW_API_PLATFORM_FEE = POCKET_FEE_PERCENT;
 

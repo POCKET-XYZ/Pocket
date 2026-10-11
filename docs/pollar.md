@@ -56,5 +56,6 @@ The call is idempotent: a wallet that is already funded answers `409`, which cou
 | Dashboard | Treasury → Tokens & Trustlines: USDC                   | The trustline every new wallet is born with.                       |
 | Dashboard | Treasury → Sponsorship: trustlines and USDC transfers  | Who pays those network fees.                                       |
 | Dashboard | Treasury → Account Funding: a starting XLM balance     | What each wallet pays its own escrow fees with. 1 XLM is plenty.   |
+| Dashboard | Treasury → Account Funding: Deferred                   | Wallets are funded on approval, not for every visitor who logs in. |
 
 Keys are network specific (`pub_testnet_` / `sec_testnet_`), and a session from the wrong network is refused at sign-in.
