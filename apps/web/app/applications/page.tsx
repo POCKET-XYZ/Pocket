@@ -10,6 +10,7 @@ import { RequireAuth } from '@/components/require-auth';
 import { StatusBadge } from '@/components/status-badge';
 import { UsdcStatus } from '@/components/usdc-status';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/confirm-dialog';
 import {
   Table,
   TableBody,
@@ -31,6 +32,7 @@ export default function ApplicationsPage() {
 
 function Applications({ user }: { user: User }) {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const applications = useQuery({
     queryKey: ['applications', 'mine'],
     queryFn: () => api<MyApplication[]>('/applications/mine'),
@@ -96,9 +98,13 @@ function Applications({ user }: { user: User }) {
                         size="sm"
                         variant="ghost"
                         disabled={withdraw.isPending}
-                        onClick={() => {
-                          if (window.confirm('Withdraw this application?'))
-                            withdraw.mutate(application.id);
+                        onClick={async () => {
+                          const confirmed = await confirm({
+                            title: 'Withdraw this application?',
+                            confirmText: 'Withdraw',
+                            destructive: true,
+                          });
+                          if (confirmed) withdraw.mutate(application.id);
                         }}
                       >
                         Withdraw

@@ -25,6 +25,7 @@ import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { StatusBadge } from '@/components/status-badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/confirm-dialog';
 import {
   Card,
   CardContent,
@@ -442,6 +443,7 @@ function DeadlineNote({ days, deadline }: { days: string; deadline: string }) {
 
 function OwnerCard({ job }: { job: JobListing }) {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const close = useMutation({
     mutationFn: () => api(`/jobs/${job.id}/close`, { method: 'POST' }),
     onSuccess: async () => {
@@ -471,13 +473,14 @@ function OwnerCard({ job }: { job: JobListing }) {
             variant="outline"
             className="w-full"
             disabled={close.isPending}
-            onClick={() => {
-              if (
-                window.confirm(
-                  'Close this job? Applications still waiting will be turned down.',
-                )
-              )
-                close.mutate();
+            onClick={async () => {
+              const confirmed = await confirm({
+                title: 'Close this job?',
+                description: 'Applications still waiting will be turned down.',
+                confirmText: 'Close job',
+                destructive: true,
+              });
+              if (confirmed) close.mutate();
             }}
           >
             Close job
