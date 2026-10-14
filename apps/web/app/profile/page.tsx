@@ -18,6 +18,7 @@ import { Loading, PageHeader } from '@/components/page';
 import { Onboarding } from '@/components/onboarding';
 import { RequireAuth } from '@/components/require-auth';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/confirm-dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -267,6 +268,7 @@ const MAX_LOGO_BYTES = 1024 * 1024;
  */
 function LogoField({ initial }: { initial: string | null | undefined }) {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [logoUrl, setLogoUrl] = useState(initial ?? '');
   const [busy, setBusy] = useState<'upload' | 'remove' | null>(null);
   const [broken, setBroken] = useState<string | null>(null);
@@ -303,9 +305,13 @@ function LogoField({ initial }: { initial: string | null | undefined }) {
   }
 
   async function onRemove() {
-    if (!window.confirm('Remove your logo? Your profile shows your initial instead.')) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: 'Remove your logo?',
+      description: 'Your profile shows your initial instead.',
+      confirmText: 'Remove',
+      destructive: true,
+    });
+    if (!confirmed) return;
     setBusy('remove');
     try {
       await api('/profiles/me/logo', { method: 'DELETE' });
