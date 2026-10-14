@@ -18,6 +18,9 @@ export interface ConfirmOptions {
   confirmText?: string;
   // Withdraw, decline, delete, remove, close: the confirm button turns red.
   destructive?: boolean;
+  // Money moves and it cannot be undone (approving a payment, resolving a
+  // dispute): focus starts on Cancel, so a stray Enter does not confirm.
+  irreversible?: boolean;
 }
 
 type Confirm = (options: ConfirmOptions) => Promise<boolean>;
@@ -32,6 +35,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const resolver = useRef<((confirmed: boolean) => void) | null>(null);
   const confirmButton = useRef<HTMLButtonElement>(null);
+  const cancelButton = useRef<HTMLButtonElement>(null);
 
   const confirm = useCallback<Confirm>((next) => {
     resolver.current?.(false);
@@ -59,10 +63,10 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
       >
         <DialogContent
           showCloseButton={false}
-          // Like the native box, Enter confirms.
+          // Like the native box, Enter confirms, except where it would move money.
           onOpenAutoFocus={(event) => {
             event.preventDefault();
-            confirmButton.current?.focus();
+            (options?.irreversible ? cancelButton : confirmButton).current?.focus();
           }}
         >
           <DialogHeader>
@@ -73,7 +77,9 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button ref={cancelButton} variant="outline">
+                Cancel
+              </Button>
             </DialogClose>
             <Button
               ref={confirmButton}

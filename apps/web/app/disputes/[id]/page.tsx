@@ -278,6 +278,7 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
       title: `${summary}?`,
       description: 'This executes on the escrow and cannot be undone.',
       confirmText: 'Resolve',
+      irreversible: true,
     });
     if (!confirmed) return;
     resolve.mutate({
