@@ -192,6 +192,7 @@ export function MilestoneCard({
                     title: `Approve this delivery and release ${usdc(milestone.amount)} to the specialist?`,
                     description: 'Approvals cannot be undone.',
                     confirmText: 'Approve and pay',
+                    irreversible: true,
                   });
                   if (confirmed) approve.mutate();
                 }}
