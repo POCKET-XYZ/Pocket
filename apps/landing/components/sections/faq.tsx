@@ -18,7 +18,7 @@ const questions = [
   },
   {
     q: '¿Cuánto cobra Pocket?',
-    a: 'Nada por ahora. Trustless Work, el servicio que guarda el pago, cobra un 0.3 % por operación.',
+    a: 'Un 1 % de cada pago que se libera al experto.',
   },
   {
     q: '¿Quién revisa a los expertos y a las startups?',

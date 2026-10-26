@@ -31,7 +31,7 @@ export function Experts() {
               </ul>
               <Magnetic className="mt-10">
                 <a
-                  href={links.login}
+                  href={links.expert}
                   className="press block rounded-full bg-navy px-8 py-4 text-lg font-medium text-off-white"
                 >
                   Crear mi perfil de experto

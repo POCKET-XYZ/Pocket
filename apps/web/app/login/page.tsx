@@ -47,7 +47,14 @@ export default function LoginPage() {
   } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [role, setRole] = useState<SignUpRole | null>(null);
+  // The landing's "Soy startup" / "Soy experto" buttons link here with ?role=.
+  // The role picker only shows after sign-in, so reading it here never
+  // changes what the server rendered.
+  const [role, setRole] = useState<SignUpRole | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const wanted = new URLSearchParams(window.location.search).get('role');
+    return ROLES.find((option) => option.value === wanted)?.value ?? null;
+  });
 
   useEffect(() => {
     if (status === 'signed-in' && user) router.replace(homeFor(user));
