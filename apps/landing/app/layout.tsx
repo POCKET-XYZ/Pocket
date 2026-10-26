@@ -15,9 +15,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Pocket — Talento de growth. Pago garantizado on-chain.',
+  title: 'Pocket — Tu equipo de growth, sin miedo a contratar',
   description:
-    'Startups contratan specialists verificados de growth, ventas y marketing, con cada pago protegido por escrow en Stellar.',
+    'Encuentra expertos verificados en marketing, ventas y growth. Solo pagas cuando apruebas el trabajo.',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

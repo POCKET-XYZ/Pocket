@@ -5,7 +5,7 @@ import { Magnetic } from '@/components/pointer-motion';
 import { gsap, media, useGSAP } from '@/lib/gsap';
 import { links } from '@/lib/links';
 
-const headline = 'Talento de growth. Pago garantizado on-chain.';
+const headline = 'Tu equipo de growth, sin miedo a contratar.';
 
 export function Hero() {
   const root = useRef<HTMLElement>(null);
@@ -49,8 +49,8 @@ export function Hero() {
   );
 
   return (
-    <section ref={root} id="inicio" className="flex min-h-svh items-center pt-16">
-      <div className="wrap grid items-center gap-10 py-16 md:grid-cols-[1.7fr_1fr]">
+    <section ref={root} id="inicio" className="flex min-h-svh items-center pt-20">
+      <div className="wrap grid items-center gap-10 py-16 md:grid-cols-[2fr_1fr]">
         <div className="flex flex-col gap-8">
           {/* Each word rises out of its own mask; readers get the sentence whole. */}
           <h1 className="headline-xl" aria-label={headline}>
@@ -71,27 +71,29 @@ export function Hero() {
             className="intro-fade max-w-xl text-lg text-muted md:text-xl"
             style={{ '--delay': '450ms' } as React.CSSProperties}
           >
-            Startups contratan specialists verificados de growth, ventas y marketing. Cada
-            pago queda en escrow en Stellar hasta que el trabajo se aprueba.
+            Encuentra expertos verificados en marketing, ventas y growth. Solo pagas
+            cuando apruebas el trabajo.
           </p>
           <div
-            className="intro-fade flex flex-wrap items-center gap-x-8 gap-y-4"
+            className="intro-fade flex flex-wrap items-center gap-4"
             style={{ '--delay': '550ms' } as React.CSSProperties}
           >
             <Magnetic>
               <a
                 href={links.login}
-                className="press block rounded-full bg-yellow px-7 py-3.5 text-lg font-medium text-navy"
+                className="press block rounded-full bg-yellow px-8 py-4 text-lg font-medium text-navy"
               >
-                Publicar un Job
+                Soy startup
               </a>
             </Magnetic>
-            <a
-              href="#specialists"
-              className="text-lg text-celeste underline-offset-4 hover:underline"
-            >
-              Soy specialist
-            </a>
+            <Magnetic>
+              <a
+                href={links.login}
+                className="press block rounded-full border-2 border-celeste px-8 py-3.5 text-lg font-medium text-celeste"
+              >
+                Soy experto
+              </a>
+            </Magnetic>
           </div>
         </div>
         <div data-parallax className="mx-auto w-2/3 max-w-[480px] md:w-full">
