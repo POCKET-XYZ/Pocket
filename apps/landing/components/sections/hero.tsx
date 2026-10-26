@@ -2,6 +2,7 @@
 
 import { useRef } from 'react';
 import { gsap, SplitText, useGSAP } from '@/lib/gsap';
+import { Magnetic } from '@/components/pointer-motion';
 import { links } from '@/lib/links';
 
 export function Hero() {
@@ -81,12 +82,14 @@ export function Hero() {
             pago queda en escrow en Stellar hasta que el trabajo se aprueba.
           </p>
           <div data-intro="copy" className="flex flex-wrap items-center gap-x-8 gap-y-4">
-            <a
-              href={links.login}
-              className="rounded-full bg-yellow px-7 py-3.5 text-lg font-medium text-navy"
-            >
-              Publicar un Job
-            </a>
+            <Magnetic>
+              <a
+                href={links.login}
+                className="rounded-full bg-yellow px-7 py-3.5 text-lg font-medium text-navy"
+              >
+                Publicar un Job
+              </a>
+            </Magnetic>
             <a
               href="#specialists"
               className="text-lg text-celeste underline-offset-4 hover:underline"

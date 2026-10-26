@@ -1,4 +1,5 @@
 import { Reveal } from '@/components/reveal';
+import { Magnetic } from '@/components/pointer-motion';
 import { links } from '@/lib/links';
 
 export function Closing() {
@@ -17,12 +18,14 @@ export function Closing() {
           <h2 className="headline-xl max-w-4xl">
             Contrata growth sin miedo. Cobra sin perseguir a nadie.
           </h2>
-          <a
-            href={links.login}
-            className="rounded-full bg-yellow px-7 py-3.5 text-lg font-medium text-navy"
-          >
-            Publicar un Job
-          </a>
+          <Magnetic>
+            <a
+              href={links.login}
+              className="rounded-full bg-yellow px-7 py-3.5 text-lg font-medium text-navy"
+            >
+              Publicar un Job
+            </a>
+          </Magnetic>
         </Reveal>
       </section>
       <footer className="border-t border-off-white/10 py-10 text-sm text-muted">
