@@ -1,0 +1,74 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-fredoka);
+  --color-navy: var(--navy);
+  --color-celeste: var(--celeste);
+  --color-celeste-light: var(--celeste-light);
+  --color-yellow: var(--yellow);
+  --color-off-white: var(--off-white);
+  --color-muted: var(--muted);
+}
+
+/* Pocket brand, the same tokens as apps/web/app/globals.css. */
+:root {
+  --navy: #0f2e52;
+  --celeste: #86d4e6;
+  --celeste-light: #b8e7f1;
+  --yellow: #ffd23f;
+  --off-white: #f4fbfd;
+  /* Off-white at 70% on navy: the "muted" secondary text tone. */
+  --muted: rgb(244 251 253 / 0.7);
+}
+
+/* Type scale from the brand guide. */
+@utility headline-xl {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: clamp(2.5rem, 8vw, 6rem);
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+@utility headline-lg {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: clamp(2rem, 5vw, 3.75rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+@utility headline-md {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  line-height: 1.15;
+}
+@utility eyebrow {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+@layer base {
+  html {
+    @apply bg-navy font-sans text-off-white;
+  }
+  :focus-visible {
+    outline: 2px solid var(--celeste);
+    outline-offset: 3px;
+  }
+}
+
+/* Lenis: the classes it sets on <html> while it drives the scroll. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis:not(.lenis-autoToggle).lenis-stopped {
+  overflow: clip;
+}
+.lenis [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
