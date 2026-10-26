@@ -1,7 +1,9 @@
+import { Reveal } from '@/components/reveal';
+
 export function Problem() {
   return (
     <section className="bg-off-white py-24 text-navy md:py-36">
-      <div className="wrap">
+      <Reveal className="wrap" stagger>
         <h2 className="headline-lg max-w-3xl">Buen producto no alcanza.</h2>
         <p className="mt-6 max-w-2xl text-xl text-navy/75 md:text-2xl">
           Muchas startups construyen un buen producto, pero no tienen quién lo lleve al
@@ -41,7 +43,7 @@ export function Problem() {
             CB Insights, The 20 Reasons Startups Fail
           </a>
         </p>
-      </div>
+      </Reveal>
     </section>
   );
 }

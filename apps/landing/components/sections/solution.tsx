@@ -1,3 +1,5 @@
+import { Reveal } from '@/components/reveal';
+
 const guarantees = [
   {
     render: 'vetted',
@@ -19,7 +21,7 @@ const guarantees = [
 export function Solution() {
   return (
     <section className="py-24 md:py-36">
-      <div className="wrap">
+      <Reveal className="wrap" stagger>
         <h2 className="headline-lg max-w-3xl">
           Pocket quita esa barrera con tres garantías.
         </h2>
@@ -39,7 +41,7 @@ export function Solution() {
             </li>
           ))}
         </ul>
-      </div>
+      </Reveal>
     </section>
   );
 }

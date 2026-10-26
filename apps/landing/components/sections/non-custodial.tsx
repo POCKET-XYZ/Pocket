@@ -1,3 +1,5 @@
+import { Reveal } from '@/components/reveal';
+
 const facts = [
   { value: 'USDC', label: 'Se paga en dólares digitales, sin volatilidad.' },
   { value: '< 1¢', label: 'Cuesta cada operación en Stellar.' },
@@ -28,7 +30,7 @@ const render = (name: string) => (
 export function NonCustodial() {
   return (
     <section className="py-24 md:py-36">
-      <div className="wrap">
+      <Reveal className="wrap" stagger>
         <h2 className="headline-lg max-w-3xl">Pocket nunca toca el dinero.</h2>
         <p className="mt-6 max-w-2xl text-lg text-muted">
           La startup firma el fondeo y la aprobación desde su wallet. Pocket solo puede
@@ -67,7 +69,7 @@ export function NonCustodial() {
             </div>
           ))}
         </dl>
-      </div>
+      </Reveal>
     </section>
   );
 }

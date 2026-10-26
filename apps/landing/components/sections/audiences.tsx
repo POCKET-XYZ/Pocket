@@ -1,9 +1,10 @@
+import { Reveal } from '@/components/reveal';
 import { links } from '@/lib/links';
 
 export function Audiences() {
   return (
     <section className="py-24 md:py-36">
-      <div className="wrap grid gap-6 md:grid-cols-2">
+      <Reveal className="wrap grid gap-6 md:grid-cols-2" stagger>
         <article
           id="startups"
           className="flex scroll-mt-20 flex-col gap-6 rounded-3xl bg-celeste p-8 text-navy md:p-12"
@@ -54,7 +55,7 @@ export function Audiences() {
             Crear mi perfil
           </a>
         </article>
-      </div>
+      </Reveal>
     </section>
   );
 }

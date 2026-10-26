@@ -72,6 +72,14 @@
   }
 }
 
+/* The hero intro starts hidden so it never flashes before GSAP takes over;
+   the layout's <noscript> style and reduced motion show it as is. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-intro] {
+    visibility: hidden;
+  }
+}
+
 /* Lenis: the classes it sets on <html> while it drives the scroll. */
 html.lenis,
 html.lenis body {

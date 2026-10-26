@@ -1,3 +1,5 @@
+import { Reveal } from '@/components/reveal';
+
 const paths = [
   {
     name: 'Equipo técnico',
@@ -16,7 +18,7 @@ const paths = [
 export function Why() {
   return (
     <section className="py-24 md:py-36">
-      <div className="wrap">
+      <Reveal className="wrap" stagger>
         <h2 className="headline-lg max-w-3xl">Tres caminos, ninguno alcanza.</h2>
         <ul className="mt-14 grid gap-px overflow-hidden rounded-2xl bg-off-white/15 md:grid-cols-3">
           {paths.map((path) => {
@@ -35,7 +37,7 @@ export function Why() {
         <p className="mt-12 text-xl text-celeste md:text-2xl">
           Y ahí aparece la primera barrera.
         </p>
-      </div>
+      </Reveal>
     </section>
   );
 }
