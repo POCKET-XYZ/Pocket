@@ -5,7 +5,16 @@ export default function Home() {
   return (
     <>
       <ScrollProgress />
-      <section className="mx-auto flex min-h-svh max-w-6xl flex-col justify-center gap-6 px-4 md:px-6">
+      <section className="relative mx-auto flex min-h-svh max-w-6xl flex-col justify-center gap-6 px-4 md:px-6">
+        {/* eslint-disable-next-line @next/next/no-img-element -- the optimizer is off (next.config.ts) */}
+        <img
+          src="/renders/hero.webp"
+          alt=""
+          width={640}
+          height={640}
+          fetchPriority="high"
+          className="pointer-events-none absolute right-0 top-1/2 -z-10 hidden w-[min(40vw,480px)] -translate-y-1/2 md:block"
+        />
         <p className="eyebrow text-celeste">Pocket</p>
         <h1 className="headline-xl max-w-4xl">
           Talento de growth. Pago garantizado on-chain.
