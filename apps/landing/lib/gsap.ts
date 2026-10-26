@@ -3,10 +3,9 @@
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { SplitText } from 'gsap/SplitText';
 
 // Registered once here; components import gsap from this module, never from 'gsap'.
-gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText);
+gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 /** Media queries for gsap.matchMedia(): who gets which motion. */
 export const media = {
@@ -22,4 +21,4 @@ export const media = {
 export const brand = (name: 'navy' | 'yellow' | 'off-white') =>
   getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();
 
-export { gsap, ScrollTrigger, SplitText, useGSAP };
+export { gsap, ScrollTrigger, useGSAP };

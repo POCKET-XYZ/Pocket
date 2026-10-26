@@ -1,9 +1,11 @@
 'use client';
 
 import { useRef } from 'react';
-import { gsap, SplitText, useGSAP } from '@/lib/gsap';
 import { Magnetic } from '@/components/pointer-motion';
+import { gsap, media, useGSAP } from '@/lib/gsap';
 import { links } from '@/lib/links';
+
+const headline = 'Talento de growth. Pago garantizado on-chain.';
 
 export function Hero() {
   const root = useRef<HTMLElement>(null);
@@ -11,47 +13,23 @@ export function Hero() {
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
-      mm.add('(prefers-reduced-motion: no-preference)', () => {
-        // The intro: the headline rises word by word out of its own mask, then
-        // the copy and the buttons follow and the pocket pops in.
-        SplitText.create('h1', {
-          type: 'words',
-          mask: 'words',
-          autoSplit: true,
-          onSplit(self) {
-            return gsap
-              .timeline({ defaults: { ease: 'power3.out' } })
-              .set('h1', { visibility: 'visible' })
-              .from(self.words, { yPercent: 110, duration: 0.8, stagger: 0.07 })
-              .fromTo(
-                '[data-intro="copy"]',
-                { autoAlpha: 0, y: 24 },
-                { autoAlpha: 1, y: 0, duration: 0.6, stagger: 0.1 },
-                '-=0.4',
-              )
-              .fromTo(
-                '[data-intro="pocket"]',
-                { autoAlpha: 0, scale: 0.6, rotation: -8 },
-                {
-                  autoAlpha: 1,
-                  scale: 1,
-                  rotation: 0,
-                  duration: 0.9,
-                  ease: 'back.out(1.7)',
-                },
-                0.3,
-              );
-          },
-        });
-
-        // Three nested layers so the moves never fight over one transform:
-        // the intro on the image, the float on its wrapper, the parallax outside.
+      mm.add(media.motion, () => {
+        // The intro runs in CSS (globals.css); GSAP adds what follows it. Three
+        // nested layers so the moves never fight over one transform: the intro
+        // on the image, the float on its wrapper, the parallax outside.
         gsap.to('[data-float]', {
           y: -8,
           duration: 2.4,
           ease: 'sine.inOut',
           yoyo: true,
           repeat: -1,
+          // Floats only while the hero is on screen.
+          scrollTrigger: {
+            trigger: root.current,
+            start: 'top bottom',
+            end: 'bottom top',
+            toggleActions: 'play pause resume pause',
+          },
         });
         gsap.to('[data-parallax]', {
           y: -120,
@@ -74,18 +52,36 @@ export function Hero() {
     <section ref={root} id="inicio" className="flex min-h-svh items-center pt-16">
       <div className="wrap grid items-center gap-10 py-16 md:grid-cols-[1.7fr_1fr]">
         <div className="flex flex-col gap-8">
-          <h1 data-intro="title" className="headline-xl">
-            Talento de growth. Pago garantizado on-chain.
+          {/* Each word rises out of its own mask; readers get the sentence whole. */}
+          <h1 className="headline-xl" aria-label={headline}>
+            {headline.split(' ').map((word, i) => (
+              <span key={i} aria-hidden>
+                <span className="intro-mask">
+                  <span
+                    className="intro-word"
+                    style={{ '--i': i } as React.CSSProperties}
+                  >
+                    {word}
+                  </span>
+                </span>{' '}
+              </span>
+            ))}
           </h1>
-          <p data-intro="copy" className="max-w-xl text-lg text-muted md:text-xl">
+          <p
+            className="intro-fade max-w-xl text-lg text-muted md:text-xl"
+            style={{ '--delay': '450ms' } as React.CSSProperties}
+          >
             Startups contratan specialists verificados de growth, ventas y marketing. Cada
             pago queda en escrow en Stellar hasta que el trabajo se aprueba.
           </p>
-          <div data-intro="copy" className="flex flex-wrap items-center gap-x-8 gap-y-4">
+          <div
+            className="intro-fade flex flex-wrap items-center gap-x-8 gap-y-4"
+            style={{ '--delay': '550ms' } as React.CSSProperties}
+          >
             <Magnetic>
               <a
                 href={links.login}
-                className="rounded-full bg-yellow px-7 py-3.5 text-lg font-medium text-navy"
+                className="press block rounded-full bg-yellow px-7 py-3.5 text-lg font-medium text-navy"
               >
                 Publicar un Job
               </a>
@@ -101,13 +97,13 @@ export function Hero() {
         <div data-parallax className="mx-auto w-2/3 max-w-[480px] md:w-full">
           <div data-float>
             <img
-              data-intro="pocket"
+              className="intro-pop w-full"
               src="/renders/hero.webp"
+              srcSet="/renders/sm/hero.webp 320w, /renders/md/hero.webp 480w, /renders/hero.webp 640w"
+              sizes="(min-width: 768px) 480px, 66vw"
               alt="Un bolsillo celeste con una moneda dorada adentro"
               width={640}
               height={640}
-              fetchPriority="high"
-              className="w-full"
             />
           </div>
         </div>

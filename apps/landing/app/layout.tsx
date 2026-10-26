@@ -23,11 +23,6 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="es" className={`${fredoka.variable} ${inter.variable} antialiased`}>
-      <head>
-        <noscript>
-          <style>{'[data-intro]{visibility:visible!important}'}</style>
-        </noscript>
-      </head>
       <body>
         <SmoothScroll>{children}</SmoothScroll>
       </body>

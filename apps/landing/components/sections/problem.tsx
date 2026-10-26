@@ -27,7 +27,7 @@ export function Problem() {
             </dd>
           </div>
         </dl>
-        <p className="mt-12 text-sm text-navy/60">
+        <p className="mt-12 text-sm text-navy/75">
           Fuentes:{' '}
           <a
             href="https://a16zcrypto.com/posts/article/state-of-crypto-report-2025/"

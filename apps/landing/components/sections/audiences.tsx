@@ -12,7 +12,7 @@ export function Audiences() {
             className="flex w-full scroll-mt-20 flex-col gap-6 rounded-3xl bg-celeste p-8 text-navy md:p-12"
           >
             <img
-              src="/renders/chart.webp"
+              src="/renders/sm/chart.webp"
               alt=""
               width={640}
               height={640}
@@ -27,7 +27,7 @@ export function Audiences() {
             </ul>
             <a
               href={links.login}
-              className="mt-auto w-fit rounded-full bg-navy px-6 py-3 font-medium text-off-white"
+              className="press mt-auto w-fit rounded-full bg-navy px-6 py-3 font-medium text-off-white"
             >
               Publicar un Job
             </a>
@@ -39,7 +39,7 @@ export function Audiences() {
             className="flex w-full scroll-mt-20 flex-col gap-6 rounded-3xl border border-off-white/20 p-8 md:p-12"
           >
             <img
-              src="/renders/vetted.webp"
+              src="/renders/sm/vetted.webp"
               alt=""
               width={640}
               height={640}
@@ -54,7 +54,7 @@ export function Audiences() {
             </ul>
             <a
               href={links.login}
-              className="mt-auto w-fit rounded-full border border-celeste px-6 py-3 font-medium text-celeste"
+              className="press mt-auto w-fit rounded-full border border-celeste px-6 py-3 font-medium text-celeste"
             >
               Crear mi perfil
             </a>

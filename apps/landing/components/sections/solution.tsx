@@ -57,7 +57,7 @@ export function Solution() {
               <Tilt className="w-fit">
                 <img
                   data-pop
-                  src={`/renders/${g.render}.webp`}
+                  src={`/renders/sm/${g.render}.webp`}
                   alt=""
                   width={640}
                   height={640}

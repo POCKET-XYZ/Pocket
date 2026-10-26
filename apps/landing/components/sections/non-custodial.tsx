@@ -22,7 +22,7 @@ const arrow = (
 
 const render = (name: string) => (
   <img
-    src={`/renders/${name}.webp`}
+    src={`/renders/sm/${name}.webp`}
     alt=""
     width={640}
     height={640}

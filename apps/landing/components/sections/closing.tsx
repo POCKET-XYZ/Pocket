@@ -8,7 +8,7 @@ export function Closing() {
       <section className="pb-24 pt-12 md:pb-36">
         <Reveal className="wrap flex flex-col items-center gap-10 text-center" stagger>
           <img
-            src="/renders/hero.webp"
+            src="/renders/sm/hero.webp"
             alt=""
             width={640}
             height={640}
@@ -21,7 +21,7 @@ export function Closing() {
           <Magnetic>
             <a
               href={links.login}
-              className="rounded-full bg-yellow px-7 py-3.5 text-lg font-medium text-navy"
+              className="press block rounded-full bg-yellow px-7 py-3.5 text-lg font-medium text-navy"
             >
               Publicar un Job
             </a>

@@ -27,7 +27,7 @@ export function SiteNav() {
           </ul>
           <a
             href={links.login}
-            className="rounded-full bg-yellow px-5 py-2.5 text-sm font-medium text-navy"
+            className="press rounded-full bg-yellow px-5 py-2.5 text-sm font-medium text-navy"
           >
             Publicar un Job
           </a>

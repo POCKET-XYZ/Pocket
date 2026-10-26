@@ -90,7 +90,7 @@ export function HowItWorks() {
                 <span className="font-heading text-4xl font-bold text-navy/25">
                   {i + 1}
                 </span>
-                <p className="text-sm font-medium text-navy/60">{step.who}</p>
+                <p className="text-sm font-medium text-navy/75">{step.who}</p>
                 <h3 className="font-heading text-xl font-bold">{step.name}</h3>
                 <p className="text-navy/75">{step.text}</p>
               </li>

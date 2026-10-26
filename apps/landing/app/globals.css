@@ -22,6 +22,14 @@
   --muted: rgb(244 251 253 / 0.7);
 }
 
+/* Press feedback for buttons: a slight shrink while held. */
+@utility press {
+  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
 /* Type scale from the brand guide. */
 @utility headline-xl {
   font-family: var(--font-heading);
@@ -72,11 +80,63 @@
   }
 }
 
-/* The hero intro starts hidden so it never flashes before GSAP takes over;
-   the layout's <noscript> style and reduced motion show it as is. */
+/* The hero intro is plain CSS so it starts with the first paint instead of
+   waiting for JavaScript (waiting held the LCP back by 2.7s on mobile). */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.intro-mask {
+  display: inline-block;
+  overflow: clip;
+  /* Room for descenders (g, p) inside the clip. */
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+  vertical-align: top;
+}
+.intro-word {
+  display: inline-block;
+}
 @media (prefers-reduced-motion: no-preference) {
-  [data-intro] {
-    visibility: hidden;
+  .intro-word {
+    animation: intro-rise 0.8s var(--ease-out) both;
+    animation-delay: calc(var(--i) * 70ms + 100ms);
+  }
+  .intro-fade {
+    animation: intro-fade 0.6s var(--ease-out) both;
+    animation-delay: var(--delay, 0ms);
+  }
+  .intro-pop {
+    animation: intro-pop 0.9s var(--ease-pop) 300ms both;
+  }
+}
+/* Reduced motion keeps a gentle fade and drops every movement. */
+@media (prefers-reduced-motion: reduce) {
+  .intro-fade,
+  .intro-pop {
+    animation: intro-opacity 0.4s ease both;
+  }
+}
+@keyframes intro-rise {
+  from {
+    transform: translateY(110%);
+  }
+}
+@keyframes intro-fade {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+@keyframes intro-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-8deg);
+  }
+}
+@keyframes intro-opacity {
+  from {
+    opacity: 0;
   }
 }
 

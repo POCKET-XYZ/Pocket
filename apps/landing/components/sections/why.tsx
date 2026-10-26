@@ -29,7 +29,7 @@ export function Why() {
                 className={`flex flex-col gap-3 p-8 ${last ? 'bg-celeste/15' : 'bg-navy'}`}
               >
                 <h3 className="headline-md">{path.name}</h3>
-                <p className="text-muted">{path.gap}</p>
+                <p className={last ? 'text-off-white/90' : 'text-muted'}>{path.gap}</p>
               </li>
             );
           })}
