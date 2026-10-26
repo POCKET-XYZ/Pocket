@@ -51,6 +51,17 @@
   text-transform: uppercase;
 }
 
+/* The page's content column. */
+@utility wrap {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 72rem;
+  padding-inline: 1rem;
+  @variant md {
+    padding-inline: 1.5rem;
+  }
+}
+
 @layer base {
   html {
     @apply bg-navy font-sans text-off-white;

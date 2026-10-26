@@ -5,6 +5,8 @@ import nextTs from 'eslint-config-next/typescript';
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  // The image optimizer is off (next.config.ts): renders ship pre-compressed as <img>.
+  { rules: { '@next/next/no-img-element': 'off' } },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
