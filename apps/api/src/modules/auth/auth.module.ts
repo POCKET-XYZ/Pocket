@@ -5,6 +5,7 @@ import { PollarModule } from '../pollar/pollar.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { WalletChallengeService } from './wallet-challenge.service';
+import { MigratedAccountsService } from './migrated-accounts.service';
 
 const JWT_ISSUER = 'pocket-api';
 const JWT_AUDIENCE = 'pocket-web';
@@ -33,6 +34,6 @@ const JWT_AUDIENCE = 'pocket-web';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, WalletChallengeService],
+  providers: [AuthService, WalletChallengeService, MigratedAccountsService],
 })
 export class AuthModule {}

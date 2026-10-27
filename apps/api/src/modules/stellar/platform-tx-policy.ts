@@ -63,7 +63,9 @@ export function assertPlatformTx(
   if (tx.source !== platformAddress) refuse('the source is not the platform');
   const expiry = timeBoundProblem(tx);
   if (expiry) refuse(expiry);
-  if (Number(tx.fee) > policy.maxFeeStroops) refuse(`the fee ${tx.fee} is too high`);
+  if (Number(tx.fee) > policy.maxFeeStroops) {
+    refuse(`the fee of ${xlm(tx.fee)} XLM is too high (limit ${xlm(policy.maxFeeStroops)} XLM)`);
+  }
   if (tx.operations.length !== 1) refuse('expected exactly one operation');
 
   const [op] = tx.operations;
@@ -169,4 +171,9 @@ export function sameInteger(value: unknown, expected: number | bigint): boolean 
     (typeof value === 'number' || typeof value === 'bigint') &&
     BigInt(value) === BigInt(expected)
   );
+}
+
+/** Stroops as XLM, for messages a person reads. */
+function xlm(stroops: string | number): string {
+  return (Number(stroops) / 10_000_000).toFixed(4).replace(/\.?0+$/, '');
 }

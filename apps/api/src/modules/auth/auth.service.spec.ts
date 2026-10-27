@@ -10,6 +10,7 @@ import type { PrismaService } from '../../prisma/prisma.service';
 import type { PollarClient, PollarSession } from '../pollar/pollar.client';
 import { AuthService } from './auth.service';
 import type { WalletChallengeService } from './wallet-challenge.service';
+import { MigratedAccountsService } from './migrated-accounts.service';
 
 const ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
 const OTHER_ADDRESS = 'GA47WBBZ3HFSAXVT4BIMU4TQGJCLQWCWP4LJDGAQW36HV2KL2HXLFQV3';
@@ -58,6 +59,7 @@ describe('AuthService', () => {
   };
 
   let pollar: { enabled: boolean; verifyToken: jest.Mock };
+  let migrated: { claim: jest.Mock };
   let service: AuthService;
 
   beforeEach(() => {
@@ -74,11 +76,13 @@ describe('AuthService', () => {
       },
     };
     pollar = { enabled: true, verifyToken: jest.fn().mockResolvedValue(makeSession()) };
+    migrated = { claim: jest.fn().mockResolvedValue(null) };
     service = new AuthService(
       prisma as unknown as PrismaService,
       jwt,
       challenges as unknown as WalletChallengeService,
       pollar as unknown as PollarClient,
+      migrated as unknown as MigratedAccountsService,
     );
   });
 
@@ -162,6 +166,31 @@ describe('AuthService', () => {
   });
 
   describe('loginWithPollar', () => {
+    it('hands over an account carried from testnet, without asking for a role', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      const carried = makeUser({ role: 'startup', verificationStatus: 'approved' });
+      migrated.claim.mockResolvedValue(carried);
+
+      const result = await service.loginWithPollar({ accessToken: 'pollar-token' });
+
+      expect(migrated.claim).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'founder@example.com', stellarAddress: ADDRESS }),
+      );
+      expect(result.user).toBe(carried);
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('does not look for a carried account when the user already exists', async () => {
+      prisma.user.findFirst.mockResolvedValue(
+        makeUser({ pollarUserId: 'usr_pollar_1', stellarAddress: ADDRESS }),
+      );
+      prisma.user.update.mockImplementation(({ data }: { data: Partial<User> }) =>
+        Promise.resolve(makeUser(data)),
+      );
+      await service.loginWithPollar({ accessToken: 'pollar-token' });
+      expect(migrated.claim).not.toHaveBeenCalled();
+    });
+
     it('creates the account from the wallet Pollar reports', async () => {
       prisma.user.findFirst.mockResolvedValue(null);
       prisma.user.create.mockImplementation(({ data }: { data: Partial<User> }) =>

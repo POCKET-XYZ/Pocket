@@ -150,7 +150,14 @@ export function UsdcStatus({
                 Get free testnet XLM
               </a>
             </Button>
-          ) : null}
+          ) : (
+            // 1 XLM opens the account and 0.5 more holds the USDC trustline;
+            // the rest pays network fees.
+            <p className="mt-2">
+              Send at least 3 XLM to your wallet address from an exchange or another
+              wallet, on the Stellar network. No memo is needed.
+            </p>
+          )}
         </AlertDescription>
       </Alert>
     );
