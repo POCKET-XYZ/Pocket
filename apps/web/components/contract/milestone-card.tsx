@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { formValues } from '@/components/form';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/confirm-dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
@@ -65,6 +66,7 @@ export function MilestoneCard({
   const lastDispute: Dispute | undefined = milestone.disputes.at(-1);
   const latest: Deliverable | undefined = milestone.deliverables.at(-1);
   const signer = useSigner();
+  const confirm = useConfirm();
 
   const approve = useContractAction(
     contract.id,
@@ -185,13 +187,14 @@ export function MilestoneCard({
             <>
               <Button
                 disabled={approve.isPending}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `Approve this delivery and release ${usdc(milestone.amount)} to the specialist? Approvals cannot be undone.`,
-                    )
-                  )
-                    approve.mutate();
+                onClick={async () => {
+                  const confirmed = await confirm({
+                    title: `Approve this delivery and release ${usdc(milestone.amount)} to the specialist?`,
+                    description: 'Approvals cannot be undone.',
+                    confirmText: 'Approve and pay',
+                    irreversible: true,
+                  });
+                  if (confirmed) approve.mutate();
                 }}
               >
                 {approve.isPending ? 'Waiting for your wallet...' : 'Approve and pay'}

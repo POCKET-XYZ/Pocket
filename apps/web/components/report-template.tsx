@@ -6,6 +6,7 @@ import { DownloadIcon } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/confirm-dialog';
 import { api, download, errorMessage, upload } from '@/lib/api';
 import {
   FILE_KINDS,
@@ -84,6 +85,7 @@ export function ReportTemplateManager({
   template: JobReportTemplate | null;
 }) {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [busy, setBusy] = useState<'upload' | 'remove' | null>(null);
 
   async function refresh() {
@@ -107,7 +109,12 @@ export function ReportTemplateManager({
   }
 
   async function onRemove() {
-    if (!window.confirm('Remove the report template from this job?')) return;
+    const confirmed = await confirm({
+      title: 'Remove the report template from this job?',
+      confirmText: 'Remove',
+      destructive: true,
+    });
+    if (!confirmed) return;
     setBusy('remove');
     try {
       await api(`/jobs/${jobId}/report-template`, { method: 'DELETE' });

@@ -21,6 +21,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { UsdcStatus } from '@/components/usdc-status';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/confirm-dialog';
 import {
   Card,
   CardContent,
@@ -206,6 +207,7 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
   const isStartup = user.id === contract.startupId;
   const isSpecialist = user.id === contract.specialistId;
   const signer = useSigner();
+  const confirm = useConfirm();
 
   const accept = useContractAction(
     contract.id,
@@ -270,13 +272,14 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
           <Button
             variant="outline"
             disabled={decline.isPending}
-            onClick={() => {
-              if (
-                window.confirm(
-                  'Decline these terms? The startup can then pick someone else.',
-                )
-              )
-                decline.mutate();
+            onClick={async () => {
+              const confirmed = await confirm({
+                title: 'Decline these terms?',
+                description: 'The startup can then pick someone else.',
+                confirmText: 'Decline',
+                destructive: true,
+              });
+              if (confirmed) decline.mutate();
             }}
           >
             Decline
@@ -377,6 +380,7 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
  */
 function WithdrawOffer({ contract }: { contract: ContractDetail }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const withdraw = useMutation({
     mutationFn: () =>
@@ -408,13 +412,15 @@ function WithdrawOffer({ contract }: { contract: ContractDetail }) {
           variant="outline"
           className="mt-3"
           disabled={withdraw.isPending}
-          onClick={() => {
-            if (
-              window.confirm(
-                'Withdraw these terms? The job opens again and you can send new terms to this or another applicant.',
-              )
-            )
-              withdraw.mutate();
+          onClick={async () => {
+            const confirmed = await confirm({
+              title: 'Withdraw these terms?',
+              description:
+                'The job opens again and you can send new terms to this or another applicant.',
+              confirmText: 'Withdraw',
+              destructive: true,
+            });
+            if (confirmed) withdraw.mutate();
           }}
         >
           {withdraw.isPending ? 'Withdrawing...' : 'Withdraw offer'}

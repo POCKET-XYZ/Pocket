@@ -19,6 +19,7 @@ import { KpiReport } from '@/components/contract/kpi-report';
 import { RequireAuth } from '@/components/require-auth';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/confirm-dialog';
 import {
   Card,
   CardContent,
@@ -233,6 +234,7 @@ function EvidenceForm({ disputeId }: { disputeId: string }) {
 
 function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [outcome, setOutcome] = useState<DisputeOutcome>(DisputeOutcome.PaySpecialist);
   const resolve = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -252,7 +254,7 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
 
   const total = toUnits(dispute.milestone.amount);
 
-  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const values = formValues(event.currentTarget);
     let summary = OUTCOMES.find((option) => option.value === outcome)?.label ?? '';
@@ -272,8 +274,13 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
       }
       summary = `${fromUnits(toSpecialist)} USDC to the specialist and ${fromUnits(total - toSpecialist)} USDC to the startup`;
     }
-    if (!window.confirm(`${summary}? This executes on the escrow and cannot be undone.`))
-      return;
+    const confirmed = await confirm({
+      title: `${summary}?`,
+      description: 'This executes on the escrow and cannot be undone.',
+      confirmText: 'Resolve',
+      irreversible: true,
+    });
+    if (!confirmed) return;
     resolve.mutate({
       outcome,
       note: values.note,

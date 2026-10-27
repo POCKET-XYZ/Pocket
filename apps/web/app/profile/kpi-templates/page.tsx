@@ -22,6 +22,7 @@ import {
 import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/confirm-dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api';
@@ -127,6 +128,7 @@ function TemplateView({
   onEdit: () => void;
 }) {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const remove = useMutation({
     mutationFn: () => api(`/kpi-templates/${template.id}`, { method: 'DELETE' }),
     onSuccess: async () => {
@@ -154,13 +156,14 @@ function TemplateView({
           <Button
             variant="ghost"
             disabled={remove.isPending}
-            onClick={() => {
-              if (
-                window.confirm(
-                  `Delete "${template.name}"? Jobs already posted with it keep their KPIs.`,
-                )
-              )
-                remove.mutate();
+            onClick={async () => {
+              const confirmed = await confirm({
+                title: `Delete "${template.name}"?`,
+                description: 'Jobs already posted with it keep their KPIs.',
+                confirmText: 'Delete',
+                destructive: true,
+              });
+              if (confirmed) remove.mutate();
             }}
           >
             {remove.isPending ? 'Deleting...' : 'Delete'}
