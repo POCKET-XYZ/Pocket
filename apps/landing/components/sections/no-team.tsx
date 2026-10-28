@@ -14,6 +14,11 @@ const gains = [
 // What the experts do, floating around the rocket. `depth` sets how fast each
 // chip drifts on scroll, so the group reads as layers.
 const skills = [
+  {
+    label: 'Influencers',
+    className: 'left-1/2 top-[3%] -translate-x-1/2',
+    depth: 1.35,
+  },
   { label: 'Contenido', className: 'left-0 top-[12%]', depth: 1.4 },
   { label: 'Ads', className: 'right-[4%] top-[4%]', depth: 0.8 },
   { label: 'Comunidad', className: 'right-0 top-[48%]', depth: 1.8 },
@@ -49,12 +54,12 @@ export function NoTeam() {
           );
         });
         gsap.from('[data-skill] > span', {
-          scale: 0,
-          autoAlpha: 0,
+          scale: 0.6,
+          opacity: 0.4,
           ease: 'back.out(2)',
           duration: 0.5,
           stagger: 0.1,
-          scrollTrigger: { trigger: root.current, start: 'top 70%', once: true },
+          scrollTrigger: { trigger: root.current, start: '15% bottom', once: true },
         });
       });
       return () => mm.revert();
@@ -66,7 +71,7 @@ export function NoTeam() {
     <section
       ref={root}
       id="startups"
-      className="scroll-mt-20 overflow-hidden bg-off-white py-24 text-navy md:py-36"
+      className="scroll-mt-20 overflow-hidden bg-off-white pb-12 pt-24 text-navy md:pb-16 md:pt-36"
     >
       <div className="wrap grid items-center gap-14 md:grid-cols-[1.2fr_1fr]">
         <Reveal stagger>

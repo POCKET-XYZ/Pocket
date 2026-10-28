@@ -81,7 +81,7 @@ export function Hero() {
             <Magnetic>
               <a
                 href={links.startup}
-                className="press block rounded-full bg-yellow px-8 py-4 text-lg font-medium text-navy"
+                className="press block rounded-full bg-yellow px-10 py-5 text-xl font-semibold text-navy shadow-[0_10px_30px_-10px_rgb(255_210_63_/_0.6)]"
               >
                 Soy startup
               </a>
@@ -89,7 +89,7 @@ export function Hero() {
             <Magnetic>
               <a
                 href={links.expert}
-                className="press block rounded-full border-2 border-celeste px-8 py-3.5 text-lg font-medium text-celeste"
+                className="press block rounded-full border-2 border-celeste px-10 py-[18px] text-xl font-semibold text-celeste"
               >
                 Soy experto
               </a>

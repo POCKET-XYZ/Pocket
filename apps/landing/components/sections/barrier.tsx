@@ -12,6 +12,9 @@ export function Barrier() {
       mm.add(media.pin, () => {
         // The section holds still while the page turns from off-white to yellow,
         // then the two fears come in from opposite sides and face each other.
+        // They start fully hidden, unlike the page's 40% reveals: seeing them
+        // before they arrive would spoil the face-off. The pinned title keeps
+        // the screen from looking empty meanwhile.
         gsap
           .timeline({
             scrollTrigger: {
@@ -40,7 +43,7 @@ export function Barrier() {
   return (
     <section
       ref={root}
-      className="flex min-h-svh items-center bg-yellow py-24 text-navy md:py-36"
+      className="flex min-h-svh items-start bg-yellow pb-16 pt-12 text-navy md:pt-28"
     >
       <div className="wrap">
         <h2 className="headline-xl max-w-4xl">Contratar da miedo. De los dos lados.</h2>

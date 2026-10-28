@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Reveal } from '@/components/reveal';
-import { gsap, useGSAP } from '@/lib/gsap';
+import { gsap, ScrollTrigger, useGSAP } from '@/lib/gsap';
 
 const scenarios = [
   {
@@ -73,27 +73,26 @@ function Node({
 export function Protected() {
   const root = useRef<HTMLElement>(null);
   const [scenario, setScenario] = useState<Scenario>('confirm');
-  // Plays the scenarios on its own until someone picks one.
-  const auto = useRef(true);
-  const visible = useRef(false);
-
-  useEffect(() => {
-    const io = new IntersectionObserver(([e]) => (visible.current = e.isIntersecting), {
-      threshold: 0.4,
-    });
-    io.observe(root.current!);
-    const timer = setInterval(() => {
-      if (!auto.current || !visible.current) return;
-      setScenario((s) => {
-        const i = scenarios.findIndex((x) => x.key === s);
-        return scenarios[(i + 1) % scenarios.length].key;
+  // Scrolling steps through the scenarios: a new one every 300px while the
+  // stage is on screen, then the cycle starts over. A click still picks one;
+  // the next step of scroll moves on from there.
+  useGSAP(
+    () => {
+      let last = 0;
+      ScrollTrigger.create({
+        trigger: '[data-stage]',
+        start: 'top 80%',
+        end: 'bottom top',
+        onUpdate: (self) => {
+          const step = Math.floor((self.scroll() - self.start) / 300);
+          if (step === last) return;
+          last = step;
+          setScenario(scenarios[((step % 3) + 3) % 3].key);
+        },
       });
-    }, 4500);
-    return () => {
-      io.disconnect();
-      clearInterval(timer);
-    };
-  }, []);
+    },
+    { scope: root },
+  );
 
   useGSAP(
     () => {
@@ -168,10 +167,7 @@ export function Protected() {
                 key={s.key}
                 type="button"
                 aria-pressed={s.key === scenario}
-                onClick={() => {
-                  auto.current = false;
-                  setScenario(s.key);
-                }}
+                onClick={() => setScenario(s.key)}
                 className={`press rounded-full px-5 py-2.5 font-medium transition-colors ${
                   s.key === scenario
                     ? 'bg-yellow text-navy'

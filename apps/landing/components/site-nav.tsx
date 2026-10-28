@@ -28,7 +28,7 @@ export function SiteNav() {
             href={links.login}
             className="press rounded-full bg-yellow px-7 py-3 text-base font-medium text-navy"
           >
-            Inicio
+            Entrar
           </a>
         </div>
       </nav>

@@ -29,12 +29,13 @@ export function Reveal({ children, className, as: Tag = 'div', stagger }: Reveal
           const { motion } = ctx.conditions!;
           const el = root.current!;
           gsap.from(stagger ? el.children : el, {
-            autoAlpha: 0,
+            // Never fully invisible: blocks start at 40% and fade up from there.
+            opacity: 0.4,
             y: motion ? 24 : 0,
             duration: motion ? 0.6 : 0.4,
             ease: 'power3.out',
             stagger: stagger ? 0.12 : 0,
-            scrollTrigger: { trigger: el, start: 'top 85%', once: true },
+            scrollTrigger: { trigger: el, start: '15% bottom', once: true },
           });
         },
       );
