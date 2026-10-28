@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { kpiDrafts, kpiInputs, repeatedKpi, type KpiDraft } from '@/components/kpi-rows';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api';
 
@@ -43,6 +44,7 @@ export function KpiTemplateTools({
 }) {
   const templates = useKpiTemplates();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState('');
   const [chosen, setChosen] = useState('');
@@ -60,12 +62,18 @@ export function KpiTemplateTools({
     onError: (error) => toast.error(errorMessage(error)),
   });
 
-  function use(id: string) {
+  async function use(id: string) {
     setChosen(id);
     const template = templates.data?.find((item) => item.id === id);
     if (!template) return;
     const typed = kpis.some((kpi) => kpi.name.trim() || kpi.target.trim());
-    if (typed && !window.confirm(`Replace the KPIs below with "${template.name}"?`)) {
+    if (
+      typed &&
+      !(await confirm({
+        title: `Replace the KPIs below with "${template.name}"?`,
+        confirmText: 'Replace',
+      }))
+    ) {
       setChosen('');
       return;
     }
@@ -97,7 +105,7 @@ export function KpiTemplateTools({
           id="kpi-template"
           value={chosen}
           disabled={templates.isLoading || list.length === 0}
-          onChange={(event) => use(event.target.value)}
+          onChange={(event) => void use(event.target.value)}
           className="h-9 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm sm:flex-1"
         >
           <option value="">

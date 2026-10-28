@@ -25,7 +25,9 @@
   },
   "overrides": {
     "deepmerge-ts": "^8.0.2",
+    "multer": "^2.5.0",
     "seroval": "^1.6.8",
-    "seroval-plugins": "^1.6.8"
+    "seroval-plugins": "^1.6.8",
+    "zod": "^4.6.6"
   }
 }

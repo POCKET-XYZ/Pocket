@@ -1,12 +1,16 @@
+import { ServiceUnavailableException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import {
   Account,
+  Address,
   BASE_FEE,
   Keypair,
   Networks,
   Operation,
   TransactionBuilder,
 } from '@stellar/stellar-sdk';
+import * as securityLog from '../../common/security/security-log';
+import type { PlatformTxPolicy } from './platform-tx-policy';
 import { StellarService } from './stellar.service';
 
 const PLATFORM = Keypair.random();
@@ -108,5 +112,66 @@ describe('StellarService.buildUsdcPayment', () => {
     const stellar = withAccount();
     const tx = stellar.parse(await stellar.buildUsdcPayment(USER.publicKey(), FRIEND, '1'));
     expect(tx.memo.type).toBe('none');
+  });
+});
+
+describe('StellarService.signAsPlatform', () => {
+  const DEPLOYER = 'CB2HSK3BTB5LCNDZNBMHELPI3DLS724GKFVFQQOXZBOYU2CIPAR5QDMD';
+  const POLICY: PlatformTxPolicy = {
+    contractId: DEPLOYER,
+    fn: 'tw_new_multi_release_escrow',
+    maxFeeStroops: 20_000_000,
+    checkArgs: () => undefined,
+  };
+  let alerts: jest.SpyInstance;
+
+  /** A platform call to the deployer, asking for this fee in stroops. */
+  function deploy(fee: string): string {
+    return new TransactionBuilder(new Account(PLATFORM.publicKey(), '1'), {
+      fee,
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(
+        Operation.invokeContractFunction({
+          contract: DEPLOYER,
+          function: 'tw_new_multi_release_escrow',
+          args: [new Address(PLATFORM.publicKey()).toScVal()],
+        }),
+      )
+      .setTimeout(60)
+      .build()
+      .toXDR();
+  }
+
+  beforeEach(() => {
+    alerts = jest.spyOn(securityLog, 'securityEvent').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => alerts.mockRestore());
+
+  it('signs a transaction the policy allows', () => {
+    const signed = service().signAsPlatform(deploy('100000'), POLICY);
+    expect(TransactionBuilder.fromXDR(signed, Networks.TESTNET).signatures).toHaveLength(1);
+    expect(alerts).not.toHaveBeenCalled();
+  });
+
+  it('tells the user the step is paused, and the alert why', () => {
+    // 33.5 XLM, what Trustless Work's mainnet deploy asked while its code was archived.
+    let thrown: unknown;
+    try {
+      service().signAsPlatform(deploy('335226754'), POLICY);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(ServiceUnavailableException);
+    expect((thrown as Error).message).toMatch(/Nothing was signed and no money moved/);
+    expect((thrown as Error).message).not.toMatch(/XLM/);
+    expect(alerts).toHaveBeenCalledWith(
+      'platform_refused',
+      expect.objectContaining({
+        reason: expect.stringContaining('the fee of 33.5227 XLM is too high (limit 2 XLM)'),
+      }),
+      'alert',
+    );
   });
 });

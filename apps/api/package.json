@@ -18,7 +18,8 @@
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "db:seed": "prisma db seed",
     "stellar:setup": "bun scripts/setup-platform.ts",
-    "stellar:cosigner": "bun scripts/platform-cosigner.ts"
+    "stellar:cosigner": "bun scripts/platform-cosigner.ts",
+    "stellar:preflight": "bun scripts/preflight.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11",
