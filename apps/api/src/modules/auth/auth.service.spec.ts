@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { PollarClient, PollarSession } from '../pollar/pollar.client';
+import type { PollarWalletsService } from '../pollar/pollar-wallets.service';
 import { AuthService } from './auth.service';
 import type { WalletChallengeService } from './wallet-challenge.service';
 import { MigratedAccountsService } from './migrated-accounts.service';
@@ -60,6 +61,7 @@ describe('AuthService', () => {
 
   let pollar: { enabled: boolean; verifyToken: jest.Mock };
   let migrated: { claim: jest.Mock };
+  let wallets: { activate: jest.Mock };
   let service: AuthService;
 
   beforeEach(() => {
@@ -77,12 +79,14 @@ describe('AuthService', () => {
     };
     pollar = { enabled: true, verifyToken: jest.fn().mockResolvedValue(makeSession()) };
     migrated = { claim: jest.fn().mockResolvedValue(null) };
+    wallets = { activate: jest.fn().mockResolvedValue(true) };
     service = new AuthService(
       prisma as unknown as PrismaService,
       jwt,
       challenges as unknown as WalletChallengeService,
       pollar as unknown as PollarClient,
       migrated as unknown as MigratedAccountsService,
+      wallets as unknown as PollarWalletsService,
     );
   });
 
@@ -279,6 +283,37 @@ describe('AuthService', () => {
 
       const data = prisma.user.update.mock.calls[0][0].data as Partial<User>;
       expect(data.walletFundedAt).toBeUndefined();
+    });
+
+    it('tries again to activate the wallet of an approved account', async () => {
+      const user = makeUser({
+        walletCustody: 'pollar',
+        pollarUserId: 'usr_pollar_1',
+        verificationStatus: 'approved',
+      });
+      prisma.user.findFirst.mockResolvedValue(user);
+      prisma.user.update.mockResolvedValue(user);
+
+      await service.loginWithPollar({ accessToken: 'pollar-token' });
+
+      expect(wallets.activate).toHaveBeenCalledWith(user.id);
+    });
+
+    it.each([
+      ['not approved', { verificationStatus: 'not_submitted' as const }],
+      ['already active', { verificationStatus: 'approved' as const, walletFundedAt: new Date() }],
+    ])('leaves the wallet alone when the account is %s', async (_, overrides) => {
+      const user = makeUser({
+        walletCustody: 'pollar',
+        pollarUserId: 'usr_pollar_1',
+        ...overrides,
+      });
+      prisma.user.findFirst.mockResolvedValue(user);
+      prisma.user.update.mockResolvedValue(user);
+
+      await service.loginWithPollar({ accessToken: 'pollar-token' });
+
+      expect(wallets.activate).not.toHaveBeenCalled();
     });
 
     it('does not let Pollar sign into an account that proved its wallet with a signature', async () => {

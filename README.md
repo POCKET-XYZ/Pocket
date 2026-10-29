@@ -7,7 +7,7 @@ Startups post work and lock the budget in an escrow. Specialists deliver. Funds 
 ## How it works
 
 1. **Sign in with your Stellar wallet.** Freighter, xBull, Lobstr, Albedo and other wallets are supported through Stellar Wallets Kit. No passwords.
-2. **Get verified.** A Pocket manager reviews every startup and specialist before they can use the marketplace.
+2. **Complete the account.** Startups and specialists give their name, country and contact before they can use the marketplace.
 3. **Fill in your profile.** Startups and specialists complete a fixed template, so every profile looks consistent.
 4. **Hire.** A startup picks a specialist and the agreed amount is locked in a USDC escrow on Stellar through [Trustless Work](https://www.trustlesswork.com/).
 5. **Deliver and get paid.** The specialist submits the deliverable, the startup approves it with their wallet and the escrow releases the funds. Disagreements are settled by a Pocket manager.
@@ -20,7 +20,7 @@ Pocket never holds user funds: each party signs their own escrow operations with
 | -------------- | --------------------------------------------------------------------------------------- |
 | **Startup**    | Posts work, funds the escrow and approves deliverables.                                 |
 | **Specialist** | Offers growth, sales or marketing services, delivers the work and receives the payment. |
-| **Manager**    | Pocket's internal team. Verifies users and resolves disputes.                           |
+| **Manager**    | Pocket's internal team. Resolves disputes and follows the metrics.                      |
 
 ## Tech stack
 
@@ -77,7 +77,7 @@ Run the tests with `bun run test` and the linter with `bun run lint`.
 Early MVP, running on Stellar testnet.
 
 - [x] Wallet sign-in (SEP-10 style challenge) with startup and specialist roles
-- [x] Manual verification reviewed by managers
+- [x] Account details that approve the account
 - [x] Standardized startup and specialist profiles, with a public specialist directory
 - [x] Jobs and applications: startups post, specialists apply
 - [x] Contracts and milestones

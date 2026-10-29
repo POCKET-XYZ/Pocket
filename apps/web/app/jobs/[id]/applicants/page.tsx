@@ -116,7 +116,7 @@ function Applicants() {
         </div>
       ) : (
         <EmptyState title="Todavía no hay postulaciones">
-          Los expertos verificados se postularán desde la sección Trabajos.
+          Los expertos se postularán desde la sección Trabajos.
         </EmptyState>
       )}
     </div>

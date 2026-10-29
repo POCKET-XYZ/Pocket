@@ -66,7 +66,7 @@ Users' funds never touch Pocket: every deposit, approval and dispute is signed b
 
 - Row Level Security on every table, with a deny-all policy for Supabase's `anon` and `authenticated` roles, and no grants to them. Only the API, through its own connection, reads or writes.
 - Connections require TLS (`sslmode=require`).
-- Verification reviews and submissions are claimed atomically, like escrow steps.
+- Verification submissions are claimed atomically, like escrow steps.
 
 ## Monitoring
 
@@ -78,7 +78,6 @@ Security events are written as one JSON line each under the `Security` logger. T
 | `denied`, `rate_limited` | Any 401, 403 or 429 |
 | `platform_signed` | The platform key signed a transaction |
 | `platform_refused` | **Alert.** Trustless Work returned a transaction the policy refused |
-| `manager_decision` | A manager approved or rejected a verification |
 | `unrecorded_platform_operation` | **Alert.** The platform account sent a transaction Pocket did not record |
 | `platform_balance_low` | **Alert.** Less than `PLATFORM_MIN_XLM` (20 by default) left for fees |
 | `platform_usdc_trustline_missing` | **Alert.** The platform account cannot receive USDC, so no escrow can be deployed and Pocket's fee cannot be paid. Run `bun run stellar:setup` |

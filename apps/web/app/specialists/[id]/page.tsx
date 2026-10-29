@@ -84,7 +84,7 @@ export default function SpecialistProfilePage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Verificado por Pocket. Miembro desde el {date(profile.data.memberSince)}. Wallet{' '}
+        Miembro de Pocket desde el {date(profile.data.memberSince)}. Wallet{' '}
         {profile.data.wallet}.
       </p>
     </div>

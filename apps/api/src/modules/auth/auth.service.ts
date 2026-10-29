@@ -13,6 +13,7 @@ import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { JwtPayload } from '../../common/types/auth';
 import { PollarClient, type PollarSession } from '../pollar/pollar.client';
+import { PollarWalletsService } from '../pollar/pollar-wallets.service';
 import { LoginDto } from './dto/login.dto';
 import { PollarLoginDto } from './dto/pollar-login.dto';
 import { WalletChallengeService } from './wallet-challenge.service';
@@ -32,6 +33,7 @@ export class AuthService {
     private readonly challenges: WalletChallengeService,
     private readonly pollar: PollarClient,
     private readonly migrated: MigratedAccountsService,
+    private readonly wallets: PollarWalletsService,
   ) {}
 
   /**
@@ -149,6 +151,15 @@ export class AuthService {
       where: { id: existing.id },
       data: pollarFields(session, existing),
     });
+    // The wallet of an approved account that could not be activated then (Pollar
+    // down, funding wallet empty) gets another try on each sign-in.
+    if (
+      user.verificationStatus === 'approved' &&
+      user.walletCustody === 'pollar' &&
+      !user.walletFundedAt
+    ) {
+      await this.wallets.activate(user.id);
+    }
     securityEvent('login', { method: 'pollar', userId: user.id, isNewUser: false });
     return { accessToken: await this.sign(user), user, isNewUser: false };
   }

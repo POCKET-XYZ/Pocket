@@ -145,7 +145,7 @@ describe('MigratedAccountsService', () => {
     );
   });
 
-  it('funds the wallet like a manager approval does', async () => {
+  it('funds the wallet like any approval does', async () => {
     await service.claim(session);
     expect(wallets.activate).toHaveBeenCalledWith(NEW_USER_ID);
   });

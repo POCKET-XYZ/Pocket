@@ -12,8 +12,10 @@ export const UserRole = {
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 /**
- * Manual verification (lightweight KYC/KYB) lifecycle.
- * Nobody operates on the marketplace until a manager approves them.
+ * Account verification lifecycle. Nobody operates on the marketplace until the
+ * account is approved, which happens when its details are completed.
+ * `pending` is unused for now; `rejected` marks accounts turned down before and
+ * managers removed from the team. Either can complete their details again.
  */
 export const VerificationStatus = {
   NotSubmitted: 'not_submitted',

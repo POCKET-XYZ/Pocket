@@ -1,6 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import type { User } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
+import type { NotificationsService } from '../notifications/notifications.service';
+import type { PollarWalletsService } from '../pollar/pollar-wallets.service';
 import type { SubmitVerificationDto } from './dto/submit-verification.dto';
 import { VerificationService } from './verification.service';
 
@@ -34,9 +36,13 @@ describe('VerificationService', () => {
     verificationRequest: { create: jest.Mock; findFirst: jest.Mock };
     $transaction: jest.Mock;
   };
+  let wallets: { activate: jest.Mock };
+  let notifications: { notifyEmail: jest.Mock };
   let service: VerificationService;
 
   beforeEach(() => {
+    wallets = { activate: jest.fn().mockResolvedValue(true) };
+    notifications = { notifyEmail: jest.fn() };
     prisma = {
       user: {
         findUnique: jest.fn(),
@@ -49,23 +55,48 @@ describe('VerificationService', () => {
     prisma.$transaction.mockImplementation((run: (tx: typeof prisma) => unknown) =>
       run(prisma),
     );
-    service = new VerificationService(prisma as unknown as PrismaService);
+    service = new VerificationService(
+      prisma as unknown as PrismaService,
+      wallets as unknown as PollarWalletsService,
+      notifications as unknown as NotificationsService,
+    );
   });
 
-  it('submits a request and moves the user to pending', async () => {
+  it('approves the account as soon as the details arrive', async () => {
     prisma.user.findUnique.mockResolvedValue(makeUser());
-    prisma.verificationRequest.create.mockReturnValue({ id: 'req-1' });
+    prisma.verificationRequest.create.mockReturnValue({
+      id: 'req-1',
+      contactEmail: SUBMISSION.contactEmail,
+    });
 
     const request = await service.submit('user-1', SUBMISSION);
 
-    expect(prisma.verificationRequest.create).toHaveBeenCalledWith({
-      data: { ...SUBMISSION, userId: 'user-1', status: 'pending' },
-    });
     expect(prisma.user.updateMany).toHaveBeenCalledWith({
-      where: { id: 'user-1', verificationStatus: { in: ['not_submitted', 'rejected'] } },
-      data: { verificationStatus: 'pending' },
+      where: { id: 'user-1', verificationStatus: { not: 'approved' } },
+      data: { verificationStatus: 'approved' },
     });
-    expect(request).toEqual({ id: 'req-1' });
+    const { data } = prisma.verificationRequest.create.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(data).toMatchObject({ ...SUBMISSION, userId: 'user-1', status: 'approved' });
+    expect(data.reviewedAt).toBe(data.submittedAt);
+    expect(data.reviewedById).toBeUndefined();
+    expect(request).toMatchObject({ id: 'req-1' });
+  });
+
+  it('activates the wallet and tells the user by email', async () => {
+    prisma.user.findUnique.mockResolvedValue(makeUser());
+    prisma.verificationRequest.create.mockReturnValue({
+      id: 'req-1',
+      contactEmail: SUBMISSION.contactEmail,
+    });
+
+    await service.submit('user-1', SUBMISSION);
+
+    expect(wallets.activate).toHaveBeenCalledWith('user-1');
+    expect(notifications.notifyEmail).toHaveBeenCalledWith(SUBMISSION.contactEmail, {
+      type: 'verification_approved',
+    });
   });
 
   it('requires a company name from startups', async () => {
@@ -83,33 +114,35 @@ describe('VerificationService', () => {
     ).resolves.toEqual({ id: 'req-2' });
   });
 
-  it.each(['pending', 'approved'] as const)(
-    'blocks a second submission when %s',
+  it('blocks a second submission once approved', async () => {
+    prisma.user.findUnique.mockResolvedValue(makeUser({ verificationStatus: 'approved' }));
+    await expect(service.submit('user-1', SUBMISSION)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(prisma.verificationRequest.create).not.toHaveBeenCalled();
+    expect(wallets.activate).not.toHaveBeenCalled();
+  });
+
+  it.each(['rejected', 'pending'] as const)(
+    'approves a user who was %s before',
     async (status) => {
       prisma.user.findUnique.mockResolvedValue(makeUser({ verificationStatus: status }));
-      await expect(service.submit('user-1', SUBMISSION)).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
-      expect(prisma.verificationRequest.create).not.toHaveBeenCalled();
+      prisma.verificationRequest.create.mockReturnValue({ id: 'req-3' });
+      await expect(service.submit('user-1', SUBMISSION)).resolves.toEqual({
+        id: 'req-3',
+      });
     },
   );
 
-  it('lets a rejected user submit again', async () => {
-    prisma.user.findUnique.mockResolvedValue(
-      makeUser({ verificationStatus: 'rejected' }),
-    );
-    prisma.verificationRequest.create.mockReturnValue({ id: 'req-3' });
-    await expect(service.submit('user-1', SUBMISSION)).resolves.toEqual({ id: 'req-3' });
-  });
-
   it('creates one request when the same user submits twice at once', async () => {
-    // Both read the user as not submitted; the other submission moved it first.
+    // Both read the user as not submitted; the other submission approved it first.
     prisma.user.findUnique.mockResolvedValue(makeUser());
     prisma.user.updateMany.mockResolvedValue({ count: 0 });
     await expect(service.submit('user-1', SUBMISSION)).rejects.toThrow(
-      'ya está en revisión',
+      'ya está verificada',
     );
     expect(prisma.verificationRequest.create).not.toHaveBeenCalled();
+    expect(wallets.activate).not.toHaveBeenCalled();
   });
 
   it('never verifies managers', async () => {

@@ -31,7 +31,7 @@ The mainnet values were read from the network: the deployer and code from a depl
    - API keys: `pub_mainnet_` for the web, `sec_mainnet_` for the API.
    - Allowed domains: the mainnet web origin.
    - Tokens & Trustlines: USDC with Circle's mainnet issuer, enabled.
-   - Account Funding: **Deferred** (Pocket activates a wallet when a manager approves it; Immediate would pay for every visitor), a starting XLM balance of 1, and XLM in the funding wallet.
+   - Account Funding: **Deferred** (Pocket activates a wallet when the account completes its details; Immediate would pay for every visitor), a starting XLM balance of 1, and XLM in the funding wallet.
 4. **API environment** (Railway). Everything in `apps/api/.env.example`, with the mainnet values above, and also:
    - `STELLAR_NETWORK=mainnet`, `NODE_ENV=production`, `TRUST_PROXY_HOPS=1`
    - `API_PUBLIC_URL` and `CORS_ORIGINS` for the mainnet URLs

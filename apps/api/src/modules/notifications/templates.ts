@@ -6,7 +6,6 @@
 
 export type NotificationEvent =
   | { type: 'verification_approved' }
-  | { type: 'verification_rejected'; reason: string }
   | { type: 'offer_received'; contractId: string; jobTitle: string }
   | { type: 'terms_accepted'; contractId: string; jobTitle: string }
   | { type: 'escrow_funded'; contractId: string }
@@ -47,21 +46,11 @@ function content(event: NotificationEvent): Content {
   switch (event.type) {
     case 'verification_approved':
       return {
-        subject: 'Tu cuenta de Pocket está verificada',
+        subject: 'Tu cuenta de Pocket está lista',
         paragraphs: [
-          'Buenas noticias: un manager aprobó tu verificación. Ya puedes usar el marketplace.',
+          'Ya completaste tus datos. Puedes usar el marketplace y te avisaremos a este correo de cada novedad.',
         ],
         button: { label: 'Abrir Pocket', path: '/dashboard' },
-      };
-    case 'verification_rejected':
-      return {
-        subject: 'Tu verificación en Pocket necesita cambios',
-        paragraphs: [
-          'Un manager todavía no pudo aprobar tu verificación. Este es el motivo:',
-          event.reason,
-          'Corrige los datos y envíala de nuevo.',
-        ],
-        button: { label: 'Actualizar mi verificación', path: '/verification' },
       };
     case 'offer_received':
       return {

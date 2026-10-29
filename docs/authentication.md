@@ -93,4 +93,4 @@ A successful login returns a JWT (default lifetime 7 days, `JWT_EXPIRES_IN`) wit
 
 Send it as `Authorization: Bearer <token>`. A global guard rejects requests without a valid token, except on routes marked `@Public()` (`/health`, `/auth/*`).
 
-A new account starts with verification status `not_submitted`. Verification by a manager is required before a user can operate on the marketplace.
+A new account starts with verification status `not_submitted`. It must complete its details, which approves it, before it can operate on the marketplace. See [verification](verification.md).

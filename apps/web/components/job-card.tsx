@@ -29,7 +29,7 @@ export function JobCard({
         {job.title}
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">
-        {job.startup?.companyName ?? 'Una startup verificada'}
+        {job.startup?.companyName ?? 'Una startup'}
       </p>
       <p className="mt-3 line-clamp-2 text-sm text-foreground/80">{job.description}</p>
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">

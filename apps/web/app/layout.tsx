@@ -23,7 +23,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: { default: 'Pocket', template: '%s | Pocket' },
   description:
-    'El marketplace donde las startups contratan expertos verificados en growth, ventas y marketing, con cada pago protegido por un contrato en Stellar.',
+    'El marketplace donde las startups contratan expertos en growth, ventas y marketing, con cada pago protegido por un contrato en Stellar.',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

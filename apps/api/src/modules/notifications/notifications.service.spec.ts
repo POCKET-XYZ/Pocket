@@ -131,8 +131,10 @@ describe('templates', () => {
   it('escapes what users typed in the HTML and keeps it readable in the text', () => {
     const email = render(
       {
-        type: 'verification_rejected',
-        reason: '<script>alert("x")</script> & more',
+        type: 'changes_requested',
+        contractId: 'c-1',
+        milestoneTitle: 'Hito 1',
+        feedback: '<script>alert("x")</script> & more',
       },
       'https://pocket.example/',
     );
@@ -141,7 +143,7 @@ describe('templates', () => {
       '&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; more',
     );
     expect(email.text).toContain('<script>alert("x")</script> & more');
-    expect(email.html).toContain('href="https://pocket.example/verification"');
+    expect(email.html).toContain('href="https://pocket.example/contracts/c-1"');
   });
 
   it('keeps a subject on one line whatever the title holds', () => {

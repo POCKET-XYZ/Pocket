@@ -5,7 +5,7 @@ import { links } from '@/lib/links';
 const gains = [
   'El pago ya está guardado antes de que empieces.',
   'Cobras cada entrega aprobada, directo a tu wallet.',
-  'Startups revisadas, con alcance y fecha claros desde el inicio.',
+  'Startups con alcance y fecha claros desde el inicio.',
 ];
 
 export function Experts() {

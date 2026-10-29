@@ -40,7 +40,7 @@ export default function JobsPage() {
     <div>
       <PageHeader
         title="Trabajos abiertos"
-        description="Trabajos publicados por startups verificadas. Cada trabajo se paga con dinero guardado en un contrato."
+        description="Trabajos publicados por startups en Pocket. Cada trabajo se paga con dinero guardado en un contrato."
         actions={
           user?.role === 'startup' ? (
             <Button asChild>

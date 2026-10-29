@@ -5,7 +5,8 @@ import { PollarClient } from './pollar.client';
 /**
  * Deferred funding. A Pollar wallet is created on-chain at login but without its
  * XLM reserve, and the reserve costs Pocket real XLM, so it is paid for when the
- * account becomes real to us: the moment a manager approves the verification.
+ * account becomes real to us: the moment it is approved, when its details are
+ * completed.
  *
  * See https://docs.pollar.xyz/docs/guides/deferred-flow-guide.
  */
@@ -21,8 +22,8 @@ export class PollarWalletsService {
   /**
    * Activate the user's wallet if it is a Pollar one that is still unfunded.
    * Returns whether the wallet ended up active. Never throws: a wallet that
-   * cannot be funded right now must not block the decision a manager just took,
-   * and the next login or approval tries again.
+   * cannot be funded right now must not block the approval, and the owner's
+   * next sign-in tries again.
    */
   async activate(userId: string): Promise<boolean> {
     if (!this.pollar.enabled) return false;

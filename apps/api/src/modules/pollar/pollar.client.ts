@@ -123,8 +123,8 @@ export class PollarClient {
 
   /**
    * Put the XLM reserve on a Pollar wallet. Deferred funding: Pocket pays for a
-   * wallet once a manager approves the account, not for every visitor who logs
-   * in. A wallet that was already funded answers 409, which is the same outcome.
+   * wallet once the account is approved, not for every visitor who logs in. A
+   * wallet that was already funded answers 409, which is the same outcome.
    */
   async fundWallet(stellarAddress: string): Promise<PollarFunding> {
     const { payload, status } = await this.post<{ startingBalance?: string }>(

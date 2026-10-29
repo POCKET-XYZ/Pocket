@@ -8,7 +8,6 @@ export type SecurityEventName =
   | 'rate_limited'
   | 'platform_signed'
   | 'platform_refused'
-  | 'manager_decision'
   | 'unrecorded_platform_operation'
   | 'platform_balance_low'
   | 'platform_usdc_trustline_missing'

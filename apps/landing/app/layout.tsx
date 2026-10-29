@@ -16,7 +16,7 @@ const inter = Inter({
 
 const title = 'Pocket: tu equipo de growth, sin miedo a contratar';
 const description =
-  'Encuentra expertos verificados en marketing, ventas y growth. Solo pagas cuando apruebas el trabajo.';
+  'Encuentra expertos en marketing, ventas y growth. Solo pagas cuando apruebas el trabajo.';
 
 export const metadata: Metadata = {
   // Shared links need absolute image URLs; set NEXT_PUBLIC_SITE_URL per deploy.

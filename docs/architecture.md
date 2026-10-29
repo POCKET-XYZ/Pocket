@@ -4,7 +4,7 @@ Pocket is a marketplace web application with an integration layer to Trustless W
 
 ## Guiding principle
 
-Build the marketplace and its rules; buy everything else. Identity checks start as a manual review by managers, wallets belong to the users whether they brought one or Pollar created it, and escrow is provided as a service.
+Build the marketplace and its rules; buy everything else. Accounts are approved when their details are completed, wallets belong to the users whether they brought one or Pollar created it, and escrow is provided as a service.
 
 ## Components
 
@@ -46,15 +46,15 @@ apps/api/src/
     ├── auth/          Wallet challenge, Pollar sessions and JWT sign-in
     ├── pollar/        Pollar sessions and wallet activation
     ├── users/         The signed-in user
-    ├── verification/  Manual KYC/KYB submissions
-    ├── manager/       Verification queue for managers
+    ├── verification/  Account details, which approve the account
+    ├── manager/       Metrics for managers
     ├── profiles/      Standardized profiles and the specialist directory
     ├── jobs/          Jobs and applications
     ├── contracts/     Contracts, milestones, deliveries, disputes and the escrow flow
     └── stellar/       Horizon, Trustless Work client, on-chain operations and wallet setup
 ```
 
-Every route requires a bearer token unless it is marked `@Public()`. Routes can be restricted to roles with `@Roles()`, and to accounts a manager approved with `@Verified()`.
+Every route requires a bearer token unless it is marked `@Public()`. Routes can be restricted to roles with `@Roles()`, and to approved accounts with `@Verified()`.
 
 ## Shared contracts
 

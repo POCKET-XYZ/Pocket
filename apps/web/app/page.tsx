@@ -1,13 +1,13 @@
-import { BadgeCheckIcon, HandCoinsIcon, LockIcon, ScaleIcon } from 'lucide-react';
+import { HandCoinsIcon, IdCardIcon, LockIcon, ScaleIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Onboarding } from '@/components/onboarding';
 import { Button } from '@/components/ui/button';
 
 const STEPS = [
   {
-    icon: BadgeCheckIcon,
-    title: 'Todos están verificados',
-    text: 'Un manager de Pocket revisa cada startup y cada experto antes de que puedan contratar o postularse.',
+    icon: IdCardIcon,
+    title: 'Sabes con quién trabajas',
+    text: 'Cada startup y cada experto tiene un perfil con lo que hace y sus enlaces. Lo revisas antes de contratar o postularte.',
   },
   {
     icon: LockIcon,
@@ -42,8 +42,8 @@ export default function HomePage() {
           Tu equipo de growth, en tu bolsillo.
         </h1>
         <p className="relative mt-6 max-w-xl text-lg text-off-white/75">
-          Las startups contratan expertos verificados en growth, ventas y marketing. Cada
-          pago espera en un contrato en Stellar hasta que se aprueba el trabajo.
+          Las startups contratan expertos en growth, ventas y marketing. Cada pago espera
+          en un contrato en Stellar hasta que se aprueba el trabajo.
         </p>
         <div className="relative mt-10 flex flex-wrap gap-3">
           <Button

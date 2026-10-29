@@ -42,9 +42,9 @@ A last point that is not specific to Pollar: `send-transaction` answers as soon 
 
 ## Deferred activation
 
-A Stellar account costs XLM: a base reserve plus 0.5 XLM per trustline, paid by the app's funding wallet. Pocket does not pay that for every visitor who logs in. `PollarWalletsService.activate` asks Pollar to fund the wallet when a manager approves the account, which is the moment the account becomes real to Pocket.
+A Stellar account costs XLM: a base reserve plus 0.5 XLM per trustline, paid by the app's funding wallet. Pocket does not pay that for every visitor who logs in. `PollarWalletsService.activate` asks Pollar to fund the wallet when the account is approved, the moment it completes its details. That is when the account becomes real to Pocket.
 
-The call is idempotent: a wallet that is already funded answers `409`, which counts as success. A failure never blocks the approval, and the next approval or login tries again.
+The call is idempotent: a wallet that is already funded answers `409`, which counts as success. A failure never blocks the approval, and each Pollar sign-in of an approved account with an inactive wallet tries again.
 
 ## Configuration
 

@@ -31,7 +31,7 @@ export default function SpecialistsPage() {
     <div>
       <PageHeader
         title="Expertos"
-        description="Un manager de Pocket revisó a cada experto de esta lista. Para contratar a uno, publica un trabajo e invítalo a postularse."
+        description="Expertos con su perfil completo en Pocket. Para contratar a uno, publica un trabajo e invítalo a postularse."
       />
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <CategoryFilter value={category} onChange={setCategory} />

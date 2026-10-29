@@ -10,9 +10,9 @@ import { VERIFIED_KEY } from '../decorators/verified.decorator';
 import type { AuthUser } from '../types/auth';
 
 const MESSAGES = {
-  not_submitted: 'Primero envía tu cuenta a verificación',
-  pending: 'Tu verificación todavía está en revisión',
-  rejected: 'Tu verificación fue rechazada. Corrige tus datos y vuelve a enviarlos',
+  not_submitted: 'Primero completa los datos de tu cuenta',
+  pending: 'Primero completa los datos de tu cuenta',
+  rejected: 'Completa de nuevo los datos de tu cuenta',
 } as const;
 
 @Injectable()

@@ -71,7 +71,7 @@ export default function JobPage() {
                 {data.startup.companyName}
               </Link>
             ) : (
-              'Una startup verificada'
+              'Una startup'
             )
           }
         />
@@ -143,8 +143,8 @@ export default function JobPage() {
                       {data.reportTemplate.fileName}
                       <span className="block text-muted-foreground">
                         {user
-                          ? 'Los expertos verificados pueden descargarla.'
-                          : 'Inicia sesión como experto verificado para descargarla.'}
+                          ? 'Los expertos con su cuenta activa pueden descargarla.'
+                          : 'Inicia sesión como experto para descargarla.'}
                       </span>
                     </p>
                   )}
@@ -277,14 +277,14 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Verifícate para postularte</CardTitle>
+          <CardTitle>Completa tu cuenta para postularte</CardTitle>
           <CardDescription>
-            Un manager de Pocket revisa primero a cada experto.
+            Un formulario corto, sin documentos. Al enviarlo ya puedes postularte.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild className="w-full">
-            <Link href="/verification">Ir a la verificación</Link>
+            <Link href="/verification">Completar mis datos</Link>
           </Button>
         </CardContent>
       </Card>

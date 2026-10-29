@@ -461,8 +461,8 @@ function NewJob() {
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   El archivo que quieres que el experto complete y adjunte a cada entrega,
-                  como tu hoja de cálculo de KPIs. Los expertos verificados pueden
-                  descargarlo junto con el brief.
+                  como tu hoja de cálculo de KPIs. Los expertos con su cuenta activa
+                  pueden descargarlo junto con el brief.
                 </p>
               </div>
               <Field
