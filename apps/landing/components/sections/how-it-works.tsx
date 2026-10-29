@@ -229,7 +229,7 @@ function DemoCard() {
           ))}
           <div>
             <p className="text-sm text-navy/70">
-              Pagado al experto: <span data-p4-count>1.500</span> de 1.500 USDC
+              Liberado: <span data-p4-count>1.500</span> de 1.500 USDC
             </p>
             <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-navy/10">
               <div data-p4-bar className="h-full origin-left bg-celeste" />

@@ -19,7 +19,7 @@ const scenarios = [
     key: 'dispute',
     label: 'No se ponen de acuerdo',
     caption:
-      'Cualquiera abre una disputa y un manager de Pocket decide: todo para uno, todo para el otro o dividirlo.',
+      'Cualquiera de los dos abre una disputa y un manager de Pocket decide: todo para uno, todo para el otro o dividirlo.',
   },
 ] as const;
 type Scenario = (typeof scenarios)[number]['key'];
@@ -30,7 +30,7 @@ const rules = [
     text: 'Un manager revisa a mano cada startup y cada experto.',
   },
   {
-    name: 'Reglas que nadie cambia',
+    name: 'Reglas claras',
     text: 'El dinero solo va al experto o vuelve a la startup.',
   },
   { name: 'Pagas por hito', text: 'Cada parte del trabajo se paga cuando la confirmas.' },
