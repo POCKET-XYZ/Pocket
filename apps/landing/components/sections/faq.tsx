@@ -3,6 +3,9 @@
 import { Reveal } from '@/components/reveal';
 import { ScrollTrigger } from '@/lib/gsap';
 
+// Which network the app the CTAs open runs on; set per deploy, like the links.
+const ON_MAINNET = process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'mainnet';
+
 const questions = [
   {
     q: '¿Necesito saber de cripto?',
@@ -30,7 +33,9 @@ const questions = [
   },
   {
     q: '¿Ya puedo usarlo con dinero real?',
-    a: 'Sí. Pocket funciona en la red principal de Stellar y los pagos son en USDC real. Cada pago queda registrado en la red y lo puedes revisar cuando quieras.',
+    a: ON_MAINNET
+      ? 'Sí. Pocket funciona en la red principal de Stellar y los pagos son en USDC real. Cada pago queda registrado en la red y lo puedes revisar cuando quieras.'
+      : 'Todavía no. Pocket está en piloto y funciona con dinero de prueba en la red de pruebas de Stellar.',
   },
 ];
 
