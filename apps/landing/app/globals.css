@@ -1,0 +1,153 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-fredoka);
+  --color-navy: var(--navy);
+  --color-celeste: var(--celeste);
+  --color-celeste-light: var(--celeste-light);
+  --color-yellow: var(--yellow);
+  --color-off-white: var(--off-white);
+  --color-muted: var(--muted);
+}
+
+/* Pocket brand, the same tokens as apps/web/app/globals.css. */
+:root {
+  --navy: #0f2e52;
+  --celeste: #86d4e6;
+  --celeste-light: #b8e7f1;
+  --yellow: #ffd23f;
+  --off-white: #f4fbfd;
+  /* Off-white at 70% on navy: the "muted" secondary text tone. */
+  --muted: rgb(244 251 253 / 0.7);
+}
+
+/* Press feedback for buttons: a slight shrink while held. */
+@utility press {
+  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* Type scale from the brand guide. */
+@utility headline-xl {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: clamp(2.5rem, 8vw, 6rem);
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+@utility headline-lg {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: clamp(2rem, 5vw, 3.75rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+@utility headline-md {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  line-height: 1.15;
+}
+@utility eyebrow {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* The page's content column. */
+@utility wrap {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 72rem;
+  padding-inline: 1rem;
+  @variant md {
+    padding-inline: 1.5rem;
+  }
+}
+
+@layer base {
+  html {
+    @apply bg-navy font-sans text-off-white;
+  }
+  :focus-visible {
+    outline: 2px solid var(--celeste);
+    outline-offset: 3px;
+  }
+}
+
+/* The hero intro is plain CSS so it starts with the first paint instead of
+   waiting for JavaScript (waiting held the LCP back by 2.7s on mobile). */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.intro-mask {
+  display: inline-block;
+  overflow: clip;
+  /* Room for descenders (g, p) inside the clip. */
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+  vertical-align: top;
+}
+.intro-word {
+  display: inline-block;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .intro-word {
+    animation: intro-rise 0.8s var(--ease-out) both;
+    animation-delay: calc(var(--i) * 70ms + 100ms);
+  }
+  .intro-fade {
+    animation: intro-fade 0.6s var(--ease-out) both;
+    animation-delay: var(--delay, 0ms);
+  }
+  .intro-pop {
+    animation: intro-pop 0.9s var(--ease-pop) 300ms both;
+  }
+}
+/* Reduced motion keeps a gentle fade and drops every movement. */
+@media (prefers-reduced-motion: reduce) {
+  .intro-fade,
+  .intro-pop {
+    animation: intro-opacity 0.4s ease both;
+  }
+}
+@keyframes intro-rise {
+  from {
+    transform: translateY(110%);
+  }
+}
+@keyframes intro-fade {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+@keyframes intro-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-8deg);
+  }
+}
+@keyframes intro-opacity {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Lenis: the classes it sets on <html> while it drives the scroll. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis:not(.lenis-autoToggle).lenis-stopped {
+  overflow: clip;
+}
+.lenis [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
