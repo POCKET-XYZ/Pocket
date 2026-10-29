@@ -6,7 +6,7 @@ import { ScrollTrigger } from '@/lib/gsap';
 const questions = [
   {
     q: '¿Necesito saber de cripto?',
-    a: 'No. Entras con tu correo y un código, y Pocket crea tu wallet por detrás. Pagas y cobras en USDC, un dólar digital que siempre vale 1 dólar.',
+    a: 'No. Entras con tu correo o con Google, y Pocket crea tu wallet por detrás. Pagas y cobras en USDC, un dólar digital: cada USDC equivale a 1 dólar.',
   },
   {
     q: '¿Qué pasa si no me gusta el trabajo?',
@@ -14,11 +14,11 @@ const questions = [
   },
   {
     q: '¿Pocket puede quedarse con mi dinero?',
-    a: 'No. El pago se guarda en un contrato en Stellar. Pocket solo puede enviarlo a la wallet del experto que quedó fijada al contratar, y solo cuando tú apruebas.',
+    a: 'No. El pago queda guardado en un contrato en Stellar y solo sale de dos formas: al experto cuando apruebas su entrega, o repartido entre los dos si un manager resuelve una disputa. Pocket solo firma pagos a la startup o al experto de ese contrato, y lo único que recibe es su comisión.',
   },
   {
     q: '¿Cuánto cobra Pocket?',
-    a: 'Un 1 % de cada pago que se libera al experto.',
+    a: 'Un 1 % de cada pago que sale del contrato. Trustless Work, la tecnología del contrato, cobra además un 0,3 %. Las dos comisiones se descuentan del pago, así que el experto recibe el 98,7 %.',
   },
   {
     q: '¿Quién revisa a los expertos y a las startups?',
@@ -30,7 +30,7 @@ const questions = [
   },
   {
     q: '¿Ya puedo usarlo con dinero real?',
-    a: 'Todavía no. Pocket está en piloto y funciona con dinero de prueba en la red de pruebas de Stellar.',
+    a: 'Sí. Pocket funciona en la red principal de Stellar y los pagos son en USDC real. Cada pago queda registrado en la red y lo puedes revisar cuando quieras.',
   },
 ];
 
