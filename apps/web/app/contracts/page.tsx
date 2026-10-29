@@ -22,13 +22,14 @@ export default function ContractsPage() {
 function nextStep(contract: ContractSummary, user: User): string | null {
   const isStartup = user.role === 'startup';
   if (contract.status === 'awaiting_specialist')
-    return isStartup ? null : 'Review the terms';
-  if (contract.status === 'awaiting_funding') return isStartup ? 'Fund the escrow' : null;
+    return isStartup ? null : 'Revisa los términos';
+  if (contract.status === 'awaiting_funding')
+    return isStartup ? 'Deposita el pago en el contrato' : null;
   if (contract.status !== 'active') return null;
   const statuses = contract.milestones.map((milestone) => milestone.status);
-  if (isStartup && statuses.includes('delivered')) return 'Review a delivery';
+  if (isStartup && statuses.includes('delivered')) return 'Revisa una entrega';
   if (!isStartup && statuses.some((s) => s === 'pending' || s === 'changes_requested'))
-    return 'Deliver a milestone';
+    return 'Entrega un hito';
   return null;
 }
 
@@ -41,8 +42,8 @@ function Contracts({ user }: { user: User }) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Contracts"
-        description="Each contract has its own escrow on Stellar, released milestone by milestone."
+        title="Contratos"
+        description="El pago de cada contrato queda guardado aparte en Stellar y se libera hito por hito."
       />
       <UsdcStatus user={user} />
       {contracts.isLoading ? (
@@ -68,7 +69,7 @@ function Contracts({ user }: { user: User }) {
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {CATEGORY_LABELS[contract.job.category]} · {usdc(contract.amount)} ·
-                    started {date(contract.createdAt)}
+                    iniciado el {date(contract.createdAt)}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -78,7 +79,7 @@ function Contracts({ user }: { user: User }) {
                     </span>
                   ) : null}
                   <span className="text-sm text-muted-foreground">
-                    {paid}/{contract.milestones.length} milestones done
+                    {paid}/{contract.milestones.length} hitos completados
                   </span>
                   <StatusBadge status={contract.status} />
                 </div>
@@ -87,10 +88,10 @@ function Contracts({ user }: { user: User }) {
           })}
         </div>
       ) : (
-        <EmptyState title="No contracts yet">
+        <EmptyState title="Todavía no tienes contratos">
           {user.role === 'startup'
-            ? 'Hire an applicant from one of your jobs.'
-            : 'Apply to jobs; when a startup picks you, the terms show up here.'}
+            ? 'Contrata a un postulante desde uno de tus trabajos.'
+            : 'Postúlate a trabajos; cuando una startup te elija, los términos aparecerán aquí.'}
         </EmptyState>
       )}
     </div>

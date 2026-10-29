@@ -164,7 +164,7 @@ describe('StellarService.signAsPlatform', () => {
       thrown = error;
     }
     expect(thrown).toBeInstanceOf(ServiceUnavailableException);
-    expect((thrown as Error).message).toMatch(/Nothing was signed and no money moved/);
+    expect((thrown as Error).message).toMatch(/No se firmó nada y no se movió dinero/);
     expect((thrown as Error).message).not.toMatch(/XLM/);
     expect(alerts).toHaveBeenCalledWith(
       'platform_refused',

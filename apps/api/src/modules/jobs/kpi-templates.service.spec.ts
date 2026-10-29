@@ -126,7 +126,7 @@ describe('KpiTemplatesService', () => {
           name: `Template ${i}`,
         })),
       );
-      await expect(service.create(startup, body)).rejects.toThrow('up to 20 templates');
+      await expect(service.create(startup, body)).rejects.toThrow('hasta 20 plantillas');
       expect(prisma.kpiTemplate.create).not.toHaveBeenCalled();
     });
 
@@ -156,7 +156,7 @@ describe('KpiTemplatesService', () => {
           ...body,
           kpis: [{ name: 'Qualified leads' }, { name: 'qualified LEADS' }],
         }),
-      ).rejects.toThrow('listed twice');
+      ).rejects.toThrow('aparece dos veces');
     });
 
     it.each([

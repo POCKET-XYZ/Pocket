@@ -16,16 +16,18 @@ export class VerificationService {
     const user = await this.getUser(userId);
 
     if (user.role === 'manager') {
-      throw new BadRequestException('Managers do not go through verification');
+      throw new BadRequestException('Los managers no pasan por la verificación');
     }
     if (user.verificationStatus === 'pending') {
-      throw new BadRequestException('Your verification is already under review');
+      throw new BadRequestException('Tu verificación ya está en revisión');
     }
     if (user.verificationStatus === 'approved') {
-      throw new BadRequestException('Your account is already verified');
+      throw new BadRequestException('Tu cuenta ya está verificada');
     }
     if (user.role === 'startup' && !dto.companyName) {
-      throw new BadRequestException('companyName is required for startups');
+      throw new BadRequestException(
+        'El nombre de la empresa es obligatorio para las startups',
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -36,7 +38,7 @@ export class VerificationService {
         data: { verificationStatus: 'pending' },
       });
       if (claimed.count !== 1) {
-        throw new BadRequestException('Your verification is already under review');
+        throw new BadRequestException('Tu verificación ya está en revisión');
       }
       return tx.verificationRequest.create({
         data: {
@@ -58,7 +60,7 @@ export class VerificationService {
 
   private async getUser(userId: string): Promise<User> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('No encontramos al usuario');
     return user;
   }
 }

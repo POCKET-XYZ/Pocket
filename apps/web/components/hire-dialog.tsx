@@ -114,7 +114,7 @@ export function HireDialog({
         },
       }),
     onSuccess: async (contract) => {
-      toast.success('Terms sent. The specialist has to accept them.');
+      toast.success('Condiciones enviadas. El experto tiene que aceptarlas.');
       // The job is no longer open and the application is taken.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['jobs'] }),
@@ -135,7 +135,7 @@ export function HireDialog({
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (remaining !== BigInt(0)) {
-      toast.error(`The milestones must add up to ${usdc(applicant.price)}`);
+      toast.error(`Los hitos deben sumar ${usdc(applicant.price)}`);
       return;
     }
     hire.mutate();
@@ -144,29 +144,29 @@ export function HireDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Hire</Button>
+        <Button>Contratar</Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            Hire {applicant.specialist?.displayName ?? 'this specialist'}
+            Contratar a {applicant.specialist?.displayName ?? 'este experto'}
           </DialogTitle>
           <DialogDescription>
-            Split the agreed {usdc(applicant.price)} into milestones. Each one is paid
-            when you approve its delivery.
+            Divide los {usdc(applicant.price)} acordados en hitos. Cada uno se paga
+            cuando apruebas su entrega.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
           {milestones.map((milestone, index) => (
             <div key={index} className="space-y-3 rounded-xl border border-border p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-navy">Milestone {index + 1}</p>
+                <p className="text-sm font-semibold text-navy">Hito {index + 1}</p>
                 {milestones.length > 1 ? (
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Remove milestone"
+                    aria-label="Quitar hito"
                     onClick={() =>
                       setMilestones((current) => current.filter((_, i) => i !== index))
                     }
@@ -176,7 +176,7 @@ export function HireDialog({
                 ) : null}
               </div>
               <Input
-                placeholder="Title"
+                placeholder="Título"
                 required
                 minLength={3}
                 maxLength={120}
@@ -184,7 +184,7 @@ export function HireDialog({
                 onChange={(event) => update(index, { title: event.target.value })}
               />
               <Textarea
-                placeholder="What has to be delivered"
+                placeholder="Qué se tiene que entregar"
                 required
                 minLength={10}
                 maxLength={2000}
@@ -193,7 +193,7 @@ export function HireDialog({
                 onChange={(event) => update(index, { description: event.target.value })}
               />
               <Textarea
-                placeholder="What it has to meet to be approved"
+                placeholder="Qué debe cumplir para aprobarse"
                 maxLength={2000}
                 rows={2}
                 value={milestone.acceptanceCriteria}
@@ -204,7 +204,7 @@ export function HireDialog({
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   type="number"
-                  placeholder="Amount (USDC)"
+                  placeholder="Monto (USDC)"
                   required
                   min={1}
                   step="any"
@@ -239,7 +239,7 @@ export function HireDialog({
                 ])
               }
             >
-              <PlusIcon /> Add milestone
+              <PlusIcon /> Agregar hito
             </Button>
           ) : null}
 
@@ -250,30 +250,30 @@ export function HireDialog({
             )}
           >
             {remaining === BigInt(0)
-              ? 'The milestones add up to the agreed price.'
+              ? 'Los hitos suman el precio acordado.'
               : remaining > BigInt(0)
-                ? `${usdc(fromUnits(remaining))} still to assign.`
-                : `${usdc(fromUnits(-remaining))} over the agreed price.`}
+                ? `Faltan ${usdc(fromUnits(remaining))} por asignar.`
+                : `${usdc(fromUnits(-remaining))} por encima del precio acordado.`}
           </p>
 
           {remaining === BigInt(0) ? (
             <p className="rounded-lg bg-celeste-light/40 px-3 py-2 text-sm text-muted-foreground">
-              You fund the full {usdc(applicant.price)}. Trustless Work, which runs the
-              escrow, keeps {TRUSTLESS_WORK_FEE_PERCENT}% of each payment and Pocket{' '}
-              {POCKET_FEE_PERCENT}%, so {applicant.specialist?.displayName ?? 'the specialist'}{' '}
-              receives{' '}
+              Tú depositas el total de {usdc(applicant.price)}. Trustless Work, que opera el
+              contrato, se queda con el {TRUSTLESS_WORK_FEE_PERCENT}% de cada pago y Pocket
+              con el {POCKET_FEE_PERCENT}%, así que{' '}
+              {applicant.specialist?.displayName ?? 'el experto'} recibe{' '}
               {usdc(
                 totalAfterFees(
                   milestones.map((milestone) => fromUnits(toUnits(milestone.amount))),
                 ),
               )}{' '}
-              in total.
+              en total.
             </p>
           ) : null}
 
           <DialogFooter>
             <Button type="submit" disabled={hire.isPending || remaining !== BigInt(0)}>
-              {hire.isPending ? 'Sending...' : 'Send terms'}
+              {hire.isPending ? 'Enviando...' : 'Enviar condiciones'}
             </Button>
           </DialogFooter>
         </form>

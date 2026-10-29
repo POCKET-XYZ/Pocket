@@ -26,11 +26,13 @@ export function cleanKpis(
   const seen = new Set<string>();
   for (const kpi of kpis) {
     if (kpi.name.length < 2) {
-      throw new BadRequestException('Give every KPI a name of at least 2 characters');
+      throw new BadRequestException(
+        'Cada KPI necesita un nombre de al menos 2 caracteres',
+      );
     }
     const key = kpi.name.toLowerCase();
     if (seen.has(key)) {
-      throw new BadRequestException(`"${kpi.name}" is listed twice as a KPI`);
+      throw new BadRequestException(`"${kpi.name}" aparece dos veces como KPI`);
     }
     seen.add(key);
   }

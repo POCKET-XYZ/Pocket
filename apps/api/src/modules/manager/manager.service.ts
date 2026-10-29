@@ -46,7 +46,7 @@ export class ManagerService {
   /** Reject a pending request. The note explains what to fix before resubmitting. */
   async reject(requestId: string, managerId: string, note?: string) {
     if (!note?.trim()) {
-      throw new BadRequestException('A rejection must explain why');
+      throw new BadRequestException('Para rechazar, explica el motivo');
     }
     const reviewed = await this.decide(requestId, managerId, 'rejected', note);
     // The request is not approved, so the address comes from it directly.
@@ -66,9 +66,9 @@ export class ManagerService {
     const request = await this.prisma.verificationRequest.findUnique({
       where: { id: requestId },
     });
-    if (!request) throw new NotFoundException('Verification request not found');
+    if (!request) throw new NotFoundException('No encontramos la solicitud de verificación');
     if (request.status !== 'pending') {
-      throw new BadRequestException('This request was already reviewed');
+      throw new BadRequestException('Esta solicitud ya fue revisada');
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -84,7 +84,7 @@ export class ManagerService {
         },
       });
       if (claimed.count !== 1) {
-        throw new BadRequestException('This request was already reviewed');
+        throw new BadRequestException('Esta solicitud ya fue revisada');
       }
       await tx.user.update({
         where: { id: request.userId },

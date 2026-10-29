@@ -39,7 +39,7 @@ export default function StartupProfilePage() {
 
   if (profile.isLoading || isSpecialist) return <Loading />;
   if (profile.error || !profile.data)
-    return <ErrorAlert error={profile.error} title="Startup not found" />;
+    return <ErrorAlert error={profile.error} title="No se encontró la startup" />;
 
   const startup = profile.data.profile as StartupProfile;
   return (
@@ -76,7 +76,7 @@ export default function StartupProfilePage() {
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>What they are looking for</CardTitle>
+            <CardTitle>Qué están buscando</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="whitespace-pre-line text-sm leading-relaxed">
@@ -87,25 +87,25 @@ export default function StartupProfilePage() {
 
         <Card className="h-fit">
           <CardHeader>
-            <CardTitle>The company</CardTitle>
+            <CardTitle>La empresa</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="space-y-4">
               {startup.legalName ? (
-                <Detail label="Registered name">{startup.legalName}</Detail>
+                <Detail label="Razón social">{startup.legalName}</Detail>
               ) : null}
               {startup.contactRole ? (
-                <Detail label="Who signs the contracts">{startup.contactRole}</Detail>
+                <Detail label="Quién firma los contratos">{startup.contactRole}</Detail>
               ) : null}
               {startup.location ? (
-                <Detail label="Based in">
+                <Detail label="Ubicación">
                   <span className="inline-flex items-center gap-1.5">
                     <MapPinIcon className="size-3.5" /> {startup.location}
                   </span>
                 </Detail>
               ) : null}
               {startup.languages.length > 0 ? (
-                <Detail label="Works in">
+                <Detail label="Idiomas de trabajo">
                   <span className="inline-flex items-center gap-1.5">
                     <LanguagesIcon className="size-3.5" /> {startup.languages.join(', ')}
                   </span>
@@ -117,7 +117,9 @@ export default function StartupProfilePage() {
       </div>
 
       <section>
-        <h2 className="mb-3 font-heading text-xl font-semibold text-navy">Open jobs</h2>
+        <h2 className="mb-3 font-heading text-xl font-semibold text-navy">
+          Trabajos abiertos
+        </h2>
         {jobs.isLoading ? (
           <Loading />
         ) : jobs.data && jobs.data.items.length > 0 ? (
@@ -127,14 +129,14 @@ export default function StartupProfilePage() {
             ))}
           </div>
         ) : (
-          <EmptyState title="No open jobs right now">
-            Check back later, or browse the rest of the board.
+          <EmptyState title="Sin trabajos abiertos por ahora">
+            Vuelve más tarde o mira los demás trabajos abiertos.
           </EmptyState>
         )}
       </section>
 
       <p className="text-xs text-muted-foreground">
-        Verified by Pocket. Member since {date(profile.data.memberSince)}. Wallet{' '}
+        Verificada por Pocket. Miembro desde el {date(profile.data.memberSince)}. Wallet{' '}
         {profile.data.wallet}.
       </p>
     </div>

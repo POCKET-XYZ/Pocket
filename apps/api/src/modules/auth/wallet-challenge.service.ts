@@ -39,7 +39,7 @@ export class WalletChallengeService {
     stellarAddress: string,
   ): Promise<{ xdr: string; networkPassphrase: string }> {
     if (!isValidPublicKey(stellarAddress)) {
-      throw new BadRequestException('Invalid Stellar address');
+      throw new BadRequestException('La dirección de Stellar no es válida');
     }
 
     const nonce = randomBytes(24).toString('hex');

@@ -36,14 +36,14 @@ function Applicants() {
   return (
     <div>
       <PageHeader
-        title="Applicants"
+        title="Postulantes"
         description={
           <>
-            For{' '}
+            Para{' '}
             <Link href={`/jobs/${id}`} className="underline">
               {job.data?.title}
             </Link>
-            , budget {usdc(job.data?.budget)}.
+            , con un presupuesto de {usdc(job.data?.budget)}.
           </>
         }
       />
@@ -58,9 +58,9 @@ function Applicants() {
                       href={`/specialists/${applicant.specialistId}`}
                       className="font-heading text-lg font-semibold text-navy hover:underline"
                     >
-                      {applicant.specialist?.displayName ?? 'Specialist'}
+                      {applicant.specialist?.displayName ?? 'Experto'}
                     </Link>
-                    <StatusBadge status={applicant.status} />
+                    <StatusBadge feminine status={applicant.status} />
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {applicant.specialist?.headline}
@@ -68,7 +68,7 @@ function Applicants() {
                   <p className="mt-3 whitespace-pre-line text-sm">{applicant.approach}</p>
                   {applicant.similarWorkUrl ? (
                     <p className="mt-2 text-sm">
-                      <span className="text-muted-foreground">Similar work: </span>
+                      <span className="text-muted-foreground">Trabajo parecido: </span>
                       <a
                         href={safeHref(applicant.similarWorkUrl)}
                         target="_blank"
@@ -84,12 +84,12 @@ function Applicants() {
                   ) : null}
                   {applicant.needsFromStartup ? (
                     <p className="mt-2 whitespace-pre-line text-sm">
-                      <span className="text-muted-foreground">Needs from you: </span>
+                      <span className="text-muted-foreground">Necesita de ti: </span>
                       {applicant.needsFromStartup}
                     </p>
                   ) : null}
                   <p className="mt-3 text-xs text-muted-foreground">
-                    Applied {dateTime(applicant.createdAt)}
+                    Se postuló el {dateTime(applicant.createdAt)}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-start gap-2 md:items-end">
@@ -97,14 +97,15 @@ function Applicants() {
                     {usdc(applicant.price)}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {applicant.estimatedDays} days
+                    {applicant.estimatedDays}{' '}
+                    {applicant.estimatedDays === 1 ? 'día' : 'días'}
                   </p>
                   {canHire && applicant.status === 'submitted' ? (
                     <HireDialog applicant={applicant} job={job.data} />
                   ) : applicant.contract ? (
                     <Button asChild size="sm" variant="outline">
                       <Link href={`/contracts/${applicant.contract.id}`}>
-                        View contract
+                        Ver contrato
                       </Link>
                     </Button>
                   ) : null}
@@ -114,8 +115,8 @@ function Applicants() {
           ))}
         </div>
       ) : (
-        <EmptyState title="No applications yet">
-          Verified specialists will apply from the job board.
+        <EmptyState title="Todavía no hay postulaciones">
+          Los expertos verificados se postularán desde la sección Trabajos.
         </EmptyState>
       )}
     </div>

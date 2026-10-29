@@ -57,12 +57,14 @@ export const WalletButton = () => {
                 <span className="font-medium">{walletName}</span>
               </div>
               <span className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground">
-                {process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'mainnet' ? 'Mainnet' : 'Testnet'}
+                {process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'mainnet'
+                  ? 'Red principal'
+                  : 'Red de pruebas'}
               </span>
             </div>
 
             <div className="p-3 rounded-lg bg-muted/50 border">
-              <p className="text-xs text-muted-foreground mb-1">Address</p>
+              <p className="text-xs text-muted-foreground mb-1">Dirección</p>
               <p className="font-mono text-sm break-all">{walletAddress}</p>
             </div>
           </div>
@@ -79,12 +81,12 @@ export const WalletButton = () => {
                 {copied ? (
                   <>
                     <Check className="h-4 w-4 mr-2" />
-                    Copied
+                    Copiada
                   </>
                 ) : (
                   <>
                     <Copy className="h-4 w-4 mr-2" />
-                    Copy
+                    Copiar
                   </>
                 )}
               </Button>
@@ -95,7 +97,7 @@ export const WalletButton = () => {
                 className="flex-1 text-destructive hover:text-destructive bg-transparent cursor-pointer"
               >
                 <LogOut className="h-4 w-4 mr-2" />
-                Disconnect
+                Desconectar
               </Button>
             </div>
           </div>
@@ -110,7 +112,7 @@ export const WalletButton = () => {
       onClick={handleConnect}
     >
       <Wallet className="h-4 w-4" />
-      Connect Wallet
+      Conectar wallet
     </Button>
   );
 };

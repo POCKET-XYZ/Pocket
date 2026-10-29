@@ -33,7 +33,7 @@ export function UsdcHistoryCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <HistoryIcon className="size-5 text-navy" />
-          Recent USDC payments
+          Pagos recientes en USDC
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -46,15 +46,15 @@ export function UsdcHistoryCard() {
         ) : payments.isError ? (
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">
-              Could not load your payments from the Stellar network.
+              No se pudieron cargar tus pagos desde la red Stellar.
             </p>
             <Button variant="outline" size="sm" onClick={() => void payments.refetch()}>
-              Try again
+              Intentar de nuevo
             </Button>
           </div>
         ) : payments.data.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No USDC payments yet. What you receive and send shows up here.
+            Todavía no hay pagos en USDC. Lo que recibas y envíes aparecerá aquí.
           </p>
         ) : (
           <ul className="divide-y">
@@ -90,11 +90,11 @@ function PaymentRow({ payment }: { payment: UsdcPaymentRecord }) {
             // Contract addresses here are Pocket escrows: a payment for a
             // milestone, a dispute share, or a deposit into an escrow.
             <span title={payment.counterparty}>
-              {incoming ? 'Payment from an escrow' : 'Deposit into an escrow'}
+              {incoming ? 'Pago desde un contrato' : 'Depósito en un contrato'}
             </span>
           ) : (
             <>
-              {incoming ? 'Received from' : 'Sent to'}{' '}
+              {incoming ? 'Recibido de' : 'Enviado a'}{' '}
               <span className="font-mono" title={payment.counterparty}>
                 {shortAddress(payment.counterparty)}
               </span>
@@ -116,8 +116,8 @@ function PaymentRow({ payment }: { payment: UsdcPaymentRecord }) {
         target="_blank"
         rel="noreferrer"
         className="shrink-0 text-muted-foreground hover:text-navy"
-        aria-label="View on the explorer"
-        title="View on the explorer"
+        aria-label="Ver en el explorador"
+        title="Ver en el explorador"
       >
         <ExternalLinkIcon className="size-4" />
       </a>

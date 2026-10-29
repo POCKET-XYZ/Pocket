@@ -23,12 +23,12 @@ export function useKpiTemplates() {
 
 /** Why these rows cannot be saved as a template, or null. */
 export function kpiRowsProblem(kpis: KpiDraft[]): string | null {
-  if (kpis.length === 0) return 'Add at least one KPI first';
+  if (kpis.length === 0) return 'Primero agrega al menos un KPI';
   if (kpis.some((kpi) => kpi.name.trim().length < 2)) {
-    return 'Give every KPI a name of at least 2 characters';
+    return 'Cada KPI necesita un nombre de al menos 2 caracteres';
   }
   const repeated = repeatedKpi(kpis);
-  return repeated ? `"${repeated}" is listed twice as a KPI` : null;
+  return repeated ? `"${repeated}" aparece dos veces como KPI` : null;
 }
 
 /**
@@ -53,7 +53,7 @@ export function KpiTemplateTools({
     mutationFn: (body: KpiTemplateInput) =>
       api<KpiTemplate>('/kpi-templates', { method: 'POST', body }),
     onSuccess: async (template) => {
-      toast.success(`Saved as "${template.name}"`);
+      toast.success(`Guardada como "${template.name}"`);
       setNaming(false);
       setName('');
       setChosen(template.id);
@@ -70,8 +70,8 @@ export function KpiTemplateTools({
     if (
       typed &&
       !(await confirm({
-        title: `Replace the KPIs below with "${template.name}"?`,
-        confirmText: 'Replace',
+        title: `¿Reemplazar los KPIs de abajo por los de "${template.name}"?`,
+        confirmText: 'Reemplazar',
       }))
     ) {
       setChosen('');
@@ -87,7 +87,7 @@ export function KpiTemplateTools({
       return;
     }
     if (name.trim().length < 2) {
-      toast.error('Give the template a name of at least 2 characters');
+      toast.error('La plantilla necesita un nombre de al menos 2 caracteres');
       return;
     }
     save.mutate({ name: name.trim(), kpis: kpiInputs(kpis) });
@@ -99,7 +99,7 @@ export function KpiTemplateTools({
     <div className="space-y-2 rounded-xl border border-dashed border-border p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <label htmlFor="kpi-template" className="text-sm font-medium text-navy">
-          Use a template
+          Usar una plantilla
         </label>
         <select
           id="kpi-template"
@@ -110,10 +110,10 @@ export function KpiTemplateTools({
         >
           <option value="">
             {templates.isLoading
-              ? 'Loading your templates...'
+              ? 'Cargando tus plantillas...'
               : list.length === 0
-                ? 'No saved templates yet'
-                : 'Choose a template'}
+                ? 'Todavía no tienes plantillas guardadas'
+                : 'Elige una plantilla'}
           </option>
           {list.map((template) => (
             <option key={template.id} value={template.id}>
@@ -129,7 +129,7 @@ export function KpiTemplateTools({
             disabled={kpis.length === 0}
             onClick={() => setNaming(true)}
           >
-            Save as template
+            Guardar como plantilla
           </Button>
         ) : null}
       </div>
@@ -138,8 +138,8 @@ export function KpiTemplateTools({
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             autoFocus
-            aria-label="Template name"
-            placeholder="Template name, e.g. Outbound campaign"
+            aria-label="Nombre de la plantilla"
+            placeholder="Nombre de la plantilla, por ejemplo Campaña outbound"
             maxLength={80}
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -154,7 +154,7 @@ export function KpiTemplateTools({
           />
           <div className="flex gap-2">
             <Button type="button" disabled={save.isPending} onClick={onSave}>
-              {save.isPending ? 'Saving...' : 'Save'}
+              {save.isPending ? 'Guardando...' : 'Guardar'}
             </Button>
             <Button
               type="button"
@@ -164,7 +164,7 @@ export function KpiTemplateTools({
                 setName('');
               }}
             >
-              Cancel
+              Cancelar
             </Button>
           </div>
         </div>
@@ -172,12 +172,12 @@ export function KpiTemplateTools({
 
       <p className="text-xs text-muted-foreground">
         {templates.error
-          ? `Your templates could not be loaded: ${errorMessage(templates.error)}`
+          ? `No se pudieron cargar tus plantillas: ${errorMessage(templates.error)}`
           : list.length === 0
-            ? 'Save the KPIs below to reuse them on your next job.'
-            : 'A template fills the rows below; you can still change them for this job.'}{' '}
+            ? 'Guarda los KPIs de abajo para reutilizarlos en tu próximo trabajo.'
+            : 'Una plantilla completa las filas de abajo; igual puedes cambiarlas para este trabajo.'}{' '}
         <Link href="/profile/kpi-templates" className="underline">
-          Manage templates
+          Administrar plantillas
         </Link>
       </p>
     </div>

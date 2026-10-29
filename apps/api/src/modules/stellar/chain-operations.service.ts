@@ -28,7 +28,7 @@ const MIN_CONFIRM_WAIT_MS = 5_000;
 
 export class NotYetConfirmed extends ServiceUnavailableException {
   constructor() {
-    super('The network has not confirmed the transaction yet. Refresh in a minute');
+    super('La red todavía no confirmó la transacción. Actualiza la página en un minuto');
   }
 }
 
@@ -67,7 +67,7 @@ export class ChainOperationsService {
     const expiry = timeBoundProblem(this.stellar.parse(xdr));
     if (expiry) {
       throw new ServiceUnavailableException(
-        `Trustless Work built a transaction Pocket will not ask you to sign: ${expiry}. Try again`,
+        `Trustless Work armó una transacción que Pocket no te va a pedir firmar (${expiry}). Intenta de nuevo`,
       );
     }
     const txHash = this.stellar.hashOf(xdr);
@@ -89,7 +89,7 @@ export class ChainOperationsService {
         existing.contractId !== (scope.contractId ?? null) ||
         existing.milestoneId !== (scope.milestoneId ?? null)
       ) {
-        throw new ConflictException('This transaction was already used. Try again');
+        throw new ConflictException('Esta transacción ya se usó. Intenta de nuevo');
       }
       operation = existing;
     }
@@ -115,7 +115,7 @@ export class ChainOperationsService {
     try {
       txHash = this.stellar.hashOf(signedXdr);
     } catch {
-      throw new BadRequestException('signedXdr is not a valid transaction');
+      throw new BadRequestException('La transacción firmada no es válida');
     }
 
     const claimed = await this.claim(scope, () =>
@@ -133,7 +133,7 @@ export class ChainOperationsService {
     );
     if (claimed.count !== 1) {
       throw new BadRequestException(
-        'This transaction was not prepared for you, or it was already submitted',
+        'Esta transacción no se preparó para ti o ya se envió',
       );
     }
 
@@ -222,7 +222,7 @@ export class ChainOperationsService {
       );
       const reason = all.map((code) => REFUSALS[code]).find(Boolean) ?? all.join(', ');
       throw new BadRequestException(
-        `The network refused the transaction: ${reason}. Nothing moved`,
+        `La red rechazó la transacción: ${reason}. No se movió nada`,
         { cause: error },
       );
     }
@@ -242,7 +242,7 @@ export class ChainOperationsService {
     );
     if (status === 'FAILED') {
       throw new BadRequestException(
-        'The transaction failed on the network, so nothing moved. Try again',
+        'La transacción falló en la red, así que no se movió nada. Intenta de nuevo',
       );
     }
     if (status === 'NOT_FOUND') throw new NotYetConfirmed();
@@ -325,12 +325,24 @@ async function claimStep<T>(scope: OperationScope, claim: () => Promise<T>): Pro
   } catch (error) {
     if (isUniqueViolation(error)) {
       throw new ConflictException(
-        `This ${scope.kind} step was already sent. Refresh to see where it stands`,
+        `El paso de ${STEP_NAMES[scope.kind]} ya se envió. Actualiza la página para ver en qué va`,
       );
     }
     throw error;
   }
 }
+
+/** Each step, as a user reads it in a message. */
+const STEP_NAMES: Record<ChainOperationKind, string> = {
+  trustline: 'habilitar USDC',
+  deploy: 'crear el contrato',
+  fund: 'depositar el pago',
+  approve: 'aprobar el hito',
+  release: 'liberar el pago',
+  dispute: 'abrir la disputa',
+  resolve: 'resolver la disputa',
+  payment: 'enviar el pago',
+};
 
 /** What Horizon answers when it refuses a transaction. */
 interface HorizonErrorResponse {
@@ -340,17 +352,17 @@ interface HorizonErrorResponse {
 
 /** Horizon result codes a user can act on, in words. */
 const REFUSALS: Record<string, string> = {
-  op_underfunded: 'your wallet does not have enough USDC',
-  op_no_trust: 'the destination does not accept USDC',
-  op_not_authorized: 'the destination is not allowed to hold USDC',
-  op_no_destination: 'the destination account does not exist on Stellar',
-  op_line_full: 'the destination cannot hold that much USDC',
-  op_src_no_trust: 'your wallet does not trust USDC',
-  tx_bad_seq: 'your wallet sent another transaction in the meantime, try again',
-  tx_too_late: 'it expired before it was sent, try again',
-  tx_insufficient_balance: 'your wallet does not have enough XLM for the network fee',
-  tx_insufficient_fee: 'the network fee was too low, try again',
-  tx_bad_auth: 'it was not signed by your wallet',
+  op_underfunded: 'tu wallet no tiene suficiente USDC',
+  op_no_trust: 'el destino no acepta USDC',
+  op_not_authorized: 'el destino no tiene permitido tener USDC',
+  op_no_destination: 'la cuenta de destino no existe en Stellar',
+  op_line_full: 'el destino no puede recibir tanto USDC',
+  op_src_no_trust: 'tu wallet no tiene USDC habilitado',
+  tx_bad_seq: 'tu wallet envió otra transacción mientras tanto, intenta de nuevo',
+  tx_too_late: 'venció antes de enviarse, intenta de nuevo',
+  tx_insufficient_balance: 'tu wallet no tiene suficiente XLM para la comisión de red',
+  tx_insufficient_fee: 'la comisión de red fue muy baja, intenta de nuevo',
+  tx_bad_auth: 'no la firmó tu wallet',
 };
 
 function isUniqueViolation(error: unknown): boolean {

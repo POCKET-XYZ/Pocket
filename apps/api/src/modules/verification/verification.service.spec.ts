@@ -107,7 +107,7 @@ describe('VerificationService', () => {
     prisma.user.findUnique.mockResolvedValue(makeUser());
     prisma.user.updateMany.mockResolvedValue({ count: 0 });
     await expect(service.submit('user-1', SUBMISSION)).rejects.toThrow(
-      'already under review',
+      'ya está en revisión',
     );
     expect(prisma.verificationRequest.create).not.toHaveBeenCalled();
   });

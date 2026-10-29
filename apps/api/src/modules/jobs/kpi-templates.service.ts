@@ -50,7 +50,7 @@ export class KpiTemplatesService {
     });
     if (existing.length >= MAX_KPI_TEMPLATES) {
       throw new BadRequestException(
-        `You can keep up to ${MAX_KPI_TEMPLATES} templates. Delete one you no longer use first`,
+        `Puedes guardar hasta ${MAX_KPI_TEMPLATES} plantillas. Primero elimina una que ya no uses`,
       );
     }
     assertNameFree(existing, name);
@@ -91,14 +91,14 @@ export class KpiTemplatesService {
     const template = await this.prisma.kpiTemplate.findFirst({
       where: { id: templateId, startupId: user.sub },
     });
-    if (!template) throw new NotFoundException('Template not found');
+    if (!template) throw new NotFoundException('No encontramos la plantilla');
     return template;
   }
 }
 
 function assertStartup(user: AuthUser): void {
   if (user.role !== 'startup') {
-    throw new ForbiddenException('Only startups keep KPI templates');
+    throw new ForbiddenException('Solo las startups pueden guardar plantillas de KPI');
   }
 }
 
@@ -106,11 +106,13 @@ function assertStartup(user: AuthUser): void {
 function clean(dto: KpiTemplateDto): { name: string; kpis: CleanKpi[] } {
   const name = dto.name.trim();
   if (name.length < 2) {
-    throw new BadRequestException('Give the template a name of at least 2 characters');
+    throw new BadRequestException(
+      'La plantilla necesita un nombre de al menos 2 caracteres',
+    );
   }
   const kpis = cleanKpis(dto.kpis);
   if (kpis.length === 0) {
-    throw new BadRequestException('A template needs at least one KPI');
+    throw new BadRequestException('La plantilla necesita al menos un KPI');
   }
   return { name, kpis };
 }
@@ -119,7 +121,7 @@ function clean(dto: KpiTemplateDto): { name: string; kpis: CleanKpi[] } {
 function assertNameFree(others: { name: string }[], name: string): void {
   const key = name.toLowerCase();
   if (others.some((other) => other.name.toLowerCase() === key)) {
-    throw new ConflictException(`You already have a template called "${name}"`);
+    throw new ConflictException(`Ya tienes una plantilla llamada "${name}"`);
   }
 }
 

@@ -46,7 +46,9 @@ export class JobMilestoneDto {
   amount: number;
 
   @ApiProperty({ example: '2026-10-15' })
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'dueDate must be a date as YYYY-MM-DD' })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'dueDate debe ser una fecha con el formato AAAA-MM-DD',
+  })
   @IsDateString({ strict: true })
   dueDate: string;
 }
@@ -106,7 +108,9 @@ export class CreateJobDto {
     description: 'Calendar date the work is needed by',
     example: '2026-10-31',
   })
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'deadline must be a date as YYYY-MM-DD' })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'La fecha límite debe tener el formato AAAA-MM-DD',
+  })
   @IsDateString({ strict: true })
   deadline: string;
 

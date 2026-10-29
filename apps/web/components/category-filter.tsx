@@ -27,7 +27,7 @@ export function CategoryFilter({
               : 'border-border bg-card text-navy hover:border-celeste',
           )}
         >
-          {option ? CATEGORY_LABELS[option] : 'All'}
+          {option ? CATEGORY_LABELS[option] : 'Todas'}
         </button>
       ))}
     </div>

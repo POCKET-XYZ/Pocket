@@ -131,8 +131,8 @@ describe('WalletService payments', () => {
   });
 
   it.each([
-    ['does not exist', 'no_account', 'does not exist'],
-    ['does not trust USDC', 'no_trustline', 'does not accept USDC'],
+    ['does not exist', 'no_account', 'todavía no existe'],
+    ['does not trust USDC', 'no_trustline', 'todavía no acepta USDC'],
   ])('refuses a destination that %s', async (_label, readiness, message) => {
     stellar.usdcReadiness.mockResolvedValue(readiness);
     await expect(

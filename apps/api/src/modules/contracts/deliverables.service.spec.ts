@@ -137,14 +137,14 @@ describe('DeliverablesService', () => {
       prisma.deliverable.findUnique.mockResolvedValue(deliverable('approved'));
       await expect(
         service.saveAttachment(specialist, 'deliverable-2', file(PDF)),
-      ).rejects.toThrow('already answered');
+      ).rejects.toThrow('ya respondió a esta entrega');
     });
 
     it('refuses an older version of the delivery', async () => {
       prisma.deliverable.findFirst.mockResolvedValue({ id: 'deliverable-3' });
       await expect(
         service.saveAttachment(specialist, 'deliverable-2', file(PDF)),
-      ).rejects.toThrow('latest delivery');
+      ).rejects.toThrow('Solo la última entrega');
     });
 
     it('answers not found for a delivery that does not exist', async () => {

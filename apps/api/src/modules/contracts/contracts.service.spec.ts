@@ -461,7 +461,7 @@ describe('ContractsService', () => {
 
     it('does not prepare a second deposit when the escrow already holds the money', async () => {
       escrow.isFunded.mockResolvedValue(true);
-      await expect(service.prepareFund(startup, 'contract-1')).rejects.toThrow('already funded');
+      await expect(service.prepareFund(startup, 'contract-1')).rejects.toThrow('ya está depositado');
       expect(prisma.contract.updateMany).toHaveBeenCalledWith({
         where: { id: 'contract-1', status: 'awaiting_funding' },
         data: expect.objectContaining({ status: 'active' }),
@@ -471,7 +471,7 @@ describe('ContractsService', () => {
 
     it('does not prepare a second deposit while one is being confirmed', async () => {
       prisma.chainOperation.findUnique.mockResolvedValue({ txHash: 'pending' });
-      await expect(service.prepareFund(startup, 'contract-1')).rejects.toThrow('being confirmed');
+      await expect(service.prepareFund(startup, 'contract-1')).rejects.toThrow('todavía está confirmando tu depósito');
       expect(escrow.prepareFund).not.toHaveBeenCalled();
     });
 
@@ -486,7 +486,7 @@ describe('ContractsService', () => {
       await expect(service.prepareFund(startup, 'contract-1')).rejects.toMatchObject({
         response: {
           code: 'INSUFFICIENT_USDC',
-          message: expect.stringContaining('Add 50.5 USDC'),
+          message: expect.stringContaining('Agrega 50.5 USDC'),
         },
       });
       expect(escrow.prepareFund).not.toHaveBeenCalled();

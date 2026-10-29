@@ -62,7 +62,7 @@ export function ReportTemplateButton({
       <DownloadIcon />
       <span className="min-w-0">
         <span className="block font-semibold text-navy">
-          {loading ? 'Downloading...' : 'Report template'}
+          {loading ? 'Descargando...' : 'Plantilla de reporte'}
         </span>
         <span className="block whitespace-normal break-all text-xs font-normal text-muted-foreground">
           {template.fileName} · {FILE_KINDS[template.contentType].label},{' '}
@@ -99,7 +99,9 @@ export function ReportTemplateManager({
     setBusy('upload');
     try {
       await uploadReportTemplate(jobId, file);
-      toast.success(template ? 'Report template replaced' : 'Report template attached');
+      toast.success(
+        template ? 'Plantilla de reporte reemplazada' : 'Plantilla de reporte adjuntada',
+      );
       await refresh();
     } catch (error) {
       toast.error(errorMessage(error));
@@ -110,15 +112,15 @@ export function ReportTemplateManager({
 
   async function onRemove() {
     const confirmed = await confirm({
-      title: 'Remove the report template from this job?',
-      confirmText: 'Remove',
+      title: '¿Quitar la plantilla de reporte de este trabajo?',
+      confirmText: 'Quitar',
       destructive: true,
     });
     if (!confirmed) return;
     setBusy('remove');
     try {
       await api(`/jobs/${jobId}/report-template`, { method: 'DELETE' });
-      toast.success('Report template removed');
+      toast.success('Plantilla de reporte quitada');
       await refresh();
     } catch (error) {
       toast.error(errorMessage(error));
@@ -133,10 +135,10 @@ export function ReportTemplateManager({
         <Button type="button" variant="outline" disabled={busy !== null} asChild>
           <label className="cursor-pointer">
             {busy === 'upload'
-              ? 'Uploading...'
+              ? 'Subiendo...'
               : template
-                ? 'Replace report template'
-                : 'Attach a report template'}
+                ? 'Reemplazar plantilla de reporte'
+                : 'Adjuntar una plantilla de reporte'}
             <input
               type="file"
               accept={REPORT_ACCEPT}
@@ -153,14 +155,14 @@ export function ReportTemplateManager({
             disabled={busy !== null}
             onClick={() => void onRemove()}
           >
-            {busy === 'remove' ? 'Removing...' : 'Remove'}
+            {busy === 'remove' ? 'Quitando...' : 'Quitar'}
           </Button>
         ) : null}
       </div>
       <p className="text-xs text-muted-foreground">
-        The file you want the specialist to fill in and attach to each delivery: Excel
-        (.xlsx), Word (.docx), PDF or CSV, up to 5 MB. Verified specialists can download
-        it.
+        El archivo que quieres que el experto complete y adjunte a cada entrega: Excel
+        (.xlsx), Word (.docx), PDF o CSV, de hasta 5 MB. Los expertos verificados pueden
+        descargarlo.
       </p>
     </div>
   );

@@ -85,18 +85,20 @@ export class PollarClient {
       token,
     });
     if (status === 401 || status === 403) {
-      throw new UnauthorizedException('Your Pollar session expired. Sign in again');
+      throw new UnauthorizedException(
+        'Tu sesión de Pollar venció. Inicia sesión de nuevo',
+      );
     }
     if (status >= 400 || !payload.success) {
       this.logger.error(`/v1/tokens/verify -> ${status}: ${payload.code ?? 'no code'}`);
-      throw new ServiceUnavailableException('Pollar could not confirm your session');
+      throw new ServiceUnavailableException('Pollar no pudo confirmar tu sesión');
     }
 
     const content = payload.content ?? {};
     const address = content.wallet?.address ?? content.wallet?.publicKey;
     if (!content.userId || !address) {
       throw new ServiceUnavailableException(
-        'Pollar confirmed the session but sent no wallet',
+        'Pollar confirmó la sesión, pero no envió ninguna wallet',
       );
     }
     const network = content.network?.toLowerCase() ?? this.network;
@@ -105,7 +107,7 @@ export class PollarClient {
       // point at different chains: the addresses would not even exist.
       this.logger.error(`Pollar session is on ${network}, Pocket is on ${this.network}`);
       throw new ServiceUnavailableException(
-        'Pollar and Pocket are configured for different Stellar networks',
+        'Pollar y Pocket están configurados para redes de Stellar distintas',
       );
     }
     return {
@@ -162,7 +164,9 @@ export class PollarClient {
       });
     } catch (error) {
       this.logger.error(`POST ${path} failed: ${(error as Error).message}`);
-      throw new ServiceUnavailableException('Pollar is unreachable right now');
+      throw new ServiceUnavailableException(
+        'No pudimos conectar con Pollar en este momento',
+      );
     }
     // An error body can be empty, and a failed parse must not hide the status.
     const parsed: unknown = await response.json().catch(() => ({}));

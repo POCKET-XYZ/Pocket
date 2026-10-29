@@ -104,7 +104,7 @@ export function SendUsdcCard({ user }: { user: User }) {
     onSuccess: async (result) => {
       setReview(null);
       setDraft(EMPTY);
-      toast.success(`Sent ${fromUnits(toUnits(result.amount))} USDC`, {
+      toast.success(`Enviaste ${fromUnits(toUnits(result.amount))} USDC`, {
         description: (
           <a
             className="underline"
@@ -112,7 +112,7 @@ export function SendUsdcCard({ user }: { user: User }) {
             target="_blank"
             rel="noreferrer"
           >
-            View the transaction on the explorer
+            Ver la transacción en el explorador
           </a>
         ),
       });
@@ -150,19 +150,19 @@ export function SendUsdcCard({ user }: { user: User }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <SendIcon className="size-5 text-navy" />
-          Send USDC
+          Enviar USDC
         </CardTitle>
       </CardHeader>
       <CardContent>
         {!status.data ? (
-          <p className="text-sm text-muted-foreground">Checking your wallet...</p>
+          <p className="text-sm text-muted-foreground">Revisando tu wallet...</p>
         ) : !ready ? (
           <p className="text-sm text-muted-foreground">
-            Enable USDC in your wallet before sending it.
+            Habilita USDC en tu wallet antes de enviarlo.
           </p>
         ) : (
           <form className="space-y-4" onSubmit={onSubmit} noValidate>
-            <Field label="Send to" htmlFor="send-destination" required>
+            <Field label="Enviar a" htmlFor="send-destination" required>
               <Input
                 id="send-destination"
                 value={draft.destination}
@@ -176,7 +176,7 @@ export function SendUsdcCard({ user }: { user: User }) {
               <Problem text={problems.destination} />
             </Field>
 
-            <Field label="Amount (USDC)" htmlFor="send-amount" required>
+            <Field label="Monto (USDC)" htmlFor="send-amount" required>
               <div className="flex gap-2">
                 <Input
                   id="send-amount"
@@ -195,16 +195,16 @@ export function SendUsdcCard({ user }: { user: User }) {
                     spendable && update('amount', fromUnits(toUnits(spendable)))
                   }
                 >
-                  Max
+                  Máximo
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Available: {spendable ? fromUnits(toUnits(spendable)) : '0'} USDC
+                Disponible: {spendable ? fromUnits(toUnits(spendable)) : '0'} USDC
               </p>
               <Problem text={problems.amount} />
             </Field>
 
-            <Field label="Memo (optional)" htmlFor="send-memo">
+            <Field label="Memo (opcional)" htmlFor="send-memo">
               <Input
                 id="send-memo"
                 value={draft.memo}
@@ -213,21 +213,21 @@ export function SendUsdcCard({ user }: { user: User }) {
                 aria-invalid={Boolean(problems.memo)}
               />
               <p className="text-xs text-muted-foreground">
-                Sending to an exchange? It usually requires a memo to know the deposit is
-                yours. Copy it exactly as the exchange shows it. Up to {MAX_MEMO_BYTES}{' '}
-                bytes ({memoSize}/{MAX_MEMO_BYTES}).
+                ¿Envías a un exchange? Suele pedir un memo para saber que el depósito es
+                tuyo. Cópialo exactamente como lo muestra el exchange. Hasta{' '}
+                {MAX_MEMO_BYTES} bytes ({memoSize}/{MAX_MEMO_BYTES}).
               </p>
               <Problem text={problems.memo} />
             </Field>
 
             <p className="text-xs text-muted-foreground">
               {user.walletCustody === 'pollar'
-                ? 'The network fee is covered for you.'
-                : 'Your wallet pays a small network fee in XLM.'}
+                ? 'No tienes que pagar la comisión de red.'
+                : 'Tu wallet paga una pequeña comisión de red en XLM.'}
             </p>
 
             <Button type="submit" disabled={busy}>
-              {prepare.isPending ? 'Checking...' : 'Review payment'}
+              {prepare.isPending ? 'Revisando...' : 'Revisar pago'}
             </Button>
           </form>
         )}
@@ -242,21 +242,21 @@ export function SendUsdcCard({ user }: { user: User }) {
         {review ? (
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Confirm payment</DialogTitle>
+              <DialogTitle>Confirmar pago</DialogTitle>
               <DialogDescription>
-                Check every detail. You will approve it in your wallet next.
+                Revisa cada dato. Después lo aprobarás en tu wallet.
               </DialogDescription>
             </DialogHeader>
 
             <dl className="space-y-3 text-sm">
               <div>
-                <dt className="text-muted-foreground">Amount</dt>
+                <dt className="text-muted-foreground">Monto</dt>
                 <dd className="font-heading text-2xl font-semibold text-navy">
                   {review.draft.amount} USDC
                 </dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">To</dt>
+                <dt className="text-muted-foreground">Para</dt>
                 <dd className="font-mono font-medium">
                   {shortAddress(review.draft.destination)}
                 </dd>
@@ -270,7 +270,7 @@ export function SendUsdcCard({ user }: { user: User }) {
                   {review.draft.memo ? (
                     <span className="font-mono">{review.draft.memo}</span>
                   ) : (
-                    'No memo'
+                    'Sin memo'
                   )}
                 </dd>
               </div>
@@ -279,8 +279,8 @@ export function SendUsdcCard({ user }: { user: User }) {
             <div className="flex gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
               <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-destructive" />
               <p>
-                This payment cannot be undone. USDC sent to a wrong address, or to an
-                exchange without its memo, may be lost for good.
+                Este pago no se puede deshacer. Los USDC enviados a una dirección
+                equivocada, o a un exchange sin su memo, pueden perderse para siempre.
               </p>
             </div>
 
@@ -290,10 +290,10 @@ export function SendUsdcCard({ user }: { user: User }) {
                 disabled={send.isPending}
                 onClick={() => setReview(null)}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button disabled={send.isPending} onClick={() => send.mutate(review)}>
-                {send.isPending ? 'Sending...' : `Send ${review.draft.amount} USDC`}
+                {send.isPending ? 'Enviando...' : `Enviar ${review.draft.amount} USDC`}
               </Button>
             </DialogFooter>
           </DialogContent>

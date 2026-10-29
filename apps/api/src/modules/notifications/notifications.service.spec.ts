@@ -69,7 +69,7 @@ describe('NotificationsService', () => {
     expect(body).toEqual({
       from: 'Pocket <hola@example.com>',
       to: ['ana@example.com'],
-      subject: 'You were paid 100.5 USDC',
+      subject: 'Te pagaron 100.5 USDC',
       html: expect.stringContaining('https://pocket.example/contracts/contract-1'),
       text: expect.stringContaining('https://pocket.example/contracts/contract-1'),
     });
@@ -149,7 +149,7 @@ describe('templates', () => {
       { type: 'offer_received', contractId: 'c-1', jobTitle: 'Growth\nplan' },
       'https://pocket.example',
     );
-    expect(email.subject).toBe('New offer: Growth plan');
+    expect(email.subject).toBe('Nueva oferta: Growth plan');
   });
 
   it('escapes every HTML special character', () => {

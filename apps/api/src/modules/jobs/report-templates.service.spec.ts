@@ -143,7 +143,7 @@ describe('ReportTemplatesService', () => {
       async (status) => {
         job(status);
         await expect(service.save(owner, 'job-1', upload(xlsx()))).rejects.toThrow(
-          'while the job is open',
+          'mientras el trabajo está abierto',
         );
       },
     );

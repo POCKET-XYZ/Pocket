@@ -29,11 +29,11 @@ function Dashboard({ user }: { user: User }) {
     <div className="space-y-6">
       <Onboarding className="mb-6" />
       <PageHeader
-        title="My jobs"
-        description="Everything you posted, from open to completed."
+        title="Mis trabajos"
+        description="Todo lo que publicaste, desde los abiertos hasta los completados."
         actions={
           <Button asChild>
-            <Link href="/jobs/new">Post a job</Link>
+            <Link href="/jobs/new">Publicar un trabajo</Link>
           </Button>
         }
       />
@@ -55,9 +55,9 @@ function Dashboard({ user }: { user: User }) {
           ))}
         </div>
       ) : (
-        <EmptyState title="You have not posted a job yet">
+        <EmptyState title="Todavía no publicaste ningún trabajo">
           <Button asChild className="mt-4">
-            <Link href="/jobs/new">Post your first job</Link>
+            <Link href="/jobs/new">Publica tu primer trabajo</Link>
           </Button>
         </EmptyState>
       )}

@@ -55,7 +55,7 @@ function Profile({ user }: { user: User }) {
     mutationFn: (body: Record<string, unknown>) =>
       api(`/profiles/me/${user.role}`, { method: 'PUT', body }),
     onSuccess: async () => {
-      toast.success('Profile saved');
+      toast.success('Perfil guardado');
       await queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -65,8 +65,8 @@ function Profile({ user }: { user: User }) {
     <div className="mx-auto max-w-2xl">
       <Onboarding className="mb-6" />
       <PageHeader
-        title="My profile"
-        description="Every profile follows the same template, so startups and specialists can compare them at a glance."
+        title="Mi perfil"
+        description="Todos los perfiles siguen la misma estructura, así startups y expertos pueden compararlos de un vistazo."
       />
       {profile.isLoading || verification.isLoading ? (
         <Loading />
@@ -96,14 +96,14 @@ function Profile({ user }: { user: User }) {
           <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-heading text-lg font-semibold text-navy">
-                KPI templates
+                Plantillas de KPI
               </h2>
               <p className="text-sm text-muted-foreground">
-                Sets of KPIs you reuse when posting jobs.
+                Conjuntos de KPIs que reutilizas al publicar trabajos.
               </p>
             </div>
             <Button asChild variant="outline">
-              <Link href="/profile/kpi-templates">Manage KPI templates</Link>
+              <Link href="/profile/kpi-templates">Administrar plantillas de KPI</Link>
             </Button>
           </CardContent>
         </Card>
@@ -129,7 +129,7 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <Field label="Company name" htmlFor="companyName" required>
+      <Field label="Nombre de la empresa" htmlFor="companyName" required>
         <Input
           id="companyName"
           name="companyName"
@@ -139,7 +139,7 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
           defaultValue={initial?.companyName ?? known?.companyName ?? ''}
         />
       </Field>
-      <Field label="What you do, in one sentence" htmlFor="oneLiner" required>
+      <Field label="Qué hace tu startup, en una frase" htmlFor="oneLiner" required>
         <Input
           id="oneLiner"
           name="oneLiner"
@@ -153,7 +153,7 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
         <Field
           label="Sector"
           htmlFor="sector"
-          hint="For example Fintech or Health."
+          hint="Por ejemplo Fintech o Salud."
           required
         >
           <Input
@@ -165,7 +165,7 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
             defaultValue={initial?.sector}
           />
         </Field>
-        <Field label="Stage" htmlFor="stage" required>
+        <Field label="Etapa" htmlFor="stage" required>
           <select
             id="stage"
             name="stage"
@@ -174,7 +174,7 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
             className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
           >
             <option value="" disabled>
-              Choose a stage
+              Elige una etapa
             </option>
             {Object.values(StartupStage).map((stage) => (
               <option key={stage} value={stage}>
@@ -184,7 +184,7 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
           </select>
         </Field>
       </div>
-      <Field label="What you need help with right now" htmlFor="lookingFor" required>
+      <Field label="En qué necesitas ayuda ahora" htmlFor="lookingFor" required>
         <Textarea
           id="lookingFor"
           name="lookingFor"
@@ -194,13 +194,13 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
           defaultValue={initial?.lookingFor}
         />
       </Field>
-      <Field label="Website" htmlFor="websiteUrl">
+      <Field label="Sitio web" htmlFor="websiteUrl">
         <Input
           id="websiteUrl"
           name="websiteUrl"
           type="url"
           pattern="https://.+"
-          title="A link that starts with https://"
+          title="Un enlace que empiece con https://"
           placeholder="https://"
           defaultValue={initial?.websiteUrl ?? known?.websiteUrl ?? ''}
         />
@@ -208,9 +208,9 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
       <LogoField initial={initial?.logoUrl} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
-          label="Registered name"
+          label="Razón social"
           htmlFor="legalName"
-          hint="If it differs from the trading name."
+          hint="Si es distinta del nombre comercial."
         >
           <Input
             id="legalName"
@@ -220,9 +220,9 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
           />
         </Field>
         <Field
-          label="Your role"
+          label="Tu cargo"
           htmlFor="contactRole"
-          hint="Who signs the contracts, e.g. Co-founder."
+          hint="El cargo de quien firma los contratos, por ejemplo Cofundadora."
         >
           <Input
             id="contactRole"
@@ -233,15 +233,15 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Working languages" htmlFor="languages" hint="Separated by commas.">
+        <Field label="Idiomas de trabajo" htmlFor="languages" hint="Separados por comas.">
           <Input
             id="languages"
             name="languages"
-            placeholder="Spanish, English"
+            placeholder="Español, inglés"
             defaultValue={initial?.languages.join(', ')}
           />
         </Field>
-        <Field label="Location" htmlFor="location">
+        <Field label="Ubicación" htmlFor="location">
           <Input
             id="location"
             name="location"
@@ -252,7 +252,7 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
         </Field>
       </div>
       <Button type="submit" size="lg" disabled={saving}>
-        {saving ? 'Saving...' : 'Save profile'}
+        {saving ? 'Guardando...' : 'Guardar perfil'}
       </Button>
     </form>
   );
@@ -279,11 +279,11 @@ function LogoField({ initial }: { initial: string | null | undefined }) {
     event.target.value = '';
     if (!file) return;
     if (!LOGO_TYPES.includes(file.type)) {
-      toast.error('Upload your logo as a PNG, JPEG or WebP image');
+      toast.error('Sube tu logo como imagen PNG, JPEG o WebP');
       return;
     }
     if (file.size > MAX_LOGO_BYTES) {
-      toast.error('The file is too big. The limit is 1 MB');
+      toast.error('El archivo es demasiado grande. El límite es de 1 MB');
       return;
     }
     setBusy('upload');
@@ -295,7 +295,7 @@ function LogoField({ initial }: { initial: string | null | undefined }) {
         '1 MB',
       );
       setLogoUrl(url);
-      toast.success('Logo uploaded');
+      toast.success('Logo subido');
       await queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
     } catch (error) {
       toast.error(errorMessage(error));
@@ -306,9 +306,9 @@ function LogoField({ initial }: { initial: string | null | undefined }) {
 
   async function onRemove() {
     const confirmed = await confirm({
-      title: 'Remove your logo?',
-      description: 'Your profile shows your initial instead.',
-      confirmText: 'Remove',
+      title: '¿Quitar tu logo?',
+      description: 'Tu perfil mostrará tu inicial en su lugar.',
+      confirmText: 'Quitar',
       destructive: true,
     });
     if (!confirmed) return;
@@ -316,7 +316,7 @@ function LogoField({ initial }: { initial: string | null | undefined }) {
     try {
       await api('/profiles/me/logo', { method: 'DELETE' });
       setLogoUrl('');
-      toast.success('Logo removed');
+      toast.success('Logo quitado');
       await queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
     } catch (error) {
       toast.error(errorMessage(error));
@@ -329,7 +329,7 @@ function LogoField({ initial }: { initial: string | null | undefined }) {
     <Field
       label="Logo"
       htmlFor="logoUrl"
-      hint="Paste a link to it, or upload a PNG, JPEG or WebP image up to 1 MB. Whichever you set last is the one shown."
+      hint="Pega un enlace o sube una imagen PNG, JPEG o WebP de hasta 1 MB. Se muestra lo último que pongas."
     >
       <div className="flex items-start gap-3">
         <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-white">
@@ -337,13 +337,13 @@ function LogoField({ initial }: { initial: string | null | undefined }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={preview}
-              alt="Your logo"
+              alt="Tu logo"
               className="size-full object-contain"
               onError={() => setBroken(preview)}
             />
           ) : (
             <span className="px-1 text-center text-xs text-muted-foreground">
-              {logoUrl ? 'Cannot show it' : 'No logo'}
+              {logoUrl ? 'No se puede mostrar' : 'Sin logo'}
             </span>
           )}
         </div>
@@ -353,7 +353,7 @@ function LogoField({ initial }: { initial: string | null | undefined }) {
             name="logoUrl"
             type="url"
             pattern="https://.+"
-            title="A link that starts with https://"
+            title="Un enlace que empiece con https://"
             placeholder="https://"
             value={logoUrl}
             onChange={(event) => setLogoUrl(event.target.value)}
@@ -361,7 +361,7 @@ function LogoField({ initial }: { initial: string | null | undefined }) {
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" disabled={busy !== null} asChild>
               <label className="cursor-pointer whitespace-nowrap">
-                {busy === 'upload' ? 'Uploading...' : 'Upload image'}
+                {busy === 'upload' ? 'Subiendo...' : 'Subir imagen'}
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
@@ -378,7 +378,7 @@ function LogoField({ initial }: { initial: string | null | undefined }) {
                 disabled={busy !== null}
                 onClick={() => void onRemove()}
               >
-                {busy === 'remove' ? 'Removing...' : 'Remove logo'}
+                {busy === 'remove' ? 'Quitando...' : 'Quitar logo'}
               </Button>
             ) : null}
           </div>
@@ -410,11 +410,11 @@ function SpecialistForm({
     event.target.value = '';
     if (!file) return;
     if (file.type !== 'application/pdf') {
-      toast.error('Upload your CV as a PDF');
+      toast.error('Sube tu CV en PDF');
       return;
     }
     if (file.size > 4 * 1024 * 1024) {
-      toast.error('The file is too big. The limit is 4 MB');
+      toast.error('El archivo es demasiado grande. El límite es de 4 MB');
       return;
     }
     setUploadingCv(true);
@@ -425,7 +425,7 @@ function SpecialistForm({
         file,
       );
       setCvUrl(url);
-      toast.success('CV uploaded');
+      toast.success('CV subido');
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -444,12 +444,12 @@ function SpecialistForm({
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (categories.length === 0) {
-      toast.error('Pick at least one category');
+      toast.error('Elige al menos una categoría');
       return;
     }
     const values = formValues(event.currentTarget);
     if (!values.linkedinUrl && !values.portfolioUrl && !values.cvUrl) {
-      toast.error('Add your LinkedIn, your portfolio or your CV, at least one');
+      toast.error('Agrega al menos uno: tu LinkedIn, tu portafolio o tu CV');
       return;
     }
     const problem = specialistListProblem(values);
@@ -479,7 +479,7 @@ function SpecialistForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <Field label="Name" htmlFor="displayName" required>
+      <Field label="Nombre" htmlFor="displayName" required>
         <Input
           id="displayName"
           name="displayName"
@@ -490,9 +490,9 @@ function SpecialistForm({
         />
       </Field>
       <Field
-        label="Headline"
+        label="Titular"
         htmlFor="headline"
-        hint='For example "B2B SaaS outbound specialist".'
+        hint='Por ejemplo "Experta en outbound para SaaS B2B".'
         required
       >
         <Input
@@ -504,7 +504,7 @@ function SpecialistForm({
           defaultValue={initial?.headline}
         />
       </Field>
-      <Field label="About you" htmlFor="bio" hint="50 to 2000 characters." required>
+      <Field label="Sobre ti" htmlFor="bio" hint="De 50 a 2000 caracteres." required>
         <Textarea
           id="bio"
           name="bio"
@@ -515,7 +515,7 @@ function SpecialistForm({
           defaultValue={initial?.bio}
         />
       </Field>
-      <Field label="Categories" htmlFor="categories" required>
+      <Field label="Categorías" htmlFor="categories" required>
         <div id="categories" className="flex flex-wrap gap-2">
           {Object.values(ServiceCategory).map((category) => (
             <button
@@ -534,33 +534,33 @@ function SpecialistForm({
           ))}
         </div>
       </Field>
-      <Field label="Skills" htmlFor="skills" hint="Separated by commas, up to 20.">
+      <Field label="Habilidades" htmlFor="skills" hint="Separadas por comas, hasta 20.">
         <Input id="skills" name="skills" defaultValue={initial?.skills.join(', ')} />
       </Field>
       <Field
-        label="Tools"
+        label="Herramientas"
         htmlFor="tools"
-        hint="Separated by commas, e.g. Meta Ads, GA4, HubSpot."
+        hint="Separadas por comas, por ejemplo Meta Ads, GA4, HubSpot."
       >
         <Input id="tools" name="tools" defaultValue={initial?.tools.join(', ')} />
       </Field>
       <Field
-        label="Past work with its result"
+        label="Casos de éxito con su resultado"
         htmlFor="caseStudies"
-        hint="One per line, as: link | what it achieved. The result is what a startup reads first."
+        hint="Uno por línea, así: enlace | qué logró. El resultado es lo primero que lee una startup."
       >
         <Textarea
           id="caseStudies"
           name="caseStudies"
           rows={3}
-          placeholder="https://example.com/campaign | +40% followers in 2 months"
+          placeholder="https://ejemplo.com/lanzamiento | +40% de seguidores en 2 meses"
           defaultValue={initial?.caseStudies
             .map((study) => `${study.url} | ${study.result}`)
             .join('\n')}
         />
       </Field>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Years of experience" htmlFor="yearsExperience">
+        <Field label="Años de experiencia" htmlFor="yearsExperience">
           <Input
             id="yearsExperience"
             name="yearsExperience"
@@ -570,7 +570,11 @@ function SpecialistForm({
             defaultValue={initial?.yearsExperience ?? ''}
           />
         </Field>
-        <Field label="Hours a week" htmlFor="weeklyHours" hint="What you can take on.">
+        <Field
+          label="Horas por semana"
+          htmlFor="weeklyHours"
+          hint="Las que puedes dedicar."
+        >
           <Input
             id="weeklyHours"
             name="weeklyHours"
@@ -580,14 +584,14 @@ function SpecialistForm({
             defaultValue={initial?.weeklyHours ?? ''}
           />
         </Field>
-        <Field label="Time zone" htmlFor="timezone">
+        <Field label="Zona horaria" htmlFor="timezone">
           <select
             id="timezone"
             name="timezone"
             defaultValue={initial?.timezone ?? guessTimeZone() ?? ''}
             className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
           >
-            <option value="">Choose one</option>
+            <option value="">Elige una</option>
             {zones.map((zone) => (
               <option key={zone} value={zone}>
                 {zone}
@@ -597,19 +601,19 @@ function SpecialistForm({
         </Field>
       </div>
       <Field
-        label="Languages"
+        label="Idiomas"
         htmlFor="languages"
-        hint="Separated by commas. Startups in other countries look at this."
+        hint="Separados por comas. Las startups de otros países se fijan en esto."
       >
         <Input
           id="languages"
           name="languages"
-          placeholder="Spanish, English"
+          placeholder="Español, inglés"
           defaultValue={initial?.languages.join(', ')}
         />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Hourly rate (USDC)" htmlFor="hourlyRate">
+        <Field label="Tarifa por hora (USDC)" htmlFor="hourlyRate">
           <Input
             id="hourlyRate"
             name="hourlyRate"
@@ -619,7 +623,7 @@ function SpecialistForm({
             defaultValue={initial?.hourlyRate ?? ''}
           />
         </Field>
-        <Field label="Smallest project (USDC)" htmlFor="minProjectBudget">
+        <Field label="Proyecto mínimo (USDC)" htmlFor="minProjectBudget">
           <Input
             id="minProjectBudget"
             name="minProjectBudget"
@@ -630,13 +634,13 @@ function SpecialistForm({
           />
         </Field>
       </div>
-      <Field label="Portfolio" htmlFor="portfolioUrl">
+      <Field label="Portafolio" htmlFor="portfolioUrl">
         <Input
           id="portfolioUrl"
           name="portfolioUrl"
           type="url"
           pattern="https://.+"
-          title="A link that starts with https://"
+          title="Un enlace que empiece con https://"
           placeholder="https://"
           defaultValue={initial?.portfolioUrl ?? known?.websiteUrl ?? ''}
         />
@@ -647,7 +651,7 @@ function SpecialistForm({
           name="linkedinUrl"
           type="url"
           pattern="https://.+"
-          title="A link that starts with https://"
+          title="Un enlace que empiece con https://"
           placeholder="https://"
           defaultValue={initial?.linkedinUrl ?? known?.linkedinUrl ?? ''}
         />
@@ -655,7 +659,7 @@ function SpecialistForm({
       <Field
         label="CV"
         htmlFor="cvUrl"
-        hint="Upload it as a PDF (up to 4 MB), or paste a link to it."
+        hint="Súbelo en PDF (hasta 4 MB) o pega un enlace."
       >
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
@@ -663,14 +667,14 @@ function SpecialistForm({
             name="cvUrl"
             type="url"
             pattern="https://.+"
-            title="A link that starts with https://"
+            title="Un enlace que empiece con https://"
             placeholder="https://"
             value={cvUrl}
             onChange={(event) => setCvUrl(event.target.value)}
           />
           <Button type="button" variant="outline" disabled={uploadingCv} asChild>
             <label className="cursor-pointer whitespace-nowrap">
-              {uploadingCv ? 'Uploading...' : 'Upload PDF'}
+              {uploadingCv ? 'Subiendo...' : 'Subir PDF'}
               <input
                 type="file"
                 accept="application/pdf"
@@ -682,7 +686,7 @@ function SpecialistForm({
           </Button>
         </div>
       </Field>
-      <Field label="Location" htmlFor="location">
+      <Field label="Ubicación" htmlFor="location">
         <Input
           id="location"
           name="location"
@@ -692,7 +696,7 @@ function SpecialistForm({
         />
       </Field>
       <Button type="submit" size="lg" disabled={saving}>
-        {saving ? 'Saving...' : 'Save profile'}
+        {saving ? 'Guardando...' : 'Guardar perfil'}
       </Button>
     </form>
   );
@@ -718,19 +722,21 @@ function parseCaseStudies(value: string | undefined): CaseStudy[] {
  * asks for it, or null when everything fits.
  */
 function specialistListProblem(values: Record<string, string>): string | null {
-  const lists: [string, string[], number, number][] = [
-    ['skills', splitList(values.skills, /,/), 20, 60],
-    ['tools', splitList(values.tools, /,/), 20, 60],
-    ['languages', splitList(values.languages, /,/), 10, 40],
+  // Each list: its name, what one item is called, the items and their limits.
+  const lists: [string, string, string[], number, number][] = [
+    ['habilidades', 'habilidad', splitList(values.skills, /,/), 20, 60],
+    ['herramientas', 'herramienta', splitList(values.tools, /,/), 20, 60],
+    ['idiomas', 'idioma', splitList(values.languages, /,/), 10, 40],
   ];
-  for (const [name, items, most, longest] of lists) {
-    if (items.length > most) return `Up to ${most} ${name}, separated by commas`;
+  for (const [name, one, items, most, longest] of lists) {
+    if (items.length > most)
+      return `Máximo ${most} ${name}. Usa una coma entre cada ${one}`;
     const long = items.find((item) => item.length > longest);
     if (long)
-      return `"${long.slice(0, 30)}..." is too long: ${name} take ${longest} characters each`;
+      return `"${long.slice(0, 30)}..." es demasiado largo: cada ${one} admite hasta ${longest} caracteres`;
   }
   const studies = parseCaseStudies(values.caseStudies);
-  if (studies.length > 10) return 'Up to 10 pieces of past work';
+  if (studies.length > 10) return 'Máximo 10 casos de éxito';
   const bad = studies.find(
     (study) =>
       !/^https:\/\/\S+\.\S+/.test(study.url) ||
@@ -738,7 +744,7 @@ function specialistListProblem(values: Record<string, string>): string | null {
       study.result.length > 160,
   );
   if (bad) {
-    return `Past work "${bad.url.slice(0, 40)}": write it as https://link | what it achieved (3 to 160 characters)`;
+    return `Caso de éxito "${bad.url.slice(0, 40)}": escríbelo como https://enlace | qué logró (de 3 a 160 caracteres)`;
   }
   return null;
 }

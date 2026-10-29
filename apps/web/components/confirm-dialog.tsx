@@ -78,7 +78,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
           <DialogFooter>
             <DialogClose asChild>
               <Button ref={cancelButton} variant="outline">
-                Cancel
+                Cancelar
               </Button>
             </DialogClose>
             <Button
@@ -86,7 +86,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               variant={options?.destructive ? 'destructive' : 'default'}
               onClick={() => settle(true)}
             >
-              {options?.confirmText ?? 'Confirm'}
+              {options?.confirmText ?? 'Confirmar'}
             </Button>
           </DialogFooter>
         </DialogContent>

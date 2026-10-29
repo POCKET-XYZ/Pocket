@@ -114,7 +114,7 @@ describe('JwtAuthGuard', () => {
   it('refuses a token from a session that was signed out', async () => {
     prisma.user.findUnique.mockResolvedValue({ ...USER, tokenVersion: 4 });
     await expect(guard.canActivate(context(`Bearer ${valid()}`).ctx)).rejects.toThrow(
-      'session ended',
+      'Tu sesión terminó',
     );
   });
 

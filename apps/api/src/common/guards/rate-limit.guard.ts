@@ -59,7 +59,7 @@ export class RateLimitGuard implements CanActivate {
     if (wait === 0) return;
     response.setHeader('Retry-After', String(wait));
     throw new HttpException(
-      `Too many requests. Try again in ${wait} seconds`,
+      `Demasiadas solicitudes. Intenta de nuevo en ${wait} ${wait === 1 ? 'segundo' : 'segundos'}`,
       HttpStatus.TOO_MANY_REQUESTS,
     );
   }

@@ -153,7 +153,7 @@ describe('JobsService', () => {
           ...dto,
           kpis: [{ name: 'Qualified leads' }, { name: 'qualified LEADS' }],
         }),
-      ).rejects.toThrow('listed twice');
+      ).rejects.toThrow('aparece dos veces');
       expect(prisma.job.create).not.toHaveBeenCalled();
     });
 

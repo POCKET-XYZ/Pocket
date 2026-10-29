@@ -210,7 +210,7 @@ describe('MilestonesService', () => {
             url,
             results: [{ kpiId: LEADS.id, value: '48' }],
           }),
-        ).rejects.toThrow('Report a result for "Reply rate"');
+        ).rejects.toThrow('Reporta un resultado para "Reply rate"');
         expect(prisma.deliverable.create).not.toHaveBeenCalled();
       });
 
@@ -243,7 +243,7 @@ describe('MilestonesService', () => {
               { kpiId: OTHER_JOB_KPI, value: '1000' },
             ],
           }),
-        ).rejects.toThrow('a KPI this job does not have');
+        ).rejects.toThrow('un KPI que este trabajo no tiene');
         expect(prisma.deliverable.create).not.toHaveBeenCalled();
       });
 
@@ -257,7 +257,7 @@ describe('MilestonesService', () => {
               { kpiId: REPLIES.id, value: '12%' },
             ],
           }),
-        ).rejects.toThrow('one result per KPI');
+        ).rejects.toThrow('un solo resultado por KPI');
       });
 
       it('takes no report when the job has no KPIs', async () => {
@@ -274,7 +274,7 @@ describe('MilestonesService', () => {
             url,
             results: [{ kpiId: LEADS.id, value: '48' }],
           }),
-        ).rejects.toThrow('no KPIs');
+        ).rejects.toThrow('no tiene KPI');
       });
     });
 
@@ -311,7 +311,7 @@ describe('MilestonesService', () => {
     prisma.milestone.findUnique.mockResolvedValue({ ...milestone('delivered'), revisionsUsed: 2 });
     await expect(
       service.requestChanges(startup, 'milestone-1', { feedback: 'One more time please' }),
-    ).rejects.toThrow('Approve the work or open a dispute');
+    ).rejects.toThrow('Ya se usaron las 2 rondas de cambios acordadas. Aprueba el trabajo o abre una disputa');
     expect(prisma.deliverable.update).not.toHaveBeenCalled();
   });
 

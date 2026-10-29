@@ -30,13 +30,13 @@ export default function SpecialistsPage() {
   return (
     <div>
       <PageHeader
-        title="Specialists"
-        description="Every specialist here was reviewed by a Pocket manager. To hire one, post a job and invite them to apply."
+        title="Expertos"
+        description="Un manager de Pocket revisó a cada experto de esta lista. Para contratar a uno, publica un trabajo e invítalo a postularse."
       />
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <CategoryFilter value={category} onChange={setCategory} />
         <Input
-          placeholder="Search by skill or headline"
+          placeholder="Busca por habilidad o titular"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           className="md:w-72"
@@ -78,15 +78,15 @@ export default function SpecialistsPage() {
               </div>
               {specialist.hourlyRate ? (
                 <p className="mt-3 text-sm text-muted-foreground">
-                  {usdc(specialist.hourlyRate)} / hour
+                  {usdc(specialist.hourlyRate)} / hora
                 </p>
               ) : null}
             </Link>
           ))}
         </div>
       ) : (
-        <EmptyState title="No specialists match">
-          Try another category or search.
+        <EmptyState title="Ningún experto coincide">
+          Prueba con otra categoría u otra búsqueda.
         </EmptyState>
       )}
     </div>

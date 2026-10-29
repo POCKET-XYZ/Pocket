@@ -87,7 +87,7 @@ export class ProfilesService {
   /** Create or replace the startup profile of the signed-in user. */
   async saveStartup(user: AuthUser, dto: StartupProfileDto): Promise<StartupProfile> {
     if (user.role !== 'startup') {
-      throw new ForbiddenException('Only startups have a startup profile');
+      throw new ForbiddenException('Solo las startups tienen perfil de startup');
     }
     const profile = await this.prisma.startupProfile.upsert({
       where: { userId: user.sub },
@@ -108,12 +108,12 @@ export class ProfilesService {
     dto: SpecialistProfileDto,
   ): Promise<SpecialistProfile> {
     if (user.role !== 'specialist') {
-      throw new ForbiddenException('Only specialists have a specialist profile');
+      throw new ForbiddenException('Solo los expertos tienen perfil de experto');
     }
     if (!dto.linkedinUrl && !dto.portfolioUrl && !dto.cvUrl) {
       // A profile nobody can check is worth nothing to a startup choosing.
       throw new BadRequestException(
-        'Add your LinkedIn, your portfolio or your CV, at least one',
+        'Agrega al menos uno: tu LinkedIn, tu portafolio o tu CV',
       );
     }
 
@@ -230,9 +230,9 @@ export class ProfilesService {
    * also saved on the profile when there is one.
    */
   async saveCv(user: AuthUser, file: UploadedPdf | undefined, cvUrl: string) {
-    if (!file?.buffer.length) throw new BadRequestException('Choose a PDF file');
+    if (!file?.buffer.length) throw new BadRequestException('Elige un archivo PDF');
     if (!isPdf(file.buffer)) {
-      throw new BadRequestException('Upload your CV as a PDF');
+      throw new BadRequestException('Sube tu CV en PDF');
     }
     const data = new Uint8Array(file.buffer);
     await this.prisma.specialistCv.upsert({
@@ -252,7 +252,7 @@ export class ProfilesService {
     const cv = await this.prisma.specialistCv.findFirst({
       where: { userId, user: { verificationStatus: 'approved' } },
     });
-    if (!cv) throw new NotFoundException('CV not found');
+    if (!cv) throw new NotFoundException('No encontramos el CV');
     return Buffer.from(cv.data);
   }
 
@@ -263,15 +263,17 @@ export class ProfilesService {
    */
   async saveLogo(user: AuthUser, file: UploadedBytes | undefined, logoUrl: string) {
     if (user.role !== 'startup') {
-      throw new ForbiddenException('Only startups have a logo');
+      throw new ForbiddenException('Solo las startups tienen logo');
     }
-    if (!file?.buffer.length) throw new BadRequestException('Choose an image file');
+    if (!file?.buffer.length) throw new BadRequestException('Elige un archivo de imagen');
     if (file.buffer.length > MAX_LOGO_BYTES) {
-      throw new PayloadTooLargeException('The logo is too big. The limit is 1 MB');
+      throw new PayloadTooLargeException(
+        'El logo es demasiado grande. El límite es de 1 MB',
+      );
     }
     const contentType = sniffImage(file.buffer);
     if (!contentType) {
-      throw new BadRequestException('Upload your logo as a PNG, JPEG or WebP image');
+      throw new BadRequestException('Sube tu logo como imagen PNG, JPEG o WebP');
     }
     const data = new Uint8Array(file.buffer);
     await this.prisma.startupLogo.upsert({
@@ -289,7 +291,7 @@ export class ProfilesService {
   /** Take the signed-in startup's logo down, uploaded or linked. */
   async removeLogo(user: AuthUser) {
     if (user.role !== 'startup') {
-      throw new ForbiddenException('Only startups have a logo');
+      throw new ForbiddenException('Solo las startups tienen logo');
     }
     await this.prisma.startupLogo.deleteMany({ where: { userId: user.sub } });
     await this.prisma.startupProfile.updateMany({
@@ -306,7 +308,7 @@ export class ProfilesService {
     });
     // Checked again on the way out: only an image type is ever served.
     const contentType = logo ? sniffImage(Buffer.from(logo.data)) : null;
-    if (!logo || !contentType) throw new NotFoundException('Logo not found');
+    if (!logo || !contentType) throw new NotFoundException('No encontramos el logo');
     return { data: Buffer.from(logo.data), contentType };
   }
 
@@ -317,11 +319,11 @@ export class ProfilesService {
       include: { startupProfile: true, specialistProfile: true },
     });
     if (!user || user.verificationStatus !== 'approved') {
-      throw new NotFoundException('Profile not found');
+      throw new NotFoundException('No encontramos el perfil');
     }
 
     const profile = user.startupProfile ?? user.specialistProfile;
-    if (!profile) throw new NotFoundException('Profile not found');
+    if (!profile) throw new NotFoundException('No encontramos el perfil');
 
     return {
       userId: user.id,

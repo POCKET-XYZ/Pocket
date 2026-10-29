@@ -5,23 +5,23 @@
  * API accepts for a time zone.
  */
 export const TIME_ZONES: string[] = [
-  'UTC-10 · Hawaii',
-  'UTC-8 · Los Angeles, Vancouver, Tijuana',
+  'UTC-10 · Hawái',
+  'UTC-8 · Los Ángeles, Vancouver, Tijuana',
   'UTC-7 · Denver, Phoenix',
-  'UTC-6 · Mexico City, Central America',
-  'UTC-5 · Bogotá, Lima, Quito, Panama, New York, Miami',
+  'UTC-6 · Ciudad de México, Centroamérica',
+  'UTC-5 · Bogotá, Lima, Quito, Panamá, Nueva York, Miami',
   'UTC-4 · La Paz, Caracas, Santo Domingo, Santiago',
   'UTC-3 · Buenos Aires, São Paulo, Montevideo',
-  'UTC+0 · London, Lisbon',
-  'UTC+1 · Madrid, Paris, Berlin, Lagos',
-  'UTC+2 · Athens, Cairo, Johannesburg',
-  'UTC+3 · Istanbul, Nairobi, Moscow',
-  'UTC+4 · Dubai',
+  'UTC+0 · Londres, Lisboa',
+  'UTC+1 · Madrid, París, Berlín, Lagos',
+  'UTC+2 · Atenas, El Cairo, Johannesburgo',
+  'UTC+3 · Estambul, Nairobi, Moscú',
+  'UTC+4 · Dubái',
   'UTC+5:30 · India',
-  'UTC+7 · Bangkok, Jakarta',
-  'UTC+8 · Singapore, Hong Kong, Manila',
-  'UTC+9 · Tokyo, Seoul',
-  'UTC+10 · Sydney',
+  'UTC+7 · Bangkok, Yakarta',
+  'UTC+8 · Singapur, Hong Kong, Manila',
+  'UTC+9 · Tokio, Seúl',
+  'UTC+10 · Sídney',
 ];
 
 /** The entry for this browser's current offset, to suggest it first. */

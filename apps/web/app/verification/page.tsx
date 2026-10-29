@@ -45,7 +45,7 @@ function Verification({ user }: { user: User }) {
     mutationFn: (body: Record<string, unknown>) =>
       api('/verification', { method: 'POST', body }),
     onSuccess: async () => {
-      toast.success('Sent. A manager will review it soon.');
+      toast.success('Enviado. Un manager lo revisará pronto.');
       await queryClient.invalidateQueries({ queryKey: ['verification', 'me'] });
       await refreshUser();
     },
@@ -67,30 +67,30 @@ function Verification({ user }: { user: User }) {
     <div className="mx-auto max-w-2xl">
       <Onboarding className="mb-6" />
       <PageHeader
-        title="Verification"
-        description="Pocket reviews every account by hand before it can use the marketplace. Links are enough; no documents needed."
+        title="Verificación"
+        description="Pocket revisa a mano cada cuenta antes de que pueda usar el marketplace. Con enlaces es suficiente, no necesitas documentos."
       />
 
       <Card className="mb-6">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Status</CardTitle>
-          <StatusBadge status={user.verificationStatus} />
+          <CardTitle>Estado</CardTitle>
+          <StatusBadge feminine status={user.verificationStatus} />
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
           {user.verificationStatus === 'not_submitted' &&
-            'Fill in the form below and send it for review.'}
+            'Completa el formulario de abajo y envíalo a revisión.'}
           {user.verificationStatus === 'pending' &&
-            `Sent ${dateTime(previous?.submittedAt)}. A manager will review it, oldest requests first.`}
+            `Enviado el ${dateTime(previous?.submittedAt)}. Un manager lo revisará por orden de llegada.`}
           {user.verificationStatus === 'approved' &&
-            'You are verified. You can use the whole marketplace.'}
+            'Tu cuenta está verificada. Puedes usar todo el marketplace.'}
           {user.verificationStatus === 'rejected' &&
-            'Fix what the manager pointed out and send it again.'}
+            'Corrige lo que señaló el manager y vuelve a enviarlo.'}
         </CardContent>
       </Card>
 
       {user.verificationStatus === 'rejected' && previous?.reviewNote ? (
         <Alert variant="destructive" className="mb-6">
-          <AlertTitle>Why it was rejected</AlertTitle>
+          <AlertTitle>Por qué se rechazó</AlertTitle>
           <AlertDescription>{previous.reviewNote}</AlertDescription>
         </Alert>
       ) : null}
@@ -100,15 +100,15 @@ function Verification({ user }: { user: User }) {
       ) : canSubmit ? (
         <Card>
           <CardHeader>
-            <CardTitle>Your details</CardTitle>
+            <CardTitle>Tus datos</CardTitle>
             <CardDescription>
-              Only managers see this. Your contact email is shared with the other party
-              once you sign a contract.
+              Solo los managers ven esto. Tu correo de contacto se comparte con la otra
+              parte cuando firmes un contrato.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={onSubmit} className="space-y-4">
-              <Field label="Full name" htmlFor="fullName" required>
+              <Field label="Nombre completo" htmlFor="fullName" required>
                 <Input
                   id="fullName"
                   name="fullName"
@@ -118,7 +118,7 @@ function Verification({ user }: { user: User }) {
                   defaultValue={previous?.fullName}
                 />
               </Field>
-              <Field label="Contact email" htmlFor="contactEmail" required>
+              <Field label="Correo de contacto" htmlFor="contactEmail" required>
                 <Input
                   id="contactEmail"
                   name="contactEmail"
@@ -128,9 +128,9 @@ function Verification({ user }: { user: User }) {
                 />
               </Field>
               <Field
-                label="Country"
+                label="País"
                 htmlFor="country"
-                hint="Two-letter code, for example CR, MX or US."
+                hint="Código de dos letras, por ejemplo CR, MX o US."
                 required
               >
                 <Input
@@ -146,7 +146,7 @@ function Verification({ user }: { user: User }) {
               </Field>
               {isStartup ? (
                 <>
-                  <Field label="Company name" htmlFor="companyName" required>
+                  <Field label="Nombre de la empresa" htmlFor="companyName" required>
                     <Input
                       id="companyName"
                       name="companyName"
@@ -157,9 +157,9 @@ function Verification({ user }: { user: User }) {
                     />
                   </Field>
                   <Field
-                    label="Registration or tax id"
+                    label="Número de registro o identificación fiscal"
                     htmlFor="companyRegistrationId"
-                    hint="Optional. Pocket does not check it against any registry, so it is only a hint for the manager, never a badge of trust."
+                    hint="Opcional. Pocket no lo verifica en ningún registro, así que solo es una pista para el manager, nunca un sello de confianza."
                   >
                     <Input
                       id="companyRegistrationId"
@@ -172,7 +172,7 @@ function Verification({ user }: { user: User }) {
                 </>
               ) : null}
               <Field
-                label={isStartup ? 'Company LinkedIn' : 'LinkedIn'}
+                label={isStartup ? 'LinkedIn de la empresa' : 'LinkedIn'}
                 htmlFor="linkedinUrl"
               >
                 <Input
@@ -180,13 +180,13 @@ function Verification({ user }: { user: User }) {
                   name="linkedinUrl"
                   type="url"
                   pattern="https://.+"
-                  title="A link that starts with https://"
+                  title="Un enlace que empiece con https://"
                   placeholder="https://"
                   defaultValue={previous?.linkedinUrl}
                 />
               </Field>
               <Field
-                label={isStartup ? 'Company website' : 'Portfolio'}
+                label={isStartup ? 'Sitio web de la empresa' : 'Portafolio'}
                 htmlFor="websiteUrl"
               >
                 <Input
@@ -194,12 +194,12 @@ function Verification({ user }: { user: User }) {
                   name="websiteUrl"
                   type="url"
                   pattern="https://.+"
-                  title="A link that starts with https://"
+                  title="Un enlace que empiece con https://"
                   placeholder="https://"
                   defaultValue={previous?.websiteUrl}
                 />
               </Field>
-              <Field label="Note for the manager" htmlFor="note">
+              <Field label="Nota para el manager" htmlFor="note">
                 <Textarea
                   id="note"
                   name="note"
@@ -208,7 +208,7 @@ function Verification({ user }: { user: User }) {
                 />
               </Field>
               <Button type="submit" size="lg" disabled={submit.isPending}>
-                {submit.isPending ? 'Sending...' : 'Send for review'}
+                {submit.isPending ? 'Enviando...' : 'Enviar a revisión'}
               </Button>
             </form>
           </CardContent>

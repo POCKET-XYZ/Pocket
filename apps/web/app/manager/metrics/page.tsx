@@ -19,10 +19,10 @@ import { dateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 const PERIODS: { value: MetricsPeriod; tab: string; hint: string }[] = [
-  { value: MetricsPeriod.Week, tab: '7 days', hint: 'in the last 7 days' },
-  { value: MetricsPeriod.Month, tab: '30 days', hint: 'in the last 30 days' },
-  { value: MetricsPeriod.Quarter, tab: '90 days', hint: 'in the last 90 days' },
-  { value: MetricsPeriod.All, tab: 'All time', hint: 'since launch' },
+  { value: MetricsPeriod.Week, tab: '7 días', hint: 'en los últimos 7 días' },
+  { value: MetricsPeriod.Month, tab: '30 días', hint: 'en los últimos 30 días' },
+  { value: MetricsPeriod.Quarter, tab: '90 días', hint: 'en los últimos 90 días' },
+  { value: MetricsPeriod.All, tab: 'Histórico', hint: 'desde el lanzamiento' },
 ];
 
 export default function ManagerMetricsPage() {
@@ -42,8 +42,8 @@ function Metrics() {
   return (
     <div>
       <PageHeader
-        title="Metrics"
-        description="How Pocket is doing. Numbers marked with the period happened inside it; the rest are the state right now."
+        title="Métricas"
+        description="Cómo le va a Pocket. Las cifras marcadas con el período ocurrieron dentro de él; el resto muestra el estado actual."
       />
       <Tabs
         value={period}
@@ -60,9 +60,9 @@ function Metrics() {
       </Tabs>
 
       {metrics.isLoading ? (
-        <Loading label="Loading metrics" />
+        <Loading label="Cargando métricas" />
       ) : metrics.error && !metrics.data ? (
-        <ErrorAlert error={metrics.error} title="The metrics could not be loaded" />
+        <ErrorAlert error={metrics.error} title="No se pudieron cargar las métricas" />
       ) : metrics.data ? (
         <div
           className={cn(
@@ -73,7 +73,8 @@ function Metrics() {
         >
           <Dashboard data={metrics.data} inPeriod={inPeriod} />
           <p className="text-xs text-muted-foreground">
-            Updated {dateTime(metrics.data.generatedAt)}. Weeks start on Monday (UTC).
+            Actualizado el {dateTime(metrics.data.generatedAt)}. Las semanas empiezan el lunes
+            (UTC).
           </p>
         </div>
       ) : null}
@@ -90,186 +91,186 @@ function Dashboard({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string 
     <>
       <Overview data={data} inPeriod={inPeriod} />
 
-      <Section title="Users">
+      <Section title="Usuarios">
         <StatTile
           label="Startups"
           value={count(users.startups.total)}
-          hint={`${count(users.startups.newInPeriod)} new ${inPeriod}`}
+          hint={`${count(users.startups.newInPeriod)} ${users.startups.newInPeriod === 1 ? 'nueva' : 'nuevas'} ${inPeriod}`}
         />
         <StatTile
-          label="Specialists"
+          label="Expertos"
           value={count(users.specialists.total)}
-          hint={`${count(users.specialists.newInPeriod)} new ${inPeriod}`}
+          hint={`${count(users.specialists.newInPeriod)} ${users.specialists.newInPeriod === 1 ? 'nuevo' : 'nuevos'} ${inPeriod}`}
         />
         <StatTile
-          label="Verifications waiting"
+          label="Verificaciones pendientes"
           value={count(verification.pending)}
-          hint="In the queue right now"
+          hint="En la cola ahora mismo"
           href="/manager/verifications"
         />
-        <StatTile label="Approved" value={count(verification.approved)} hint={inPeriod} />
-        <StatTile label="Rejected" value={count(verification.rejected)} hint={inPeriod} />
+        <StatTile label="Aprobadas" value={count(verification.approved)} hint={inPeriod} />
+        <StatTile label="Rechazadas" value={count(verification.rejected)} hint={inPeriod} />
         <StatTile
-          label="Median time to approve"
+          label="Mediana de tiempo para aprobar"
           value={verification.medianHoursToApprove ?? '-'}
-          unit={verification.medianHoursToApprove === null ? undefined : 'hours'}
-          hint={`From submission to approval, ${inPeriod}`}
+          unit={verification.medianHoursToApprove === null ? undefined : 'horas'}
+          hint={`Desde el envío hasta la aprobación, ${inPeriod}`}
         />
       </Section>
 
       <Section title="Marketplace">
         <StatTile
-          label="Jobs posted"
+          label="Trabajos publicados"
           value={count(marketplace.jobsPosted)}
           hint={inPeriod}
         />
         <StatTile
-          label="Jobs completed"
+          label="Trabajos completados"
           value={count(marketplace.jobsCompleted)}
-          hint={`Contracts finished ${inPeriod}, one per job`}
+          hint={`Contratos terminados ${inPeriod}, uno por trabajo`}
         />
         <StatTile
-          label="Open jobs"
+          label="Trabajos abiertos"
           value={count(marketplace.openJobs)}
-          hint="Right now"
+          hint="Ahora mismo"
         />
         <StatTile
-          label="Applications"
+          label="Postulaciones"
           value={count(marketplace.applications)}
           hint={inPeriod}
         />
         <StatTile
-          label="Applications per job"
+          label="Postulaciones por trabajo"
           value={marketplace.averageApplicationsPerJob ?? '-'}
-          hint={`Average over the jobs posted ${inPeriod}`}
+          hint={`Promedio de los trabajos publicados ${inPeriod}`}
         />
-        <StatTile label="Offers sent" value={count(offers.sent)} hint={inPeriod} />
+        <StatTile label="Ofertas enviadas" value={count(offers.sent)} hint={inPeriod} />
         <StatTile
-          label="Offers accepted"
+          label="Ofertas aceptadas"
           value={count(offers.accepted)}
           hint={inPeriod}
         />
         <StatTile
-          label="Offers declined"
+          label="Ofertas rechazadas"
           value={count(offers.declined)}
           hint={inPeriod}
         />
         <StatTile
-          label="Offers withdrawn"
-          value={offers.withdrawn === null ? 'Not tracked' : count(offers.withdrawn)}
-          hint="A withdrawn offer is deleted, so it leaves no record"
+          label="Ofertas retiradas"
+          value={offers.withdrawn === null ? 'Sin registro' : count(offers.withdrawn)}
+          hint="Una oferta retirada se borra, así que no deja registro"
         />
         <StatTile
-          label="Offers awaiting reply"
+          label="Ofertas esperando respuesta"
           value={count(offers.awaitingReply)}
-          hint="Right now"
+          hint="Ahora mismo"
         />
         <StatTile
-          label="Time to first hire"
+          label="Tiempo hasta la primera contratación"
           value={marketplace.medianDaysToFirstHire ?? '-'}
-          unit={marketplace.medianDaysToFirstHire === null ? undefined : 'days'}
-          hint={`Median, from posting to the first accepted offer, ${inPeriod}`}
+          unit={marketplace.medianDaysToFirstHire === null ? undefined : 'días'}
+          hint={`Mediana, desde la publicación hasta la primera oferta aceptada, ${inPeriod}`}
         />
       </Section>
 
-      <Section title="Money">
+      <Section title="Dinero">
         <StatTile
-          label="Funded into escrow"
+          label="Depositado en contratos"
           value={<Usdc amount={money.funded} />}
           unit="USDC"
-          hint={`${count(money.contractsFunded)} ${money.contractsFunded === 1 ? 'contract' : 'contracts'} funded ${inPeriod}`}
+          hint={`${count(money.contractsFunded)} ${money.contractsFunded === 1 ? 'contrato recibió su depósito' : 'contratos recibieron su depósito'} ${inPeriod}`}
         />
         <StatTile
-          label="Released to specialists"
+          label="Liberado a expertos"
           value={<Usdc amount={money.released} />}
           unit="USDC"
-          hint={`${inPeriod}, before Trustless Work's ${TRUSTLESS_WORK_FEE_PERCENT}% fee`}
+          hint={`${inPeriod}, antes de la comisión del ${TRUSTLESS_WORK_FEE_PERCENT}% de Trustless Work`}
         />
         <StatTile
-          label="Pocket fee earned"
+          label="Comisión ganada por Pocket"
           value={<Usdc amount={money.pocketFee} />}
           unit="USDC"
-          hint={`${POCKET_FEE_PERCENT}% of each payout on contracts created with the fee, ${inPeriod}`}
+          hint={`${POCKET_FEE_PERCENT}% de cada pago en los contratos creados con la comisión, ${inPeriod}`}
         />
         <StatTile
-          label="Sent from Pocket wallets"
+          label="Enviado desde wallets de Pocket"
           value={<Usdc amount={money.walletPayments} />}
           unit="USDC"
-          hint={`${count(money.walletPaymentCount)} ${money.walletPaymentCount === 1 ? 'payment' : 'payments'} users sent from Pocket to other wallets ${inPeriod}. Money arriving from outside is not recorded`}
+          hint={`${count(money.walletPaymentCount)} ${money.walletPaymentCount === 1 ? 'pago enviado' : 'pagos enviados'} por usuarios desde Pocket a otras wallets ${inPeriod}. El dinero que llega desde afuera no se registra`}
         />
         <StatTile
-          label="Held in escrow"
+          label="Guardado en contratos"
           value={<Usdc amount={money.inEscrow} />}
           unit="USDC"
-          hint="Right now, across active contracts"
+          hint="Ahora mismo, en los contratos activos"
         />
         <StatTile
-          label="Average contract"
+          label="Contrato promedio"
           value={money.averageContract === null ? '-' : <Usdc amount={money.averageContract} />}
           unit={money.averageContract === null ? undefined : 'USDC'}
-          hint={`Of the contracts funded ${inPeriod}`}
+          hint={`De los contratos que recibieron su depósito ${inPeriod}`}
         />
         <StatTile
-          label="Refunded to startups"
+          label="Reembolsado a startups"
           value={<Usdc amount={money.refunded} />}
           unit="USDC"
-          hint={`By resolved disputes, ${inPeriod}`}
+          hint={`Por disputas resueltas, ${inPeriod}`}
         />
       </Section>
 
-      <Section title="Health">
+      <Section title="Salud">
         <StatTile
-          label="Open disputes"
+          label="Disputas abiertas"
           value={count(health.openDisputes)}
-          hint="Right now"
+          hint="Ahora mismo"
           attention={health.openDisputes > 0}
           href="/manager/disputes"
         />
         <StatTile
-          label="Disputes resolved"
+          label="Disputas resueltas"
           value={count(health.disputesResolved)}
           hint={inPeriod}
         />
         <StatTile
-          label="Overdue milestones"
+          label="Hitos vencidos"
           value={count(health.overdueMilestones)}
-          hint="Past the due date and not delivered yet"
+          hint="Con la fecha de entrega vencida y todavía sin entregar"
           attention={health.overdueMilestones > 0}
         />
         <StatTile
-          label="Waiting for funding"
+          label="Esperando el depósito"
           value={count(health.staleAwaitingFunding)}
-          hint="Accepted over 3 days ago and still not funded"
+          hint="Aceptados hace más de 3 días y todavía sin depósito"
           attention={health.staleAwaitingFunding > 0}
         />
       </Section>
 
       <section>
-        <h2 className="mb-1 text-xl font-semibold text-navy">Last 12 weeks</h2>
+        <h2 className="mb-1 text-xl font-semibold text-navy">Últimas 12 semanas</h2>
         <p className="mb-4 text-sm text-muted-foreground">
-          Not affected by the period. Hover or tap a bar to read its week.
+          No depende del período. Pasa el cursor o toca una barra para ver su semana.
         </p>
         <div className="grid gap-3 md:grid-cols-2">
           <WeeklyBars
-            title="New users"
+            title="Usuarios nuevos"
             weeks={data.weekly}
             pick={(week) => week.newUsers}
             format={(value) => count(value as number)}
           />
           <WeeklyBars
-            title="Jobs posted"
+            title="Trabajos publicados"
             weeks={data.weekly}
             pick={(week) => week.jobsPosted}
             format={(value) => count(value as number)}
           />
           <WeeklyBars
-            title="USDC funded into escrow"
+            title="USDC depositado en contratos"
             weeks={data.weekly}
             pick={(week) => week.funded}
             format={(value) => `${shortUsdc(String(value))} USDC`}
           />
           <WeeklyBars
-            title="USDC released to specialists"
+            title="USDC liberado a expertos"
             weeks={data.weekly}
             pick={(week) => week.released}
             format={(value) => `${shortUsdc(String(value))} USDC`}
@@ -291,22 +292,22 @@ function Overview({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string }
 
   return (
     <section>
-      <h2 className="mb-1 text-xl font-semibold text-navy">Overview</h2>
+      <h2 className="mb-1 text-xl font-semibold text-navy">Resumen</h2>
       <p className="mb-4 text-sm text-muted-foreground">
-        The big number is for the period; the line is the last 12 weeks. Hover or tap the
-        line to read a week.
+        El número grande es del período; la línea muestra las últimas 12 semanas. Pasa el
+        cursor o toca la línea para ver una semana.
       </p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <WeeklyLine
-          title="New users"
+          title="Usuarios nuevos"
           headline={count(users.startups.newInPeriod + users.specialists.newInPeriod)}
-          hint={`Startups and specialists who signed up ${inPeriod}`}
+          hint={`Startups y expertos que se registraron ${inPeriod}`}
           weeks={weekly}
           pick={(week) => week.newUsers}
           format={countValue}
         />
         <WeeklyLine
-          title="Jobs posted"
+          title="Trabajos publicados"
           headline={count(marketplace.jobsPosted)}
           hint={inPeriod}
           weeks={weekly}
@@ -314,7 +315,7 @@ function Overview({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string }
           format={countValue}
         />
         <WeeklyLine
-          title="Jobs completed"
+          title="Trabajos completados"
           headline={count(marketplace.jobsCompleted)}
           hint={inPeriod}
           weeks={weekly}
@@ -322,7 +323,7 @@ function Overview({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string }
           format={countValue}
         />
         <WeeklyLine
-          title="USDC funded into escrow"
+          title="USDC depositado en contratos"
           headline={<Usdc amount={money.funded} />}
           unit="USDC"
           hint={inPeriod}
@@ -331,25 +332,25 @@ function Overview({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string }
           format={usdcValue}
         />
         <WeeklyLine
-          title="USDC released"
+          title="USDC liberado"
           headline={<Usdc amount={money.released} />}
           unit="USDC"
-          hint={`To specialists ${inPeriod}`}
+          hint={`A expertos ${inPeriod}`}
           weeks={weekly}
           pick={(week) => week.released}
           format={usdcValue}
         />
         <WeeklyLine
-          title="Sent between wallets"
+          title="Enviado entre wallets"
           headline={<Usdc amount={money.walletPayments} />}
           unit="USDC"
-          hint={`From Pocket wallets to other addresses ${inPeriod}`}
+          hint={`De wallets de Pocket a otras direcciones ${inPeriod}`}
           weeks={weekly}
           pick={(week) => week.walletPayments}
           format={usdcValue}
         />
         <WeeklyLine
-          title="Pocket fee earned"
+          title="Comisión ganada por Pocket"
           headline={<Usdc amount={money.pocketFee} />}
           unit="USDC"
           hint={inPeriod}
@@ -410,10 +411,10 @@ function WeeklyLine({
 
   const summary =
     weeks.length === 0
-      ? `${title}: no data`
+      ? `${title}: sin datos`
       : max === 0
-        ? `${title}, last 12 weeks: nothing in any week.`
-        : `${title}, last 12 weeks: ${format(values[0])} in the week of ${weekLabel(weeks[0].weekStart)}, ${format(values[latest])} this week, highest ${format(values[peak])} in the week of ${weekLabel(weeks[peak].weekStart)}.`;
+        ? `${title}, últimas 12 semanas: cero en todas las semanas.`
+        : `${title}, últimas 12 semanas: ${format(values[0])} en la semana del ${weekLabel(weeks[0].weekStart)}, ${format(values[latest])} esta semana, máximo de ${format(values[peak])} en la semana del ${weekLabel(weeks[peak].weekStart)}.`;
 
   const shown = selected ?? latest;
   const left = `${(xOf(shown) / PLOT_WIDTH) * 100}%`;
@@ -501,8 +502,8 @@ function WeeklyLine({
                 </span>
                 <span className="block text-muted-foreground">
                   {selected === latest
-                    ? 'This week'
-                    : `Week of ${weekLabel(weeks[selected].weekStart)}`}
+                    ? 'Esta semana'
+                    : `Semana del ${weekLabel(weeks[selected].weekStart)}`}
                 </span>
               </span>
             ) : null}
@@ -513,7 +514,7 @@ function WeeklyLine({
                 <button
                   key={week.weekStart}
                   type="button"
-                  aria-label={`${title}, week of ${weekLabel(week.weekStart)}: ${format(values[index])}`}
+                  aria-label={`${title}, semana del ${weekLabel(week.weekStart)}: ${format(values[index])}`}
                   aria-pressed={index === selected}
                   onMouseEnter={() => setSelected(index)}
                   onFocus={() => setSelected(index)}
@@ -531,7 +532,7 @@ function WeeklyLine({
           <div className="mt-1 flex justify-between gap-2 text-xs text-muted-foreground">
             <span>{weekLabel(weeks[0].weekStart)}</span>
             <span>
-              This week:{' '}
+              Esta semana:{' '}
               <span className="font-medium text-navy">{format(values[latest])}</span>
             </span>
           </div>
@@ -585,7 +586,7 @@ function StatTile({
       {attention ? (
         <p className="mt-1 flex items-center gap-1 text-xs font-medium text-navy">
           <TriangleAlertIcon className="size-3.5 shrink-0 text-destructive" aria-hidden />
-          Needs attention
+          Requiere atención
         </p>
       ) : null}
       {hint ? (
@@ -635,14 +636,14 @@ function WeeklyBars({
             {format(values[selected] ?? 0)}
           </span>{' '}
           <span className="text-muted-foreground">
-            {selected === latest ? 'this week' : `week of ${weekLabel(shown.weekStart)}`}
+            {selected === latest ? 'esta semana' : `semana del ${weekLabel(shown.weekStart)}`}
           </span>
         </p>
       ) : null}
 
       {max === 0 ? (
         <p className="flex h-28 items-center justify-center text-sm text-muted-foreground">
-          Nothing in the last 12 weeks
+          Nada en las últimas 12 semanas
         </p>
       ) : (
         <div
@@ -653,7 +654,7 @@ function WeeklyBars({
             <button
               key={week.weekStart}
               type="button"
-              aria-label={`Week of ${weekLabel(week.weekStart)}: ${format(values[index])}`}
+              aria-label={`Semana del ${weekLabel(week.weekStart)}: ${format(values[index])}`}
               aria-pressed={index === selected}
               onMouseEnter={() => setSelected(index)}
               onFocus={() => setSelected(index)}
@@ -677,7 +678,7 @@ function WeeklyBars({
       )}
       <div className="mt-1 flex justify-between text-xs text-muted-foreground">
         <span>{weeks[0] ? weekLabel(weeks[0].weekStart) : ''}</span>
-        <span>This week</span>
+        <span>Esta semana</span>
       </div>
 
       <WeeksTable title={title} weeks={weeks} values={values} format={format} />
@@ -700,12 +701,12 @@ function WeeksTable({
   return (
     <details className="mt-3 text-sm">
       <summary className="cursor-pointer text-xs text-muted-foreground hover:text-navy">
-        Show as table
+        Ver como tabla
       </summary>
       <table className="mt-2 w-full text-xs">
         <thead>
           <tr className="text-left text-muted-foreground">
-            <th className="py-1 font-medium">Week of</th>
+            <th className="py-1 font-medium">Semana del</th>
             <th className="py-1 text-right font-medium">{title}</th>
           </tr>
         </thead>
@@ -750,7 +751,7 @@ function exactUsdc(amount: string): string {
 }
 
 function weekLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
+  return new Date(iso).toLocaleDateString('es', {
     month: 'short',
     day: 'numeric',
     timeZone: 'UTC',

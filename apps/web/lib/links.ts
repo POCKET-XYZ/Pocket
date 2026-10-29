@@ -32,5 +32,5 @@ export function imageSrc(url: string | null | undefined): string | undefined {
 /** Where a link really goes, shown next to it so nobody opens it blind. */
 export function linkHost(url: string | null | undefined): string {
   const href = safeHref(url);
-  return href ? new URL(href).hostname.replace(/^www\./, '') : 'unsafe link';
+  return href ? new URL(href).hostname.replace(/^www\./, '') : 'enlace no seguro';
 }

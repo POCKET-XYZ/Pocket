@@ -39,12 +39,12 @@ export default function JobsPage() {
   return (
     <div>
       <PageHeader
-        title="Open jobs"
-        description="Work posted by verified startups. Every job is paid through escrow."
+        title="Trabajos abiertos"
+        description="Trabajos publicados por startups verificadas. Cada trabajo se paga con dinero guardado en un contrato."
         actions={
           user?.role === 'startup' ? (
             <Button asChild>
-              <Link href="/jobs/new">Post a job</Link>
+              <Link href="/jobs/new">Publicar un trabajo</Link>
             </Button>
           ) : null
         }
@@ -52,7 +52,7 @@ export default function JobsPage() {
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <CategoryFilter value={category} onChange={setCategory} />
         <Input
-          placeholder="Search jobs"
+          placeholder="Buscar trabajos"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           className="md:w-72"
@@ -73,21 +73,21 @@ export default function JobsPage() {
           {board.hasNextPage ? (
             <div className="mt-6 flex flex-col items-center gap-2">
               <p className="text-sm text-muted-foreground">
-                Showing {jobs.length} of {total}
+                Mostrando {jobs.length} de {total}
               </p>
               <Button
                 variant="outline"
                 disabled={board.isFetchingNextPage}
                 onClick={() => void board.fetchNextPage()}
               >
-                {board.isFetchingNextPage ? 'Loading...' : 'Show more jobs'}
+                {board.isFetchingNextPage ? 'Cargando...' : 'Ver más trabajos'}
               </Button>
             </div>
           ) : null}
         </>
       ) : (
-        <EmptyState title="No open jobs match">
-          Try another category or search.
+        <EmptyState title="Ningún trabajo abierto coincide">
+          Prueba con otra categoría u otra búsqueda.
         </EmptyState>
       )}
     </div>

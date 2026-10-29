@@ -239,7 +239,7 @@ describe('ChainOperationsService', () => {
     await expect(
       service.submitSigned({ kind: 'payment' }, 'signed-xdr', 'user-1'),
     ).rejects.toThrow(
-      'The network refused the transaction: the destination does not accept USDC. Nothing moved',
+      'La red rechazó la transacción: el destino no acepta USDC. No se movió nada',
     );
     expect(prisma.chainOperation.update).toHaveBeenCalledWith({
       where: { txHash: 'hash-1' },
@@ -367,7 +367,7 @@ describe('ChainOperationsService', () => {
       chain.waitForTransaction.mockResolvedValue('FAILED');
       await expect(
         service.submitSigned({ kind: 'fund', contractId: 'contract-1' }, 'signed-xdr', 'user-1'),
-      ).rejects.toThrow('failed on the network');
+      ).rejects.toThrow('falló en la red');
       expect(prisma.chainOperation.update).toHaveBeenCalledWith({
         where: { txHash: 'hash-1' },
         data: expect.objectContaining({ status: 'failed', stepKey: null }),

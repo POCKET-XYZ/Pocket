@@ -52,7 +52,7 @@ export function Onboarding({ className }: { className?: string }) {
     <Card className={cn('border-celeste bg-celeste-light/30', className)}>
       <CardContent className="pt-6">
         <h2 className="font-heading text-lg font-semibold text-navy">
-          Getting started on Pocket
+          Primeros pasos en Pocket
         </h2>
         <ol className="mt-4 space-y-3">
           {steps.map((step, index) => (
@@ -93,40 +93,42 @@ function stepsFor(user: User, hasProfile: boolean): Step[] {
   const isStartup = user.role === 'startup';
 
   const verification: Step = {
-    title: 'Get your account verified',
+    title: 'Verifica tu cuenta',
     text: {
-      not_submitted: 'Send your details. It is a short form: links, no documents.',
-      pending: 'Sent. A Pocket manager reviews it by hand, oldest requests first.',
-      rejected: 'The manager asked for changes. Fix them and send it again.',
-      approved: 'A manager approved your account.',
+      not_submitted: 'Envía tus datos. Es un formulario corto: enlaces, sin documentos.',
+      pending: 'Enviado. Un manager de Pocket lo revisa a mano, por orden de llegada.',
+      rejected: 'El manager pidió cambios. Haz las correcciones y vuelve a enviarlo.',
+      approved: 'Un manager aprobó tu cuenta.',
     }[status],
     state: approved ? 'done' : status === 'pending' ? 'waiting' : 'current',
     action: approved
       ? undefined
       : {
-          label: status === 'pending' ? 'See status' : 'Go to verification',
+          label: status === 'pending' ? 'Ver estado' : 'Ir a la verificación',
           href: '/verification',
         },
   };
 
   const profile: Step = {
-    title: isStartup ? 'Fill in your startup profile' : 'Fill in your specialist profile',
+    title: isStartup
+      ? 'Completa el perfil de tu startup'
+      : 'Completa tu perfil de experto',
     text: isStartup
-      ? 'What your company does, its stage and what you need help with. Specialists see it on your jobs.'
-      : 'Your headline, what you are good at, your categories and your rate. Startups choose by looking at this.',
+      ? 'Qué hace tu empresa, en qué etapa está y en qué necesitas ayuda. Los expertos lo ven en tus trabajos.'
+      : 'Tu titular, tus fortalezas, tus categorías y tu tarifa. Las startups lo miran para elegir.',
     state: !approved ? 'later' : hasProfile ? 'done' : 'current',
-    action: { label: hasProfile ? 'Edit profile' : 'Create profile', href: '/profile' },
+    action: { label: hasProfile ? 'Editar perfil' : 'Crear perfil', href: '/profile' },
   };
 
   const first: Step = {
-    title: isStartup ? 'Post your first job' : 'Apply to a job',
+    title: isStartup ? 'Publica tu primer trabajo' : 'Postúlate a un trabajo',
     text: isStartup
-      ? 'Describe the work and the budget. Verified specialists will apply and you pick one.'
-      : 'Open jobs are on the board. Apply with your proposal, your price and how long it takes.',
+      ? 'Describe el trabajo y el presupuesto. Los expertos verificados se postularán y tú eliges a uno.'
+      : 'Los trabajos abiertos están en la sección Trabajos. Postúlate con tu propuesta, tu precio y cuánto tiempo te toma.',
     state: approved && hasProfile ? 'current' : 'later',
     action: isStartup
-      ? { label: 'Post a job', href: '/jobs/new' }
-      : { label: 'Browse jobs', href: '/jobs' },
+      ? { label: 'Publicar un trabajo', href: '/jobs/new' }
+      : { label: 'Ver trabajos', href: '/jobs' },
   };
 
   return [verification, profile, first];
@@ -136,14 +138,14 @@ function StepMark({ state, number }: { state: StepState; number: number }) {
   const base = 'flex size-7 shrink-0 items-center justify-center rounded-full text-sm';
   if (state === 'done') {
     return (
-      <span className={cn(base, 'bg-navy text-off-white')} aria-label="Done">
+      <span className={cn(base, 'bg-navy text-off-white')} aria-label="Listo">
         <CheckIcon className="size-4" />
       </span>
     );
   }
   if (state === 'waiting') {
     return (
-      <span className={cn(base, 'bg-yellow text-navy')} aria-label="Waiting for Pocket">
+      <span className={cn(base, 'bg-yellow text-navy')} aria-label="Esperando a Pocket">
         <ClockIcon className="size-4" />
       </span>
     );

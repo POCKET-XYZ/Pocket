@@ -63,11 +63,11 @@ function ProfileFirst() {
   if (profile.error) return <ErrorAlert error={profile.error} />;
   if (!profile.data) {
     return (
-      <EmptyState title="Fill in your startup profile first">
-        Specialists read it before applying.
+      <EmptyState title="Primero completa el perfil de tu startup">
+        Los expertos lo leen antes de postularse.
         <div>
           <Button asChild className="mt-4">
-            <Link href="/profile">Create profile</Link>
+            <Link href="/profile">Crear perfil</Link>
           </Button>
         </div>
       </EmptyState>
@@ -101,21 +101,21 @@ function NewJob() {
         } catch (error) {
           // The job itself is posted; only the file is missing.
           toast.error(
-            `Job posted, but the report template did not upload: ${errorMessage(error)}. Attach it again from the job page.`,
+            `Trabajo publicado, pero la plantilla de reporte no se subió: ${errorMessage(error)}. Adjúntala de nuevo desde la página del trabajo.`,
           );
         }
       }
       return job;
     },
     onSuccess: async (job) => {
-      toast.success('Job posted');
+      toast.success('Trabajo publicado');
       await queryClient.invalidateQueries({ queryKey: ['jobs'] });
       router.push(`/jobs/${job.id}`);
     },
     onError: (error) => {
-      if (error instanceof ApiError && error.message.includes('profile')) {
+      if (error instanceof ApiError && error.message.includes('perfil')) {
         toast.error(error.message, {
-          action: { label: 'Fill in profile', onClick: () => router.push('/profile') },
+          action: { label: 'Completar perfil', onClick: () => router.push('/profile') },
         });
         return;
       }
@@ -146,12 +146,12 @@ function NewJob() {
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (remaining !== BigInt(0)) {
-      toast.error(`The milestones must add up to the ${usdc(budget)} budget`);
+      toast.error(`Los hitos deben sumar el presupuesto de ${usdc(budget)}`);
       return;
     }
     const repeated = repeatedKpi(kpis);
     if (repeated) {
-      toast.error(`"${repeated}" is listed twice as a KPI`);
+      toast.error(`"${repeated}" aparece dos veces como KPI`);
       return;
     }
     const values = formValues(event.currentTarget);
@@ -180,21 +180,21 @@ function NewJob() {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
-        title="Post a job"
-        description="Say what you need, how it gets paid and what each delivery has to meet. Specialists apply with a proposal and a price."
+        title="Publicar un trabajo"
+        description="Di qué necesitas, cómo se paga y qué debe cumplir cada entrega. Los expertos se postulan con una propuesta y un precio."
       />
       <Card>
         <CardContent className="pt-6">
           <form onSubmit={onSubmit} className="space-y-4">
             <Field
-              label="Title"
+              label="Título"
               htmlFor="title"
-              hint="What you need, in one line."
+              hint="Lo que necesitas, en una línea."
               required
             >
               <Input id="title" name="title" required minLength={10} maxLength={120} />
             </Field>
-            <Field label="Category" htmlFor="category" required>
+            <Field label="Categoría" htmlFor="category" required>
               <select
                 id="category"
                 name="category"
@@ -203,7 +203,7 @@ function NewJob() {
                 className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
               >
                 <option value="" disabled>
-                  Choose a category
+                  Elige una categoría
                 </option>
                 {Object.values(ServiceCategory).map((category) => (
                   <option key={category} value={category}>
@@ -213,9 +213,9 @@ function NewJob() {
               </select>
             </Field>
             <Field
-              label="Description"
+              label="Descripción"
               htmlFor="description"
-              hint="Goal, audience, specs and references. 50 to 5000 characters."
+              hint="Objetivo, público, especificaciones y referencias. De 50 a 5000 caracteres."
               required
             >
               <Textarea
@@ -226,14 +226,14 @@ function NewJob() {
                 maxLength={5000}
                 rows={6}
                 placeholder={
-                  'Goal: what this work has to achieve.\nAudience: who it speaks to.\nSpecs: length, format, subtitles, style.\nReferences: links you like.\nDoes the specialist only deliver, or also publish?'
+                  'Objetivo: qué tiene que lograr este trabajo.\nPúblico: a quién le habla.\nEspecificaciones: duración, formato, subtítulos, estilo.\nReferencias: enlaces que te gusten.\n¿El experto solo entrega o también publica?'
                 }
               />
             </Field>
             <Field
-              label="Expected deliverables"
+              label="Entregas esperadas"
               htmlFor="deliverables"
-              hint="What you should receive at the end."
+              hint="Lo que deberías recibir al final."
               required
             >
               <Textarea
@@ -247,7 +247,7 @@ function NewJob() {
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Budget (USDC)" htmlFor="budget" required>
+              <Field label="Presupuesto (USDC)" htmlFor="budget" required>
                 <Input
                   id="budget"
                   name="budget"
@@ -260,7 +260,7 @@ function NewJob() {
                   onChange={(event) => setBudget(event.target.value)}
                 />
               </Field>
-              <Field label="Deadline" htmlFor="deadline" required>
+              <Field label="Fecha límite" htmlFor="deadline" required>
                 <Input
                   id="deadline"
                   name="deadline"
@@ -273,9 +273,9 @@ function NewJob() {
 
             <div className="grid gap-4 sm:grid-cols-3">
               <Field
-                label="Rounds of changes"
+                label="Rondas de cambios"
                 htmlFor="revisionRounds"
-                hint="Included in the price."
+                hint="Incluidas en el precio."
               >
                 <Input
                   id="revisionRounds"
@@ -286,32 +286,28 @@ function NewJob() {
                   defaultValue={1}
                 />
               </Field>
-              <Field
-                label="Channel"
-                htmlFor="channel"
-                hint="Where it is published or used."
-              >
+              <Field label="Canal" htmlFor="channel" hint="Dónde se publica o se usa.">
                 <Input
                   id="channel"
                   name="channel"
                   maxLength={120}
-                  placeholder="TikTok and Reels"
+                  placeholder="TikTok y Reels"
                 />
               </Field>
-              <Field label="Content language" htmlFor="contentLanguage">
+              <Field label="Idioma del contenido" htmlFor="contentLanguage">
                 <Input
                   id="contentLanguage"
                   name="contentLanguage"
                   maxLength={60}
-                  placeholder="Spanish"
+                  placeholder="Español"
                 />
               </Field>
             </div>
 
             <Field
-              label="What you provide"
+              label="Lo que tú aportas"
               htmlFor="startupProvides"
-              hint="Script, brand, logo, access to the app, anything the specialist can count on."
+              hint="Guion, marca, logo, acceso a la app: todo con lo que el experto puede contar."
             >
               <Textarea
                 id="startupProvides"
@@ -324,27 +320,24 @@ function NewJob() {
             <section className="space-y-3 rounded-2xl border border-border p-4">
               <div>
                 <h2 className="font-heading text-lg font-semibold text-navy">
-                  Payment plan
+                  Plan de pagos
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Split the budget into up to {MAX_MILESTONES} deliveries. Each one is
-                  paid when you approve it, so the specialist knows what unlocks each
-                  payment.
+                  Divide el presupuesto en hasta {MAX_MILESTONES} entregas. Cada una se
+                  paga cuando la apruebas, así el experto sabe qué libera cada pago.
                 </p>
               </div>
 
               {milestones.map((milestone, index) => (
                 <div key={index} className="space-y-3 rounded-xl bg-muted/40 p-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-navy">
-                      Milestone {index + 1}
-                    </p>
+                    <p className="text-sm font-semibold text-navy">Hito {index + 1}</p>
                     {milestones.length > 1 ? (
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon-sm"
-                        aria-label="Remove milestone"
+                        aria-label="Quitar hito"
                         onClick={() =>
                           setMilestones((current) =>
                             current.filter((_, i) => i !== index),
@@ -356,7 +349,7 @@ function NewJob() {
                     ) : null}
                   </div>
                   <Input
-                    placeholder="Title, e.g. Video 1"
+                    placeholder="Título, por ejemplo Video 1"
                     required
                     minLength={3}
                     maxLength={120}
@@ -364,7 +357,7 @@ function NewJob() {
                     onChange={(event) => update(index, { title: event.target.value })}
                   />
                   <Textarea
-                    placeholder="What has to be delivered"
+                    placeholder="Qué se tiene que entregar"
                     required
                     minLength={10}
                     maxLength={2000}
@@ -375,7 +368,7 @@ function NewJob() {
                     }
                   />
                   <Textarea
-                    placeholder="What it has to meet to be approved, e.g. vertical, 60 seconds, subtitles and the logo"
+                    placeholder="Qué debe cumplir para aprobarse, por ejemplo: vertical, 60 segundos, con subtítulos y el logo"
                     required
                     minLength={10}
                     maxLength={2000}
@@ -388,7 +381,7 @@ function NewJob() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Input
                       type="number"
-                      placeholder="Amount (USDC)"
+                      placeholder="Monto (USDC)"
                       required
                       min={0.0000001}
                       step="any"
@@ -420,7 +413,7 @@ function NewJob() {
                     ])
                   }
                 >
-                  <PlusIcon /> Add milestone
+                  <PlusIcon /> Agregar hito
                 </Button>
               ) : null}
 
@@ -432,10 +425,10 @@ function NewJob() {
                   )}
                 >
                   {remaining === BigInt(0)
-                    ? 'The milestones add up to the budget.'
+                    ? 'Los hitos suman el presupuesto.'
                     : remaining > BigInt(0)
-                      ? `${usdc(fromUnits(remaining))} of the budget still to assign.`
-                      : `${usdc(fromUnits(-remaining))} over the budget.`}
+                      ? `Faltan ${usdc(fromUnits(remaining))} del presupuesto por asignar.`
+                      : `${usdc(fromUnits(-remaining))} por encima del presupuesto.`}
                 </p>
               ) : null}
             </section>
@@ -443,14 +436,14 @@ function NewJob() {
             <section className="space-y-3 rounded-2xl border border-border p-4">
               <div>
                 <h2 className="font-heading text-lg font-semibold text-navy">
-                  How you will measure it{' '}
+                  Cómo lo vas a medir{' '}
                   <span className="text-sm font-normal text-muted-foreground">
-                    (optional)
+                    (opcional)
                   </span>
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Up to {MAX_KPIS} KPIs. Applicants see them before applying, and every
-                  delivery reports a result for each one.
+                  Hasta {MAX_KPIS} KPIs. Los postulantes los ven antes de postularse, y
+                  cada entrega reporta un resultado para cada uno.
                 </p>
               </div>
 
@@ -461,21 +454,21 @@ function NewJob() {
             <section className="space-y-3 rounded-2xl border border-border p-4">
               <div>
                 <h2 className="font-heading text-lg font-semibold text-navy">
-                  Report template{' '}
+                  Plantilla de reporte{' '}
                   <span className="text-sm font-normal text-muted-foreground">
-                    (optional)
+                    (opcional)
                   </span>
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  The file you want the specialist to fill in and attach to each delivery,
-                  such as your KPI spreadsheet. Verified specialists can download it with
-                  the brief.
+                  El archivo que quieres que el experto complete y adjunte a cada entrega,
+                  como tu hoja de cálculo de KPIs. Los expertos verificados pueden
+                  descargarlo junto con el brief.
                 </p>
               </div>
               <Field
-                label="File"
+                label="Archivo"
                 htmlFor="reportTemplate"
-                hint="Excel (.xlsx), Word (.docx), PDF or CSV, up to 5 MB. Files with macros (.xlsm, .docm) are not accepted."
+                hint="Excel (.xlsx), Word (.docx), PDF o CSV, de hasta 5 MB. No se aceptan archivos con macros (.xlsm, .docm)."
               >
                 <Input
                   id="reportTemplate"
@@ -487,7 +480,7 @@ function NewJob() {
             </section>
 
             <Button type="submit" size="lg" disabled={create.isPending}>
-              {create.isPending ? 'Posting...' : 'Post job'}
+              {create.isPending ? 'Publicando...' : 'Publicar trabajo'}
             </Button>
           </form>
         </CardContent>

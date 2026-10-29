@@ -115,7 +115,7 @@ export class EscrowService {
       // Unverified is unusable: free the step so accepting again deploys anew.
       await this.operations.markFailed(operation.txHash, error);
       throw new ServiceUnavailableException(
-        'Could not check the new escrow on chain. Accept again in a minute',
+        'No pudimos verificar el nuevo contrato en Stellar. Vuelve a aceptar en un minuto',
       );
     }
     if (problem) {
@@ -125,7 +125,7 @@ export class EscrowService {
         'alert',
       );
       const error = new ConflictException(
-        'The escrow on chain is not the one Pocket asked for, so it will not be used',
+        'El contrato en Stellar no es el que Pocket pidió, así que no se va a usar',
       );
       await this.operations.markFailed(operation.txHash, error);
       throw error;
@@ -373,7 +373,7 @@ export class EscrowService {
     position: number,
   ): Promise<Partial<Record<Flag, boolean>>> {
     const milestone = await this.milestoneState(contract, position);
-    if (!milestone) throw new NotFoundException('The escrow has no such milestone');
+    if (!milestone) throw new NotFoundException('El contrato no tiene ese hito');
     return milestone.flags;
   }
 
@@ -388,7 +388,7 @@ export class EscrowService {
 }
 
 function escrowIdOf(contract: Pick<Contract, 'escrowId'>): string {
-  if (!contract.escrowId) throw new NotFoundException('This contract has no escrow yet');
+  if (!contract.escrowId) throw new NotFoundException('Este contrato todavía no se creó en Stellar');
   return contract.escrowId;
 }
 

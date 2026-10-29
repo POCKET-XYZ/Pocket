@@ -57,11 +57,11 @@ export class WalletService {
   async prepareTrustline(user: AuthUser): Promise<PreparedTransaction> {
     const readiness = await this.stellar.usdcReadiness(user.stellarAddress);
     if (readiness === 'ready') {
-      throw new BadRequestException('Your wallet already trusts USDC');
+      throw new BadRequestException('Tu wallet ya tiene USDC habilitado');
     }
     if (readiness === 'no_account') {
       throw new BadRequestException(
-        'Your wallet is not active on Stellar yet. Fund it with some XLM first',
+        'Tu wallet todavía no está activa en Stellar. Primero agrégale algo de XLM',
       );
     }
     const xdr = await this.stellar.buildUsdcTrustline(user.stellarAddress);
@@ -94,13 +94,13 @@ export class WalletService {
     const memo = request.memo === '' ? undefined : request.memo;
 
     if (!StrKey.isValidEd25519PublicKey(destination)) {
-      throw new BadRequestException('That is not a valid Stellar address');
+      throw new BadRequestException('Esa no es una dirección de Stellar válida');
     }
     if (destination === user.stellarAddress) {
-      throw new BadRequestException('That is your own address. Enter the address to pay');
+      throw new BadRequestException('Esa es tu propia dirección. Ingresa la dirección a la que quieres pagar');
     }
     if (memo !== undefined && Buffer.byteLength(memo, 'utf8') > MAX_MEMO_BYTES) {
-      throw new BadRequestException(`The memo can be at most ${MAX_MEMO_BYTES} bytes`);
+      throw new BadRequestException(`El memo puede tener como máximo ${MAX_MEMO_BYTES} bytes`);
     }
 
     const [spendable, recipient] = await Promise.all([
@@ -108,19 +108,19 @@ export class WalletService {
       this.stellar.usdcReadiness(destination),
     ]);
     if (spendable === null) {
-      throw new BadRequestException('Your wallet does not hold USDC yet');
+      throw new BadRequestException('Tu wallet todavía no tiene USDC');
     }
     if (amount.greaterThan(spendable)) {
-      throw new BadRequestException(`You can send at most ${spendable} USDC`);
+      throw new BadRequestException(`Puedes enviar como máximo ${spendable} USDC`);
     }
     if (recipient === 'no_account') {
       throw new BadRequestException(
-        'That address does not exist on Stellar yet. Check it, or ask its owner to activate it',
+        'Esa dirección todavía no existe en Stellar. Revísala o pídele a su dueño que la active',
       );
     }
     if (recipient === 'no_trustline') {
       throw new BadRequestException(
-        'That address does not accept USDC yet. Its owner has to enable USDC first',
+        'Esa dirección todavía no acepta USDC. Primero su dueño tiene que habilitar USDC',
       );
     }
 
@@ -150,7 +150,7 @@ export class WalletService {
     const [payment] = this.stellar.parse(signedXdr).operations;
     if (payment?.type !== 'payment') {
       // Cannot happen: only the prepared payment gets this far.
-      throw new BadRequestException('This transaction is not a payment');
+      throw new BadRequestException('Esta transacción no es un pago');
     }
     return { txHash: operation.txHash, amount: payment.amount, destination: payment.destination };
   }
@@ -164,11 +164,11 @@ export class WalletService {
 /** A positive amount with at most 7 decimals, as the network counts USDC. */
 function paymentAmount(value: string): Prisma.Decimal {
   if (!/^\d{1,12}(\.\d{1,7})?$/.test(value)) {
-    throw new BadRequestException('Enter an amount with at most 7 decimals');
+    throw new BadRequestException('Ingresa un monto con 7 decimales como máximo');
   }
   const amount = new Prisma.Decimal(value);
   if (amount.lessThanOrEqualTo(0)) {
-    throw new BadRequestException('The amount has to be more than zero');
+    throw new BadRequestException('El monto tiene que ser mayor que cero');
   }
   return amount;
 }

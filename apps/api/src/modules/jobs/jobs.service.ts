@@ -32,10 +32,10 @@ export class JobsService {
   /** Post a job. The startup needs a profile, since the board shows who is hiring. */
   async create(user: AuthUser, dto: CreateJobDto): Promise<Job> {
     if (user.role !== 'startup') {
-      throw new ForbiddenException('Only startups post jobs');
+      throw new ForbiddenException('Solo las startups pueden publicar trabajos');
     }
     if (dto.deadline < todayUtc()) {
-      throw new BadRequestException('The deadline cannot be in the past');
+      throw new BadRequestException('La fecha límite no puede estar en el pasado');
     }
     assertMilestonesMatch(dto);
     const kpis = cleanKpis(dto.kpis);
@@ -44,7 +44,9 @@ export class JobsService {
       select: { id: true },
     });
     if (!profile) {
-      throw new BadRequestException('Fill in your startup profile before posting a job');
+      throw new BadRequestException(
+        'Completa tu perfil de startup antes de publicar un trabajo',
+      );
     }
 
     const { milestones, ...job } = dto;
@@ -118,7 +120,7 @@ export class JobsService {
       where: { id: jobId },
       include: LISTING_INCLUDE,
     });
-    if (!job) throw new NotFoundException('Job not found');
+    if (!job) throw new NotFoundException('No encontramos el trabajo');
     return toListing(job);
   }
 
@@ -129,7 +131,7 @@ export class JobsService {
   async close(user: AuthUser, jobId: string): Promise<Job> {
     const job = await this.ownedJob(user, jobId);
     if (job.status !== 'open') {
-      throw new BadRequestException('Only an open job can be closed');
+      throw new BadRequestException('Solo se puede cerrar un trabajo abierto');
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -139,7 +141,7 @@ export class JobsService {
         data: { status: 'closed' },
       });
       if (claimed.count !== 1) {
-        throw new BadRequestException('Only an open job can be closed');
+        throw new BadRequestException('Solo se puede cerrar un trabajo abierto');
       }
       await tx.application.updateMany({
         where: { jobId, status: 'submitted' },
@@ -152,9 +154,9 @@ export class JobsService {
   /** A job the signed-in startup owns, or an error. */
   async ownedJob(user: AuthUser, jobId: string): Promise<Job> {
     const job = await this.prisma.job.findUnique({ where: { id: jobId } });
-    if (!job) throw new NotFoundException('Job not found');
+    if (!job) throw new NotFoundException('No encontramos el trabajo');
     if (job.startupId !== user.sub) {
-      throw new ForbiddenException('This job belongs to another startup');
+      throw new ForbiddenException('Este trabajo es de otra startup');
     }
     return job;
   }
@@ -184,17 +186,19 @@ function assertMilestonesMatch(dto: CreateJobDto): void {
   );
   if (!total.equals(dto.budget)) {
     throw new BadRequestException(
-      `The milestones add up to ${total.toString()} USDC but the budget is ${dto.budget} USDC`,
+      `Los hitos suman ${total.toString()} USDC, pero el presupuesto es ${dto.budget} USDC`,
     );
   }
   const late = dto.milestones.find((milestone) => milestone.dueDate > dto.deadline);
   if (late) {
     throw new BadRequestException(
-      `"${late.title}" is due after the job deadline (${dto.deadline})`,
+      `La fecha de entrega de "${late.title}" es posterior a la fecha límite del trabajo (${dto.deadline})`,
     );
   }
   const past = dto.milestones.find((milestone) => milestone.dueDate < todayUtc());
   if (past) {
-    throw new BadRequestException(`"${past.title}" is due in the past`);
+    throw new BadRequestException(
+      `La fecha de entrega de "${past.title}" está en el pasado`,
+    );
   }
 }

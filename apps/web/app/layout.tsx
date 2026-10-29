@@ -23,13 +23,13 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: { default: 'Pocket', template: '%s | Pocket' },
   description:
-    'The marketplace where startups hire vetted growth, sales and marketing specialists, with every payment protected by escrow on Stellar.',
+    'El marketplace donde las startups contratan expertos verificados en growth, ventas y marketing, con cada pago protegido por un contrato en Stellar.',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html
-      lang="en"
+      lang="es"
       className={`${fredoka.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">

@@ -21,14 +21,14 @@ const ROLES: {
 }[] = [
   {
     value: 'startup',
-    title: 'I am a startup',
-    text: 'Post jobs, hire specialists and pay per milestone through escrow.',
+    title: 'Soy startup',
+    text: 'Publica trabajos, contrata expertos y paga por hito, con el dinero guardado en un contrato.',
     icon: RocketIcon,
   },
   {
     value: 'specialist',
-    title: 'I am a specialist',
-    text: 'Apply to jobs in growth, sales and marketing, and get paid in USDC.',
+    title: 'Soy experto',
+    text: 'Postúlate a trabajos de growth, ventas y marketing, y cobra en USDC.',
     icon: BriefcaseBusinessIcon,
   },
 ];
@@ -81,8 +81,8 @@ export default function LoginPage() {
     return (
       <div className="mx-auto max-w-3xl">
         <PageHeader
-          title="Create your account"
-          description="Choose how you will use Pocket. Your wallet is your account, and this cannot be changed later."
+          title="Crea tu cuenta"
+          description="Elige cómo vas a usar Pocket. Tu wallet es tu cuenta, y esta elección no se puede cambiar después."
         />
         <div className="grid gap-4 md:grid-cols-2">
           {ROLES.map((option) => (
@@ -109,10 +109,10 @@ export default function LoginPage() {
             disabled={!role || busy}
             onClick={() => role && run(() => chooseRole(role))}
           >
-            Create account
+            Crear cuenta
           </Button>
           <Button size="lg" variant="ghost" onClick={cancelSignUp}>
-            Cancel
+            Cancelar
           </Button>
         </div>
       </div>
@@ -124,11 +124,11 @@ export default function LoginPage() {
       <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-navy text-yellow">
         <WalletIcon className="size-8" />
       </div>
-      <h1 className="mt-6 text-3xl font-bold text-navy">Sign in to Pocket</h1>
+      <h1 className="mt-6 text-3xl font-bold text-navy">Entra a Pocket</h1>
       <p className="mt-3 text-muted-foreground">
-        Your Stellar wallet is your account. Bring your own, or let Pocket create one for
-        you. Either way you keep control of your money: every payment is signed by your
-        wallet and Pocket never holds your funds.
+        Tu wallet de Stellar es tu cuenta. Usa la tuya o deja que Pocket te cree una. En
+        los dos casos tú controlas tu dinero: cada pago lo firma tu wallet y Pocket nunca
+        tiene tus fondos en su poder.
       </p>
 
       {pollarAvailable ? (
@@ -141,12 +141,12 @@ export default function LoginPage() {
             <MailIcon className="mt-1 size-6 shrink-0 text-navy" />
             <span>
               <span className="block font-heading text-lg font-semibold text-navy">
-                Continue with email or Google
+                Continuar con correo o Google
               </span>
               <span className="mt-1 block text-sm text-muted-foreground">
-                Recommended if you are new to crypto. You get a Stellar wallet ready to
-                receive USDC, with no extension to install, no seed phrase and no network
-                fees to pay.
+                Recomendado si es tu primera vez con cripto. Obtienes una wallet de
+                Stellar lista para recibir USDC, sin instalar extensiones, sin frase
+                semilla y sin pagar comisiones de red.
               </span>
             </span>
           </button>
@@ -159,11 +159,11 @@ export default function LoginPage() {
             <WalletIcon className="mt-1 size-6 shrink-0 text-navy" />
             <span>
               <span className="block font-heading text-lg font-semibold text-navy">
-                {busy ? 'Waiting for your wallet...' : 'Connect my Stellar wallet'}
+                {busy ? 'Esperando tu wallet...' : 'Conectar mi wallet de Stellar'}
               </span>
               <span className="mt-1 block text-sm text-muted-foreground">
-                Freighter, xBull, Lobstr, Albedo and others. You sign a message to prove
-                the wallet is yours. It costs nothing and moves no funds.
+                Freighter, xBull, Lobstr, Albedo y otras. Firmas un mensaje para demostrar
+                que la wallet es tuya. No cuesta nada y no mueve fondos.
               </span>
             </span>
           </button>
@@ -175,7 +175,7 @@ export default function LoginPage() {
           disabled={busy}
           onClick={() => run(signIn)}
         >
-          {busy ? 'Waiting for your wallet...' : 'Connect wallet'}
+          {busy ? 'Esperando tu wallet...' : 'Conectar wallet'}
         </Button>
       )}
     </div>

@@ -36,14 +36,16 @@ export class ReportTemplatesService {
   async save(user: AuthUser, jobId: string, file: UploadedBytes | undefined) {
     await this.openOwnedJob(user, jobId);
 
-    if (!file?.buffer.length) throw new BadRequestException('Choose a file');
+    if (!file?.buffer.length) throw new BadRequestException('Elige un archivo');
     if (file.buffer.length > MAX_REPORT_TEMPLATE_BYTES) {
-      throw new PayloadTooLargeException('The file is too big. The limit is 5 MB');
+      throw new PayloadTooLargeException(
+        'El archivo es demasiado grande. El límite es de 5 MB',
+      );
     }
     const contentType = sniffReportFile(file.buffer);
     if (!contentType) {
       throw new BadRequestException(
-        'Upload the report template as a PDF, Excel (.xlsx), Word (.docx) or CSV file, without macros',
+        'Sube la plantilla de reporte como archivo PDF, Excel (.xlsx), Word (.docx) o CSV, sin macros',
       );
     }
 
@@ -76,7 +78,7 @@ export class ReportTemplatesService {
         reportTemplate: { select: { data: true, fileName: true } },
       },
     });
-    if (!job) throw new NotFoundException('Job not found');
+    if (!job) throw new NotFoundException('No encontramos el trabajo');
     // Who may read it is decided before saying whether there is a file at all.
     await this.assertCanRead(user, job.startupId);
 
@@ -84,7 +86,7 @@ export class ReportTemplatesService {
     // Checked again on the way out: only these types are ever served.
     const contentType = data ? sniffReportFile(data) : null;
     if (!data || !contentType || !job.reportTemplate) {
-      throw new NotFoundException('This job has no report template');
+      throw new NotFoundException('Este trabajo no tiene plantilla de reporte');
     }
     return { data, contentType, fileName: job.reportTemplate.fileName };
   }
@@ -98,10 +100,10 @@ export class ReportTemplatesService {
       });
       if (specialist?.verificationStatus === 'approved') return;
       throw new ForbiddenException(
-        'Get verified to download the report template of a job',
+        'Verifica tu cuenta para descargar la plantilla de reporte de un trabajo',
       );
     }
-    throw new ForbiddenException('This report template belongs to another startup');
+    throw new ForbiddenException('Esta plantilla de reporte es de otra startup');
   }
 
   private async openOwnedJob(user: AuthUser, jobId: string): Promise<void> {
@@ -109,13 +111,13 @@ export class ReportTemplatesService {
       where: { id: jobId },
       select: { startupId: true, status: true },
     });
-    if (!job) throw new NotFoundException('Job not found');
+    if (!job) throw new NotFoundException('No encontramos el trabajo');
     if (job.startupId !== user.sub) {
-      throw new ForbiddenException('This job belongs to another startup');
+      throw new ForbiddenException('Este trabajo es de otra startup');
     }
     if (job.status !== 'open') {
       throw new BadRequestException(
-        'The report template can only change while the job is open',
+        'La plantilla de reporte solo se puede cambiar mientras el trabajo está abierto',
       );
     }
   }

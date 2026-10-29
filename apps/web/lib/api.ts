@@ -66,7 +66,7 @@ export async function api<T>(
     // wrong, or CORS does not allow this origin.
     throw new ApiError(
       0,
-      `Cannot reach the Pocket API at ${API_URL}. Check that it is running and allows this site.`,
+      `No se pudo conectar con la API de Pocket en ${API_URL}. Revisa que esté funcionando y que permita este sitio.`,
     );
   }
 
@@ -117,7 +117,7 @@ export async function upload<T>(
     headers: token ? { authorization: `Bearer ${token}` } : {},
     body: form,
   }).catch(() => {
-    throw new ApiError(0, `Cannot reach the Pocket API at ${API_URL}.`);
+    throw new ApiError(0, `No se pudo conectar con la API de Pocket en ${API_URL}.`);
   });
   signOutIfRejected(response.status, path, token);
   const payload = (await response.json().catch(() => null)) as
@@ -130,7 +130,7 @@ export async function upload<T>(
     throw new ApiError(
       response.status,
       response.status === 413
-        ? `The file is too big. The limit is ${limit}`
+        ? `El archivo es demasiado grande. El límite es de ${limit}`
         : (message ?? response.statusText),
       payload?.code,
     );
@@ -148,7 +148,7 @@ export async function download(path: string): Promise<Blob> {
   const response = await fetch(`${API_URL}${path}`, {
     headers: token ? { authorization: `Bearer ${token}` } : {},
   }).catch(() => {
-    throw new ApiError(0, `Cannot reach the Pocket API at ${API_URL}.`);
+    throw new ApiError(0, `No se pudo conectar con la API de Pocket en ${API_URL}.`);
   });
   signOutIfRejected(response.status, path, token);
   if (!response.ok) {
@@ -174,5 +174,5 @@ export function errorMessage(error: unknown): string {
     return error.message;
   }
   if (typeof error === 'string' && error) return error;
-  return 'Something went wrong';
+  return 'Algo salió mal';
 }
