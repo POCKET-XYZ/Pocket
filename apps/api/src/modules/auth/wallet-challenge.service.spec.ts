@@ -70,7 +70,7 @@ describe('WalletChallengeService', () => {
 
   it('rejects an invalid stellar address', async () => {
     await expect(service.issue('not-an-address')).rejects.toThrow(
-      'Invalid Stellar address',
+      'La dirección de Stellar no es válida',
     );
   });
 

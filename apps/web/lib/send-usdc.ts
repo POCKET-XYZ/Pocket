@@ -24,35 +24,36 @@ export function memoBytes(memo: string): number {
 
 export function destinationProblem(value: string, ownAddress: string): string | null {
   const address = value.trim();
-  if (!address) return 'Enter the Stellar address to send to.';
+  if (!address) return 'Escribe la dirección de Stellar a la que quieres enviar.';
   if (StrKey.isValidEd25519SecretSeed(address)) {
-    return 'This is a secret key, not an address. Never share it. Enter the address that starts with G.';
+    return 'Esto es una clave secreta, no una dirección. Nunca la compartas. Escribe la dirección que empieza con G.';
   }
   if (address.startsWith('M')) {
-    return 'Addresses that start with M are not supported. Use the G address and put any ID in the memo.';
+    return 'No se admiten direcciones que empiezan con M. Usa la dirección G y pon cualquier ID en el memo.';
   }
-  if (!address.startsWith('G')) return 'A Stellar address starts with G.';
+  if (!address.startsWith('G')) return 'Una dirección de Stellar empieza con G.';
   if (!StrKey.isValidEd25519PublicKey(address)) {
-    return 'This is not a valid Stellar address. Check it character by character.';
+    return 'Esta no es una dirección de Stellar válida. Revísala carácter por carácter.';
   }
-  if (address === ownAddress) return 'This is your own address.';
+  if (address === ownAddress) return 'Esta es tu propia dirección.';
   return null;
 }
 
 /** `spendable` is the USDC the wallet can send, or null when it holds none. */
 export function amountProblem(value: string, spendable: string | null): string | null {
   const amount = value.trim();
-  if (!amount) return 'Enter an amount.';
-  if (!/^\d*\.?\d*$/.test(amount) || amount === '.') return 'Enter a number, like 25.50.';
+  if (!amount) return 'Escribe un monto.';
+  if (!/^\d*\.?\d*$/.test(amount) || amount === '.')
+    return 'Escribe un número, como 25.50.';
   const [whole = '', fraction = ''] = amount.split('.');
-  if (fraction.length > 7) return 'USDC has at most 7 decimals.';
+  if (fraction.length > 7) return 'USDC admite como máximo 7 decimales.';
   if (whole.replace(/^0+/, '').length > MAX_WHOLE_DIGITS)
-    return 'This amount is too large.';
+    return 'Este monto es demasiado grande.';
   const units = toUnits(amount);
-  if (units <= BigInt(0)) return 'Enter an amount more than zero.';
-  if (spendable === null) return 'Your wallet does not hold USDC yet.';
+  if (units <= BigInt(0)) return 'Escribe un monto mayor que cero.';
+  if (spendable === null) return 'Tu wallet todavía no tiene USDC.';
   if (units > toUnits(spendable)) {
-    return `You can send at most ${fromUnits(toUnits(spendable))} USDC.`;
+    return `Puedes enviar como máximo ${fromUnits(toUnits(spendable))} USDC.`;
   }
   return null;
 }
@@ -60,7 +61,7 @@ export function amountProblem(value: string, spendable: string | null): string |
 export function memoProblem(value: string): string | null {
   const bytes = memoBytes(value.trim());
   if (bytes > MAX_MEMO_BYTES) {
-    return `The memo can be at most ${MAX_MEMO_BYTES} bytes. This one is ${bytes}.`;
+    return `El memo puede tener como máximo ${MAX_MEMO_BYTES} bytes. Este tiene ${bytes}.`;
   }
   return null;
 }

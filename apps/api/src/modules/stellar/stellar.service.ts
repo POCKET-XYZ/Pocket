@@ -134,7 +134,7 @@ export class StellarService implements OnApplicationBootstrap {
       // The reason goes to the alert, not to the user: it describes what a
       // tampered transaction tried, and the user can only wait for a manager.
       throw new ServiceUnavailableException(
-        'Pocket paused this payment step for a safety check. Nothing was signed and no money moved. Please try again later.',
+        'Pocket pausó este paso del pago por un control de seguridad. No se firmó nada y no se movió dinero. Intenta de nuevo más tarde.',
         { cause: error },
       );
     }

@@ -77,12 +77,12 @@ export function MilestoneCard({
         `/milestones/${milestone.id}/approve/prepare`,
         `/milestones/${milestone.id}/approve/submit`,
       ),
-    'Approved. The payment was released to the specialist.',
+    'Aprobado. El pago se liberó al experto.',
   );
   const retryRelease = useContractAction(
     contract.id,
     () => api(`/milestones/${milestone.id}/release`, { method: 'POST' }),
-    'Payment released',
+    'Pago liberado',
   );
 
   return (
@@ -91,7 +91,7 @@ export function MilestoneCard({
         <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Milestone {milestone.position + 1} · due {date(milestone.dueDate)}
+              Hito {milestone.position + 1} · fecha de entrega: {date(milestone.dueDate)}
             </p>
             <h3 className="mt-1 font-heading text-lg font-semibold text-navy">
               {milestone.title}
@@ -101,14 +101,14 @@ export function MilestoneCard({
             </p>
             {milestone.acceptanceCriteria ? (
               <p className="mt-2 whitespace-pre-line rounded-lg bg-celeste-light/40 px-3 py-2 text-sm">
-                <span className="font-medium text-navy">To be approved: </span>
+                <span className="font-medium text-navy">Para aprobarlo: </span>
                 {milestone.acceptanceCriteria}
               </p>
             ) : null}
             {milestone.revisionsUsed > 0 ? (
               <p className="mt-2 text-xs text-muted-foreground">
-                {milestone.revisionsUsed} of {contract.job.revisionRounds} rounds of
-                changes used.
+                {milestone.revisionsUsed} de {contract.job.revisionRounds} rondas de
+                cambios usadas.
               </p>
             ) : null}
           </div>
@@ -127,7 +127,7 @@ export function MilestoneCard({
                 <div key={deliverable.id} className="text-sm">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-navy">
-                      Version {deliverable.version}
+                      Versión {deliverable.version}
                     </span>
                     <a
                       href={safeHref(deliverable.url)}
@@ -150,7 +150,7 @@ export function MilestoneCard({
                   <KpiReport kpis={contract.job.kpis} deliverable={deliverable} />
                   {deliverable.feedback ? (
                     <p className="mt-1 rounded-lg bg-yellow/25 px-2 py-1 text-navy">
-                      Changes asked: {deliverable.feedback}
+                      Cambios pedidos: {deliverable.feedback}
                     </p>
                   ) : null}
                 </div>
@@ -160,8 +160,8 @@ export function MilestoneCard({
 
         {lastDispute?.status === 'resolved' ? (
           <p className="rounded-lg bg-muted px-3 py-2 text-sm">
-            Resolved by a manager: {usdc(lastDispute.specialistAmount)} to the specialist
-            and {usdc(lastDispute.startupAmount)} back to the startup.
+            Disputa resuelta por un manager: {usdc(lastDispute.specialistAmount)} para el
+            experto y {usdc(lastDispute.startupAmount)} de vuelta a la startup.
             {lastDispute.resolutionNote ? ` "${lastDispute.resolutionNote}"` : ''}
           </p>
         ) : null}
@@ -189,15 +189,15 @@ export function MilestoneCard({
                 disabled={approve.isPending}
                 onClick={async () => {
                   const confirmed = await confirm({
-                    title: `Approve this delivery and release ${usdc(milestone.amount)} to the specialist?`,
-                    description: 'Approvals cannot be undone.',
-                    confirmText: 'Approve and pay',
+                    title: `¿Aprobar esta entrega y liberar ${usdc(milestone.amount)} al experto?`,
+                    description: 'Una aprobación no se puede deshacer.',
+                    confirmText: 'Aprobar y pagar',
                     irreversible: true,
                   });
                   if (confirmed) approve.mutate();
                 }}
               >
-                {approve.isPending ? 'Waiting for your wallet...' : 'Approve and pay'}
+                {approve.isPending ? 'Esperando tu wallet...' : 'Aprobar y pagar'}
               </Button>
               {roundsLeft ? (
                 <RequestChangesDialog
@@ -206,7 +206,7 @@ export function MilestoneCard({
                 />
               ) : (
                 <p className="self-center text-sm text-muted-foreground">
-                  No rounds of changes left: approve it, or open a dispute.
+                  No quedan rondas de cambios: apruébala o abre una disputa.
                 </p>
               )}
             </>
@@ -215,8 +215,8 @@ export function MilestoneCard({
           {/* Approved but not paid yet: the release failed or is still confirming. */}
           {active && isSpecialist && milestone.status === 'approved' ? (
             <p className="text-sm text-muted-foreground">
-              Approved. The payment is being released to your wallet; it shows up here as
-              paid once the network confirms it.
+              Aprobado. El pago se está liberando a tu wallet; aparecerá aquí como pagado
+              cuando la red lo confirme.
             </p>
           ) : null}
 
@@ -226,7 +226,7 @@ export function MilestoneCard({
               disabled={retryRelease.isPending}
               onClick={() => retryRelease.mutate()}
             >
-              {retryRelease.isPending ? 'Releasing...' : 'Retry the payment'}
+              {retryRelease.isPending ? 'Liberando...' : 'Reintentar el pago'}
             </Button>
           ) : null}
 
@@ -242,7 +242,7 @@ export function MilestoneCard({
 
           {lastDispute ? (
             <Button asChild variant="outline">
-              <Link href={`/disputes/${lastDispute.id}`}>View dispute</Link>
+              <Link href={`/disputes/${lastDispute.id}`}>Ver disputa</Link>
             </Button>
           ) : null}
         </div>
@@ -282,11 +282,11 @@ function DeliverDialog({
       } catch (error) {
         // The delivery itself went through; only the file is missing.
         toast.error(
-          `Delivered, but the file did not upload: ${errorMessage(error)}. Attach it again from the milestone.`,
+          `Entregado, pero el archivo no se subió: ${errorMessage(error)}. Vuelve a adjuntarlo desde el hito.`,
         );
       }
     },
-    'Delivered. The startup will review it.',
+    'Entrega enviada. La startup la revisará.',
   );
 
   function onFileChosen(event: React.ChangeEvent<HTMLInputElement>) {
@@ -333,15 +333,15 @@ function DeliverDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Deliver</Button>
+        <Button>Entregar</Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Deliver this milestone</DialogTitle>
+          <DialogTitle>Entregar este hito</DialogTitle>
           <DialogDescription>
-            Share a link to the work: a document, folder, report or campaign.
+            Comparte un enlace al trabajo: un documento, carpeta, reporte o campaña.
             {kpis.length > 0
-              ? ' Then report where each KPI stands, so the startup can compare it with the target.'
+              ? ' Luego indica cómo va cada KPI, para que la startup pueda compararlo con la meta.'
               : ''}
           </DialogDescription>
         </DialogHeader>
@@ -350,21 +350,21 @@ function DeliverDialog({
             name="url"
             type="url"
             pattern="https://.+"
-            title="A link that starts with https://"
+            title="Un enlace que empiece con https://"
             required
             placeholder="https://"
-            aria-label="Link to the work"
+            aria-label="Enlace al trabajo"
           />
           <Textarea
             name="note"
             maxLength={2000}
-            placeholder="A note for the startup (optional)"
-            aria-label="Note for the startup"
+            placeholder="Una nota para la startup (opcional)"
+            aria-label="Nota para la startup"
           />
 
           {kpis.length > 0 ? (
             <fieldset className="space-y-3">
-              <legend className="text-sm font-semibold text-navy">Results</legend>
+              <legend className="text-sm font-semibold text-navy">Resultados</legend>
               {kpis.map((kpi) => (
                 <div key={kpi.id} className="space-y-1.5 rounded-xl bg-muted/50 p-3">
                   <label
@@ -373,7 +373,7 @@ function DeliverDialog({
                   >
                     {kpi.name}
                     <span className="block text-xs font-normal text-muted-foreground">
-                      Target: {kpiTarget(kpi)}
+                      Meta: {kpiTarget(kpi)}
                     </span>
                   </label>
                   <Input
@@ -381,13 +381,13 @@ function DeliverDialog({
                     name={`result-${kpi.id}`}
                     required
                     maxLength={120}
-                    placeholder='Result, e.g. 48, or "Not measurable yet"'
+                    placeholder='Resultado, por ejemplo 48, o "Todavía no se puede medir"'
                   />
                   <Input
                     name={`comment-${kpi.id}`}
                     maxLength={500}
-                    placeholder="Comment (optional)"
-                    aria-label={`Comment on ${kpi.name}`}
+                    placeholder="Comentario (opcional)"
+                    aria-label={`Comentario sobre ${kpi.name}`}
                   />
                 </div>
               ))}
@@ -396,13 +396,13 @@ function DeliverDialog({
 
           <div className="space-y-1">
             <label htmlFor="attachment" className="block text-sm font-medium text-navy">
-              A file backing it (optional)
+              Un archivo que lo respalde (opcional)
             </label>
             {reportTemplate ? (
               <div className="space-y-2 rounded-xl bg-celeste-light/40 p-3 text-sm">
                 <p>
-                  The startup asked for its report template: download it, fill it in and
-                  attach it here.
+                  La startup pidió su plantilla de reporte: descárgala, complétala y
+                  adjúntala aquí.
                 </p>
                 <ReportTemplateButton jobId={jobId} template={reportTemplate} />
               </div>
@@ -414,15 +414,15 @@ function DeliverDialog({
               onChange={onFileChosen}
             />
             <p className="text-xs text-muted-foreground">
-              A filled report template, a PDF or a screenshot: Excel (.xlsx), Word
-              (.docx), CSV, PDF, PNG, JPEG or WebP, up to 5 MB. Only the startup and
-              Pocket managers can open it.
+              Una plantilla de reporte completa, un PDF o una captura de pantalla: Excel
+              (.xlsx), Word (.docx), CSV, PDF, PNG, JPEG o WebP, hasta 5 MB. Solo la
+              startup y los managers de Pocket pueden abrirlo.
             </p>
           </div>
 
           <DialogFooter>
             <Button type="submit" disabled={deliver.isPending}>
-              {deliver.isPending ? 'Sending...' : 'Send delivery'}
+              {deliver.isPending ? 'Enviando...' : 'Enviar entrega'}
             </Button>
           </DialogFooter>
         </form>
@@ -446,7 +446,7 @@ function RequestChangesDialog({
         method: 'POST',
         body: { feedback },
       }),
-    'Sent back to the specialist',
+    'Entrega devuelta al experto',
   );
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -459,13 +459,13 @@ function RequestChangesDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Ask for changes</Button>
+        <Button variant="outline">Pedir cambios</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Ask for changes</DialogTitle>
+          <DialogTitle>Pedir cambios</DialogTitle>
           <DialogDescription>
-            The specialist sees your note and delivers a new version.
+            El experto verá tu nota y entregará una nueva versión.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-3">
@@ -474,11 +474,11 @@ function RequestChangesDialog({
             required
             minLength={5}
             maxLength={2000}
-            placeholder="What should change"
+            placeholder="Qué debería cambiar"
           />
           <DialogFooter>
             <Button type="submit" disabled={request.isPending}>
-              Send
+              Enviar
             </Button>
           </DialogFooter>
         </form>
@@ -515,7 +515,7 @@ function OpenDisputeDialog({
         body: { signedXdr, reason },
       });
     },
-    'Dispute opened. A manager will review it.',
+    'Disputa abierta. Un manager la revisará.',
   );
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -528,14 +528,14 @@ function OpenDisputeDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive">Open a dispute</Button>
+        <Button variant="destructive">Abrir una disputa</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Open a dispute</DialogTitle>
+          <DialogTitle>Abrir una disputa</DialogTitle>
           <DialogDescription>
-            This milestone&apos;s funds freeze in the escrow until a Pocket manager
-            decides: pay the specialist, refund the startup, or split it.
+            El dinero de este hito queda congelado en el contrato hasta que un manager de
+            Pocket decida: pagarle al experto, devolvérselo a la startup o repartirlo.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-3">
@@ -544,12 +544,12 @@ function OpenDisputeDialog({
             required
             minLength={10}
             maxLength={2000}
-            placeholder="What went wrong"
+            placeholder="Qué salió mal"
             rows={4}
           />
           <DialogFooter>
             <Button type="submit" variant="destructive" disabled={dispute.isPending}>
-              {dispute.isPending ? 'Waiting for your wallet...' : 'Sign and open dispute'}
+              {dispute.isPending ? 'Esperando tu wallet...' : 'Firmar y abrir la disputa'}
             </Button>
           </DialogFooter>
         </form>

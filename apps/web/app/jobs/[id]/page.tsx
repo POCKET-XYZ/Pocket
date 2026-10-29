@@ -49,7 +49,7 @@ export default function JobPage() {
 
   if (job.isLoading) return <Loading />;
   if (job.error || !job.data)
-    return <ErrorAlert error={job.error} title="Job not found" />;
+    return <ErrorAlert error={job.error} title="No se encontró el trabajo" />;
   const data = job.data;
 
   return (
@@ -71,42 +71,42 @@ export default function JobPage() {
                 {data.startup.companyName}
               </Link>
             ) : (
-              'A verified startup'
+              'Una startup verificada'
             )
           }
         />
         <Card>
           <CardContent className="space-y-6 pt-6">
             <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <Detail label="Budget">{usdc(data.budget)}</Detail>
-              <Detail label="Deadline">{date(data.deadline)}</Detail>
-              <Detail label="Category">{CATEGORY_LABELS[data.category]}</Detail>
-              <Detail label="Status">
+              <Detail label="Presupuesto">{usdc(data.budget)}</Detail>
+              <Detail label="Fecha límite">{date(data.deadline)}</Detail>
+              <Detail label="Categoría">{CATEGORY_LABELS[data.category]}</Detail>
+              <Detail label="Estado">
                 <StatusBadge status={data.status} />
               </Detail>
             </dl>
             <section>
-              <h2 className="text-lg font-semibold text-navy">Scope</h2>
+              <h2 className="text-lg font-semibold text-navy">Alcance</h2>
               <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">
                 {data.description}
               </p>
             </section>
             <section>
-              <h2 className="text-lg font-semibold text-navy">Expected deliverables</h2>
+              <h2 className="text-lg font-semibold text-navy">Entregas esperadas</h2>
               <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">
                 {data.deliverables}
               </p>
             </section>
             {data.channel || data.contentLanguage || data.startupProvides ? (
               <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {data.channel ? <Detail label="Channel">{data.channel}</Detail> : null}
+                {data.channel ? <Detail label="Canal">{data.channel}</Detail> : null}
                 {data.contentLanguage ? (
-                  <Detail label="Content language">{data.contentLanguage}</Detail>
+                  <Detail label="Idioma del contenido">{data.contentLanguage}</Detail>
                 ) : null}
-                <Detail label="Rounds of changes">{data.revisionRounds}</Detail>
+                <Detail label="Rondas de cambios">{data.revisionRounds}</Detail>
                 {data.startupProvides ? (
                   <div className="col-span-2 sm:col-span-3">
-                    <Detail label="The startup provides">{data.startupProvides}</Detail>
+                    <Detail label="La startup aporta">{data.startupProvides}</Detail>
                   </div>
                 ) : null}
               </dl>
@@ -114,19 +114,19 @@ export default function JobPage() {
             {data.kpis.length > 0 ? (
               <section>
                 <h2 className="text-lg font-semibold text-navy">
-                  How the work is measured
+                  Cómo se mide el trabajo
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Every delivery reports a result for each of these.
+                  Cada entrega reporta un resultado para cada uno de estos KPIs.
                 </p>
                 <KpiList kpis={data.kpis} />
               </section>
             ) : null}
             {data.reportTemplate ? (
               <section>
-                <h2 className="text-lg font-semibold text-navy">Report template</h2>
+                <h2 className="text-lg font-semibold text-navy">Plantilla de reporte</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  The startup wants it filled in and attached to every delivery.
+                  La startup quiere que se complete y se adjunte a cada entrega.
                 </p>
                 <div className="mt-3">
                   {status === 'loading' ? null : user &&
@@ -143,8 +143,8 @@ export default function JobPage() {
                       {data.reportTemplate.fileName}
                       <span className="block text-muted-foreground">
                         {user
-                          ? 'Verified specialists can download it.'
-                          : 'Sign in as a verified specialist to download it.'}
+                          ? 'Los expertos verificados pueden descargarla.'
+                          : 'Inicia sesión como experto verificado para descargarla.'}
                       </span>
                     </p>
                   )}
@@ -153,9 +153,9 @@ export default function JobPage() {
             ) : null}
             {data.milestones.length > 0 ? (
               <section>
-                <h2 className="text-lg font-semibold text-navy">Payment plan</h2>
+                <h2 className="text-lg font-semibold text-navy">Plan de pagos</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Each one is paid when the startup approves it.
+                  Cada hito se paga cuando la startup lo aprueba.
                 </p>
                 <ol className="mt-3 space-y-3">
                   {data.milestones.map((milestone) => (
@@ -166,12 +166,12 @@ export default function JobPage() {
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="font-semibold text-navy">{milestone.title}</p>
                         <p className="text-muted-foreground">
-                          {usdc(milestone.amount)} · due {date(milestone.dueDate)}
+                          {usdc(milestone.amount)} · entrega el {date(milestone.dueDate)}
                         </p>
                       </div>
                       <p className="mt-1 whitespace-pre-line">{milestone.description}</p>
                       <p className="mt-2 whitespace-pre-line text-muted-foreground">
-                        <span className="font-medium text-navy">To be approved: </span>
+                        <span className="font-medium text-navy">Para aprobarse: </span>
                         {milestone.acceptanceCriteria}
                       </p>
                     </li>
@@ -188,14 +188,14 @@ export default function JobPage() {
         {status === 'loading' ? null : !user ? (
           <Card>
             <CardHeader>
-              <CardTitle>Want this job?</CardTitle>
+              <CardTitle>¿Te interesa este trabajo?</CardTitle>
               <CardDescription>
-                Connect your wallet as a specialist to apply.
+                Conecta tu wallet como experto para postularte.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild className="w-full">
-                <Link href="/login">Sign in to apply</Link>
+                <Link href="/login">Inicia sesión para postularte</Link>
               </Button>
             </CardContent>
           </Card>
@@ -224,7 +224,7 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
     mutationFn: (body: Record<string, unknown>) =>
       api(`/jobs/${job.id}/applications`, { method: 'POST', body }),
     onSuccess: async () => {
-      toast.success('Application sent');
+      toast.success('Postulación enviada');
       await queryClient.invalidateQueries({ queryKey: ['applications', 'mine'] });
       await queryClient.invalidateQueries({ queryKey: ['jobs', job.id] });
     },
@@ -247,15 +247,16 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>You applied</CardTitle>
+          <CardTitle>Te postulaste</CardTitle>
           <CardDescription>
-            {usdc(existing.price)} in {existing.estimatedDays} days
+            {usdc(existing.price)} en {existing.estimatedDays}{' '}
+            {existing.estimatedDays === 1 ? 'día' : 'días'}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between">
-          <StatusBadge status={existing.status} />
+          <StatusBadge feminine status={existing.status} />
           <Button asChild variant="link">
-            <Link href="/applications">My applications</Link>
+            <Link href="/applications">Mis postulaciones</Link>
           </Button>
         </CardContent>
       </Card>
@@ -266,7 +267,7 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>No longer taking applications</CardTitle>
+          <CardTitle>Ya no recibe postulaciones</CardTitle>
         </CardHeader>
       </Card>
     );
@@ -276,14 +277,14 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Get verified to apply</CardTitle>
+          <CardTitle>Verifícate para postularte</CardTitle>
           <CardDescription>
-            A Pocket manager reviews every specialist first.
+            Un manager de Pocket revisa primero a cada experto.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild className="w-full">
-            <Link href="/verification">Go to verification</Link>
+            <Link href="/verification">Ir a la verificación</Link>
           </Button>
         </CardContent>
       </Card>
@@ -296,14 +297,14 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Create your profile to apply</CardTitle>
+          <CardTitle>Crea tu perfil para postularte</CardTitle>
           <CardDescription>
-            Startups read it to choose who to hire. It takes a few minutes.
+            Las startups lo leen para elegir a quién contratar. Toma unos minutos.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild className="w-full">
-            <Link href="/profile">Create profile</Link>
+            <Link href="/profile">Crear perfil</Link>
           </Button>
         </CardContent>
       </Card>
@@ -313,17 +314,17 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Apply</CardTitle>
+        <CardTitle>Postúlate</CardTitle>
         <CardDescription>
-          You can offer a different price than the budget.
+          Puedes ofrecer un precio distinto al presupuesto.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">
           <Field
-            label="How would you do it?"
+            label="¿Cómo lo harías?"
             htmlFor="approach"
-            hint="The steps you would follow for this job, not your life story."
+            hint="Los pasos que seguirías en este trabajo, no tu historia de vida."
             required
           >
             <Textarea
@@ -336,23 +337,23 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
             />
           </Field>
           <Field
-            label="A similar piece of work"
+            label="Un trabajo parecido"
             htmlFor="similarWorkUrl"
-            hint="A link to something close to this job."
+            hint="Un enlace a algo similar a este trabajo."
           >
             <Input
               id="similarWorkUrl"
               name="similarWorkUrl"
               type="url"
               pattern="https://.+"
-              title="A link that starts with https://"
+              title="Un enlace que empiece con https://"
               placeholder="https://"
             />
           </Field>
           <Field
-            label="What do you need from them?"
+            label="¿Qué necesitas de la startup?"
             htmlFor="needsFromStartup"
-            hint="Brand, access, a script, anything you need to start."
+            hint="Marca, accesos, un guion: todo lo que necesitas para empezar."
           >
             <Textarea
               id="needsFromStartup"
@@ -362,7 +363,7 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Price (USDC)" htmlFor="price" required>
+            <Field label="Precio (USDC)" htmlFor="price" required>
               <Input
                 id="price"
                 name="price"
@@ -375,9 +376,9 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
               />
             </Field>
             <Field
-              label="Days"
+              label="Días"
               htmlFor="estimatedDays"
-              hint="Counted from the day the startup funds the escrow."
+              hint="Se cuentan desde el día en que la startup deposita el pago en el contrato."
               required
             >
               <Input
@@ -397,7 +398,7 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
           <DeadlineNote days={days} deadline={job.deadline} />
 
           <Button type="submit" className="w-full" disabled={apply.isPending}>
-            {apply.isPending ? 'Sending...' : 'Send application'}
+            {apply.isPending ? 'Enviando...' : 'Enviar postulación'}
           </Button>
         </form>
       </CardContent>
@@ -412,14 +413,14 @@ function PriceNote({ price, budget }: { price: string; budget: string }) {
   if (!Number.isFinite(offered) || offered <= 0) return null;
   const difference = offered - posted;
   const net = usdc(afterFees(offered));
-  const fees = `Trustless Work keeps ${TRUSTLESS_WORK_FEE_PERCENT}% and Pocket ${POCKET_FEE_PERCENT}%, so you receive ${net}.`;
+  const fees = `Trustless Work se queda con el ${TRUSTLESS_WORK_FEE_PERCENT}% y Pocket con el ${POCKET_FEE_PERCENT}%, así que recibes ${net}.`;
   return (
     <p className="text-sm text-muted-foreground">
       {difference === 0
-        ? `Same as the budget. ${fees}`
+        ? `Igual al presupuesto. ${fees}`
         : `${difference > 0 ? '+' : '-'}${usdc(Math.abs(difference))} ${
-            difference > 0 ? 'over' : 'under'
-          } the ${usdc(budget)} budget. ${fees}`}
+            difference > 0 ? 'por encima' : 'por debajo'
+          } del presupuesto de ${usdc(budget)}. ${fees}`}
     </p>
   );
 }
@@ -432,10 +433,11 @@ function DeadlineNote({ days, deadline }: { days: string; deadline: string }) {
   if (endsOn <= deadline.slice(0, 10)) return null;
   return (
     <Alert variant="destructive">
-      <AlertTitle>That is past the deadline</AlertTitle>
+      <AlertTitle>Terminarías después de la fecha límite</AlertTitle>
       <AlertDescription>
-        Starting today, {estimate} days end on {date(endsOn)}, after the {date(deadline)}{' '}
-        the startup asked for. You can still apply, but say why in your proposal.
+        Si empiezas hoy, con {estimate} {estimate === 1 ? 'día' : 'días'} terminas el{' '}
+        {date(endsOn)}, después del {date(deadline)} que pidió la startup. Igual puedes
+        postularte, pero explica por qué en tu propuesta.
       </AlertDescription>
     </Alert>
   );
@@ -447,7 +449,7 @@ function OwnerCard({ job }: { job: JobListing }) {
   const close = useMutation({
     mutationFn: () => api(`/jobs/${job.id}/close`, { method: 'POST' }),
     onSuccess: async () => {
-      toast.success('Job closed');
+      toast.success('Trabajo cerrado');
       await queryClient.invalidateQueries({ queryKey: ['jobs'] });
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -456,12 +458,16 @@ function OwnerCard({ job }: { job: JobListing }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Your job</CardTitle>
-        <CardDescription>{job.applicationCount} applications so far.</CardDescription>
+        <CardTitle>Tu trabajo</CardTitle>
+        <CardDescription>
+          {job.applicationCount === 1
+            ? '1 postulación hasta ahora.'
+            : `${job.applicationCount} postulaciones hasta ahora.`}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         <Button asChild className="w-full">
-          <Link href={`/jobs/${job.id}/applicants`}>Review applicants</Link>
+          <Link href={`/jobs/${job.id}/applicants`}>Revisar postulantes</Link>
         </Button>
         {job.status === 'open' ? (
           <div className="border-t border-border pt-3">
@@ -475,15 +481,15 @@ function OwnerCard({ job }: { job: JobListing }) {
             disabled={close.isPending}
             onClick={async () => {
               const confirmed = await confirm({
-                title: 'Close this job?',
-                description: 'Applications still waiting will be turned down.',
-                confirmText: 'Close job',
+                title: '¿Cerrar este trabajo?',
+                description: 'Las postulaciones que siguen pendientes se rechazarán.',
+                confirmText: 'Cerrar trabajo',
                 destructive: true,
               });
               if (confirmed) close.mutate();
             }}
           >
-            Close job
+            Cerrar trabajo
           </Button>
         ) : null}
       </CardContent>

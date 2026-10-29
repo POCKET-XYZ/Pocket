@@ -24,22 +24,22 @@ export class ApplicationsService {
    */
   async apply(user: AuthUser, jobId: string, dto: ApplyDto): Promise<Application> {
     if (user.role !== 'specialist') {
-      throw new ForbiddenException('Only specialists apply to jobs');
+      throw new ForbiddenException('Solo los expertos pueden postularse a trabajos');
     }
     const job = await this.prisma.job.findUnique({
       where: { id: jobId },
       select: { status: true },
     });
-    if (!job) throw new NotFoundException('Job not found');
+    if (!job) throw new NotFoundException('No encontramos el trabajo');
     if (job.status !== 'open') {
-      throw new BadRequestException('This job is no longer taking applications');
+      throw new BadRequestException('Este trabajo ya no recibe postulaciones');
     }
     const profile = await this.prisma.specialistProfile.findUnique({
       where: { userId: user.sub },
       select: { id: true },
     });
     if (!profile) {
-      throw new BadRequestException('Fill in your specialist profile before applying');
+      throw new BadRequestException('Completa tu perfil de experto antes de postularte');
     }
 
     try {
@@ -51,7 +51,7 @@ export class ApplicationsService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        throw new ConflictException('You already applied to this job');
+        throw new ConflictException('Ya te postulaste a este trabajo');
       }
       throw error;
     }
@@ -107,12 +107,14 @@ export class ApplicationsService {
     const application = await this.prisma.application.findUnique({
       where: { id: applicationId },
     });
-    if (!application) throw new NotFoundException('Application not found');
+    if (!application) throw new NotFoundException('No encontramos la postulación');
     if (application.specialistId !== user.sub) {
-      throw new ForbiddenException('This application belongs to another specialist');
+      throw new ForbiddenException('Esta postulación es de otro experto');
     }
     if (application.status !== 'submitted') {
-      throw new BadRequestException('Only an application still waiting can be withdrawn');
+      throw new BadRequestException(
+        'Solo puedes retirar una postulación que todavía está en espera',
+      );
     }
 
     // Only while still waiting: not after an offer claimed it meanwhile.
@@ -121,7 +123,9 @@ export class ApplicationsService {
       data: { status: 'withdrawn', decidedAt: new Date() },
     });
     if (claimed.count !== 1) {
-      throw new BadRequestException('Only an application still waiting can be withdrawn');
+      throw new BadRequestException(
+        'Solo puedes retirar una postulación que todavía está en espera',
+      );
     }
     return this.prisma.application.findUniqueOrThrow({ where: { id: applicationId } });
   }

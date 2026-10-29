@@ -195,7 +195,7 @@ export class TrustlessWorkClient {
     );
     if (!unsignedTransaction) {
       throw new ServiceUnavailableException(
-        `Trustless Work returned no transaction for ${path}`,
+        `Trustless Work no devolvió ninguna transacción para ${path}`,
       );
     }
     return unsignedTransaction;
@@ -232,7 +232,7 @@ export class TrustlessWorkClient {
       if (this.budget.take('trustless-work', TRUSTLESS_WORK_BUDGET_PER_MINUTE, 60_000) > 0) {
         this.logger.warn(`${method} ${path} held back: Pocket's Trustless Work budget is spent`);
         throw new ServiceUnavailableException(
-          'Trustless Work is busy right now. Try again in a minute',
+          'Trustless Work está ocupado en este momento. Intenta de nuevo en un minuto',
         );
       }
       const response = await fetch(`${this.baseUrl}${path}`, {
@@ -244,7 +244,7 @@ export class TrustlessWorkClient {
       if (attempt >= RATE_LIMIT_RETRIES) {
         this.logger.error(`${method} ${path} -> 429 after ${attempt + 1} tries`);
         throw new ServiceUnavailableException(
-          'Trustless Work is busy right now. Try again in a minute',
+          'Trustless Work está ocupado en este momento. Intenta de nuevo en un minuto',
         );
       }
       const waitMs = retryDelayMs(response.headers.get('retry-after'), attempt);
@@ -283,10 +283,10 @@ export function retryDelayMs(retryAfter: string | null, attempt: number): number
  * cases a user can act on get a fixed sentence of Pocket's.
  */
 const KNOWN_ERRORS: [RegExp, string][] = [
-  [/already in dispute/i, 'This milestone is already in dispute'],
-  [/insufficient|not enough|underfunded/i, 'The wallet does not have enough funds for this step'],
-  [/trustline/i, 'The wallet needs to accept USDC before this step'],
-  [/not found/i, 'This escrow was not found on Stellar'],
+  [/already in dispute/i, 'Este hito ya está en disputa'],
+  [/insufficient|not enough|underfunded/i, 'La wallet no tiene fondos suficientes para este paso'],
+  [/trustline/i, 'La wallet tiene que habilitar USDC antes de este paso'],
+  [/not found/i, 'No se encontró este contrato en Stellar'],
 ];
 
 function publicError(message: string | undefined): HttpException {
@@ -296,7 +296,7 @@ function publicError(message: string | undefined): HttpException {
   return known
     ? new BadRequestException(known[1], options)
     : new ServiceUnavailableException(
-        'The escrow service could not complete this step. Try again',
+        'El servicio de contratos no pudo completar este paso. Intenta de nuevo',
         options,
       );
 }

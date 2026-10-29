@@ -20,9 +20,9 @@ export function ReceiveUsdcCard({ address }: { address: string }) {
   async function copy() {
     try {
       await navigator.clipboard.writeText(address);
-      toast.success('Address copied');
+      toast.success('Dirección copiada');
     } catch {
-      toast.error('Could not copy. Select the address and copy it by hand.');
+      toast.error('No se pudo copiar. Selecciona la dirección y cópiala a mano.');
     }
   }
 
@@ -31,41 +31,41 @@ export function ReceiveUsdcCard({ address }: { address: string }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ArrowDownToLineIcon className="size-5 text-navy" />
-          Receive USDC
+          Recibir USDC
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">Your Stellar address</p>
+          <p className="text-sm text-muted-foreground">Tu dirección de Stellar</p>
           <p className="rounded-lg bg-muted p-3 font-mono text-sm break-all select-all">
             {address}
           </p>
           <Button variant="outline" size="sm" onClick={() => void copy()}>
-            <CopyIcon className="size-4" /> Copy address
+            <CopyIcon className="size-4" /> Copiar dirección
           </Button>
         </div>
 
         <div className="flex gap-2 rounded-lg border border-yellow bg-yellow/15 p-3 text-sm">
           <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
           <p>
-            Only send <strong>USDC on the Stellar network</strong> to this address. USDC
-            on another network (Ethereum, Solana, Base...) or any other asset sent here is
-            lost and cannot be recovered.
+            Envía a esta dirección solo <strong>USDC en la red Stellar</strong>. Si envías
+            aquí USDC de otra red (Ethereum, Solana, Base...) o cualquier otro activo, se
+            pierde y no se puede recuperar.
           </p>
         </div>
 
         {status.data && !ready ? (
           <p className="text-sm">
-            Your wallet cannot receive USDC yet.{' '}
+            Tu wallet todavía no puede recibir USDC.{' '}
             <a className="font-medium underline" href={`#${USDC_STATUS_ANCHOR}`}>
-              Enable USDC
+              Habilita USDC
             </a>{' '}
-            before you share this address.
+            antes de compartir esta dirección.
           </p>
         ) : null}
         {ready ? (
           <p className="text-sm text-muted-foreground">
-            USDC is enabled in your wallet, so it can receive USDC.
+            USDC está habilitado en tu wallet, así que puede recibir USDC.
           </p>
         ) : null}
       </CardContent>

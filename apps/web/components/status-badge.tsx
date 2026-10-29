@@ -11,44 +11,53 @@ const TONES: Record<Tone, string> = {
   danger: 'bg-red-100 text-red-800',
 };
 
-/** Every state the API returns, with the words and color the UI shows for it. */
-const STATUSES: Record<string, { label: string; tone: Tone }> = {
+/**
+ * Every state the API returns, with the words and color the UI shows for it.
+ * Some states are shared by masculine nouns (trabajo, contrato, hito) and
+ * feminine ones (verificación, postulación, disputa); `feminine` is their
+ * label for the latter.
+ */
+const STATUSES: Record<string, { label: string; feminine?: string; tone: Tone }> = {
   // Verification
-  not_submitted: { label: 'Not submitted', tone: 'neutral' },
-  pending: { label: 'Pending', tone: 'warning' },
-  approved: { label: 'Approved', tone: 'success' },
-  rejected: { label: 'Rejected', tone: 'danger' },
+  not_submitted: { label: 'Sin enviar', tone: 'neutral' },
+  pending: { label: 'Pendiente', tone: 'warning' },
+  approved: { label: 'Aprobado', feminine: 'Aprobada', tone: 'success' },
+  rejected: { label: 'Rechazado', feminine: 'Rechazada', tone: 'danger' },
   // Jobs
-  open: { label: 'Open', tone: 'info' },
-  in_progress: { label: 'In progress', tone: 'warning' },
-  completed: { label: 'Completed', tone: 'success' },
-  closed: { label: 'Closed', tone: 'neutral' },
+  open: { label: 'Abierto', feminine: 'Abierta', tone: 'info' },
+  in_progress: { label: 'En curso', tone: 'warning' },
+  completed: { label: 'Completado', feminine: 'Completada', tone: 'success' },
+  closed: { label: 'Cerrado', feminine: 'Cerrada', tone: 'neutral' },
   // Applications
-  submitted: { label: 'Submitted', tone: 'info' },
-  accepted: { label: 'Accepted', tone: 'success' },
-  withdrawn: { label: 'Withdrawn', tone: 'neutral' },
+  submitted: { label: 'Enviada', tone: 'info' },
+  accepted: { label: 'Aceptada', tone: 'success' },
+  withdrawn: { label: 'Retirada', tone: 'neutral' },
   // Contracts
-  awaiting_specialist: { label: 'Waiting for specialist', tone: 'warning' },
-  awaiting_funding: { label: 'Waiting for funding', tone: 'warning' },
-  active: { label: 'Active', tone: 'info' },
-  cancelled: { label: 'Cancelled', tone: 'neutral' },
+  awaiting_specialist: { label: 'Esperando al experto', tone: 'warning' },
+  awaiting_funding: { label: 'Esperando el depósito', tone: 'warning' },
+  active: { label: 'Activo', tone: 'info' },
+  cancelled: { label: 'Cancelado', feminine: 'Cancelada', tone: 'neutral' },
   // Milestones
-  delivered: { label: 'Delivered', tone: 'info' },
-  changes_requested: { label: 'Changes requested', tone: 'warning' },
-  paid: { label: 'Paid', tone: 'success' },
-  disputed: { label: 'In dispute', tone: 'danger' },
-  resolved: { label: 'Resolved', tone: 'neutral' },
+  delivered: { label: 'Entregado', tone: 'info' },
+  changes_requested: { label: 'Cambios pedidos', tone: 'warning' },
+  paid: { label: 'Pagado', tone: 'success' },
+  disputed: { label: 'En disputa', tone: 'danger' },
+  resolved: { label: 'Resuelto', feminine: 'Resuelta', tone: 'neutral' },
 };
 
-export function statusLabel(status: string): string {
-  return STATUSES[status]?.label ?? status;
+export function statusLabel(status: string, feminine = false): string {
+  const known = STATUSES[status];
+  return (feminine ? known?.feminine : undefined) ?? known?.label ?? status;
 }
 
 export function StatusBadge({
   status,
+  feminine = false,
   className,
 }: {
   status: string;
+  /** The status of a verificación, postulación or disputa. */
+  feminine?: boolean;
   className?: string;
 }) {
   const known = STATUSES[status] ?? { label: status, tone: 'neutral' as const };
@@ -57,7 +66,7 @@ export function StatusBadge({
       variant="secondary"
       className={cn('border-0 font-medium', TONES[known.tone], className)}
     >
-      {known.label}
+      {statusLabel(status, feminine)}
     </Badge>
   );
 }

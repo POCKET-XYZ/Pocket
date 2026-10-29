@@ -36,14 +36,14 @@ import { useSigner } from '@/components/use-signer';
 import { prepareSignSubmit } from '@/lib/wallet';
 
 const OPERATION_LABELS: Record<ChainOperationKind, string> = {
-  trustline: 'USDC enabled',
-  deploy: 'Escrow deployed',
-  fund: 'Escrow funded',
-  approve: 'Milestone approved',
-  release: 'Payment released',
-  dispute: 'Dispute opened',
-  resolve: 'Dispute resolved',
-  payment: 'USDC sent',
+  trustline: 'USDC habilitado',
+  deploy: 'Contrato creado en Stellar',
+  fund: 'Pago depositado en el contrato',
+  approve: 'Hito aprobado',
+  release: 'Pago liberado',
+  dispute: 'Disputa abierta',
+  resolve: 'Disputa resuelta',
+  payment: 'USDC enviado',
 };
 
 export default function ContractPage() {
@@ -65,15 +65,15 @@ function Contract({ user }: { user: User }) {
 
   if (contract.isLoading) return <Loading />;
   if (contract.error || !contract.data)
-    return <ErrorAlert error={contract.error} title="Contract not found" />;
+    return <ErrorAlert error={contract.error} title="No se encontró el contrato" />;
   const data = contract.data;
   const isParty = user.id === data.startupId || user.id === data.specialistId;
   const startupName = data.startup.startupProfile?.companyName ?? 'Startup';
-  const specialistName = data.specialist.specialistProfile?.displayName ?? 'Specialist';
+  const specialistName = data.specialist.specialistProfile?.displayName ?? 'Experto';
   const contactPending =
     data.status === 'awaiting_specialist'
-      ? 'Shared once the terms are accepted'
-      : 'Not provided';
+      ? 'Se comparte cuando se aceptan los términos'
+      : 'No indicado';
   const titleFor = (milestoneId: string | null) =>
     data.milestones.find((milestone) => milestone.id === milestoneId)?.title;
 
@@ -86,7 +86,7 @@ function Contract({ user }: { user: User }) {
             <Link href={`/startups/${data.startupId}`} className="underline">
               {startupName}
             </Link>{' '}
-            hired{' '}
+            contrató a{' '}
             <Link href={`/specialists/${data.specialistId}`} className="underline">
               {specialistName}
             </Link>
@@ -102,7 +102,7 @@ function Contract({ user }: { user: User }) {
       <Card>
         <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-4">
           <Detail label="Total">{usdc(data.amount)}</Detail>
-          <Detail label="Escrow">
+          <Detail label="Contrato en Stellar">
             {data.escrowId ? (
               <a
                 href={explorerContract(data.escrowId)}
@@ -113,14 +113,14 @@ function Contract({ user }: { user: User }) {
                 {shortAddress(data.escrowId)} <ExternalLinkIcon className="size-3" />
               </a>
             ) : (
-              'Not deployed yet'
+              'Todavía no está creado'
             )}
           </Detail>
           {/* Contacts are shared once the specialist accepts the terms. */}
-          <Detail label={`${startupName} contact`}>
+          <Detail label={`Contacto de ${startupName}`}>
             {data.contacts.startup ?? contactPending}
           </Detail>
-          <Detail label={`${specialistName} contact`}>
+          <Detail label={`Contacto de ${specialistName}`}>
             {data.contacts.specialist ?? contactPending}
           </Detail>
         </CardContent>
@@ -129,13 +129,13 @@ function Contract({ user }: { user: User }) {
       <NextStep contract={data} user={user} />
 
       <section className="space-y-3">
-        <h2 className="text-xl font-bold text-navy">Milestones</h2>
+        <h2 className="text-xl font-bold text-navy">Hitos</h2>
         {data.job.reportTemplate ? (
           <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               {user.id === data.specialistId
-                ? "Fill in the startup's report template and attach it to each delivery."
-                : 'The specialist fills in this report template and attaches it to each delivery.'}
+                ? 'Completa la plantilla de reporte de la startup y adjúntala a cada entrega.'
+                : 'El experto completa esta plantilla de reporte y la adjunta a cada entrega.'}
             </p>
             <ReportTemplateButton
               jobId={data.job.id}
@@ -155,7 +155,7 @@ function Contract({ user }: { user: User }) {
 
       {data.chainOperations.length > 0 ? (
         <section>
-          <h2 className="mb-3 text-xl font-bold text-navy">On-chain history</h2>
+          <h2 className="mb-3 text-xl font-bold text-navy">Historial en Stellar</h2>
           <Card>
             <CardContent className="divide-y divide-border pt-2">
               {data.chainOperations.map((operation) => (
@@ -212,12 +212,12 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
   const accept = useContractAction(
     contract.id,
     () => api(`/contracts/${contract.id}/accept`, { method: 'POST' }),
-    "Accepted. The escrow is deployed and waiting for the startup's funds.",
+    'Aceptaste. El contrato ya está creado en Stellar y espera el depósito de la startup.',
   );
   const decline = useContractAction(
     contract.id,
     () => api(`/contracts/${contract.id}/decline`, { method: 'POST' }),
-    'Terms declined',
+    'Rechazaste los términos',
   );
   const fund = useContractAction(
     contract.id,
@@ -228,12 +228,12 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
         `/contracts/${contract.id}/fund/prepare`,
         `/contracts/${contract.id}/fund/submit`,
       ),
-    'Escrow funded. The specialist can start.',
+    'Pago depositado en el contrato. El experto ya puede empezar.',
   );
   const sync = useContractAction(
     contract.id,
     () => api(`/contracts/${contract.id}/fund/sync`, { method: 'POST' }),
-    'Escrow funded. The specialist can start.',
+    'Pago depositado en el contrato. El experto ya puede empezar.',
   );
   // The network can take a while to confirm a deposit (409 or 503): say so,
   // and never offer a second deposit as the way out.
@@ -248,41 +248,41 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
     if (!isSpecialist) {
       return (
         <Waiting
-          title="Waiting for the specialist"
-          text="They review the milestones and accept or decline the terms."
+          title="Esperando al experto"
+          text="El experto revisa los hitos y acepta o rechaza los términos."
         />
       );
     }
     return (
       <Card className="border-yellow">
         <CardHeader>
-          <CardTitle>Review the terms</CardTitle>
+          <CardTitle>Revisa los términos</CardTitle>
           <CardDescription>
-            If you accept, Pocket deploys an escrow on Stellar with these milestones,
-            paying your wallet. Then the startup funds it. Trustless Work, which runs the
-            escrow, keeps {TRUSTLESS_WORK_FEE_PERCENT}% of each payment and Pocket{' '}
-            {POCKET_FEE_PERCENT}%, so you receive {specialistReceives} of the{' '}
-            {usdc(contract.amount)}.
+            Si aceptas, Pocket crea un contrato en Stellar con estos hitos y con tu wallet
+            como destino de los pagos. Después, la startup deposita el pago. Trustless
+            Work, que opera el contrato, se queda con el {TRUSTLESS_WORK_FEE_PERCENT}% de
+            cada pago y Pocket con el {POCKET_FEE_PERCENT}%, así que recibes{' '}
+            {specialistReceives} de los {usdc(contract.amount)}.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button disabled={accept.isPending} onClick={() => accept.mutate()}>
-            {accept.isPending ? 'Deploying the escrow...' : 'Accept terms'}
+            {accept.isPending ? 'Creando el contrato en Stellar...' : 'Aceptar términos'}
           </Button>
           <Button
             variant="outline"
             disabled={decline.isPending}
             onClick={async () => {
               const confirmed = await confirm({
-                title: 'Decline these terms?',
-                description: 'The startup can then pick someone else.',
-                confirmText: 'Decline',
+                title: '¿Rechazar estos términos?',
+                description: 'La startup podrá elegir a otra persona.',
+                confirmText: 'Rechazar',
                 destructive: true,
               });
               if (confirmed) decline.mutate();
             }}
           >
-            Decline
+            Rechazar
           </Button>
         </CardContent>
       </Card>
@@ -293,35 +293,36 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
     if (!isStartup) {
       return (
         <Waiting
-          title="Waiting for the startup to fund the escrow"
-          text="Do not start the work before the escrow is funded."
+          title="Esperando que la startup deposite el pago en el contrato"
+          text="No empieces el trabajo antes de que el pago esté depositado en el contrato."
         />
       );
     }
     return (
       <Card className="border-yellow">
         <CardHeader>
-          <CardTitle>Fund the escrow</CardTitle>
+          <CardTitle>Deposita el pago en el contrato</CardTitle>
           <CardDescription>
-            Sign one transaction to lock {usdc(contract.amount)} in the escrow. Nobody can
-            move it alone: each milestone is released when you approve it. Trustless Work
-            keeps {TRUSTLESS_WORK_FEE_PERCENT}% of each payment and Pocket{' '}
-            {POCKET_FEE_PERCENT}%, so the specialist receives {specialistReceives}.
+            Firma una transacción para depositar {usdc(contract.amount)} en el contrato.
+            Nadie puede mover ese dinero por su cuenta: cada hito se libera cuando lo
+            apruebas. Trustless Work se queda con el {TRUSTLESS_WORK_FEE_PERCENT}% de cada
+            pago y Pocket con el {POCKET_FEE_PERCENT}%, así que el experto recibe{' '}
+            {specialistReceives}.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {fundingPending ? (
             <p className="text-sm text-muted-foreground">
-              Your deposit is being confirmed by the network. Check again in a minute; do
-              not fund again.
+              La red está confirmando tu depósito. Vuelve a revisar en un minuto; no
+              deposites de nuevo.
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
             {fundingPending ? null : (
               <Button disabled={fund.isPending} onClick={() => fund.mutate()}>
                 {fund.isPending
-                  ? 'Waiting for your wallet...'
-                  : `Fund ${usdc(contract.amount)}`}
+                  ? 'Esperando tu wallet...'
+                  : `Depositar ${usdc(contract.amount)}`}
               </Button>
             )}
             {/* Always there: after a reload the error is gone, the deposit is not. */}
@@ -330,7 +331,7 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
               disabled={sync.isPending}
               onClick={() => sync.mutate()}
             >
-              {sync.isPending ? 'Checking...' : 'Already funded? Check again'}
+              {sync.isPending ? 'Revisando...' : '¿Ya depositaste? Revisar de nuevo'}
             </Button>
           </div>
         </CardContent>
@@ -341,9 +342,9 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
   if (contract.status === 'completed') {
     return (
       <Alert>
-        <AlertTitle>Contract completed</AlertTitle>
+        <AlertTitle>Contrato completado</AlertTitle>
         <AlertDescription>
-          Every milestone was paid or resolved on {dateTime(contract.completedAt)}.
+          Todos los hitos se pagaron o se resolvieron el {dateTime(contract.completedAt)}.
         </AlertDescription>
       </Alert>
     );
@@ -352,18 +353,18 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
   if (contract.status === 'cancelled') {
     return (
       <Alert>
-        <AlertTitle>Contract cancelled</AlertTitle>
+        <AlertTitle>Contrato cancelado</AlertTitle>
         <AlertDescription>
-          <p>The specialist declined the terms, so the job was opened again.</p>
+          <p>El experto rechazó los términos, así que el trabajo se volvió a abrir.</p>
           {isStartup ? (
             <Button asChild size="sm" className="mt-3">
               <Link href={`/jobs/${contract.jobId}/applicants`}>
-                Choose another applicant
+                Elegir a otro postulante
               </Link>
             </Button>
           ) : isSpecialist ? (
             <Button asChild size="sm" variant="outline" className="mt-3">
-              <Link href="/jobs">Browse jobs</Link>
+              <Link href="/jobs">Ver trabajos</Link>
             </Button>
           ) : null}
         </AlertDescription>
@@ -386,7 +387,7 @@ function WithdrawOffer({ contract }: { contract: ContractDetail }) {
     mutationFn: () =>
       api<{ jobId: string }>(`/contracts/${contract.id}/withdraw`, { method: 'POST' }),
     onSuccess: async ({ jobId }) => {
-      toast.success('Offer withdrawn. The job is open again.');
+      toast.success('Oferta retirada. El trabajo está abierto de nuevo.');
       // The offer no longer exists: leave its page before anything reloads it.
       router.replace(`/jobs/${jobId}/applicants`);
       queryClient.removeQueries({ queryKey: ['contracts', contract.id] });
@@ -404,9 +405,9 @@ function WithdrawOffer({ contract }: { contract: ContractDetail }) {
 
   return (
     <Alert className="border-celeste bg-celeste-light/40">
-      <AlertTitle>Waiting for the specialist</AlertTitle>
+      <AlertTitle>Esperando al experto</AlertTitle>
       <AlertDescription>
-        <p>They review the milestones and accept or decline the terms.</p>
+        <p>El experto revisa los hitos y acepta o rechaza los términos.</p>
         <Button
           size="sm"
           variant="outline"
@@ -414,16 +415,16 @@ function WithdrawOffer({ contract }: { contract: ContractDetail }) {
           disabled={withdraw.isPending}
           onClick={async () => {
             const confirmed = await confirm({
-              title: 'Withdraw these terms?',
+              title: '¿Retirar estos términos?',
               description:
-                'The job opens again and you can send new terms to this or another applicant.',
-              confirmText: 'Withdraw',
+                'El trabajo se vuelve a abrir y puedes enviar nuevos términos a este u otro postulante.',
+              confirmText: 'Retirar',
               destructive: true,
             });
             if (confirmed) withdraw.mutate();
           }}
         >
-          {withdraw.isPending ? 'Withdrawing...' : 'Withdraw offer'}
+          {withdraw.isPending ? 'Retirando...' : 'Retirar oferta'}
         </Button>
       </AlertDescription>
     </Alert>

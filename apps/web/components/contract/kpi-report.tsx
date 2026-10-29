@@ -20,15 +20,17 @@ import {
 /** A delivery's file the API would refuse, said before uploading it, or null. */
 export function attachmentProblem(file: File): string | null {
   if (!ATTACHMENT_EXTENSIONS.includes(extensionOf(file.name))) {
-    return 'Attach a PDF, an Excel (.xlsx), Word (.docx) or CSV file, or a PNG, JPEG or WebP image';
+    return 'Adjunta un PDF, un archivo Excel (.xlsx), Word (.docx) o CSV, o una imagen PNG, JPEG o WebP';
   }
-  if (file.size > MAX_FILE_BYTES) return 'The file is too big. The limit is 5 MB';
+  if (file.size > MAX_FILE_BYTES)
+    return 'El archivo es demasiado grande. El límite es 5 MB';
   return null;
 }
 
 /** A KPI's target with its unit, e.g. "50 per month (leads)". */
 export function kpiTarget(kpi: JobKpi): string {
-  if (!kpi.target) return kpi.unit ? `No target set (${kpi.unit})` : 'No target set';
+  if (!kpi.target)
+    return kpi.unit ? `Sin meta definida (${kpi.unit})` : 'Sin meta definida';
   return kpi.unit ? `${kpi.target} (${kpi.unit})` : kpi.target;
 }
 
@@ -42,7 +44,7 @@ export function KpiList({ kpis }: { kpis: JobKpi[] }) {
           className="flex flex-col gap-0.5 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
         >
           <span className="font-medium text-navy">{kpi.name}</span>
-          <span className="text-muted-foreground">Target: {kpiTarget(kpi)}</span>
+          <span className="text-muted-foreground">Meta: {kpiTarget(kpi)}</span>
         </li>
       ))}
     </ul>
@@ -75,11 +77,11 @@ export function KpiReport({
               <p className="font-medium text-navy">{kpi.name}</p>
               <dl className="mt-1 grid grid-cols-2 gap-2">
                 <div>
-                  <dt className="text-xs text-muted-foreground">Target</dt>
+                  <dt className="text-xs text-muted-foreground">Meta</dt>
                   <dd className="break-words">{kpiTarget(kpi)}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-muted-foreground">Result</dt>
+                  <dt className="text-xs text-muted-foreground">Resultado</dt>
                   <dd className="break-words font-semibold text-navy">{result.value}</dd>
                 </div>
               </dl>
@@ -154,7 +156,7 @@ function AttachmentView({
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={preview}
-          alt={`File attached to version ${version}`}
+          alt={`Archivo adjunto a la versión ${version}`}
           className="max-h-96 w-auto max-w-full rounded-lg border border-border bg-white object-contain"
         />
       ) : (
@@ -167,8 +169,8 @@ function AttachmentView({
         >
           <FileIcon />
           {loading
-            ? 'Opening...'
-            : `${isImage ? 'Show attached image' : `Download attached ${kind.label}`} (${fileSize(attachment.size)})`}
+            ? 'Abriendo...'
+            : `${isImage ? 'Ver la imagen adjunta' : `Descargar el ${kind.label} adjunto`} (${fileSize(attachment.size)})`}
         </Button>
       )}
     </div>
@@ -201,7 +203,7 @@ export function AttachFileButton({
     setBusy(true);
     try {
       await upload(`/deliverables/${deliverable.id}/attachment`, 'file', file, '5 MB');
-      toast.success('File attached');
+      toast.success('Archivo adjuntado');
       await queryClient.invalidateQueries({ queryKey: ['contracts', contractId] });
     } catch (error) {
       toast.error(errorMessage(error));
@@ -214,10 +216,10 @@ export function AttachFileButton({
     <Button type="button" variant="outline" disabled={busy} asChild>
       <label className="cursor-pointer whitespace-nowrap">
         {busy
-          ? 'Uploading...'
+          ? 'Subiendo...'
           : deliverable.attachment
-            ? 'Replace the attached file'
-            : 'Attach a file'}
+            ? 'Reemplazar el archivo adjunto'
+            : 'Adjuntar un archivo'}
         <input
           type="file"
           accept={ATTACHMENT_ACCEPT}

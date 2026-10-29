@@ -7,17 +7,17 @@ export const FILE_KINDS: Record<
 > = {
   'application/pdf': { label: 'PDF', extension: 'pdf' },
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
-    label: 'Excel file',
+    label: 'archivo de Excel',
     extension: 'xlsx',
   },
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': {
-    label: 'Word file',
+    label: 'archivo de Word',
     extension: 'docx',
   },
-  'text/csv': { label: 'CSV file', extension: 'csv' },
-  'image/png': { label: 'image', extension: 'png' },
-  'image/jpeg': { label: 'image', extension: 'jpg' },
-  'image/webp': { label: 'image', extension: 'webp' },
+  'text/csv': { label: 'archivo CSV', extension: 'csv' },
+  'image/png': { label: 'imagen', extension: 'png' },
+  'image/jpeg': { label: 'imagen', extension: 'jpg' },
+  'image/webp': { label: 'imagen', extension: 'webp' },
 };
 
 /** A report template's file: PDF, Excel, Word or CSV. */
@@ -47,9 +47,10 @@ export function extensionOf(name: string): string {
 /** A report template the API would refuse, said before uploading it, or null. */
 export function reportTemplateProblem(file: File): string | null {
   if (!REPORT_EXTENSIONS.includes(extensionOf(file.name))) {
-    return 'Upload the report template as an Excel (.xlsx), Word (.docx), PDF or CSV file. Macro-enabled files (.xlsm, .docm) are not accepted';
+    return 'Sube la plantilla de reporte como archivo Excel (.xlsx), Word (.docx), PDF o CSV. No se aceptan archivos con macros (.xlsm, .docm)';
   }
-  if (file.size > MAX_FILE_BYTES) return 'The file is too big. The limit is 5 MB';
+  if (file.size > MAX_FILE_BYTES)
+    return 'El archivo es demasiado grande. El límite es de 5 MB';
   return null;
 }
 

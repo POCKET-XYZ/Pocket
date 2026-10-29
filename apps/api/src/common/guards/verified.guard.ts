@@ -10,9 +10,9 @@ import { VERIFIED_KEY } from '../decorators/verified.decorator';
 import type { AuthUser } from '../types/auth';
 
 const MESSAGES = {
-  not_submitted: 'Submit your account for verification first',
-  pending: 'Your verification is still under review',
-  rejected: 'Your verification was rejected. Fix the details and submit again',
+  not_submitted: 'Primero envía tu cuenta a verificación',
+  pending: 'Tu verificación todavía está en revisión',
+  rejected: 'Tu verificación fue rechazada. Corrige tus datos y vuelve a enviarlos',
 } as const;
 
 @Injectable()
@@ -30,13 +30,13 @@ export class VerifiedGuard implements CanActivate {
     if (!required) return true;
 
     const authUser = context.switchToHttp().getRequest<{ user?: AuthUser }>().user;
-    if (!authUser) throw new ForbiddenException('Not signed in');
+    if (!authUser) throw new ForbiddenException('Inicia sesión primero');
 
     const user = await this.prisma.user.findUnique({
       where: { id: authUser.sub },
       select: { verificationStatus: true },
     });
-    if (!user) throw new ForbiddenException('User not found');
+    if (!user) throw new ForbiddenException('No encontramos al usuario');
     if (user.verificationStatus !== 'approved') {
       throw new ForbiddenException(MESSAGES[user.verificationStatus]);
     }

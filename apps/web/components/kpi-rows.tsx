@@ -59,8 +59,8 @@ export function KpiRows({
         <div key={index} className="flex items-start gap-2 rounded-xl bg-muted/40 p-3">
           <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[2fr_1.5fr_1fr]">
             <Input
-              aria-label={`KPI ${index + 1} name`}
-              placeholder="Name, e.g. Qualified leads"
+              aria-label={`Nombre del KPI ${index + 1}`}
+              placeholder="Nombre, por ejemplo Leads calificados"
               required
               minLength={2}
               maxLength={80}
@@ -68,15 +68,15 @@ export function KpiRows({
               onChange={(event) => update(index, { name: event.target.value })}
             />
             <Input
-              aria-label={`KPI ${index + 1} target`}
-              placeholder="Target, e.g. 50 per month"
+              aria-label={`Meta del KPI ${index + 1}`}
+              placeholder="Meta, por ejemplo 50 al mes"
               maxLength={80}
               value={kpi.target}
               onChange={(event) => update(index, { target: event.target.value })}
             />
             <Input
-              aria-label={`KPI ${index + 1} unit`}
-              placeholder="Unit, e.g. leads"
+              aria-label={`Unidad del KPI ${index + 1}`}
+              placeholder="Unidad, por ejemplo leads"
               maxLength={30}
               value={kpi.unit}
               onChange={(event) => update(index, { unit: event.target.value })}
@@ -86,7 +86,7 @@ export function KpiRows({
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="Remove KPI"
+            aria-label="Quitar KPI"
             onClick={() => onChange(kpis.filter((_, i) => i !== index))}
           >
             <Trash2Icon />
@@ -100,7 +100,7 @@ export function KpiRows({
           variant="outline"
           onClick={() => onChange([...kpis, { ...EMPTY_KPI }])}
         >
-          <PlusIcon /> Add KPI
+          <PlusIcon /> Agregar KPI
         </Button>
       ) : null}
     </>

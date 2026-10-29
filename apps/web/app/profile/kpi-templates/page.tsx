@@ -48,11 +48,11 @@ function KpiTemplates() {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
-        title="KPI templates"
-        description="Sets of KPIs you reuse when posting jobs. Choosing one on the job form fills the KPIs, and you can still change them for that job. Changing a template never changes a job already posted."
+        title="Plantillas de KPI"
+        description="Conjuntos de KPIs que reutilizas al publicar trabajos. Al elegir una en el formulario del trabajo se completan los KPIs, y aún puedes cambiarlos para ese trabajo. Cambiar una plantilla nunca cambia un trabajo ya publicado."
         actions={
           <Button asChild variant="outline">
-            <Link href="/profile">Back to profile</Link>
+            <Link href="/profile">Volver al perfil</Link>
           </Button>
         }
       />
@@ -71,8 +71,8 @@ function KpiTemplates() {
             </Card>
           ) : full ? (
             <p className="text-sm text-muted-foreground">
-              You have {MAX_TEMPLATES} templates, the most you can keep. Delete one to add
-              another.
+              Tienes {MAX_TEMPLATES} plantillas, el máximo que puedes guardar. Elimina una
+              para agregar otra.
             </p>
           ) : (
             <Button
@@ -81,17 +81,17 @@ function KpiTemplates() {
                 setCreating(true);
               }}
             >
-              <PlusIcon /> New template
+              <PlusIcon /> Nueva plantilla
             </Button>
           )}
 
           {list.length === 0 && !creating ? (
-            <EmptyState title="No KPI templates yet">
-              Create one here, or use &quot;Save as template&quot; on the KPIs of the job
-              form.
+            <EmptyState title="Todavía no tienes plantillas de KPI">
+              Crea una aquí, o usa &quot;Guardar como plantilla&quot; en los KPIs del
+              formulario del trabajo.
               <div>
                 <Button asChild variant="outline" className="mt-4">
-                  <Link href="/jobs/new">Post a job</Link>
+                  <Link href="/jobs/new">Publicar un trabajo</Link>
                 </Button>
               </div>
             </EmptyState>
@@ -132,7 +132,7 @@ function TemplateView({
   const remove = useMutation({
     mutationFn: () => api(`/kpi-templates/${template.id}`, { method: 'DELETE' }),
     onSuccess: async () => {
-      toast.success('Template deleted');
+      toast.success('Plantilla eliminada');
       await queryClient.invalidateQueries({ queryKey: KPI_TEMPLATES_KEY });
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -151,22 +151,22 @@ function TemplateView({
         </div>
         <div className="flex shrink-0 gap-2">
           <Button variant="outline" onClick={onEdit}>
-            Edit
+            Editar
           </Button>
           <Button
             variant="ghost"
             disabled={remove.isPending}
             onClick={async () => {
               const confirmed = await confirm({
-                title: `Delete "${template.name}"?`,
-                description: 'Jobs already posted with it keep their KPIs.',
-                confirmText: 'Delete',
+                title: `¿Eliminar "${template.name}"?`,
+                description: 'Los trabajos ya publicados con ella conservan sus KPIs.',
+                confirmText: 'Eliminar',
                 destructive: true,
               });
               if (confirmed) remove.mutate();
             }}
           >
-            {remove.isPending ? 'Deleting...' : 'Delete'}
+            {remove.isPending ? 'Eliminando...' : 'Eliminar'}
           </Button>
         </div>
       </div>
@@ -178,7 +178,7 @@ function TemplateView({
           >
             <span className="break-words font-medium text-navy">{kpi.name}</span>
             <span className="break-words text-muted-foreground">
-              Target: {kpi.target ?? 'No target set'}
+              Meta: {kpi.target ?? 'Sin meta definida'}
               {kpi.unit ? ` (${kpi.unit})` : ''}
             </span>
           </li>
@@ -208,7 +208,7 @@ function TemplateEditor({
         ? api<KpiTemplate>(`/kpi-templates/${template.id}`, { method: 'PUT', body })
         : api<KpiTemplate>('/kpi-templates', { method: 'POST', body }),
     onSuccess: async () => {
-      toast.success(template ? 'Template saved' : 'Template created');
+      toast.success(template ? 'Plantilla guardada' : 'Plantilla creada');
       await queryClient.invalidateQueries({ queryKey: KPI_TEMPLATES_KEY });
       onDone();
     },
@@ -232,28 +232,32 @@ function TemplateEditor({
           htmlFor={`template-name-${template?.id ?? 'new'}`}
           className="text-sm font-medium text-navy"
         >
-          Name
+          Nombre
         </label>
         <Input
           id={`template-name-${template?.id ?? 'new'}`}
           required
           minLength={2}
           maxLength={80}
-          placeholder="e.g. Outbound campaign"
+          placeholder="Por ejemplo Campaña outbound"
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
       </div>
       <p className="text-sm text-muted-foreground">
-        Up to {MAX_KPIS} KPIs, each name once.
+        Hasta {MAX_KPIS} KPIs, sin repetir nombres.
       </p>
       <KpiRows kpis={kpis} onChange={setKpis} />
       <div className="flex flex-wrap gap-2 border-t border-border pt-3">
         <Button type="submit" disabled={save.isPending}>
-          {save.isPending ? 'Saving...' : template ? 'Save template' : 'Create template'}
+          {save.isPending
+            ? 'Guardando...'
+            : template
+              ? 'Guardar plantilla'
+              : 'Crear plantilla'}
         </Button>
         <Button type="button" variant="ghost" onClick={onDone}>
-          Cancel
+          Cancelar
         </Button>
       </div>
     </form>

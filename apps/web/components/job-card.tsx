@@ -29,7 +29,7 @@ export function JobCard({
         {job.title}
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">
-        {job.startup?.companyName ?? 'A verified startup'}
+        {job.startup?.companyName ?? 'Una startup verificada'}
       </p>
       <p className="mt-3 line-clamp-2 text-sm text-foreground/80">{job.description}</p>
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -38,7 +38,8 @@ export function JobCard({
           <CalendarIcon className="size-3.5" /> {date(job.deadline)}
         </span>
         <span className="flex items-center gap-1">
-          <UsersIcon className="size-3.5" /> {job.applicationCount} applied
+          <UsersIcon className="size-3.5" /> {job.applicationCount}{' '}
+          {job.applicationCount === 1 ? 'postulante' : 'postulantes'}
         </span>
       </div>
     </Link>

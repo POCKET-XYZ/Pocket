@@ -62,7 +62,7 @@ const UNAVAILABLE: PollarSession = {
   balancesLoading: false,
   refreshBalances: () => Promise.resolve(),
   signXdr: () =>
-    Promise.reject(new Error('Pollar is not configured in this deployment')),
+    Promise.reject(new Error('Pollar no está configurado en este entorno')),
   openReceive: () => {},
   openHistory: () => {},
   openRamp: () => {},
@@ -137,7 +137,7 @@ function PollarSessionBridge({ children }: { children: React.ReactNode }) {
       const outcome = await getClient().signTx(xdr, { skipSponsorship: true });
       if (outcome.status !== 'signed') {
         throw new Error(
-          outcome.message ?? outcome.details ?? 'Pollar could not sign this transaction',
+          outcome.message ?? outcome.details ?? 'Pollar no pudo firmar esta transacción',
         );
       }
       return outcome.signedXdr;

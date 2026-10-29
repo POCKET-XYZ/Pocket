@@ -47,87 +47,87 @@ function content(event: NotificationEvent): Content {
   switch (event.type) {
     case 'verification_approved':
       return {
-        subject: 'Your Pocket account is verified',
+        subject: 'Tu cuenta de Pocket está verificada',
         paragraphs: [
-          'Good news: a manager approved your verification. You can now use the marketplace.',
+          'Buenas noticias: un manager aprobó tu verificación. Ya puedes usar el marketplace.',
         ],
-        button: { label: 'Open Pocket', path: '/dashboard' },
+        button: { label: 'Abrir Pocket', path: '/dashboard' },
       };
     case 'verification_rejected':
       return {
-        subject: 'Your Pocket verification needs changes',
+        subject: 'Tu verificación en Pocket necesita cambios',
         paragraphs: [
-          'A manager could not approve your verification yet. Their reason:',
+          'Un manager todavía no pudo aprobar tu verificación. Este es el motivo:',
           event.reason,
-          'Fix the details and submit again.',
+          'Corrige los datos y envíala de nuevo.',
         ],
-        button: { label: 'Update your verification', path: '/verification' },
+        button: { label: 'Actualizar mi verificación', path: '/verification' },
       };
     case 'offer_received':
       return {
-        subject: `New offer: ${event.jobTitle}`,
+        subject: `Nueva oferta: ${event.jobTitle}`,
         paragraphs: [
-          `A startup wants to hire you for "${event.jobTitle}". Review the milestones and accept or decline the terms.`,
+          `Una startup quiere contratarte para "${event.jobTitle}". Revisa los hitos y acepta o rechaza los términos.`,
         ],
-        button: { label: 'Review the offer', path: `/contracts/${event.contractId}` },
+        button: { label: 'Revisar la oferta', path: `/contracts/${event.contractId}` },
       };
     case 'terms_accepted':
       return {
-        subject: `Terms accepted: ${event.jobTitle}`,
+        subject: `Términos aceptados: ${event.jobTitle}`,
         paragraphs: [
-          `The specialist accepted your terms for "${event.jobTitle}". Fund the escrow so the work can start.`,
+          `El experto aceptó tus términos para "${event.jobTitle}". Deposita el pago en el contrato para que empiece el trabajo.`,
         ],
-        button: { label: 'Fund the escrow', path: `/contracts/${event.contractId}` },
+        button: { label: 'Depositar el pago', path: `/contracts/${event.contractId}` },
       };
     case 'escrow_funded':
       return {
-        subject: 'The escrow is funded, you can start',
+        subject: 'El pago está depositado: ya puedes empezar',
         paragraphs: [
-          'The startup funded the escrow for your contract. The money is held safely: you can start working.',
+          'La startup depositó el pago en tu contrato. El dinero queda guardado de forma segura: ya puedes empezar a trabajar.',
         ],
-        button: { label: 'Open the contract', path: `/contracts/${event.contractId}` },
+        button: { label: 'Ver el contrato', path: `/contracts/${event.contractId}` },
       };
     case 'milestone_delivered':
       return {
-        subject: `Milestone delivered: ${event.milestoneTitle}`,
+        subject: `Hito entregado: ${event.milestoneTitle}`,
         paragraphs: [
-          `The specialist delivered "${event.milestoneTitle}". Review it and approve the payment or request changes.`,
+          `El experto entregó "${event.milestoneTitle}". Revísalo y aprueba el pago o pide cambios.`,
         ],
-        button: { label: 'Review the delivery', path: `/contracts/${event.contractId}` },
+        button: { label: 'Revisar la entrega', path: `/contracts/${event.contractId}` },
       };
     case 'changes_requested':
       return {
-        subject: `Changes requested: ${event.milestoneTitle}`,
+        subject: `Cambios pedidos: ${event.milestoneTitle}`,
         paragraphs: [
-          `The startup asked for changes to "${event.milestoneTitle}":`,
+          `La startup pidió cambios en "${event.milestoneTitle}":`,
           event.feedback,
         ],
-        button: { label: 'Open the contract', path: `/contracts/${event.contractId}` },
+        button: { label: 'Ver el contrato', path: `/contracts/${event.contractId}` },
       };
     case 'milestone_paid':
       return {
-        subject: `You were paid ${event.amount} USDC`,
+        subject: `Te pagaron ${event.amount} USDC`,
         paragraphs: [
-          `The startup approved "${event.milestoneTitle}" and ${event.amount} USDC was released to your wallet.`,
+          `La startup aprobó "${event.milestoneTitle}" y se liberó el pago de ${event.amount} USDC a tu wallet.`,
         ],
-        button: { label: 'Open the contract', path: `/contracts/${event.contractId}` },
+        button: { label: 'Ver el contrato', path: `/contracts/${event.contractId}` },
       };
     case 'dispute_opened':
       return {
-        subject: `Dispute opened: ${event.milestoneTitle}`,
+        subject: `Disputa abierta: ${event.milestoneTitle}`,
         paragraphs: [
-          `The other party opened a dispute on "${event.milestoneTitle}". The milestone's funds stay in the escrow until a manager decides. Add your evidence.`,
+          `La otra parte abrió una disputa sobre "${event.milestoneTitle}". Los fondos del hito se quedan en el contrato hasta que un manager decida. Agrega tu evidencia.`,
         ],
-        button: { label: 'Open the dispute', path: `/disputes/${event.disputeId}` },
+        button: { label: 'Ver la disputa', path: `/disputes/${event.disputeId}` },
       };
     case 'dispute_resolved':
       return {
-        subject: `Dispute resolved: ${event.milestoneTitle}`,
+        subject: `Disputa resuelta: ${event.milestoneTitle}`,
         paragraphs: [
-          `A manager resolved the dispute on "${event.milestoneTitle}".`,
-          `The specialist receives ${event.specialistAmount} USDC and the startup receives ${event.startupAmount} USDC.`,
+          `Un manager resolvió la disputa sobre "${event.milestoneTitle}".`,
+          `El experto recibe ${event.specialistAmount} USDC y la startup recibe ${event.startupAmount} USDC.`,
         ],
-        button: { label: 'See the decision', path: `/disputes/${event.disputeId}` },
+        button: { label: 'Ver la decisión', path: `/disputes/${event.disputeId}` },
       };
   }
 }
@@ -157,12 +157,12 @@ export function render(event: NotificationEvent, webUrl: string): RenderedEmail 
     )
     .join('');
   const html = `<!doctype html>
-<html><body style="margin:0;padding:24px;background:#f5f5f4;font-family:Arial,Helvetica,sans-serif;color:#1c1917">
+<html lang="es"><body style="margin:0;padding:24px;background:#f5f5f4;font-family:Arial,Helvetica,sans-serif;color:#1c1917">
 <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:8px;padding:32px">
 <p style="margin:0 0 24px;font-weight:bold;font-size:18px">Pocket</p>
 ${body}
 <p style="margin:24px 0"><a href="${escapeHtml(link)}" style="display:inline-block;background:#1c1917;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:6px">${escapeHtml(button.label)}</a></p>
-<p style="margin:0;font-size:12px;color:#78716c">You get this email because you have a Pocket account.</p>
+<p style="margin:0;font-size:12px;color:#78716c">Recibes este correo porque tienes una cuenta en Pocket.</p>
 </div>
 </body></html>`;
   const text = [...paragraphs, `${button.label}: ${link}`].join('\n\n');

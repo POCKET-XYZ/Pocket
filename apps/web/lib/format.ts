@@ -14,7 +14,7 @@ export function shortAddress(address: string): string {
 /** Calendar dates come as ISO strings at midnight UTC; show them as that day. */
 export function date(value: string | null | undefined): string {
   if (!value) return '-';
-  return new Date(value).toLocaleDateString('en-US', {
+  return new Date(value).toLocaleDateString('es', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -24,7 +24,7 @@ export function date(value: string | null | undefined): string {
 
 export function dateTime(value: string | null | undefined): string {
   if (!value) return '-';
-  return new Date(value).toLocaleString('en-US', {
+  return new Date(value).toLocaleString('es', {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
@@ -42,17 +42,17 @@ export function isoInDays(days: number): string {
 
 export const CATEGORY_LABELS: Record<ServiceCategory, string> = {
   growth: 'Growth',
-  sales: 'Sales',
+  sales: 'Ventas',
   marketing: 'Marketing',
-  digital_marketing: 'Digital Marketing',
+  digital_marketing: 'Marketing digital',
 };
 
 export const STAGE_LABELS: Record<StartupStage, string> = {
   idea: 'Idea',
   pre_seed: 'Pre-seed',
   seed: 'Seed',
-  series_a: 'Series A',
-  series_b_plus: 'Series B+',
+  series_a: 'Serie A',
+  series_b_plus: 'Serie B+',
 };
 
 /** Link to a transaction on the Stellar explorer of the configured network. */

@@ -23,7 +23,7 @@ import { MilestonesService } from './milestones.service';
 const DISPUTABLE = ['pending', 'delivered', 'changes_requested'] as const;
 
 /** Reason on record for a dispute found on chain that nobody explained yet. */
-const LANDED_REASON = 'Opened on the escrow; the reason was not recorded. Add it as evidence';
+const LANDED_REASON = 'Se abrió en el contrato, pero el motivo no quedó registrado. Agrégalo como evidencia';
 
 @Injectable()
 export class DisputesService {
@@ -38,7 +38,7 @@ export class DisputesService {
   async prepareOpen(user: AuthUser, milestoneId: string): Promise<PreparedTransaction> {
     const milestone = await this.disputableMilestone(user, milestoneId);
     if (await this.syncLandedDispute(user, milestone, LANDED_REASON)) {
-      throw new ConflictException('This dispute already reached the escrow and is open now');
+      throw new ConflictException('Esta disputa ya llegó al contrato y está abierta');
     }
     return this.escrow.prepareDispute(
       milestone.contract,
@@ -77,7 +77,7 @@ export class DisputesService {
         'The escrow does not show the milestone as disputed',
       );
       throw new ConflictException(
-        'The dispute did not reach the escrow. Check your wallet and try again',
+        'La disputa no llegó al contrato. Revisa tu wallet e intenta de nuevo',
       );
     }
 
@@ -118,7 +118,7 @@ export class DisputesService {
     const dispute = await this.load(disputeId);
     assertParticipant(user, dispute.milestone.contract);
     if (dispute.status !== 'open') {
-      throw new BadRequestException('This dispute is already resolved');
+      throw new BadRequestException('Esta disputa ya está resuelta');
     }
     return this.prisma.disputeEvidence.create({
       data: { ...dto, disputeId, authorId: user.sub },
@@ -167,7 +167,7 @@ export class DisputesService {
         },
       },
     });
-    if (!dispute) throw new NotFoundException('Dispute not found');
+    if (!dispute) throw new NotFoundException('No encontramos la disputa');
     assertParticipant(user, dispute.milestone.contract);
     return dispute;
   }
@@ -180,7 +180,7 @@ export class DisputesService {
   async resolve(manager: AuthUser, disputeId: string, dto: ResolveDisputeDto) {
     const dispute = await this.load(disputeId);
     if (dispute.status !== 'open') {
-      throw new BadRequestException('This dispute is already resolved');
+      throw new BadRequestException('Esta disputa ya está resuelta');
     }
     const { milestone } = dispute;
     const { specialistAmount, startupAmount } = splitFor(dto, milestone.amount);
@@ -205,11 +205,11 @@ export class DisputesService {
         current.specialistAmount?.equals(specialistAmount) === true &&
         current.startupAmount?.equals(startupAmount) === true;
       if (current.status !== 'open') {
-        throw new BadRequestException('This dispute is already resolved');
+        throw new BadRequestException('Esta disputa ya está resuelta');
       }
       if (!same) {
         throw new ConflictException(
-          'Another decision on this dispute is being executed. Refresh to see it',
+          'Se está ejecutando otra decisión sobre esta disputa. Actualiza la página para verla',
         );
       }
     }
@@ -258,7 +258,7 @@ export class DisputesService {
         ))
       ) {
         throw new ConflictException(
-          'The resolution does not show on chain yet. Try again',
+          'La resolución todavía no aparece en Stellar. Intenta de nuevo',
         );
       }
     }
@@ -328,13 +328,13 @@ export class DisputesService {
     const milestone = await this.milestones.load(milestoneId);
     const { contract } = milestone;
     if (contract.startupId !== user.sub && contract.specialistId !== user.sub) {
-      throw new ForbiddenException('Only the two parties can open a dispute');
+      throw new ForbiddenException('Solo las dos partes pueden abrir una disputa');
     }
     if (contract.status !== 'active') {
-      throw new BadRequestException('Only a funded contract can be disputed');
+      throw new BadRequestException('Solo se puede abrir una disputa en un contrato con el pago depositado');
     }
     if (!(DISPUTABLE as readonly string[]).includes(milestone.status)) {
-      throw new BadRequestException('This milestone can no longer be disputed');
+      throw new BadRequestException('Ya no se puede abrir una disputa sobre este hito');
     }
     return milestone;
   }
@@ -344,7 +344,7 @@ export class DisputesService {
       where: { id: disputeId },
       include: { milestone: { include: { contract: true } } },
     });
-    if (!dispute) throw new NotFoundException('Dispute not found');
+    if (!dispute) throw new NotFoundException('No encontramos la disputa');
     return dispute;
   }
 }
@@ -363,7 +363,7 @@ export function splitFor(
   const specialistAmount = new Prisma.Decimal(dto.specialistAmount ?? 0);
   if (specialistAmount.lte(0) || specialistAmount.gte(total)) {
     throw new BadRequestException(
-      `A split gives each side part of the ${total.toString()} USDC. To give all of it to one side, choose Pay the specialist or Refund the startup`,
+      `Al repartir, cada parte recibe una porción de los ${total.toString()} USDC. Para darle todo a una sola parte, elige Pagar al experto o Reembolsar a la startup`,
     );
   }
   return { specialistAmount, startupAmount: total.minus(specialistAmount) };
@@ -378,6 +378,6 @@ function assertParticipant(
     contract.startupId !== user.sub &&
     contract.specialistId !== user.sub
   ) {
-    throw new ForbiddenException('You are not a party to this dispute');
+    throw new ForbiddenException('No eres parte de esta disputa');
   }
 }

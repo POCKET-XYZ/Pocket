@@ -36,9 +36,9 @@ import { cn } from '@/lib/utils';
 import { linkHost, safeHref } from '@/lib/links';
 
 const OUTCOMES: { value: DisputeOutcome; label: string }[] = [
-  { value: DisputeOutcome.PaySpecialist, label: 'Pay the specialist' },
-  { value: DisputeOutcome.RefundStartup, label: 'Refund the startup' },
-  { value: DisputeOutcome.Split, label: 'Split it' },
+  { value: DisputeOutcome.PaySpecialist, label: 'Pagar al experto' },
+  { value: DisputeOutcome.RefundStartup, label: 'Reembolsar a la startup' },
+  { value: DisputeOutcome.Split, label: 'Repartir entre ambos' },
 ];
 
 export default function DisputePage() {
@@ -54,55 +54,55 @@ function DisputeView({ user }: { user: User }) {
 
   if (dispute.isLoading) return <Loading />;
   if (dispute.error || !dispute.data)
-    return <ErrorAlert error={dispute.error} title="Dispute not found" />;
+    return <ErrorAlert error={dispute.error} title="No se encontró la disputa" />;
   const data = dispute.data;
   const { contract } = data.milestone;
   const who = (authorId: string) =>
     authorId === contract.startupId
       ? 'Startup'
       : authorId === contract.specialistId
-        ? 'Specialist'
+        ? 'Experto'
         : 'Manager';
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
       <div className="space-y-6">
         <PageHeader
-          title={`Dispute: ${data.milestone.title}`}
+          title={`Disputa: ${data.milestone.title}`}
           description={
             <>
-              Opened by the {who(data.openedById).toLowerCase()} on{' '}
-              {dateTime(data.createdAt)}.{' '}
+              Abierta por {data.openedById === contract.startupId ? 'la' : 'el'}{' '}
+              {who(data.openedById).toLowerCase()} el {dateTime(data.createdAt)}.{' '}
               <Link href={`/contracts/${contract.id}`} className="underline">
-                Go to the contract
+                Ir al contrato
               </Link>
             </>
           }
-          actions={<StatusBadge status={data.status} className="px-3 py-1 text-sm" />}
+          actions={<StatusBadge feminine status={data.status} className="px-3 py-1 text-sm" />}
         />
 
         <Card>
           <CardContent className="space-y-4 pt-6">
             <dl className="grid grid-cols-2 gap-4">
-              <Detail label="Milestone amount">{usdc(data.milestone.amount)}</Detail>
-              <Detail label="Milestone status">
+              <Detail label="Monto del hito">{usdc(data.milestone.amount)}</Detail>
+              <Detail label="Estado del hito">
                 <StatusBadge status={data.milestone.status} />
               </Detail>
             </dl>
-            <Detail label="Reason">
+            <Detail label="Motivo">
               <p className="whitespace-pre-line">{data.reason}</p>
             </Detail>
             {data.status === 'resolved' ? (
               <div className="rounded-xl bg-muted p-3 text-sm">
                 <p className="font-medium text-navy">
-                  Decision: {usdc(data.specialistAmount)} to the specialist,{' '}
-                  {usdc(data.startupAmount)} to the startup.
+                  Decisión: {usdc(data.specialistAmount)} para el experto,{' '}
+                  {usdc(data.startupAmount)} para la startup.
                 </p>
                 {data.resolutionNote ? (
                   <p className="mt-1">{data.resolutionNote}</p>
                 ) : null}
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Resolved {dateTime(data.resolvedAt)}
+                  Resuelta el {dateTime(data.resolvedAt)}
                 </p>
               </div>
             ) : null}
@@ -112,13 +112,13 @@ function DisputeView({ user }: { user: User }) {
         {data.milestone.deliverables.length > 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>Deliveries</CardTitle>
+              <CardTitle>Entregas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               {data.milestone.deliverables.map((deliverable) => (
                 <div key={deliverable.id}>
                   <span className="font-medium text-navy">
-                    Version {deliverable.version}:{' '}
+                    Versión {deliverable.version}:{' '}
                   </span>
                   <a
                     href={safeHref(deliverable.url)}
@@ -134,7 +134,7 @@ function DisputeView({ user }: { user: User }) {
                   <KpiReport kpis={contract.job.kpis} deliverable={deliverable} />
                   {deliverable.feedback ? (
                     <p className="text-muted-foreground">
-                      Changes asked: {deliverable.feedback}
+                      Cambios pedidos: {deliverable.feedback}
                     </p>
                   ) : null}
                 </div>
@@ -145,12 +145,12 @@ function DisputeView({ user }: { user: User }) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Evidence</CardTitle>
-            <CardDescription>Links and comments from both sides.</CardDescription>
+            <CardTitle>Evidencia</CardTitle>
+            <CardDescription>Enlaces y comentarios de ambas partes.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {data.evidence.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No evidence yet.</p>
+              <p className="text-sm text-muted-foreground">Todavía no hay evidencia.</p>
             ) : null}
             {data.evidence.map((item) => (
               <div key={item.id} className="rounded-xl border border-border p-3 text-sm">
@@ -193,7 +193,7 @@ function EvidenceForm({ disputeId }: { disputeId: string }) {
     mutationFn: (body: Record<string, unknown>) =>
       api(`/disputes/${disputeId}/evidence`, { method: 'POST', body }),
     onSuccess: async () => {
-      toast.success('Evidence added');
+      toast.success('Evidencia agregada');
       await queryClient.invalidateQueries({ queryKey: ['disputes', disputeId] });
     },
     onError: async (error) => {
@@ -216,17 +216,17 @@ function EvidenceForm({ disputeId }: { disputeId: string }) {
         required
         minLength={2}
         maxLength={2000}
-        placeholder="Add a comment"
+        placeholder="Agrega un comentario"
       />
       <Input
         name="url"
         type="url"
         pattern="https://.+"
-        title="A link that starts with https://"
-        placeholder="Link (optional)"
+        title="Un enlace que empiece con https://"
+        placeholder="Enlace (opcional)"
       />
       <Button type="submit" size="sm" disabled={add.isPending}>
-        Add evidence
+        Agregar evidencia
       </Button>
     </form>
   );
@@ -240,7 +240,7 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
     mutationFn: (body: Record<string, unknown>) =>
       api(`/manager/disputes/${dispute.id}/resolve`, { method: 'POST', body }),
     onSuccess: async () => {
-      toast.success('Resolved. The escrow paid out the decision.');
+      toast.success('Disputa resuelta. El contrato pagó según la decisión.');
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['disputes'] }),
         queryClient.invalidateQueries({ queryKey: ['contracts'] }),
@@ -268,16 +268,16 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
         toSpecialist >= total
       ) {
         toast.error(
-          `Give the specialist more than 0 and less than ${usdc(dispute.milestone.amount)}, with at most 7 decimals`,
+          `Asigna al experto más de 0 y menos de ${usdc(dispute.milestone.amount)}, con 7 decimales como máximo`,
         );
         return;
       }
-      summary = `${fromUnits(toSpecialist)} USDC to the specialist and ${fromUnits(total - toSpecialist)} USDC to the startup`;
+      summary = `${fromUnits(toSpecialist)} USDC para el experto y ${fromUnits(total - toSpecialist)} USDC para la startup`;
     }
     const confirmed = await confirm({
-      title: `${summary}?`,
-      description: 'This executes on the escrow and cannot be undone.',
-      confirmText: 'Resolve',
+      title: `¿${summary}?`,
+      description: 'Esto se ejecuta en el contrato y no se puede deshacer.',
+      confirmText: 'Resolver',
       irreversible: true,
     });
     if (!confirmed) return;
@@ -298,16 +298,16 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
     return (
       <Card className="border-yellow">
         <CardHeader>
-          <CardTitle>A decision is being executed</CardTitle>
+          <CardTitle>Se está ejecutando una decisión</CardTitle>
           <CardDescription>
             {label}
             {dispute.outcome === DisputeOutcome.Split && dispute.specialistAmount
-              ? `: ${usdc(dispute.specialistAmount)} to the specialist, ${usdc(
+              ? `: ${usdc(dispute.specialistAmount)} para el experto, ${usdc(
                   fromUnits(total - toUnits(dispute.specialistAmount)),
-                )} to the startup`
+                )} para la startup`
               : ''}
-            . The network had not confirmed it yet. Retry to finish it; if it already
-            landed, Pocket just records it.
+            . La red todavía no la había confirmado. Reintenta para terminarla; si ya se
+            ejecutó, Pocket solo la registra.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -316,14 +316,14 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
             onClick={() =>
               resolve.mutate({
                 outcome: dispute.outcome,
-                note: dispute.resolutionNote ?? 'Resolution retried by a manager.',
+                note: dispute.resolutionNote ?? 'Resolución reintentada por un manager.',
                 ...(dispute.outcome === DisputeOutcome.Split && dispute.specialistAmount
                   ? { specialistAmount: Number(dispute.specialistAmount) }
                   : {}),
               })
             }
           >
-            {resolve.isPending ? 'Retrying...' : 'Retry'}
+            {resolve.isPending ? 'Reintentando...' : 'Reintentar'}
           </Button>
         </CardContent>
       </Card>
@@ -333,11 +333,11 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
   return (
     <Card className="border-navy">
       <CardHeader>
-        <CardTitle>Decide</CardTitle>
+        <CardTitle>Decidir</CardTitle>
         <CardDescription>
-          Pocket executes the decision on the escrow. It can only pay the two parties.
-          Trustless Work keeps {TRUSTLESS_WORK_FEE_PERCENT}% and Pocket {POCKET_FEE_PERCENT}% of
-          what is paid out, from each side.
+          Pocket ejecuta la decisión en el contrato. Solo puede pagarles a las dos partes.
+          Trustless Work se queda con el {TRUSTLESS_WORK_FEE_PERCENT}% y Pocket con el{' '}
+          {POCKET_FEE_PERCENT}% de lo que se le paga a cada parte.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -361,9 +361,9 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
           </div>
           {outcome === DisputeOutcome.Split ? (
             <Field
-              label="USDC for the specialist"
+              label="USDC para el experto"
               htmlFor="specialistAmount"
-              hint={`More than 0 and less than ${usdc(dispute.milestone.amount)}. The startup gets the rest.`}
+              hint={`Más de 0 y menos de ${usdc(dispute.milestone.amount)}. La startup recibe el resto.`}
               required
             >
               <Input
@@ -377,11 +377,11 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
               />
             </Field>
           ) : null}
-          <Field label="Note for both parties" htmlFor="note" required>
+          <Field label="Nota para ambas partes" htmlFor="note" required>
             <Textarea id="note" name="note" required minLength={10} maxLength={2000} />
           </Field>
           <Button type="submit" className="w-full" disabled={resolve.isPending}>
-            {resolve.isPending ? 'Executing on the escrow...' : 'Resolve dispute'}
+            {resolve.isPending ? 'Ejecutando en el contrato...' : 'Resolver disputa'}
           </Button>
         </form>
       </CardContent>

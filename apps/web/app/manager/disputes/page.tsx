@@ -25,8 +25,8 @@ function Disputes() {
   return (
     <div>
       <PageHeader
-        title="Disputes"
-        description="Oldest first. Read both sides, then pay, refund or split."
+        title="Disputas"
+        description="Las más antiguas primero. Lee a ambas partes y luego paga, reembolsa o reparte."
       />
       <Tabs
         value={status}
@@ -34,8 +34,8 @@ function Disputes() {
         className="mb-6"
       >
         <TabsList>
-          <TabsTrigger value="open">Open</TabsTrigger>
-          <TabsTrigger value="resolved">Resolved</TabsTrigger>
+          <TabsTrigger value="open">Abiertas</TabsTrigger>
+          <TabsTrigger value="resolved">Resueltas</TabsTrigger>
         </TabsList>
       </Tabs>
       {disputes.isLoading ? (
@@ -55,7 +55,7 @@ function Disputes() {
                   {dispute.milestone.title}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {dispute.milestone.contract.job.title} · opened{' '}
+                  {dispute.milestone.contract.job.title} · abierta el{' '}
                   {dateTime(dispute.createdAt)}
                 </p>
                 <p className="mt-1 line-clamp-1 text-sm">{dispute.reason}</p>
@@ -64,14 +64,18 @@ function Disputes() {
                 <span className="font-semibold text-navy">
                   {usdc(dispute.milestone.amount)}
                 </span>
-                <StatusBadge status={dispute.status} />
+                <StatusBadge feminine status={dispute.status} />
               </div>
             </Link>
           ))}
         </div>
       ) : (
         <EmptyState
-          title={status === 'open' ? 'No open disputes' : 'No resolved disputes yet'}
+          title={
+            status === 'open'
+              ? 'No hay disputas abiertas'
+              : 'Todavía no hay disputas resueltas'
+          }
         />
       )}
     </div>

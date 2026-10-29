@@ -286,7 +286,7 @@ describe('AuthService', () => {
       prisma.user.findFirst.mockResolvedValue(makeUser({ pollarUserId: null }));
       await expect(
         service.loginWithPollar({ accessToken: 'pollar-token' }),
-      ).rejects.toThrow('Sign in with the wallet itself');
+      ).rejects.toThrow('Inicia sesión directamente con la wallet');
       expect(prisma.user.update).not.toHaveBeenCalled();
     });
 

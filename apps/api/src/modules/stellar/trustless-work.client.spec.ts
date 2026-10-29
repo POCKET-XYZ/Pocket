@@ -74,7 +74,7 @@ describe('TrustlessWorkClient', () => {
 
     await expect(client.fund('CESCROW', 'GSTARTUP', 10)).rejects.toThrow(
       new ServiceUnavailableException(
-        'Trustless Work is busy right now. Try again in a minute',
+        'Trustless Work está ocupado en este momento. Intenta de nuevo en un minuto',
       ),
     );
     expect(fetchMock).toHaveBeenCalledTimes(4);
@@ -84,7 +84,7 @@ describe('TrustlessWorkClient', () => {
   it('does not retry other errors', async () => {
     fetchMock.mockResolvedValue(reply(400, { message: 'Escrow not found' }));
     await expect(client.fund('CESCROW', 'GSTARTUP', 10)).rejects.toThrow(
-      'This escrow was not found on Stellar',
+      'No se encontró este contrato en Stellar',
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -96,7 +96,7 @@ describe('TrustlessWorkClient', () => {
     const error = await client.fund('CESCROW', 'GSTARTUP', 10).catch((e: Error) => e);
     expect(error).toBeInstanceOf(ServiceUnavailableException);
     expect((error as Error).message).toBe(
-      'The escrow service could not complete this step. Try again',
+      'El servicio de contratos no pudo completar este paso. Intenta de nuevo',
     );
   });
 
@@ -110,7 +110,7 @@ describe('TrustlessWorkClient', () => {
     for (let i = 0; i < TRUSTLESS_WORK_BUDGET_PER_MINUTE; i++) {
       await client.fund('C1', 'G1', 1);
     }
-    await expect(client.fund('C1', 'G1', 1)).rejects.toThrow('busy right now');
+    await expect(client.fund('C1', 'G1', 1)).rejects.toThrow('está ocupado en este momento');
     // Held back before reaching Trustless Work.
     expect(fetchMock).toHaveBeenCalledTimes(TRUSTLESS_WORK_BUDGET_PER_MINUTE);
   });

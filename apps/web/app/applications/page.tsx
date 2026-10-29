@@ -41,7 +41,7 @@ function Applications({ user }: { user: User }) {
   const withdraw = useMutation({
     mutationFn: (id: string) => api(`/applications/${id}/withdraw`, { method: 'POST' }),
     onSuccess: async () => {
-      toast.success('Application withdrawn');
+      toast.success('Postulación retirada');
       await queryClient.invalidateQueries({ queryKey: ['applications', 'mine'] });
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -51,11 +51,11 @@ function Applications({ user }: { user: User }) {
     <div className="space-y-6">
       <Onboarding className="mb-6" />
       <PageHeader
-        title="My applications"
-        description="When a startup picks you, the terms show up in Contracts for you to accept."
+        title="Mis postulaciones"
+        description="Cuando una startup te elige, las condiciones aparecen en Contratos para que las aceptes."
         actions={
           <Button asChild variant="outline">
-            <Link href="/contracts">My contracts</Link>
+            <Link href="/contracts">Mis contratos</Link>
           </Button>
         }
       />
@@ -69,10 +69,10 @@ function Applications({ user }: { user: User }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Job</TableHead>
-                <TableHead>Your price</TableHead>
-                <TableHead>Sent</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Trabajo</TableHead>
+                <TableHead>Tu precio</TableHead>
+                <TableHead>Enviada</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -90,7 +90,7 @@ function Applications({ user }: { user: User }) {
                   <TableCell>{usdc(application.price)}</TableCell>
                   <TableCell>{dateTime(application.createdAt)}</TableCell>
                   <TableCell>
-                    <StatusBadge status={application.status} />
+                    <StatusBadge feminine status={application.status} />
                   </TableCell>
                   <TableCell className="text-right">
                     {application.status === 'submitted' ? (
@@ -100,21 +100,21 @@ function Applications({ user }: { user: User }) {
                         disabled={withdraw.isPending}
                         onClick={async () => {
                           const confirmed = await confirm({
-                            title: 'Withdraw this application?',
-                            confirmText: 'Withdraw',
+                            title: '¿Retirar esta postulación?',
+                            confirmText: 'Retirar',
                             destructive: true,
                           });
                           if (confirmed) withdraw.mutate(application.id);
                         }}
                       >
-                        Withdraw
+                        Retirar
                       </Button>
                     ) : application.contract ? (
                       <Button asChild size="sm" variant="ghost">
                         <Link href={`/contracts/${application.contract.id}`}>
                           {application.contract.status === 'awaiting_specialist'
-                            ? 'Review the terms'
-                            : 'View contract'}
+                            ? 'Revisar las condiciones'
+                            : 'Ver contrato'}
                         </Link>
                       </Button>
                     ) : null}
@@ -125,9 +125,9 @@ function Applications({ user }: { user: User }) {
           </Table>
         </div>
       ) : (
-        <EmptyState title="You have not applied yet">
+        <EmptyState title="Todavía no te has postulado">
           <Button asChild className="mt-4">
-            <Link href="/jobs">Browse jobs</Link>
+            <Link href="/jobs">Explorar trabajos</Link>
           </Button>
         </EmptyState>
       )}

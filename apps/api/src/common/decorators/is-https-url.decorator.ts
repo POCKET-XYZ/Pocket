@@ -9,7 +9,7 @@ export const IsHttpsUrl = () =>
   applyDecorators(
     IsUrl(
       { protocols: ['https'], require_protocol: true, require_valid_protocol: true },
-      { message: '$property must be an https:// link' },
+      { message: '$property debe ser un enlace https://' },
     ),
     MaxLength(2048),
   );

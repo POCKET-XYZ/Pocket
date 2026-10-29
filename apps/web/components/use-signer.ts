@@ -41,7 +41,7 @@ export function useSigner(): Signer {
         // help, it only opens over no session.
         return Promise.reject(
           new Error(
-            'Pollar is signed in with a different account. Sign out of Pocket and sign in again with this account',
+            'Pollar tiene la sesión iniciada con otra cuenta. Cierra sesión en Pocket y vuelve a iniciar sesión con esta cuenta',
           ),
         );
       }
@@ -50,11 +50,13 @@ export function useSigner(): Signer {
         // button again, instead of hunting for where to reconnect.
         pollar.openLogin();
         return Promise.reject(
-          new Error('Your Pollar session expired. Sign in again and try once more'),
+          new Error(
+            'Tu sesión de Pollar expiró. Vuelve a iniciar sesión e inténtalo otra vez',
+          ),
         );
       }
       if (!address) {
-        return Promise.reject(new Error('Sign in before signing a transaction'));
+        return Promise.reject(new Error('Inicia sesión antes de firmar una transacción'));
       }
       return signWithWallet(xdr, address, networkPassphrase);
     },

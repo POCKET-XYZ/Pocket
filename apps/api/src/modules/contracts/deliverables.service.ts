@@ -20,7 +20,7 @@ export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
 /** What to say when a delivery's file is none of the types it can be. */
 export const ATTACHMENT_TYPES_MESSAGE =
-  'Attach a PDF, an Excel (.xlsx), Word (.docx) or CSV file, or a PNG, JPEG or WebP image';
+  'Adjunta un archivo PDF, Excel (.xlsx), Word (.docx) o CSV, o una imagen PNG, JPEG o WebP';
 
 /** A delivery's file, ready to be sent. */
 export type AttachmentFile = PrivateFile;
@@ -48,19 +48,19 @@ export class DeliverablesService {
       where: { id: deliverableId },
       include: { milestone: { include: { contract: true } } },
     });
-    if (!deliverable) throw new NotFoundException('Delivery not found');
+    if (!deliverable) throw new NotFoundException('No encontramos la entrega');
     const { milestone } = deliverable;
     if (milestone.contract.specialistId !== user.sub) {
       throw new ForbiddenException(
-        'Only the hired specialist attaches files to a delivery',
+        'Solo el experto contratado puede adjuntar archivos a una entrega',
       );
     }
     if (milestone.contract.status !== 'active') {
-      throw new BadRequestException('The escrow has to be funded first');
+      throw new BadRequestException('Primero hay que depositar el pago en el contrato');
     }
     if (milestone.status !== 'delivered') {
       // Once answered, the startup decided on what it saw: the file stays as it was.
-      throw new BadRequestException('The startup already answered this delivery');
+      throw new BadRequestException('La startup ya respondió a esta entrega');
     }
     const latest = await this.prisma.deliverable.findFirst({
       where: { milestoneId: milestone.id },
@@ -68,12 +68,14 @@ export class DeliverablesService {
       select: { id: true },
     });
     if (latest?.id !== deliverable.id) {
-      throw new BadRequestException('Only the latest delivery takes a file');
+      throw new BadRequestException('Solo la última entrega admite un archivo');
     }
 
-    if (!file?.buffer.length) throw new BadRequestException('Choose a file');
+    if (!file?.buffer.length) throw new BadRequestException('Elige un archivo');
     if (file.buffer.length > MAX_ATTACHMENT_BYTES) {
-      throw new PayloadTooLargeException('The file is too big. The limit is 5 MB');
+      throw new PayloadTooLargeException(
+        'El archivo es demasiado grande. El límite es de 5 MB',
+      );
     }
     const contentType = sniffAttachment(file.buffer);
     if (!contentType) {
@@ -101,14 +103,15 @@ export class DeliverablesService {
         },
       },
     });
-    if (!deliverable) throw new NotFoundException('Delivery not found');
+    if (!deliverable) throw new NotFoundException('No encontramos la entrega');
     // Who may read it is decided before saying whether there is a file at all.
     assertCanView(user, deliverable.milestone.contract);
 
     const data = deliverable.attachment ? Buffer.from(deliverable.attachment.data) : null;
     // Checked again on the way out: only these types are ever served.
     const contentType = data ? sniffAttachment(data) : null;
-    if (!data || !contentType) throw new NotFoundException('This delivery has no file');
+    if (!data || !contentType)
+      throw new NotFoundException('Esta entrega no tiene archivo');
     return {
       data,
       contentType,

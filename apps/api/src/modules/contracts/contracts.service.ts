@@ -91,21 +91,23 @@ export class ContractsService {
     const application = await this.prisma.application.findUnique({
       where: { id: dto.applicationId },
     });
-    if (!application) throw new NotFoundException('Application not found');
+    if (!application) throw new NotFoundException('No encontramos la postulación');
     const jobId = application.jobId;
     const job = await this.jobs.ownedJob(user, jobId);
     if (job.status !== 'open') {
-      throw new BadRequestException('This job is not open for hiring');
+      throw new BadRequestException('Este trabajo no está abierto para contratar');
     }
     if (application.status !== 'submitted') {
-      throw new BadRequestException('This application is no longer available');
+      throw new BadRequestException('Esta postulación ya no está disponible');
     }
 
     await this.assertDifferentPeople(user.sub, application.specialistId);
 
     const today = new Date().toISOString().slice(0, 10);
     if (dto.milestones.some((milestone) => milestone.dueDate < today)) {
-      throw new BadRequestException('A milestone cannot be due in the past');
+      throw new BadRequestException(
+        'La fecha de entrega de un hito no puede estar en el pasado',
+      );
     }
     const total = dto.milestones.reduce(
       (sum, milestone) => sum.plus(milestone.amount),
@@ -113,7 +115,7 @@ export class ContractsService {
     );
     if (!total.equals(application.price)) {
       throw new BadRequestException(
-        `The milestones add up to ${total.toString()} USDC but the agreed price is ${application.price.toString()} USDC`,
+        `Los hitos suman ${total.toString()} USDC, pero el precio acordado es ${application.price.toString()} USDC`,
       );
     }
 
@@ -129,7 +131,9 @@ export class ContractsService {
         data: { status: 'accepted', decidedAt: new Date() },
       });
       if (job.count !== 1 || chosen.count !== 1) {
-        throw new ConflictException('This job or application changed meanwhile. Refresh');
+        throw new ConflictException(
+          'El trabajo o la postulación cambió mientras tanto. Actualiza la página',
+        );
       }
       return tx.contract.create({
         data: {
@@ -184,7 +188,7 @@ export class ContractsService {
       where: { id: contractId },
       include: DETAIL_INCLUDE,
     });
-    if (!contract) throw new NotFoundException('Contract not found');
+    if (!contract) throw new NotFoundException('No encontramos el contrato');
     assertCanView(user, contract);
 
     const hired = CONTACT_STATUSES.includes(contract.status);
@@ -207,7 +211,9 @@ export class ContractsService {
   async decline(user: AuthUser, contractId: string): Promise<Contract> {
     const contract = await this.specialistContract(user, contractId);
     if (contract.status !== 'awaiting_specialist') {
-      throw new BadRequestException('Only terms still waiting for you can be declined');
+      throw new BadRequestException(
+        'Solo puedes rechazar términos que todavía esperan tu respuesta',
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -218,7 +224,7 @@ export class ContractsService {
         data: { status: 'cancelled', cancelledAt: new Date() },
       });
       if (claimed.count !== 1) {
-        throw new ConflictException('These terms are being accepted already');
+        throw new ConflictException('Estos términos ya se están aceptando');
       }
       // The specialist chose to step out: their application is withdrawn,
       // not rejected by the startup.
@@ -240,7 +246,7 @@ export class ContractsService {
     const contract = await this.startupContract(user, contractId);
     if (contract.status !== 'awaiting_specialist') {
       throw new BadRequestException(
-        'Only terms the specialist has not accepted can be withdrawn',
+        'Solo puedes retirar términos que el experto todavía no aceptó',
       );
     }
 
@@ -250,7 +256,9 @@ export class ContractsService {
         where: { id: contractId, status: 'awaiting_specialist', acceptedAt: null },
       });
       if (removed.count !== 1) {
-        throw new ConflictException('The specialist is accepting these terms right now');
+        throw new ConflictException(
+          'El experto está aceptando estos términos en este momento',
+        );
       }
       await tx.application.update({
         where: { id: contract.applicationId },
@@ -268,7 +276,9 @@ export class ContractsService {
   async accept(user: AuthUser, contractId: string): Promise<Contract> {
     const contract = await this.specialistContract(user, contractId);
     if (contract.status !== 'awaiting_specialist') {
-      throw new BadRequestException('Only terms still waiting for you can be accepted');
+      throw new BadRequestException(
+        'Solo puedes aceptar términos que todavía esperan tu respuesta',
+      );
     }
     await this.requireUsdcReady(user.stellarAddress);
 
@@ -278,7 +288,7 @@ export class ContractsService {
       data: { acceptedAt: new Date() },
     });
     if (claimed.count !== 1) {
-      throw new ConflictException('This contract is already being accepted');
+      throw new ConflictException('Este contrato ya se está aceptando');
     }
 
     const full = await this.prisma.contract.findUniqueOrThrow({
@@ -337,14 +347,14 @@ export class ContractsService {
   async prepareFund(user: AuthUser, contractId: string): Promise<PreparedTransaction> {
     const contract = await this.startupContract(user, contractId);
     if (contract.status !== 'awaiting_funding') {
-      throw new BadRequestException('This contract is not waiting for funding');
+      throw new BadRequestException('Este contrato no está esperando el depósito');
     }
     // Never a second deposit: not when the escrow already holds the money,
     // and not while a deposit already sent is still being confirmed.
     if (await this.escrow.isFunded(contract)) {
       await this.activate(contractId);
       throw new ConflictException(
-        'This escrow is already funded. The contract is active now',
+        'El pago ya está depositado en el contrato, que ya está activo',
       );
     }
     const sent = await this.prisma.chainOperation.findUnique({
@@ -352,7 +362,7 @@ export class ContractsService {
     });
     if (sent) {
       throw new ConflictException(
-        'Your deposit is still being confirmed by the network. Check again in a minute',
+        'La red todavía está confirmando tu depósito. Revisa de nuevo en un minuto',
       );
     }
     await this.requireUsdcReady(user.stellarAddress);
@@ -367,7 +377,7 @@ export class ContractsService {
   async submitFund(user: AuthUser, contractId: string, signedXdr: string) {
     const contract = await this.startupContract(user, contractId);
     if (contract.status !== 'awaiting_funding') {
-      throw new BadRequestException('This contract is not waiting for funding');
+      throw new BadRequestException('Este contrato no está esperando el depósito');
     }
     await this.escrow.submitFund(contractId, signedXdr, user.sub);
     return this.syncFunding(user, contractId);
@@ -382,7 +392,7 @@ export class ContractsService {
     if (contract.status !== 'awaiting_funding') return contract;
     if (!(await this.escrow.isFunded(contract))) {
       throw new ConflictException(
-        'The escrow does not hold the full amount yet. Try again in a few seconds',
+        'El contrato todavía no tiene el monto completo. Intenta de nuevo en unos segundos',
       );
     }
     return this.activate(contractId);
@@ -414,18 +424,18 @@ export class ContractsService {
     contractId: string,
   ): Promise<Contract> {
     const contract = await this.prisma.contract.findUnique({ where: { id: contractId } });
-    if (!contract) throw new NotFoundException('Contract not found');
+    if (!contract) throw new NotFoundException('No encontramos el contrato');
     if (contract.specialistId !== user.sub) {
-      throw new ForbiddenException('Only the hired specialist can do this');
+      throw new ForbiddenException('Solo el experto contratado puede hacer esto');
     }
     return contract;
   }
 
   private async startupContract(user: AuthUser, contractId: string): Promise<Contract> {
     const contract = await this.prisma.contract.findUnique({ where: { id: contractId } });
-    if (!contract) throw new NotFoundException('Contract not found');
+    if (!contract) throw new NotFoundException('No encontramos el contrato');
     if (contract.startupId !== user.sub) {
-      throw new ForbiddenException('Only the startup that hired can do this');
+      throw new ForbiddenException('Solo la startup que contrató puede hacer esto');
     }
     return contract;
   }
@@ -435,13 +445,14 @@ export class ContractsService {
     if (readiness === 'no_account') {
       throw new BadRequestException({
         code: ApiErrorCode.StellarAccountNotFound,
-        message: 'Your wallet is not active on Stellar yet. Fund it with some XLM first',
+        message:
+          'Tu wallet todavía no está activa en Stellar. Primero agrégale algo de XLM',
       });
     }
     if (readiness === 'no_trustline') {
       throw new BadRequestException({
         code: ApiErrorCode.UsdcTrustlineRequired,
-        message: 'Enable USDC in your wallet first',
+        message: 'Primero habilita USDC en tu wallet',
       });
     }
   }
@@ -456,7 +467,7 @@ export class ContractsService {
     const have = new Prisma.Decimal(spendable ?? 0);
     throw new BadRequestException({
       code: ApiErrorCode.InsufficientUsdc,
-      message: `Your wallet holds ${have.toString()} USDC and the escrow needs ${amount.toString()} USDC. Add ${amount.minus(have).toString()} USDC and try again`,
+      message: `Tu wallet tiene ${have.toString()} USDC y el contrato necesita ${amount.toString()} USDC. Agrega ${amount.minus(have).toString()} USDC e intenta de nuevo`,
     });
   }
 
@@ -470,14 +481,14 @@ export class ContractsService {
     specialistId: string,
   ): Promise<void> {
     if (startupId === specialistId) {
-      throw new BadRequestException('You cannot hire yourself');
+      throw new BadRequestException('No puedes contratar a tu propia cuenta');
     }
     const emails = await this.contactEmails([startupId, specialistId]);
     const startupEmail = emails.get(startupId)?.toLowerCase();
     const specialistEmail = emails.get(specialistId)?.toLowerCase();
     if (startupEmail && startupEmail === specialistEmail) {
       throw new BadRequestException(
-        'Both accounts were verified with the same contact email, so they cannot hire each other',
+        'Las dos cuentas se verificaron con el mismo correo de contacto, así que no pueden contratarse entre sí',
       );
     }
   }
@@ -498,6 +509,6 @@ export function assertCanView(
     contract.startupId !== user.sub &&
     contract.specialistId !== user.sub
   ) {
-    throw new ForbiddenException('You are not a party to this contract');
+    throw new ForbiddenException('No eres parte de este contrato');
   }
 }

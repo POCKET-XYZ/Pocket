@@ -31,7 +31,7 @@ export const handleError = (error: AxiosError | WalletError): ErrorResponse => {
   } else if (error.code === -4) {
     // Wallet was closed before transaction was sent
     return {
-      message: 'Wallet was closed before transaction was sent',
+      message: 'La wallet se cerró antes de enviar la transacción',
       code: -4,
       type: ApiErrorTypes.WALLET_ERROR,
     };

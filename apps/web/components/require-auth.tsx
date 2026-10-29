@@ -10,11 +10,18 @@ import { homeFor } from '@/lib/home';
 
 const VERIFICATION_HINTS: Record<string, string> = {
   not_submitted:
-    'Submit your details for verification. A Pocket manager reviews every account.',
+    'Envía tus datos para la verificación. Un manager de Pocket revisa cada cuenta.',
   pending:
-    'Your verification is under review. You can use the marketplace once a manager approves it.',
+    'Tu verificación está en revisión. Podrás usar el marketplace cuando un manager la apruebe.',
   rejected:
-    "Your verification was rejected. Check the manager's note, fix your details and submit again.",
+    'Tu verificación fue rechazada. Revisa la nota del manager, corrige tus datos y vuelve a enviarlos.',
+};
+
+/** How each role reads inside a sentence. */
+const ROLE_NAMES: Record<UserRole, string> = {
+  startup: 'startup',
+  specialist: 'experto',
+  manager: 'manager',
 };
 
 /**
@@ -38,10 +45,10 @@ export function RequireAuth({
   // Signed in, but Pocket cannot be reached: not the same as signed out.
   if (status === 'unreachable') {
     return (
-      <EmptyState title="Pocket cannot be reached right now">
-        <p>Your session is fine. Check your connection and try again in a moment.</p>
+      <EmptyState title="No podemos conectar con Pocket en este momento">
+        <p>Tu sesión está bien. Revisa tu conexión e inténtalo de nuevo en un momento.</p>
         <Button className="mt-4" onClick={() => void refreshUser()}>
-          Try again
+          Reintentar
         </Button>
       </EmptyState>
     );
@@ -49,9 +56,9 @@ export function RequireAuth({
 
   if (!user) {
     return (
-      <EmptyState title="Sign in to continue">
+      <EmptyState title="Inicia sesión para continuar">
         <Button asChild className="mt-4">
-          <Link href="/login">Sign in</Link>
+          <Link href="/login">Entrar</Link>
         </Button>
       </EmptyState>
     );
@@ -59,10 +66,12 @@ export function RequireAuth({
 
   if (roles && !roles.includes(user.role)) {
     return (
-      <EmptyState title="This page is not for your account">
-        <p>It is only for {roles.join(' or ')} accounts.</p>
+      <EmptyState title="Esta página no es para tu cuenta">
+        <p>
+          Solo es para cuentas de {roles.map((role) => ROLE_NAMES[role]).join(' o ')}.
+        </p>
         <Button asChild className="mt-4">
-          <Link href={homeFor(user)}>Go to your home</Link>
+          <Link href={homeFor(user)}>Ir a tu inicio</Link>
         </Button>
       </EmptyState>
     );
@@ -70,11 +79,11 @@ export function RequireAuth({
 
   if (verified && user.role !== 'manager' && user.verificationStatus !== 'approved') {
     return (
-      <EmptyState title="Your account is not verified yet">
+      <EmptyState title="Tu cuenta todavía no está verificada">
         <p>{VERIFICATION_HINTS[user.verificationStatus]}</p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <Button asChild>
-            <Link href="/verification">Go to verification</Link>
+            <Link href="/verification">Ir a la verificación</Link>
           </Button>
           {user.verificationStatus === 'pending' ? <CheckAgainButton /> : null}
         </div>
@@ -98,7 +107,7 @@ function CheckAgainButton() {
         void refreshUser().finally(() => setChecking(false));
       }}
     >
-      {checking ? 'Checking...' : 'Check again'}
+      {checking ? 'Revisando...' : 'Revisar de nuevo'}
     </Button>
   );
 }

@@ -70,7 +70,7 @@ export class MigratedAccountsService {
           userId: created.id,
           status: 'approved',
           reviewedAt: new Date(),
-          reviewNote: 'Approved on Pocket testnet and carried over to mainnet.',
+          reviewNote: 'Aprobada en la red de pruebas de Pocket y trasladada a la red principal.',
         },
       });
 

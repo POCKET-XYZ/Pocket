@@ -150,7 +150,7 @@ describe('ManagerService', () => {
     });
     prisma.verificationRequest.updateMany.mockResolvedValue({ count: 0 });
     await expect(service.reject('req-1', 'manager-2', 'Changed my mind')).rejects.toThrow(
-      'already reviewed',
+      'ya fue revisada',
     );
     expect(prisma.user.update).not.toHaveBeenCalled();
     expect(wallets.activate).not.toHaveBeenCalled();

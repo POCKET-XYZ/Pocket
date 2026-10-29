@@ -45,7 +45,7 @@ export default function SpecialistProfilePage() {
 
   if (profile.isLoading || isStartup) return <Loading />;
   if (profile.error || !profile.data)
-    return <ErrorAlert error={profile.error} title="Profile not found" />;
+    return <ErrorAlert error={profile.error} title="No se encontró el perfil" />;
 
   const specialist = profile.data.profile as SpecialistProfile;
   return (
@@ -56,7 +56,7 @@ export default function SpecialistProfilePage() {
         <div className="space-y-6 md:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>About</CardTitle>
+              <CardTitle>Acerca de</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="whitespace-pre-line text-sm leading-relaxed">
@@ -70,11 +70,11 @@ export default function SpecialistProfilePage() {
           {specialist.tools.length > 0 || specialist.skills.length > 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle>Tools and skills</CardTitle>
+                <CardTitle>Herramientas y habilidades</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Tags title="Tools" values={specialist.tools} />
-                <Tags title="Skills" values={specialist.skills} />
+                <Tags title="Herramientas" values={specialist.tools} />
+                <Tags title="Habilidades" values={specialist.skills} />
               </CardContent>
             </Card>
           ) : null}
@@ -84,7 +84,7 @@ export default function SpecialistProfilePage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Verified by Pocket. Member since {date(profile.data.memberSince)}. Wallet{' '}
+        Verificado por Pocket. Miembro desde el {date(profile.data.memberSince)}. Wallet{' '}
         {profile.data.wallet}.
       </p>
     </div>
@@ -123,7 +123,7 @@ function Header({ specialist }: { specialist: SpecialistProfile }) {
                 target="_blank"
                 rel="noreferrer"
               >
-                <FileTextIcon className="size-4" /> View CV
+                <FileTextIcon className="size-4" /> Ver CV
               </a>
             </Button>
           ) : null}
@@ -135,7 +135,7 @@ function Header({ specialist }: { specialist: SpecialistProfile }) {
                 target="_blank"
                 rel="noreferrer"
               >
-                <GlobeIcon className="size-4" /> Portfolio
+                <GlobeIcon className="size-4" /> Portafolio
               </a>
             </Button>
           ) : null}
@@ -163,7 +163,7 @@ function PastWork({ caseStudies }: { caseStudies: CaseStudy[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Past work</CardTitle>
+        <CardTitle>Casos de éxito</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {caseStudies.map((study) => (
@@ -178,7 +178,7 @@ function PastWork({ caseStudies }: { caseStudies: CaseStudy[] }) {
             <TrendingUpIcon className="mt-0.5 size-5 shrink-0 text-navy" />
             <div className="min-w-0">
               <p className="font-medium text-navy">
-                {study.result || 'See the work'}
+                {study.result || 'Ver el trabajo'}
               </p>
               <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground group-hover:underline">
                 {study.url} <ExternalLinkIcon className="size-3 shrink-0" />
@@ -196,21 +196,21 @@ function WorkingTogether({ specialist }: { specialist: SpecialistProfile }) {
   return (
     <Card className="h-fit">
       <CardHeader>
-        <CardTitle>Working together</CardTitle>
+        <CardTitle>Para trabajar juntos</CardTitle>
       </CardHeader>
       <CardContent>
         <dl className="space-y-4">
           {specialist.yearsExperience != null ? (
-            <Detail label="Experience">
+            <Detail label="Experiencia">
               <span className="inline-flex items-center gap-1.5">
                 <BriefcaseIcon className="size-3.5" />
                 {specialist.yearsExperience}{' '}
-                {specialist.yearsExperience === 1 ? 'year' : 'years'}
+                {specialist.yearsExperience === 1 ? 'año' : 'años'}
               </span>
             </Detail>
           ) : null}
           {specialist.languages.length > 0 ? (
-            <Detail label="Languages">
+            <Detail label="Idiomas">
               <span className="inline-flex items-center gap-1.5">
                 <LanguagesIcon className="size-3.5" />
                 {specialist.languages.join(', ')}
@@ -218,7 +218,7 @@ function WorkingTogether({ specialist }: { specialist: SpecialistProfile }) {
             </Detail>
           ) : null}
           {specialist.location || specialist.timezone ? (
-            <Detail label="Based in">
+            <Detail label="Ubicación">
               <span className="inline-flex items-center gap-1.5">
                 <MapPinIcon className="size-3.5" />
                 {[specialist.location, specialist.timezone].filter(Boolean).join(' · ')}
@@ -226,18 +226,19 @@ function WorkingTogether({ specialist }: { specialist: SpecialistProfile }) {
             </Detail>
           ) : null}
           {specialist.weeklyHours ? (
-            <Detail label="Availability">
+            <Detail label="Disponibilidad">
               <span className="inline-flex items-center gap-1.5">
                 <ClockIcon className="size-3.5" />
-                {specialist.weeklyHours} hours a week
+                {specialist.weeklyHours}{' '}
+                {specialist.weeklyHours === 1 ? 'hora por semana' : 'horas por semana'}
               </span>
             </Detail>
           ) : null}
           {specialist.hourlyRate ? (
-            <Detail label="Hourly rate">{usdc(specialist.hourlyRate)}</Detail>
+            <Detail label="Tarifa por hora">{usdc(specialist.hourlyRate)}</Detail>
           ) : null}
           {specialist.minProjectBudget ? (
-            <Detail label="Smallest project">{usdc(specialist.minProjectBudget)}</Detail>
+            <Detail label="Proyecto mínimo">{usdc(specialist.minProjectBudget)}</Detail>
           ) : null}
         </dl>
       </CardContent>

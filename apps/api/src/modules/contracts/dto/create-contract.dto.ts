@@ -44,7 +44,9 @@ export class MilestoneInputDto {
   amount: number;
 
   @ApiProperty({ example: '2026-10-15' })
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'dueDate must be a date as YYYY-MM-DD' })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'dueDate debe ser una fecha con el formato AAAA-MM-DD',
+  })
   @IsDateString({ strict: true })
   dueDate: string;
 }

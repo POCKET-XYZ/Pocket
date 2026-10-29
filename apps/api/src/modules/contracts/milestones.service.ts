@@ -31,11 +31,11 @@ export class MilestonesService {
   ): Promise<Deliverable> {
     const milestone = await this.load(milestoneId);
     if (milestone.contract.specialistId !== user.sub) {
-      throw new ForbiddenException('Only the hired specialist delivers');
+      throw new ForbiddenException('Solo el experto contratado puede entregar');
     }
     requireActive(milestone.contract);
     if (milestone.status !== 'pending' && milestone.status !== 'changes_requested') {
-      throw new BadRequestException('This milestone is not waiting for a delivery');
+      throw new BadRequestException('Este hito no está esperando una entrega');
     }
 
     const { results, ...delivery } = dto;
@@ -73,7 +73,7 @@ export class MilestonesService {
   ): Promise<Milestone> {
     const milestone = await this.startupMilestone(user, milestoneId);
     if (milestone.status !== 'delivered') {
-      throw new BadRequestException('Only a delivered milestone can be sent back');
+      throw new BadRequestException('Solo puedes pedir cambios en un hito entregado');
     }
     // The price included a number of revision rounds. Past them the startup
     // approves or opens a dispute; it cannot hold the payment back forever.
@@ -83,7 +83,7 @@ export class MilestonesService {
     });
     if (milestone.revisionsUsed >= revisionRounds) {
       throw new BadRequestException(
-        `The ${revisionRounds} revision round${revisionRounds === 1 ? '' : 's'} agreed are used. Approve the work or open a dispute`,
+        `${revisionRounds === 1 ? 'Ya se usó la ronda de cambios acordada' : `Ya se usaron las ${revisionRounds} rondas de cambios acordadas`}. Aprueba el trabajo o abre una disputa`,
       );
     }
     const latest = await this.prisma.deliverable.findFirstOrThrow({
@@ -100,7 +100,7 @@ export class MilestonesService {
         data: { status: 'changes_requested', revisionsUsed: { increment: 1 } },
       });
       if (claimed.count !== 1) {
-        throw new ConflictException('This delivery was already answered. Refresh');
+        throw new ConflictException('Esta entrega ya tiene respuesta. Actualiza la página');
       }
       await tx.deliverable.update({
         where: { id: latest.id },
@@ -124,7 +124,7 @@ export class MilestonesService {
   ): Promise<PreparedTransaction> {
     const milestone = await this.startupMilestone(user, milestoneId);
     if (milestone.status !== 'delivered') {
-      throw new BadRequestException('Only a delivered milestone can be approved');
+      throw new BadRequestException('Solo se puede aprobar un hito entregado');
     }
     await this.requireApprovableOnChain(milestone);
     return this.escrow.prepareApprove(
@@ -142,7 +142,7 @@ export class MilestonesService {
   async submitApprove(user: AuthUser, milestoneId: string, signedXdr: string) {
     const milestone = await this.startupMilestone(user, milestoneId);
     if (milestone.status !== 'delivered') {
-      throw new BadRequestException('Only a delivered milestone can be approved');
+      throw new BadRequestException('Solo se puede aprobar un hito entregado');
     }
     // Checked again: the other party may have disputed it since it was prepared.
     await this.requireApprovableOnChain(milestone);
@@ -166,7 +166,7 @@ export class MilestonesService {
         'The escrow does not show the milestone as approved',
       );
       throw new ConflictException(
-        'The approval did not reach the escrow. Check your wallet and try again',
+        'La aprobación no llegó al contrato. Revisa tu wallet e intenta de nuevo',
       );
     }
     await this.prisma.milestone.update({
@@ -183,7 +183,7 @@ export class MilestonesService {
   async retryRelease(user: AuthUser, milestoneId: string) {
     const milestone = await this.load(milestoneId);
     if (user.role !== 'manager' && milestone.contract.startupId !== user.sub) {
-      throw new ForbiddenException('Only the startup or a manager can release a payment');
+      throw new ForbiddenException('Solo la startup o un manager pueden liberar un pago');
     }
     // The approval may have landed on chain after submitApprove gave up waiting.
     if (
@@ -201,7 +201,7 @@ export class MilestonesService {
   private async release(milestoneId: string) {
     const milestone = await this.load(milestoneId);
     if (milestone.status !== 'approved') {
-      throw new BadRequestException('Only an approved milestone can be paid');
+      throw new BadRequestException('Solo se puede pagar un hito aprobado');
     }
 
     // Skip the transaction if a previous attempt already landed on chain.
@@ -219,7 +219,7 @@ export class MilestonesService {
           'released',
         ))
       ) {
-        throw new ConflictException('The payment does not show on chain yet. Try again');
+        throw new ConflictException('El pago todavía no aparece en Stellar. Intenta de nuevo');
       }
     }
 
@@ -271,7 +271,7 @@ export class MilestonesService {
     );
     if (flags.disputed || flags.resolved) {
       throw new ConflictException(
-        'This milestone is in dispute on the escrow, so it cannot be approved. A manager settles it',
+        'Este hito está en disputa en el contrato, así que no se puede aprobar. Lo resuelve un manager',
       );
     }
     if (flags.approved || flags.released) {
@@ -280,7 +280,7 @@ export class MilestonesService {
         data: { status: 'approved', approvedAt: new Date() },
       });
       throw new ConflictException(
-        'This milestone is already approved on the escrow. Release its payment instead',
+        'Este hito ya está aprobado en el contrato. Lo que sigue es liberar su pago',
       );
     }
   }
@@ -301,7 +301,7 @@ export class MilestonesService {
     });
     if (kpis.length === 0) {
       if (results.length > 0) {
-        throw new BadRequestException('This job has no KPIs to report results on');
+        throw new BadRequestException('Este trabajo no tiene KPI sobre los que reportar resultados');
       }
       return [];
     }
@@ -309,10 +309,10 @@ export class MilestonesService {
     const byKpi = new Map<string, KpiResultDto>();
     for (const result of results) {
       if (!kpis.some((kpi) => kpi.id === result.kpiId)) {
-        throw new BadRequestException('A result is for a KPI this job does not have');
+        throw new BadRequestException('Hay un resultado para un KPI que este trabajo no tiene');
       }
       if (byKpi.has(result.kpiId)) {
-        throw new BadRequestException('Report one result per KPI');
+        throw new BadRequestException('Reporta un solo resultado por KPI');
       }
       byKpi.set(result.kpiId, result);
     }
@@ -321,7 +321,7 @@ export class MilestonesService {
       const value = byKpi.get(kpi.id)?.value.trim();
       if (!value) {
         throw new BadRequestException(
-          `Report a result for "${kpi.name}". If it cannot be measured yet, say so`,
+          `Reporta un resultado para "${kpi.name}". Si todavía no se puede medir, indícalo`,
         );
       }
       const comment = byKpi.get(kpi.id)?.comment?.trim();
@@ -334,7 +334,7 @@ export class MilestonesService {
       where: { id: milestoneId },
       include: { contract: true },
     });
-    if (!milestone) throw new NotFoundException('Milestone not found');
+    if (!milestone) throw new NotFoundException('No encontramos el hito');
     return milestone;
   }
 
@@ -344,7 +344,7 @@ export class MilestonesService {
   ): Promise<MilestoneWithContract> {
     const milestone = await this.load(milestoneId);
     if (milestone.contract.startupId !== user.sub) {
-      throw new ForbiddenException('Only the startup that hired can do this');
+      throw new ForbiddenException('Solo la startup que contrató puede hacer esto');
     }
     requireActive(milestone.contract);
     return milestone;
@@ -353,6 +353,6 @@ export class MilestonesService {
 
 function requireActive(contract: Contract): void {
   if (contract.status !== 'active') {
-    throw new BadRequestException('The escrow has to be funded first');
+    throw new BadRequestException('Primero hay que depositar el pago en el contrato');
   }
 }

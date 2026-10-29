@@ -36,14 +36,14 @@ export class JwtAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request & { user?: AuthUser }>();
     const [scheme, token] = request.headers.authorization?.split(' ') ?? [];
     if (scheme !== 'Bearer' || !token) {
-      throw new UnauthorizedException('Missing bearer token');
+      throw new UnauthorizedException('Falta el token de acceso');
     }
 
     let payload: JwtPayload;
     try {
       payload = await this.jwt.verifyAsync<JwtPayload>(token);
     } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+      throw new UnauthorizedException('El token no es válido o venció');
     }
 
     const user = await this.prisma.user.findUnique({
@@ -51,7 +51,7 @@ export class JwtAuthGuard implements CanActivate {
       select: { role: true, stellarAddress: true, tokenVersion: true },
     });
     if (!user || user.tokenVersion !== payload.ver) {
-      throw new UnauthorizedException('Your session ended. Sign in again');
+      throw new UnauthorizedException('Tu sesión terminó. Inicia sesión de nuevo');
     }
     request.user = { sub: payload.sub, role: user.role, stellarAddress: user.stellarAddress };
     return true;

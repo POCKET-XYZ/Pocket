@@ -29,11 +29,11 @@ export default function StartupsPage() {
     <div>
       <PageHeader
         title="Startups"
-        description="Every startup here was reviewed by a Pocket manager. See who they are and what they are hiring for before you apply."
+        description="Un manager de Pocket revisó a cada startup de esta lista. Mira quiénes son y para qué contratan antes de postularte."
       />
       <div className="mb-6 flex justify-end">
         <Input
-          placeholder="Search by name or sector"
+          placeholder="Busca por nombre o sector"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           className="md:w-72"
@@ -70,16 +70,16 @@ export default function StartupsPage() {
               </div>
               <p className="mt-3 text-sm text-muted-foreground">
                 {startup.openJobs === 0
-                  ? 'No open jobs right now'
+                  ? 'Sin trabajos abiertos por ahora'
                   : startup.openJobs === 1
-                    ? '1 open job'
-                    : `${startup.openJobs} open jobs`}
+                    ? '1 trabajo abierto'
+                    : `${startup.openJobs} trabajos abiertos`}
               </p>
             </Link>
           ))}
         </div>
       ) : (
-        <EmptyState title="No startups match">Try another search.</EmptyState>
+        <EmptyState title="Ninguna startup coincide">Prueba con otra búsqueda.</EmptyState>
       )}
     </div>
   );

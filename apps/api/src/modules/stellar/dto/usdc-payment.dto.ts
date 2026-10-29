@@ -5,13 +5,15 @@ import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 export class UsdcPaymentDto {
   @ApiProperty({ description: 'Stellar account that receives the USDC (G...)' })
   @IsString()
-  @Matches(/^G[A-Z2-7]{55}$/, { message: 'destination must be a Stellar address (G...)' })
+  @Matches(/^G[A-Z2-7]{55}$/, {
+    message: 'El destino debe ser una dirección de Stellar (G...)',
+  })
   destination: string;
 
   @ApiProperty({ description: 'Amount in USDC, up to 7 decimals', example: '25.50' })
   @IsString()
   @Matches(/^\d{1,12}(\.\d{1,7})?$/, {
-    message: 'amount must be a number with up to 7 decimals',
+    message: 'El monto debe ser un número con 7 decimales como máximo',
   })
   amount: string;
 

@@ -49,12 +49,12 @@ function BalanceCard({ pollar }: { pollar: PollarSession }) {
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle>Balance</CardTitle>
+        <CardTitle>Saldo</CardTitle>
         <div className="flex gap-1">
           <Button
             variant="ghost"
             size="sm"
-            aria-label={shown ? 'Hide balance' : 'Show balance'}
+            aria-label={shown ? 'Ocultar saldo' : 'Mostrar saldo'}
             onClick={() => setShown((was) => !was)}
           >
             {shown ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
@@ -62,7 +62,7 @@ function BalanceCard({ pollar }: { pollar: PollarSession }) {
           <Button
             variant="ghost"
             size="sm"
-            aria-label="Refresh balance"
+            aria-label="Actualizar saldo"
             disabled={pollar.balancesLoading}
             onClick={() => void pollar.refreshBalances()}
           >
@@ -77,11 +77,11 @@ function BalanceCard({ pollar }: { pollar: PollarSession }) {
           type="button"
           onClick={() => setShown((was) => !was)}
           className="block text-left"
-          title={shown ? 'Click to hide' : 'Click to show'}
+          title={shown ? 'Haz clic para ocultar' : 'Haz clic para mostrar'}
         >
           <span className="font-heading text-3xl font-semibold text-navy">
             {pollar.balances === null && pollar.balancesLoading
-              ? 'Loading...'
+              ? 'Cargando...'
               : shown
                 ? `${amount(usdc?.balance)} USDC`
                 : '•••••• USDC'}
@@ -96,8 +96,8 @@ function BalanceCard({ pollar }: { pollar: PollarSession }) {
         ) : null}
         <p className="text-xs text-muted-foreground">
           {shown
-            ? 'Click the amount to hide it again.'
-            : 'Click the amount to show it. Nobody else sees it either way.'}
+            ? 'Haz clic en el monto para ocultarlo de nuevo.'
+            : 'Haz clic en el monto para mostrarlo. Nadie más lo ve en ningún caso.'}
         </p>
       </CardContent>
     </Card>
@@ -116,8 +116,8 @@ function amount(value: string | null | undefined): string {
 const PROVIDER_NAMES: Record<string, string> = {
   google: 'Google',
   github: 'GitHub',
-  email: 'your email',
-  passkey: 'a passkey',
+  email: 'tu correo',
+  passkey: 'una llave de acceso',
   'freighter-native': 'Freighter',
   'albedo-native': 'Albedo',
 };
@@ -131,7 +131,7 @@ function WalletBalance() {
       <CardContent className="flex flex-wrap items-end justify-between gap-4 pt-6">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Balance
+            Saldo
           </p>
           <p className="font-heading text-3xl font-bold text-navy">
             {status.data.usdcSpendable ?? '0'} <span className="text-lg">USDC</span>
@@ -139,7 +139,7 @@ function WalletBalance() {
         </div>
         {status.data.xlmForFees !== null ? (
           <p className="text-sm text-muted-foreground">
-            {Number(status.data.xlmForFees).toFixed(2)} XLM for network fees
+            {Number(status.data.xlmForFees).toFixed(2)} XLM para comisiones de red
           </p>
         ) : null}
       </CardContent>
@@ -163,30 +163,30 @@ function WalletView({ user }: { user: User }) {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader
-        title="Wallet and USDC"
-        description="Pocket never holds your funds or keys. Payments move between your wallet and the escrow."
+        title="Wallet y USDC"
+        description="Pocket nunca guarda tus fondos ni tus claves. Los pagos se mueven entre tu wallet y el contrato."
       />
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <WalletIcon className="size-5 text-navy" />
-            Your wallet
+            Tu wallet
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
             {user.walletCustody === 'pollar'
-              ? `Created for you when you signed in with ${PROVIDER_NAMES[user.walletProvider ?? ''] ?? 'Pollar'}. You approve every payment from Pocket and the network fees are covered for you.`
-              : 'A wallet you hold yourself. Every payment is signed in your wallet.'}
+              ? `Se creó para ti cuando iniciaste sesión con ${PROVIDER_NAMES[user.walletProvider ?? ''] ?? 'Pollar'}. Apruebas cada pago desde Pocket y no tienes que pagar las comisiones de red.`
+              : 'Una wallet propia, bajo tu control. Cada pago se firma en tu wallet.'}
           </p>
           {throughPollar ? (
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={pollar.openReceive}>
-                <ArrowDownToLineIcon className="size-4" /> Receive in Pollar
+                <ArrowDownToLineIcon className="size-4" /> Recibir en Pollar
               </Button>
               <Button variant="outline" size="sm" onClick={pollar.openHistory}>
-                <HistoryIcon className="size-4" /> History in Pollar
+                <HistoryIcon className="size-4" /> Historial en Pollar
               </Button>
             </div>
           ) : null}

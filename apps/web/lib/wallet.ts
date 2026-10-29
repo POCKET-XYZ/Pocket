@@ -11,12 +11,12 @@ import { api } from './api';
 import { NETWORK, type TxPurpose } from './tx-check';
 
 const NETWORK_NAMES: Record<string, string> = {
-  'Public Global Stellar Network ; September 2015': 'Mainnet',
-  'Test SDF Network ; September 2015': 'Testnet',
+  'Public Global Stellar Network ; September 2015': 'la red principal (Mainnet)',
+  'Test SDF Network ; September 2015': 'la red de pruebas (Testnet)',
 };
 
 function networkName(passphrase: string): string {
-  return NETWORK_NAMES[passphrase] ?? 'another network';
+  return NETWORK_NAMES[passphrase] ?? 'otra red';
 }
 
 /**
@@ -34,7 +34,7 @@ async function requireWalletNetwork(expected: string | undefined): Promise<void>
   }
   if (actual && actual !== expected) {
     throw new Error(
-      `Your wallet is on ${networkName(actual)}. Switch it to ${networkName(expected)} and try again.`,
+      `Tu wallet está en ${networkName(actual)}. Cámbiala a ${networkName(expected)} e inténtalo de nuevo.`,
     );
   }
 }
@@ -82,7 +82,7 @@ function requireSignedBy(signedXdr: string, address: string, networkPassphrase?:
   const expected = hex(Keypair.fromPublicKey(address).signatureHint());
   if (!hints.includes(expected)) {
     throw new Error(
-      `Your wallet signed with a different account. Switch it to ${address.slice(0, 4)}...${address.slice(-4)}, the one you signed in with, and try again.`,
+      `Tu wallet firmó con otra cuenta. Cámbiala a ${address.slice(0, 4)}...${address.slice(-4)}, la cuenta con la que iniciaste sesión, e inténtalo de nuevo.`,
     );
   }
 }

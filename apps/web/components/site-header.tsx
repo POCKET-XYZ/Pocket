@@ -19,27 +19,34 @@ import { shortAddress } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 const PUBLIC_LINKS = [
-  { href: '/jobs', label: 'Jobs' },
-  { href: '/specialists', label: 'Specialists' },
+  { href: '/jobs', label: 'Trabajos' },
+  { href: '/specialists', label: 'Expertos' },
   { href: '/startups', label: 'Startups' },
 ];
 
 const ROLE_LINKS: Record<UserRole, { href: string; label: string }[]> = {
   startup: [
-    { href: '/dashboard', label: 'My jobs' },
-    { href: '/contracts', label: 'Contracts' },
-    { href: '/profile', label: 'Profile' },
+    { href: '/dashboard', label: 'Mis trabajos' },
+    { href: '/contracts', label: 'Contratos' },
+    { href: '/profile', label: 'Perfil' },
   ],
   specialist: [
-    { href: '/applications', label: 'My applications' },
-    { href: '/contracts', label: 'Contracts' },
-    { href: '/profile', label: 'Profile' },
+    { href: '/applications', label: 'Mis postulaciones' },
+    { href: '/contracts', label: 'Contratos' },
+    { href: '/profile', label: 'Perfil' },
   ],
   manager: [
-    { href: '/manager/verifications', label: 'Verifications' },
-    { href: '/manager/disputes', label: 'Disputes' },
-    { href: '/manager/metrics', label: 'Metrics' },
+    { href: '/manager/verifications', label: 'Verificaciones' },
+    { href: '/manager/disputes', label: 'Disputas' },
+    { href: '/manager/metrics', label: 'Métricas' },
   ],
+};
+
+/** How each role reads in the account menu. */
+const ROLE_LABELS: Record<UserRole, string> = {
+  startup: 'Startup',
+  specialist: 'Experto',
+  manager: 'Manager',
 };
 
 export function SiteHeader() {
@@ -84,7 +91,7 @@ export function SiteHeader() {
                 variant="ghost"
                 size="icon"
                 className="text-off-white hover:bg-white/10 hover:text-off-white md:hidden"
-                aria-label="Menu"
+                aria-label="Menú"
               >
                 <MenuIcon />
               </Button>
@@ -108,32 +115,32 @@ export function SiteHeader() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-60">
                 <DropdownMenuLabel className="flex items-center justify-between gap-2">
-                  <span className="capitalize">{user.role}</span>
+                  <span>{ROLE_LABELS[user.role]}</span>
                   {user.role !== 'manager' ? (
-                    <StatusBadge status={user.verificationStatus} />
+                    <StatusBadge feminine status={user.verificationStatus} />
                   ) : null}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {user.role !== 'manager' ? (
                   <>
                     <DropdownMenuItem asChild>
-                      <Link href="/profile">My profile</Link>
+                      <Link href="/profile">Mi perfil</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/verification">Verification</Link>
+                      <Link href="/verification">Verificación</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/wallet">Wallet and USDC</Link>
+                      <Link href="/wallet">Wallet y USDC</Link>
                     </DropdownMenuItem>
                   </>
                 ) : null}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={signOut}>Sign out</DropdownMenuItem>
+                <DropdownMenuItem onSelect={signOut}>Cerrar sesión</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : status === 'signed-out' ? (
             <Button asChild className="bg-yellow text-navy hover:bg-yellow/85">
-              <Link href="/login">Sign in</Link>
+              <Link href="/login">Entrar</Link>
             </Button>
           ) : null}
         </div>

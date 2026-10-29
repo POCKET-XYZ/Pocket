@@ -18,6 +18,13 @@ import { linkHost, safeHref } from '@/lib/links';
 
 type QueueStatus = 'pending' | 'approved' | 'rejected';
 
+/** How each role reads next to the name; the card capitalizes it. */
+const ROLE_LABELS: Record<UserRole, string> = {
+  startup: 'startup',
+  specialist: 'experto',
+  manager: 'manager',
+};
+
 interface QueueItem extends VerificationRequest {
   user: { id: string; role: UserRole; stellarAddress: string; createdAt: string };
 }
@@ -36,8 +43,8 @@ function Queue() {
   return (
     <div>
       <PageHeader
-        title="Verifications"
-        description="Oldest first. Nobody can use the marketplace until you approve them."
+        title="Verificaciones"
+        description="Las más antiguas primero. Nadie puede usar el marketplace hasta que lo apruebes."
       />
       <Tabs
         value={status}
@@ -45,9 +52,9 @@ function Queue() {
         className="mb-6"
       >
         <TabsList>
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="approved">Approved</TabsTrigger>
-          <TabsTrigger value="rejected">Rejected</TabsTrigger>
+          <TabsTrigger value="pending">Pendientes</TabsTrigger>
+          <TabsTrigger value="approved">Aprobadas</TabsTrigger>
+          <TabsTrigger value="rejected">Rechazadas</TabsTrigger>
         </TabsList>
       </Tabs>
       {queue.isLoading ? (
@@ -63,7 +70,11 @@ function Queue() {
       ) : (
         <EmptyState
           title={
-            status === 'pending' ? 'Nothing waiting for review' : `No ${status} requests`
+            status === 'pending'
+              ? 'No hay nada por revisar'
+              : status === 'approved'
+                ? 'No hay solicitudes aprobadas'
+                : 'No hay solicitudes rechazadas'
           }
         />
       )}
@@ -83,7 +94,9 @@ function RequestCard({ request }: { request: QueueItem }) {
         body: decision === 'reject' ? { note: note.trim() } : {},
       }),
     onSuccess: async (_, decision) => {
-      toast.success(decision === 'approve' ? 'Approved' : 'Rejected');
+      toast.success(
+        decision === 'approve' ? 'Solicitud aprobada' : 'Solicitud rechazada',
+      );
       await queryClient.invalidateQueries({ queryKey: ['manager', 'verifications'] });
     },
     onError: async (error) => {
@@ -95,7 +108,7 @@ function RequestCard({ request }: { request: QueueItem }) {
 
   const links = [
     request.linkedinUrl ? { label: 'LinkedIn', url: request.linkedinUrl } : null,
-    request.websiteUrl ? { label: 'Website', url: request.websiteUrl } : null,
+    request.websiteUrl ? { label: 'Sitio web', url: request.websiteUrl } : null,
   ].filter((link): link is { label: string; url: string } => link !== null);
 
   return (
@@ -106,23 +119,23 @@ function RequestCard({ request }: { request: QueueItem }) {
             <p className="font-heading text-lg font-semibold text-navy">
               {request.companyName ?? request.fullName}
               <span className="ml-2 text-sm font-normal capitalize text-muted-foreground">
-                {request.user.role}
+                {ROLE_LABELS[request.user.role]}
               </span>
             </p>
             <p className="text-sm text-muted-foreground">
-              Sent {dateTime(request.submittedAt)} · wallet{' '}
+              Enviada el {dateTime(request.submittedAt)} · wallet{' '}
               {shortAddress(request.user.stellarAddress)}
             </p>
           </div>
-          <StatusBadge status={request.status} />
+          <StatusBadge feminine status={request.status} />
         </div>
 
         <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Detail label="Full name">{request.fullName}</Detail>
-          <Detail label="Email">{request.contactEmail}</Detail>
-          <Detail label="Country">{request.country}</Detail>
+          <Detail label="Nombre completo">{request.fullName}</Detail>
+          <Detail label="Correo">{request.contactEmail}</Detail>
+          <Detail label="País">{request.country}</Detail>
           {request.companyRegistrationId ? (
-            <Detail label="Registration id">{request.companyRegistrationId}</Detail>
+            <Detail label="Número de registro">{request.companyRegistrationId}</Detail>
           ) : null}
         </dl>
         {links.length > 0 ? (
@@ -140,9 +153,9 @@ function RequestCard({ request }: { request: QueueItem }) {
             ))}
           </div>
         ) : null}
-        {request.note ? <Detail label="Their note">{request.note}</Detail> : null}
+        {request.note ? <Detail label="Su nota">{request.note}</Detail> : null}
         {request.reviewNote ? (
-          <Detail label="Review note">{request.reviewNote}</Detail>
+          <Detail label="Nota de revisión">{request.reviewNote}</Detail>
         ) : null}
 
         {request.status === 'pending' ? (
@@ -150,8 +163,8 @@ function RequestCard({ request }: { request: QueueItem }) {
             <Textarea
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              aria-label="Reason for rejecting"
-              placeholder="Only to reject: tell them what to fix. They will read this."
+              aria-label="Motivo del rechazo"
+              placeholder="Solo para rechazar: explica qué tiene que corregir. Lo va a leer."
               maxLength={1000}
             />
             <div className="flex gap-2">
@@ -159,14 +172,14 @@ function RequestCard({ request }: { request: QueueItem }) {
                 disabled={review.isPending}
                 onClick={() => review.mutate('approve')}
               >
-                Approve
+                Aprobar
               </Button>
               <Button
                 variant="destructive"
                 disabled={review.isPending || !note.trim()}
                 onClick={() => review.mutate('reject')}
               >
-                Reject
+                Rechazar
               </Button>
             </div>
           </div>

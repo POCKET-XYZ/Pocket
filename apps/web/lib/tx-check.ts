@@ -46,7 +46,7 @@ export type TxPurpose =
 export class UnexpectedTransaction extends Error {
   constructor(reason: string) {
     super(
-      `Pocket stopped this signature because ${reason}. Nothing was signed. Refresh the page and try again.`,
+      `Pocket detuvo esta firma porque ${reason}. No se firmó nada. Recarga la página e inténtalo de nuevo.`,
     );
     this.name = 'UnexpectedTransaction';
   }
@@ -72,22 +72,24 @@ export function checkTransaction(
 
   // An unsigned transaction does not name its network; the signature does, so
   // the network the wallet is asked to sign for is what must match.
-  if (networkPassphrase && networkPassphrase !== NETWORK) refuse('it is for another network');
+  if (networkPassphrase && networkPassphrase !== NETWORK) refuse('es para otra red');
 
   let parsed: Transaction | FeeBumpTransaction;
   try {
     parsed = TransactionBuilder.fromXDR(unsignedXdr, NETWORK);
   } catch {
-    return refuse('the transaction could not be read');
+    return refuse('no se pudo leer la transacción');
   }
-  if (parsed instanceof FeeBumpTransaction) return refuse('it is wrapped in a fee bump');
+  if (parsed instanceof FeeBumpTransaction) {
+    return refuse('viene envuelta en otra transacción (fee bump)');
+  }
   const tx = parsed;
-  if (tx.source !== signer) refuse('it is paid from another account');
-  if (Number(tx.fee) > MAX_FEE_STROOPS) refuse('its network fee is far too high');
-  if (tx.operations.length !== 1) refuse('it does more than one thing');
+  if (tx.source !== signer) refuse('se paga desde otra cuenta');
+  if (Number(tx.fee) > MAX_FEE_STROOPS) refuse('su comisión de red es demasiado alta');
+  if (tx.operations.length !== 1) refuse('hace más de una cosa');
 
   const [op] = tx.operations;
-  if (op.source && op.source !== signer) refuse('it acts for another account');
+  if (op.source && op.source !== signer) refuse('actúa en nombre de otra cuenta');
 
   if (purpose.kind === 'usdc-trustline') {
     if (
@@ -95,30 +97,30 @@ export function checkTransaction(
       !(op.line instanceof Asset) ||
       !op.line.equals(USDC)
     ) {
-      refuse('it is not the USDC trustline');
+      refuse('no es la habilitación de USDC');
     }
     return;
   }
 
   if (purpose.kind === 'usdc-payment') {
-    if (op.type !== 'payment') return refuse('it is not a payment');
-    if (!op.asset.equals(USDC)) refuse('it pays in another asset');
-    if (op.destination !== purpose.destination) refuse('it pays someone else');
-    if (toUnits(op.amount) !== toUnits(purpose.amount)) refuse('it pays another amount');
-    if (memoText(tx) !== purpose.memo) refuse('its memo is not the one you entered');
+    if (op.type !== 'payment') return refuse('no es un pago');
+    if (!op.asset.equals(USDC)) refuse('paga con otro activo');
+    if (op.destination !== purpose.destination) refuse('le paga a otro destinatario');
+    if (toUnits(op.amount) !== toUnits(purpose.amount)) refuse('paga otro monto');
+    if (memoText(tx) !== purpose.memo) refuse('su memo no es el que escribiste');
     return;
   }
 
-  if (!purpose.escrowId) return refuse('this contract has no escrow yet');
-  if (op.type !== 'invokeHostFunction') return refuse('it is not an escrow call');
+  if (!purpose.escrowId) return refuse('este contrato todavía no existe en Stellar');
+  if (op.type !== 'invokeHostFunction') return refuse('no es una llamada al contrato');
   if (tagOf(op.func) !== 'hostFunctionTypeInvokeContract') {
-    return refuse('it is not a contract call');
+    return refuse('no es una llamada a un contrato');
   }
   const call = field<xdr.InvokeContractArgs>(op.func, 'invokeContract');
   const contract = Address.fromScAddress(field(call, 'contractAddress')).toString();
-  if (contract !== purpose.escrowId) refuse('it calls another contract');
+  if (contract !== purpose.escrowId) refuse('llama a otro contrato');
   const fn = ESCROW_FUNCTIONS[purpose.kind];
-  if (String(field(call, 'functionName')) !== fn) refuse('it calls another escrow action');
+  if (String(field(call, 'functionName')) !== fn) refuse('pide otra acción del contrato');
 
   // What the signature authorizes: this escrow's call, and for a deposit the
   // USDC transfer the escrow pulls. Nothing else, and nothing deeper.
@@ -127,19 +129,21 @@ export function checkTransaction(
     const root = field<xdr.SorobanAuthorizedInvocation>(entry, 'rootInvocation');
     const [rootContract, rootFn] = authorized(root);
     if (rootContract !== purpose.escrowId || rootFn !== fn) {
-      refuse('it authorizes another contract');
+      refuse('autoriza otro contrato');
     }
     for (const sub of field<xdr.SorobanAuthorizedInvocation[]>(root, 'subInvocations')) {
       const [subContract, subFn] = authorized(sub);
       const nested = field<xdr.SorobanAuthorizedInvocation[]>(sub, 'subInvocations');
-      if (purpose.kind !== 'fund') return refuse('it authorizes a payment');
+      if (purpose.kind !== 'fund') return refuse('autoriza un pago');
       if (subContract !== usdcContract || subFn !== 'transfer' || nested.length > 0) {
-        refuse('it authorizes another payment');
+        refuse('autoriza otro pago');
       }
       // The payment itself: from the user, into this escrow, the agreed amount.
       const [from, to, amount] = transferArgs(sub);
-      if (from !== signer || to !== purpose.escrowId) refuse('it pays someone else');
-      if (amount !== toUnits(purpose.amount)) refuse('it pays another amount');
+      if (from !== signer || to !== purpose.escrowId) {
+        refuse('le paga a otro destinatario');
+      }
+      if (amount !== toUnits(purpose.amount)) refuse('paga otro monto');
     }
   }
 }
@@ -162,24 +166,30 @@ export function checkLoginChallenge(
   const refuse = (reason: string): never => {
     throw new UnexpectedTransaction(reason);
   };
-  if (networkPassphrase && networkPassphrase !== NETWORK) refuse('it is for another network');
+  if (networkPassphrase && networkPassphrase !== NETWORK) refuse('es para otra red');
   let parsed: Transaction | FeeBumpTransaction;
   try {
     parsed = TransactionBuilder.fromXDR(unsignedXdr, NETWORK);
   } catch {
-    return refuse('the sign-in challenge could not be read');
+    return refuse('no se pudo leer el desafío de inicio de sesión');
   }
-  if (parsed instanceof FeeBumpTransaction) return refuse('it is wrapped in a fee bump');
+  if (parsed instanceof FeeBumpTransaction) {
+    return refuse('viene envuelta en otra transacción (fee bump)');
+  }
   const tx = parsed;
-  if (tx.source !== signer) refuse('the sign-in challenge is for another account');
+  if (tx.source !== signer) refuse('el desafío de inicio de sesión es para otra cuenta');
   // Accounts start far above this, so it can never be the next sequence.
-  if (tx.sequence !== '1') refuse('the sign-in challenge could be sent to the network');
-  if (tx.operations.length !== 1) refuse('the sign-in challenge does more than one thing');
+  if (tx.sequence !== '1') {
+    refuse('el desafío de inicio de sesión se podría enviar a la red');
+  }
+  if (tx.operations.length !== 1) {
+    refuse('el desafío de inicio de sesión hace más de una cosa');
+  }
   const [op] = tx.operations;
   if (op.type !== 'manageData' || op.name !== CHALLENGE_DATA_NAME) {
-    refuse('the sign-in challenge is not a sign-in challenge');
+    refuse('el desafío de inicio de sesión no es un desafío de inicio de sesión');
   }
-  if (op.source && op.source !== signer) refuse('it acts for another account');
+  if (op.source && op.source !== signer) refuse('actúa en nombre de otra cuenta');
 }
 
 /**
@@ -206,7 +216,9 @@ function transferArgs(invocation: xdr.SorobanAuthorizedInvocation): [unknown, un
   const fn = field<xdr.SorobanAuthorizedFunction>(invocation, 'function');
   const call = field<xdr.InvokeContractArgs>(fn, 'contractFn');
   const args = field<xdr.ScVal[]>(call, 'args').map((arg) => scValToNative(arg) as unknown);
-  if (args.length !== 3) throw new UnexpectedTransaction('it authorizes an odd payment');
+  if (args.length !== 3) {
+    throw new UnexpectedTransaction('autoriza un pago con un formato inesperado');
+  }
   return [args[0], args[1], typeof args[2] === 'bigint' ? args[2] : undefined];
 }
 
@@ -214,7 +226,7 @@ function transferArgs(invocation: xdr.SorobanAuthorizedInvocation): [unknown, un
 function authorized(invocation: xdr.SorobanAuthorizedInvocation): [string, string] {
   const fn = field<xdr.SorobanAuthorizedFunction>(invocation, 'function');
   if (tagOf(fn) !== 'sorobanAuthorizedFunctionTypeContractFn') {
-    throw new UnexpectedTransaction('it authorizes creating a contract');
+    throw new UnexpectedTransaction('autoriza crear un contrato');
   }
   const call = field<xdr.InvokeContractArgs>(fn, 'contractFn');
   return [

@@ -41,7 +41,7 @@ export class AuthService {
   async login(dto: LoginDto): Promise<LoginResult> {
     const nonce = await this.challenges.verify(dto.stellarAddress, dto.signedXdr);
     if (!nonce) {
-      throw new UnauthorizedException('Invalid or expired wallet signature');
+      throw new UnauthorizedException('La firma de la wallet no es válida o venció');
     }
 
     const existing = await this.prisma.user.findUnique({
@@ -52,14 +52,14 @@ export class AuthService {
       // without asking the wallet to sign again.
       throw new BadRequestException({
         code: ApiErrorCode.RoleRequired,
-        message: 'Choose startup or specialist to create your account',
+        message: 'Elige startup o experto para crear tu cuenta',
       });
     }
 
     // Use the challenge before issuing anything: a replay racing this login
     // loses here, and never gets a token or creates an account.
     if (!(await this.challenges.consume(dto.stellarAddress, nonce))) {
-      throw new UnauthorizedException('This signature was already used');
+      throw new UnauthorizedException('Esta firma ya se usó');
     }
 
     const user =
@@ -79,14 +79,14 @@ export class AuthService {
    */
   async loginWithPollar(dto: PollarLoginDto): Promise<LoginResult> {
     if (!this.pollar.enabled) {
-      throw new ServiceUnavailableException('Pollar sign-in is not configured');
+      throw new ServiceUnavailableException('El inicio de sesión con Pollar no está configurado');
     }
     const session = await this.pollar.verifyToken(dto.accessToken);
     if (session.custody === 'smart' || !StrKey.isValidEd25519PublicKey(session.stellarAddress)) {
       // Escrow roles are classic Stellar accounts. A passkey smart account is a
       // contract address, and Trustless Work cannot give it a role.
       throw new BadRequestException(
-        'Pocket needs a classic Stellar account. Sign in with email, Google or a wallet',
+        'Pocket necesita una cuenta clásica de Stellar. Inicia sesión con correo, Google o una wallet',
       );
     }
 
@@ -103,7 +103,7 @@ export class AuthService {
       // The same Pollar account now reports another address. Changing it would
       // break every escrow the old address holds a role in.
       throw new ConflictException(
-        'This Pollar account is already linked to another wallet on Pocket',
+        'Esta cuenta de Pollar ya está vinculada a otra wallet en Pocket',
       );
     }
     if (existing && existing.pollarUserId !== session.userId) {
@@ -112,7 +112,7 @@ export class AuthService {
       // take it over: otherwise a Pollar bug or breach would reach every
       // Pocket account, including those that never used Pollar.
       throw new ConflictException(
-        'This wallet already has a Pocket account. Sign in with the wallet itself',
+        'Esta wallet ya tiene una cuenta en Pocket. Inicia sesión directamente con la wallet',
       );
     }
 
@@ -131,7 +131,7 @@ export class AuthService {
       if (!dto.role) {
         throw new BadRequestException({
           code: ApiErrorCode.RoleRequired,
-          message: 'Choose startup or specialist to create your account',
+          message: 'Elige startup o experto para crear tu cuenta',
         });
       }
       const created = await this.prisma.user.create({

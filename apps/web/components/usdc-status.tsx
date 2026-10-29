@@ -54,7 +54,7 @@ export function UsdcStatus({
         '/wallet/usdc-trustline/submit',
       ),
     onSuccess: async () => {
-      toast.success('USDC is enabled in your wallet');
+      toast.success('USDC quedó habilitado en tu wallet');
       await queryClient.invalidateQueries({ queryKey: ['wallet', 'usdc'] });
     },
     onError: (error) => {
@@ -71,12 +71,14 @@ export function UsdcStatus({
   if (outOfFees) {
     return (
       <Alert variant="destructive">
-        <AlertTitle>Your wallet is running out of XLM for network fees</AlertTitle>
+        <AlertTitle>
+          Tu wallet se está quedando sin XLM para las comisiones de red
+        </AlertTitle>
         <AlertDescription>
           <p>
-            Every escrow step you sign pays a small fee in XLM, and your wallet has{' '}
-            {status.data.xlmForFees} left. Top it up before funding, approving or
-            disputing, or those steps will fail.
+            Cada paso del contrato que firmas paga una pequeña comisión en XLM, y a tu
+            wallet le quedan {status.data.xlmForFees}. Recárgala antes de depositar,
+            aprobar o abrir una disputa, o esos pasos van a fallar.
           </p>
           {IS_TESTNET ? (
             <Button asChild size="sm" variant="outline" className="mt-3">
@@ -85,7 +87,7 @@ export function UsdcStatus({
                 target="_blank"
                 rel="noreferrer"
               >
-                Get free testnet XLM
+                Obtener XLM gratis de la red de pruebas
               </a>
             </Button>
           ) : null}
@@ -98,11 +100,11 @@ export function UsdcStatus({
     return showReady ? (
       <Alert>
         <CheckCircle2Icon />
-        <AlertTitle>Your wallet is ready for USDC</AlertTitle>
+        <AlertTitle>Tu wallet está lista para USDC</AlertTitle>
         <AlertDescription>
           {IS_TESTNET ? (
             <span>
-              Need test USDC? Get it free at{' '}
+              ¿Necesitas USDC de prueba? Consíguelos gratis en{' '}
               <a
                 className="underline"
                 href="https://faucet.circle.com"
@@ -111,10 +113,10 @@ export function UsdcStatus({
               >
                 faucet.circle.com
               </a>{' '}
-              (Stellar testnet).
+              (red de pruebas de Stellar).
             </span>
           ) : (
-            'You can send and receive USDC.'
+            'Puedes enviar y recibir USDC.'
           )}
         </AlertDescription>
       </Alert>
@@ -127,19 +129,19 @@ export function UsdcStatus({
     if (user.walletCustody === 'pollar') {
       return (
         <Alert className="border-yellow bg-yellow/15">
-          <AlertTitle>Your wallet is being activated</AlertTitle>
+          <AlertTitle>Tu wallet se está activando</AlertTitle>
           <AlertDescription>
-            Pocket puts your wallet on the Stellar network once your account is approved.
-            It takes a few seconds, and you do not need to pay anything.
+            Pocket activa tu wallet en la red Stellar una vez que se aprueba tu cuenta.
+            Toma unos segundos y no tienes que pagar nada.
           </AlertDescription>
         </Alert>
       );
     }
     return (
       <Alert variant="destructive">
-        <AlertTitle>Your wallet is not active on Stellar yet</AlertTitle>
+        <AlertTitle>Tu wallet todavía no está activa en Stellar</AlertTitle>
         <AlertDescription>
-          <p>A Stellar account needs a little XLM before it exists on the network.</p>
+          <p>Una cuenta de Stellar necesita un poco de XLM antes de existir en la red.</p>
           {IS_TESTNET ? (
             <Button asChild size="sm" variant="outline" className="mt-3">
               <a
@@ -147,15 +149,15 @@ export function UsdcStatus({
                 target="_blank"
                 rel="noreferrer"
               >
-                Get free testnet XLM
+                Obtener XLM gratis de la red de pruebas
               </a>
             </Button>
           ) : (
             // 1 XLM opens the account and 0.5 more holds the USDC trustline;
             // the rest pays network fees.
             <p className="mt-2">
-              Send at least 3 XLM to your wallet address from an exchange or another
-              wallet, on the Stellar network. No memo is needed.
+              Envía al menos 3 XLM a la dirección de tu wallet desde un exchange u otra
+              wallet, por la red Stellar. No hace falta memo.
             </p>
           )}
         </AlertDescription>
@@ -165,14 +167,14 @@ export function UsdcStatus({
 
   return (
     <Alert className="border-yellow bg-yellow/15">
-      <AlertTitle>Enable USDC in your wallet</AlertTitle>
+      <AlertTitle>Habilita USDC en tu wallet</AlertTitle>
       <AlertDescription>
         <p>
-          Your wallet has to trust USDC before it can fund an escrow or receive a payment.
-          It is a one-time step
+          Tu wallet tiene que habilitar USDC antes de poder depositar en un contrato o
+          recibir un pago. Se hace una sola vez
           {user.walletCustody === 'pollar'
-            ? ', and Pocket covers its cost.'
-            : ', and it costs a small network fee.'}
+            ? ', y Pocket cubre su costo.'
+            : ', y cuesta una pequeña comisión de red.'}
         </p>
         <Button
           size="sm"
@@ -180,7 +182,7 @@ export function UsdcStatus({
           disabled={enable.isPending}
           onClick={() => enable.mutate()}
         >
-          {enable.isPending ? 'Enabling...' : 'Enable USDC'}
+          {enable.isPending ? 'Habilitando...' : 'Habilitar USDC'}
         </Button>
       </AlertDescription>
     </Alert>
