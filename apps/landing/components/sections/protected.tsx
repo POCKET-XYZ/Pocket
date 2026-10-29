@@ -26,8 +26,8 @@ type Scenario = (typeof scenarios)[number]['key'];
 
 const rules = [
   {
-    name: 'Gente revisada',
-    text: 'Un manager revisa a mano cada startup y cada experto.',
+    name: 'Sabes con quién trabajas',
+    text: 'Cada startup y cada experto tiene un perfil con lo que hace y sus enlaces.',
   },
   {
     name: 'Reglas claras',

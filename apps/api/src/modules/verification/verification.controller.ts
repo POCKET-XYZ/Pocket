@@ -11,7 +11,7 @@ import { VerificationService } from './verification.service';
 export class VerificationController {
   constructor(private readonly verification: VerificationService) {}
 
-  /** Send the account for a manager to review. */
+  /** Complete the account details, which approves the account. */
   @Post()
   submit(@CurrentUser() user: AuthUser, @Body() dto: SubmitVerificationDto) {
     return this.verification.submit(user.sub, dto);

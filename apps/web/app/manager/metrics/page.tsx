@@ -103,18 +103,9 @@ function Dashboard({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string 
           hint={`${count(users.specialists.newInPeriod)} ${users.specialists.newInPeriod === 1 ? 'nuevo' : 'nuevos'} ${inPeriod}`}
         />
         <StatTile
-          label="Verificaciones pendientes"
-          value={count(verification.pending)}
-          hint="En la cola ahora mismo"
-          href="/manager/verifications"
-        />
-        <StatTile label="Aprobadas" value={count(verification.approved)} hint={inPeriod} />
-        <StatTile label="Rechazadas" value={count(verification.rejected)} hint={inPeriod} />
-        <StatTile
-          label="Mediana de tiempo para aprobar"
-          value={verification.medianHoursToApprove ?? '-'}
-          unit={verification.medianHoursToApprove === null ? undefined : 'horas'}
-          hint={`Desde el envío hasta la aprobación, ${inPeriod}`}
+          label="Cuentas activadas"
+          value={count(verification.approved)}
+          hint={`Completaron sus datos ${inPeriod}`}
         />
       </Section>
 

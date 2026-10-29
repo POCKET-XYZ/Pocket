@@ -36,7 +36,6 @@ const ROLE_LINKS: Record<UserRole, { href: string; label: string }[]> = {
     { href: '/profile', label: 'Perfil' },
   ],
   manager: [
-    { href: '/manager/verifications', label: 'Verificaciones' },
     { href: '/manager/disputes', label: 'Disputas' },
     { href: '/manager/metrics', label: 'Métricas' },
   ],
@@ -127,7 +126,7 @@ export function SiteHeader() {
                       <Link href="/profile">Mi perfil</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/verification">Verificación</Link>
+                      <Link href="/verification">Datos de la cuenta</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/wallet">Wallet y USDC</Link>

@@ -2,7 +2,7 @@
 
 Both sides of the marketplace fill in a fixed template. This is a deliberate product decision from the PDR: less freedom of format, more consistency. It makes profiles comparable at a glance and keeps the marketplace looking premium.
 
-A profile can only be filled in after a manager approves the account, and only the profile that matches the user's role.
+A profile can only be filled in once the account is approved (see [verification](verification.md)), and only the profile that matches the user's role.
 
 ## Startup template
 

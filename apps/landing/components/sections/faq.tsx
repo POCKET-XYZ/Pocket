@@ -24,8 +24,8 @@ const questions = [
     a: 'Un 1 % de cada pago que sale del contrato. Trustless Work, la tecnología del contrato, cobra además un 0,3 %. Las dos comisiones se descuentan del pago, así que el experto recibe el 98,7 %.',
   },
   {
-    q: '¿Quién revisa a los expertos y a las startups?',
-    a: 'Un manager de Pocket revisa a mano cada cuenta antes de que pueda publicar o postular a un trabajo.',
+    q: '¿Cómo sé con quién estoy trabajando?',
+    a: 'Cada startup y cada experto tiene un perfil con lo que hace, sus enlaces y, en los expertos, su CV. Lo revisas antes de contratar o postularte. Y como el pago solo le llega al experto cuando apruebas su entrega, no arriesgas tu dinero con alguien que no cumple.',
   },
   {
     q: '¿Cómo cobro si soy experto?',

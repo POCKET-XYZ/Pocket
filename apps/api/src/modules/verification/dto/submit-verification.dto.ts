@@ -10,8 +10,8 @@ import {
 import { IsHttpsUrl } from '../../../common/decorators/is-https-url.decorator';
 
 /**
- * Lightweight KYC/KYB: what a startup or specialist sends for a manager to
- * review. Documents are links for now, not uploads.
+ * The account details a startup or specialist completes before using the
+ * marketplace. Nobody reviews them by hand: sending them approves the account.
  */
 export class SubmitVerificationDto {
   @ApiProperty({ description: 'Legal name of the person submitting the request' })
@@ -51,7 +51,7 @@ export class SubmitVerificationDto {
   @Length(2, 80)
   companyRegistrationId?: string;
 
-  @ApiPropertyOptional({ description: 'Anything else the manager should know' })
+  @ApiPropertyOptional({ description: 'Anything else Pocket should know' })
   @IsOptional()
   @IsString()
   @MaxLength(1000)

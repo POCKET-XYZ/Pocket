@@ -2,20 +2,10 @@
 
 import type { User, UserRole } from '@pocket/shared';
 import Link from 'next/link';
-import { useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { EmptyState, Loading } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import { homeFor } from '@/lib/home';
-
-const VERIFICATION_HINTS: Record<string, string> = {
-  not_submitted:
-    'Envía tus datos para la verificación. Un manager de Pocket revisa cada cuenta.',
-  pending:
-    'Tu verificación está en revisión. Podrás usar el marketplace cuando un manager la apruebe.',
-  rejected:
-    'Tu verificación fue rechazada. Revisa la nota del manager, corrige tus datos y vuelve a enviarlos.',
-};
 
 /** How each role reads inside a sentence. */
 const ROLE_NAMES: Record<UserRole, string> = {
@@ -26,8 +16,8 @@ const ROLE_NAMES: Record<UserRole, string> = {
 
 /**
  * Renders its children only for a signed-in user with one of the given roles,
- * and, when `verified` is set, only once a manager approved them. Otherwise it
- * says what is missing and links to the fix.
+ * and, when `verified` is set, only once they completed their account details.
+ * Otherwise it says what is missing and links to the fix.
  */
 export function RequireAuth({
   roles,
@@ -79,35 +69,14 @@ export function RequireAuth({
 
   if (verified && user.role !== 'manager' && user.verificationStatus !== 'approved') {
     return (
-      <EmptyState title="Tu cuenta todavía no está verificada">
-        <p>{VERIFICATION_HINTS[user.verificationStatus]}</p>
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <Button asChild>
-            <Link href="/verification">Ir a la verificación</Link>
-          </Button>
-          {user.verificationStatus === 'pending' ? <CheckAgainButton /> : null}
-        </div>
+      <EmptyState title="Tu cuenta todavía no está activa">
+        <p>Completa los datos de tu cuenta. Es un formulario corto, sin documentos.</p>
+        <Button asChild className="mt-4">
+          <Link href="/verification">Completar mis datos</Link>
+        </Button>
       </EmptyState>
     );
   }
 
   return <>{children(user)}</>;
-}
-
-/** Asks the API again, for the moment right after a manager approves. */
-function CheckAgainButton() {
-  const { refreshUser } = useAuth();
-  const [checking, setChecking] = useState(false);
-  return (
-    <Button
-      variant="outline"
-      disabled={checking}
-      onClick={() => {
-        setChecking(true);
-        void refreshUser().finally(() => setChecking(false));
-      }}
-    >
-      {checking ? 'Revisando...' : 'Revisar de nuevo'}
-    </Button>
-  );
 }

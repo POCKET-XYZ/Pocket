@@ -29,7 +29,7 @@ export default function StartupsPage() {
     <div>
       <PageHeader
         title="Startups"
-        description="Un manager de Pocket revisó a cada startup de esta lista. Mira quiénes son y para qué contratan antes de postularte."
+        description="Startups con su perfil completo en Pocket. Mira quiénes son y para qué contratan antes de postularte."
       />
       <div className="mb-6 flex justify-end">
         <Input

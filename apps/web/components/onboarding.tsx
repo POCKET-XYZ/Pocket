@@ -2,7 +2,7 @@
 
 import type { SpecialistProfile, StartupProfile, User } from '@pocket/shared';
 import { useQuery } from '@tanstack/react-query';
-import { CheckIcon, ClockIcon } from 'lucide-react';
+import { CheckIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
@@ -11,7 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-type StepState = 'done' | 'current' | 'waiting' | 'later';
+type StepState = 'done' | 'current' | 'later';
 
 interface Step {
   title: string;
@@ -24,9 +24,8 @@ interface Step {
  * What a new startup or specialist has to do before they can use the
  * marketplace, and which step they are on. It disappears once they are set up.
  *
- * Every account is reviewed by hand, so between submitting the verification and
- * being approved there is a wait that is nobody's fault: the wait itself is one
- * of the steps, and it says who has to act.
+ * Completing the account details approves the account on the spot, so every
+ * step is in the user's hands.
  */
 export function Onboarding({ className }: { className?: string }) {
   const { user } = useAuth();
@@ -88,25 +87,18 @@ export function Onboarding({ className }: { className?: string }) {
 }
 
 function stepsFor(user: User, hasProfile: boolean): Step[] {
-  const status = user.verificationStatus;
-  const approved = status === 'approved';
+  const approved = user.verificationStatus === 'approved';
   const isStartup = user.role === 'startup';
 
   const verification: Step = {
-    title: 'Verifica tu cuenta',
-    text: {
-      not_submitted: 'Envía tus datos. Es un formulario corto: enlaces, sin documentos.',
-      pending: 'Enviado. Un manager de Pocket lo revisa a mano, por orden de llegada.',
-      rejected: 'El manager pidió cambios. Haz las correcciones y vuelve a enviarlo.',
-      approved: 'Un manager aprobó tu cuenta.',
-    }[status],
-    state: approved ? 'done' : status === 'pending' ? 'waiting' : 'current',
+    title: 'Completa los datos de tu cuenta',
+    text: approved
+      ? 'Tu cuenta está activa.'
+      : 'Un formulario corto, sin documentos. Al enviarlo tu cuenta queda activa.',
+    state: approved ? 'done' : 'current',
     action: approved
       ? undefined
-      : {
-          label: status === 'pending' ? 'Ver estado' : 'Ir a la verificación',
-          href: '/verification',
-        },
+      : { label: 'Completar mis datos', href: '/verification' },
   };
 
   const profile: Step = {
@@ -123,7 +115,7 @@ function stepsFor(user: User, hasProfile: boolean): Step[] {
   const first: Step = {
     title: isStartup ? 'Publica tu primer trabajo' : 'Postúlate a un trabajo',
     text: isStartup
-      ? 'Describe el trabajo y el presupuesto. Los expertos verificados se postularán y tú eliges a uno.'
+      ? 'Describe el trabajo y el presupuesto. Los expertos se postularán y tú eliges a uno.'
       : 'Los trabajos abiertos están en la sección Trabajos. Postúlate con tu propuesta, tu precio y cuánto tiempo te toma.',
     state: approved && hasProfile ? 'current' : 'later',
     action: isStartup
@@ -140,13 +132,6 @@ function StepMark({ state, number }: { state: StepState; number: number }) {
     return (
       <span className={cn(base, 'bg-navy text-off-white')} aria-label="Listo">
         <CheckIcon className="size-4" />
-      </span>
-    );
-  }
-  if (state === 'waiting') {
-    return (
-      <span className={cn(base, 'bg-yellow text-navy')} aria-label="Esperando a Pocket">
-        <ClockIcon className="size-4" />
       </span>
     );
   }

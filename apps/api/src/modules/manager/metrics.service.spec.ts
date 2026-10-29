@@ -41,9 +41,7 @@ const decimal = (value: string) => new Prisma.Decimal(value);
 /** What Postgres would return for a small, realistic month. */
 const FULL: Rows = {
   users: [{ startups: 12, new_startups: 3, specialists: 40, new_specialists: 9 }],
-  verification: [
-    { pending: 4, approved: 7, rejected: 2, median_hours_to_approve: 5.4321 },
-  ],
+  verification: [{ approved: 7 }],
   jobs: [{ posted: 4, open: 6, applications: 13, applications_on_posted: 10 }],
   contracts: [
     {
@@ -82,7 +80,7 @@ const FULL: Rows = {
 /** An empty platform: sums are 0, medians have nothing to measure. */
 const EMPTY: Rows = {
   users: [{ startups: 0, new_startups: 0, specialists: 0, new_specialists: 0 }],
-  verification: [{ pending: 0, approved: 0, rejected: 0, median_hours_to_approve: null }],
+  verification: [{ approved: 0 }],
   jobs: [{ posted: 0, open: 0, applications: 0, applications_on_posted: 0 }],
   contracts: [
     {
@@ -172,7 +170,7 @@ describe('MetricsService', () => {
     expect(result.users).toEqual({
       startups: { total: 12, newInPeriod: 3 },
       specialists: { total: 40, newInPeriod: 9 },
-      verification: { pending: 4, approved: 7, rejected: 2, medianHoursToApprove: 5.4 },
+      verification: { approved: 7 },
     });
     expect(result.marketplace).toEqual({
       jobsPosted: 4,
@@ -296,7 +294,7 @@ describe('MetricsService', () => {
     rows = EMPTY;
     const result = await service.metrics('30d', NOW);
 
-    expect(result.users.verification.medianHoursToApprove).toBeNull();
+    expect(result.users.verification.approved).toBe(0);
     expect(result.marketplace.averageApplicationsPerJob).toBeNull();
     expect(result.marketplace.medianDaysToFirstHire).toBeNull();
     expect(result.money).toEqual({

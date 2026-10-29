@@ -707,13 +707,8 @@ export interface ManagerMetrics {
     startups: { total: number; newInPeriod: number };
     specialists: { total: number; newInPeriod: number };
     verification: {
-      /** Requests waiting for a manager right now. */
-      pending: number;
-      /** Requests decided in the period. */
+      /** Accounts that completed their details, and so were approved, in the period. */
       approved: number;
-      rejected: number;
-      /** Median hours from submission to approval, for approvals in the period. */
-      medianHoursToApprove: number | null;
     };
   };
   marketplace: {

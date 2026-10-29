@@ -32,8 +32,8 @@ export function parseManagerList(raw: string | undefined): string[] {
  * verification is rejected: the role guard keeps them out of every manager
  * route (the role is read from the database on each request) and the
  * verification guard out of the marketplace. Their sessions also end at once.
- * Being let back in takes being listed again or a new verification that a
- * manager approves.
+ * Being let back in takes being listed again; completing the account details
+ * again makes them an approved specialist.
  *
  * An empty list touches nothing: a variable missing on one deploy must not
  * lock the whole team out.

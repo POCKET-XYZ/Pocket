@@ -1,36 +1,33 @@
 # Verification
 
-Nobody operates on Pocket without being reviewed by a manager. This is the lightweight KYC/KYB of the MVP: a form plus a human decision, instead of an expensive identity provider.
+Nobody operates on Pocket before completing their account details. Nobody reviews them by hand: sending the details approves the account on the spot. There is no identity check yet.
 
 ## States
 
 A user carries one verification status, shown in `GET /users/me`.
 
-| Status          | Meaning                                                     |
-| --------------- | ----------------------------------------------------------- |
-| `not_submitted` | The account exists but has never been sent for review.      |
-| `pending`       | Waiting for a manager.                                      |
-| `approved`      | Can fill in a profile and operate on the marketplace.       |
-| `rejected`      | Turned down. The user can fix the details and submit again. |
+| Status          | Meaning                                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------- |
+| `not_submitted` | The account exists but its details were never completed.                                                      |
+| `approved`      | Can fill in a profile and operate on the marketplace.                                                         |
+| `rejected`      | Turned down during the manual review era, or a manager removed from the team. Can complete the details again. |
+| `pending`       | Unused for now. Accounts that were waiting for a manager were approved when manual review ended.              |
 
 ## Flow
 
 ```
-Startup / Specialist                 Manager
-        │ POST /verification            │
-        │ status: not_submitted         │
-        │      → pending                │
-        │                               │ GET /manager/verifications
-        │                               │ (queue, oldest first)
-        │                               │
-        │                               │ POST .../:id/approve
-        │                               │ POST .../:id/reject  { note }
-        │ ◀── status: approved or rejected
+Startup / Specialist
+        │ POST /verification
+        │ status: not_submitted (or rejected)
+        │      → approved
+        │
+        │ ◀── "account ready" email to the contact address
+        │ ◀── Pollar wallet activated (see pollar.md)
 ```
 
 ## What the user submits
 
-Links, not file uploads. A manager opens them and decides.
+Links, not file uploads.
 
 | Field                   | Who                                                  | Required                 |
 | ----------------------- | ---------------------------------------------------- | ------------------------ |
@@ -43,15 +40,14 @@ Links, not file uploads. A manager opens them and decides.
 | `companyRegistrationId` | Startups                                             | No                       |
 | `note`                  | Everyone                                             | No                       |
 
-Every submission is stored as its own row, so a user keeps the history of their attempts and a manager can see what changed between them.
+Every submission is stored as its own row, approved with `reviewedAt` set and no reviewer. Rows from the manual review era keep the manager who decided them and their note.
 
 ## Rules
 
-- A user with a `pending` or `approved` status cannot submit again.
-- A rejected user can submit again, which is why a rejection must carry a note explaining what to fix.
+- An approved user cannot submit again.
+- Two submissions sent at once approve the account once: the second is refused.
 - Managers never go through verification: their accounts are created already approved by the seed script.
-- A request can only be reviewed once. Reviewing a request that is not `pending` fails.
 
 ## Effect on the rest of the API
 
-Routes marked `@Verified()` are refused until a manager approves the account, with a message saying which step is missing. Filling in a profile is one of those routes, so the marketplace only ever shows profiles of reviewed users. The public directory and public profiles also hide anyone who is not approved.
+Routes marked `@Verified()` are refused until the account is approved, with a message pointing to the account details. Filling in a profile is one of those routes, so the marketplace only ever shows profiles of approved users. The public directory and public profiles also hide anyone who is not approved.

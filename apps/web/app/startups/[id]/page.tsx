@@ -136,7 +136,7 @@ export default function StartupProfilePage() {
       </section>
 
       <p className="text-xs text-muted-foreground">
-        Verificada por Pocket. Miembro desde el {date(profile.data.memberSince)}. Wallet{' '}
+        Miembro de Pocket desde el {date(profile.data.memberSince)}. Wallet{' '}
         {profile.data.wallet}.
       </p>
     </div>

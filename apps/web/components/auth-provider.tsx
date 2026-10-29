@@ -46,7 +46,7 @@ interface AuthContextValue {
   chooseRole: (role: SignUpRole) => Promise<void>;
   cancelSignUp: () => void;
   signOut: () => void;
-  /** Reload the user, for example after a manager approved them. */
+  /** Reload the user, for example after they completed their account details. */
   refreshUser: () => Promise<void>;
 }
 
@@ -69,17 +69,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     enabled: Boolean(token),
     retry: false,
     staleTime: 60_000,
-    // A manager can approve an account at any moment, and until the client
-    // notices, the whole marketplace stays locked. While the account is not
-    // approved, ask often, so the approval opens the app on its own.
-    refetchInterval: (query) =>
-      query.state.data && query.state.data.verificationStatus !== 'approved'
-        ? 15_000
-        : false,
-    refetchIntervalInBackground: false,
   });
 
-  // Coming back to the tab is the other moment an approval may have landed.
+  // Coming back to the tab picks up what changed elsewhere, such as the account
+  // details completed in another tab.
   useEffect(() => {
     if (!token) return;
     const onFocus = () => void queryClient.invalidateQueries({ queryKey: ME });

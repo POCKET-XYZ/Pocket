@@ -48,10 +48,7 @@ interface UserRow {
   new_specialists: Count;
 }
 interface VerificationRow {
-  pending: Count;
   approved: Count;
-  rejected: Count;
-  median_hours_to_approve: number | null;
 }
 interface JobRow {
   posted: Count;
@@ -130,13 +127,7 @@ export class MetricsService {
           FROM users`,
         this.prisma.$queryRaw<VerificationRow[]>`
           SELECT
-            COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
-            COUNT(*) FILTER (WHERE status = 'approved' AND reviewed_at >= ${since}::timestamp)::int AS approved,
-            COUNT(*) FILTER (WHERE status = 'rejected' AND reviewed_at >= ${since}::timestamp)::int AS rejected,
-            percentile_cont(0.5) WITHIN GROUP (
-              ORDER BY EXTRACT(EPOCH FROM (reviewed_at - submitted_at))::float8 / 3600
-            ) FILTER (WHERE status = 'approved' AND reviewed_at >= ${since}::timestamp)
-              AS median_hours_to_approve
+            COUNT(*) FILTER (WHERE status = 'approved' AND reviewed_at >= ${since}::timestamp)::int AS approved
           FROM verification_requests`,
         this.prisma.$queryRaw<JobRow[]>`
           SELECT
@@ -296,12 +287,7 @@ export class MetricsService {
           total: count(u?.specialists),
           newInPeriod: count(u?.new_specialists),
         },
-        verification: {
-          pending: count(v?.pending),
-          approved: count(v?.approved),
-          rejected: count(v?.rejected),
-          medianHoursToApprove: rounded(v?.median_hours_to_approve),
-        },
+        verification: { approved: count(v?.approved) },
       },
       marketplace: {
         jobsPosted,

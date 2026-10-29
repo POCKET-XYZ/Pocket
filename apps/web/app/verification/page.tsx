@@ -9,7 +9,6 @@ import { Loading, PageHeader } from '@/components/page';
 import { Onboarding } from '@/components/onboarding';
 import { RequireAuth } from '@/components/require-auth';
 import { StatusBadge } from '@/components/status-badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -19,9 +18,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { api, errorMessage } from '@/lib/api';
-import { dateTime } from '@/lib/format';
 
 export default function VerificationPage() {
   return (
@@ -35,8 +32,8 @@ function Verification({ user }: { user: User }) {
   const { refreshUser } = useAuth();
   const queryClient = useQueryClient();
   const latest = useQuery({
-    // Keyed on the status: when a manager decides, the request (and the
-    // reason for a rejection) is loaded again.
+    // Keyed on the status: once the account is approved, the details are
+    // loaded again.
     queryKey: ['verification', 'me', user.verificationStatus],
     queryFn: () => api<VerificationRequest | null>('/verification/me'),
   });
@@ -45,15 +42,14 @@ function Verification({ user }: { user: User }) {
     mutationFn: (body: Record<string, unknown>) =>
       api('/verification', { method: 'POST', body }),
     onSuccess: async () => {
-      toast.success('Enviado. Un manager lo revisará pronto.');
+      toast.success('Listo. Tu cuenta ya está activa.');
       await queryClient.invalidateQueries({ queryKey: ['verification', 'me'] });
       await refreshUser();
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
 
-  const canSubmit =
-    user.verificationStatus === 'not_submitted' || user.verificationStatus === 'rejected';
+  const canSubmit = user.verificationStatus !== 'approved';
   const isStartup = user.role === 'startup';
   const previous = latest.data;
 
@@ -67,8 +63,8 @@ function Verification({ user }: { user: User }) {
     <div className="mx-auto max-w-2xl">
       <Onboarding className="mb-6" />
       <PageHeader
-        title="Verificación"
-        description="Pocket revisa a mano cada cuenta antes de que pueda usar el marketplace. Con enlaces es suficiente, no necesitas documentos."
+        title="Datos de tu cuenta"
+        description="Un formulario corto, sin documentos. Al enviarlo tu cuenta queda activa y puedes usar todo el marketplace."
       />
 
       <Card className="mb-6">
@@ -77,23 +73,11 @@ function Verification({ user }: { user: User }) {
           <StatusBadge feminine status={user.verificationStatus} />
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          {user.verificationStatus === 'not_submitted' &&
-            'Completa el formulario de abajo y envíalo a revisión.'}
-          {user.verificationStatus === 'pending' &&
-            `Enviado el ${dateTime(previous?.submittedAt)}. Un manager lo revisará por orden de llegada.`}
-          {user.verificationStatus === 'approved' &&
-            'Tu cuenta está verificada. Puedes usar todo el marketplace.'}
-          {user.verificationStatus === 'rejected' &&
-            'Corrige lo que señaló el manager y vuelve a enviarlo.'}
+          {user.verificationStatus === 'approved'
+            ? 'Tu cuenta está activa. Puedes usar todo el marketplace.'
+            : 'Completa el formulario de abajo para activar tu cuenta.'}
         </CardContent>
       </Card>
-
-      {user.verificationStatus === 'rejected' && previous?.reviewNote ? (
-        <Alert variant="destructive" className="mb-6">
-          <AlertTitle>Por qué se rechazó</AlertTitle>
-          <AlertDescription>{previous.reviewNote}</AlertDescription>
-        </Alert>
-      ) : null}
 
       {latest.isLoading ? (
         <Loading />
@@ -102,8 +86,8 @@ function Verification({ user }: { user: User }) {
           <CardHeader>
             <CardTitle>Tus datos</CardTitle>
             <CardDescription>
-              Solo los managers ven esto. Tu correo de contacto se comparte con la otra
-              parte cuando firmes un contrato.
+              Solo el equipo de Pocket ve esto. Tu correo de contacto se comparte con la
+              otra parte cuando firmen un contrato.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -159,7 +143,7 @@ function Verification({ user }: { user: User }) {
                   <Field
                     label="Número de registro o identificación fiscal"
                     htmlFor="companyRegistrationId"
-                    hint="Opcional. Pocket no lo verifica en ningún registro, así que solo es una pista para el manager, nunca un sello de confianza."
+                    hint="Opcional. Pocket no lo verifica en ningún registro."
                   >
                     <Input
                       id="companyRegistrationId"
@@ -199,16 +183,8 @@ function Verification({ user }: { user: User }) {
                   defaultValue={previous?.websiteUrl}
                 />
               </Field>
-              <Field label="Nota para el manager" htmlFor="note">
-                <Textarea
-                  id="note"
-                  name="note"
-                  maxLength={1000}
-                  defaultValue={previous?.note}
-                />
-              </Field>
               <Button type="submit" size="lg" disabled={submit.isPending}>
-                {submit.isPending ? 'Enviando...' : 'Enviar a revisión'}
+                {submit.isPending ? 'Activando...' : 'Activar mi cuenta'}
               </Button>
             </form>
           </CardContent>

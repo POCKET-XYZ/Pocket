@@ -99,7 +99,7 @@ model AuthChallenge {
 }
 
 // ---------------------------------------------------------------------------
-// Verification (manual KYC/KYB reviewed by a manager)
+// Verification: the account details a user completes to be approved
 // ---------------------------------------------------------------------------
 
 // One request per submission. A user keeps their history: the newest row is the
@@ -118,7 +118,8 @@ model VerificationRequest {
   companyName           String?            @map("company_name")
   companyRegistrationId String?            @map("company_registration_id")
   note                  String?
-  // Filled in by the manager who reviewed it.
+  // Who approved it and when. Requests from the manual review era name a
+  // manager; since then completing the details approves the account itself.
   reviewNote            String?            @map("review_note")
   reviewedById          String?            @map("reviewed_by") @db.Uuid
   reviewedAt            DateTime?          @map("reviewed_at")

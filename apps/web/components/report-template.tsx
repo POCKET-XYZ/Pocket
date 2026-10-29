@@ -161,8 +161,8 @@ export function ReportTemplateManager({
       </div>
       <p className="text-xs text-muted-foreground">
         El archivo que quieres que el experto complete y adjunte a cada entrega: Excel
-        (.xlsx), Word (.docx), PDF o CSV, de hasta 5 MB. Los expertos verificados pueden
-        descargarlo.
+        (.xlsx), Word (.docx), PDF o CSV, de hasta 5 MB. Los expertos con su cuenta activa
+        pueden descargarlo.
       </p>
     </div>
   );

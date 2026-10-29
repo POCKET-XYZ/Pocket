@@ -120,7 +120,7 @@ export class MigratedAccountsService {
     if (!user) return null;
 
     securityEvent('migrated_account_claimed', { userId: user.id, role: user.role });
-    // Approved accounts get their wallet's reserve, as a manager's approval does.
+    // Approved accounts get their wallet's reserve, as any approval does.
     await this.wallets.activate(user.id);
     this.logger.log(`Migrated ${user.role} account claimed by ${user.id}`);
     return user;
