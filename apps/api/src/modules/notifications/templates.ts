@@ -24,7 +24,8 @@ export type NotificationEvent =
       milestoneTitle: string;
       specialistAmount: string;
       startupAmount: string;
-    };
+    }
+  | { type: 'report_ready'; contractId: string; jobTitle: string };
 
 export type NotificationType = NotificationEvent['type'];
 
@@ -117,6 +118,17 @@ function content(event: NotificationEvent): Content {
           `El experto recibe ${event.specialistAmount} USDC y la startup recibe ${event.startupAmount} USDC.`,
         ],
         button: { label: 'Ver la decisión', path: `/disputes/${event.disputeId}` },
+      };
+    case 'report_ready':
+      return {
+        subject: `Reporte de resultados: ${event.jobTitle}`,
+        paragraphs: [
+          `El contrato "${event.jobTitle}" terminó. Su reporte ya está listo: cada meta contra su resultado, cada hito contra su fecha y cada pago comprobable en Stellar.`,
+        ],
+        button: {
+          label: 'Ver el reporte',
+          path: `/contracts/${event.contractId}/report`,
+        },
       };
   }
 }

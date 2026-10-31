@@ -39,7 +39,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               <AuthProvider>
                 <ConfirmProvider>
                   <SiteHeader />
-                  <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:px-6">
+                  <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:px-6 print:max-w-none print:p-0">
                     {children}
                   </main>
                   <Toaster theme="light" richColors position="top-center" />

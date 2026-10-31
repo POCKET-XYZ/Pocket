@@ -110,3 +110,15 @@
     letter-spacing: -0.01em;
   }
 }
+
+/* A report printed to PDF keeps its badges and stays on white paper. */
+@media print {
+  body {
+    background: white;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  @page {
+    margin: 1.5cm;
+  }
+}

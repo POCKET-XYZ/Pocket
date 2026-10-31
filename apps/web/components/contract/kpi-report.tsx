@@ -1,6 +1,11 @@
 'use client';
 
-import type { Deliverable, DeliverableAttachment, JobKpi } from '@pocket/shared';
+import type {
+  Deliverable,
+  DeliverableAttachment,
+  JobKpi,
+  KpiOutcome,
+} from '@pocket/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { FileIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -27,11 +32,82 @@ export function attachmentProblem(file: File): string | null {
   return null;
 }
 
-/** A KPI's target with its unit, e.g. "50 per month (leads)". */
-export function kpiTarget(kpi: JobKpi): string {
-  if (!kpi.target)
-    return kpi.unit ? `Sin meta definida (${kpi.unit})` : 'Sin meta definida';
-  return kpi.unit ? `${kpi.target} (${kpi.unit})` : kpi.target;
+/** A KPI number as people read it: commas for thousands, a dot for decimals. */
+export function kpiNumber(value: string | number): string {
+  return Number(value).toLocaleString('en-US', { maximumFractionDigits: 7 });
+}
+
+/** A number with the KPI's unit, e.g. "124 leads". */
+export function withUnit(value: string | number, unit: string | null): string {
+  return unit ? `${kpiNumber(value)} ${unit}` : kpiNumber(value);
+}
+
+type KpiTargetFields = Pick<JobKpi, 'target' | 'targetValue' | 'direction' | 'unit'>;
+
+/**
+ * A KPI's target as a sentence: "Al menos 100 leads", "Máximo 5 USDC", a text
+ * target from before targets were numbers, or that it is only tracked.
+ */
+export function kpiTarget(kpi: KpiTargetFields): string {
+  if (kpi.targetValue !== null && kpi.direction) {
+    const prefix = kpi.direction === 'less_is_better' ? 'Máximo' : 'Al menos';
+    return `${prefix} ${withUnit(kpi.targetValue, kpi.unit)}`;
+  }
+  if (kpi.target) return kpi.unit ? `${kpi.target} (${kpi.unit})` : kpi.target;
+  return kpi.unit ? `Solo seguimiento (${kpi.unit})` : 'Solo seguimiento';
+}
+
+/**
+ * How a number compares with the KPI's target, as the report scores it.
+ * `percent` only for a floor ("more is better").
+ */
+export function kpiOutcome(
+  kpi: KpiTargetFields,
+  numericValue: string | number | null,
+): { outcome: KpiOutcome; percent: number | null } {
+  if (kpi.targetValue === null || !kpi.direction)
+    return { outcome: 'tracked', percent: null };
+  if (numericValue === null || numericValue === '') {
+    return { outcome: 'not_measured', percent: null };
+  }
+  const value = Number(numericValue);
+  const target = Number(kpi.targetValue);
+  if (kpi.direction === 'less_is_better') {
+    return { outcome: value <= target ? 'met' : 'not_met', percent: null };
+  }
+  return {
+    outcome: value >= target ? 'met' : 'not_met',
+    percent: target > 0 ? Math.round((value / target) * 100) : null,
+  };
+}
+
+/** The outcome in words, so it never relies on color alone. */
+export function KpiOutcomeBadge({
+  outcome,
+  percent,
+}: {
+  outcome: KpiOutcome;
+  percent: number | null;
+}) {
+  if (outcome === 'tracked') return null;
+  const styles: Record<Exclude<KpiOutcome, 'tracked'>, string> = {
+    met: 'bg-emerald-100 text-emerald-800',
+    not_met: 'bg-yellow/40 text-navy',
+    not_measured: 'bg-muted text-muted-foreground',
+  };
+  const labels: Record<Exclude<KpiOutcome, 'tracked'>, string> = {
+    met: '✓ Meta cumplida',
+    not_met: 'Meta no cumplida',
+    not_measured: 'Sin medir todavía',
+  };
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${styles[outcome]}`}
+    >
+      {labels[outcome]}
+      {percent !== null && outcome !== 'not_measured' ? ` · ${percent} %` : ''}
+    </span>
+  );
 }
 
 /** What a job is measured on, as the startup listed it. */
@@ -82,9 +158,16 @@ export function KpiReport({
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Resultado</dt>
-                  <dd className="break-words font-semibold text-navy">{result.value}</dd>
+                  <dd className="break-words font-semibold text-navy">
+                    {result.numericValue !== null
+                      ? withUnit(result.numericValue, kpi.unit)
+                      : result.value}
+                  </dd>
                 </div>
               </dl>
+              <div className="mt-1">
+                <KpiOutcomeBadge {...kpiOutcome(kpi, result.numericValue)} />
+              </div>
               {result.comment ? (
                 <p className="mt-1 whitespace-pre-line break-words text-foreground/80">
                   {result.comment}

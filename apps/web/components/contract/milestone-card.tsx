@@ -28,8 +28,10 @@ import {
 } from '@/components/ui/dialog';
 import {
   AttachFileButton,
+  KpiOutcomeBadge,
   KpiReport,
   attachmentProblem,
+  kpiOutcome,
   kpiTarget,
 } from '@/components/contract/kpi-report';
 import { ReportTemplateButton } from '@/components/report-template';
@@ -251,6 +253,73 @@ export function MilestoneCard({
   );
 }
 
+/**
+ * The result of one KPI in a delivery. A KPI with a numeric target takes a
+ * number, shown against the target as it is typed, or that it cannot be
+ * measured yet; a KPI that is only tracked takes free text.
+ */
+function KpiResultField({ kpi }: { kpi: JobKpi }) {
+  const [value, setValue] = useState('');
+  const [unmeasured, setUnmeasured] = useState(false);
+  const numeric = kpi.targetValue !== null;
+
+  return (
+    <div className="space-y-1.5 rounded-xl bg-muted/50 p-3">
+      <label htmlFor={`result-${kpi.id}`} className="block text-sm font-medium text-navy">
+        {kpi.name}
+        <span className="block text-xs font-normal text-muted-foreground">
+          Meta: {kpiTarget(kpi)}
+        </span>
+      </label>
+      {numeric ? (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              id={`result-${kpi.id}`}
+              name={`result-${kpi.id}`}
+              type="number"
+              inputMode="decimal"
+              step="any"
+              required={!unmeasured}
+              disabled={unmeasured}
+              value={unmeasured ? '' : value}
+              onChange={(event) => setValue(event.target.value)}
+              placeholder={kpi.unit ? `Resultado en ${kpi.unit}` : 'Resultado'}
+              className="w-44"
+            />
+            {!unmeasured && value !== '' ? (
+              <KpiOutcomeBadge {...kpiOutcome(kpi, value)} />
+            ) : null}
+          </div>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              name={`unmeasured-${kpi.id}`}
+              checked={unmeasured}
+              onChange={(event) => setUnmeasured(event.target.checked)}
+            />
+            Todavía no se puede medir
+          </label>
+        </>
+      ) : (
+        <Input
+          id={`result-${kpi.id}`}
+          name={`result-${kpi.id}`}
+          required
+          maxLength={120}
+          placeholder='Resultado, por ejemplo 48, o "Todavía no se puede medir"'
+        />
+      )}
+      <Input
+        name={`comment-${kpi.id}`}
+        maxLength={500}
+        placeholder="Comentario (opcional)"
+        aria-label={`Comentario sobre ${kpi.name}`}
+      />
+    </div>
+  );
+}
+
 function DeliverDialog({
   contractId,
   milestoneId,
@@ -311,7 +380,12 @@ function DeliverDialog({
         ? {
             results: kpis.map((kpi) => ({
               kpiId: kpi.id,
-              value: values[`result-${kpi.id}`],
+              // A numeric target takes a number, or that it is not measurable yet.
+              ...(kpi.targetValue === null
+                ? { value: values[`result-${kpi.id}`] }
+                : values[`unmeasured-${kpi.id}`]
+                  ? { notMeasurable: true }
+                  : { number: Number(values[`result-${kpi.id}`]) }),
               ...(values[`comment-${kpi.id}`]
                 ? { comment: values[`comment-${kpi.id}`] }
                 : {}),
@@ -366,30 +440,7 @@ function DeliverDialog({
             <fieldset className="space-y-3">
               <legend className="text-sm font-semibold text-navy">Resultados</legend>
               {kpis.map((kpi) => (
-                <div key={kpi.id} className="space-y-1.5 rounded-xl bg-muted/50 p-3">
-                  <label
-                    htmlFor={`result-${kpi.id}`}
-                    className="block text-sm font-medium text-navy"
-                  >
-                    {kpi.name}
-                    <span className="block text-xs font-normal text-muted-foreground">
-                      Meta: {kpiTarget(kpi)}
-                    </span>
-                  </label>
-                  <Input
-                    id={`result-${kpi.id}`}
-                    name={`result-${kpi.id}`}
-                    required
-                    maxLength={120}
-                    placeholder='Resultado, por ejemplo 48, o "Todavía no se puede medir"'
-                  />
-                  <Input
-                    name={`comment-${kpi.id}`}
-                    maxLength={500}
-                    placeholder="Comentario (opcional)"
-                    aria-label={`Comentario sobre ${kpi.name}`}
-                  />
-                </div>
+                <KpiResultField key={kpi.id} kpi={kpi} />
               ))}
             </fieldset>
           ) : null}

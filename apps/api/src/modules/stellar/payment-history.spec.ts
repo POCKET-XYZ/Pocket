@@ -1,4 +1,4 @@
-import { usdcPaymentsOf } from './payment-history';
+import { usdcPaymentsOf, usdcTransfersOf } from './payment-history';
 
 const ME = 'GME';
 const OTHER = 'GOTHER';
@@ -164,5 +164,66 @@ describe('usdcPaymentsOf', () => {
         amount: '200.0000000',
       }),
     ]);
+  });
+});
+
+describe('usdcTransfersOf', () => {
+  const transfer = (fields: Record<string, unknown>) => ({
+    type: 'transfer',
+    from: ESCROW,
+    to: ME,
+    amount: '1.0000000',
+    ...usdc,
+    ...fields,
+  });
+
+  it('reads what a release paid out of the escrow, to whom', () => {
+    const transfers = usdcTransfersOf(
+      [
+        record({
+          type: 'invoke_host_function',
+          asset_balance_changes: [
+            transfer({ to: 'GTW', amount: '0.0900000' }),
+            transfer({ to: 'GPOCKET', amount: '0.3000000' }),
+            transfer({ to: 'GSPECIALIST', amount: '29.6100000' }),
+          ],
+        }),
+      ],
+      ESCROW,
+      'USDC',
+      ISSUER,
+    );
+    expect(transfers).toEqual([
+      { to: 'GTW', amount: '0.0900000' },
+      { to: 'GPOCKET', amount: '0.3000000' },
+      { to: 'GSPECIALIST', amount: '29.6100000' },
+    ]);
+  });
+
+  it('leaves out other assets, other senders, mints and failed transactions', () => {
+    const transfers = usdcTransfersOf(
+      [
+        record({
+          type: 'invoke_host_function',
+          asset_balance_changes: [
+            transfer({ asset_issuer: 'GFAKE' }),
+            transfer({ asset_code: 'EURC' }),
+            transfer({ from: OTHER }),
+            transfer({ type: 'mint' }),
+            transfer({ to: undefined }),
+          ],
+        }),
+        record({
+          type: 'invoke_host_function',
+          transaction_successful: false,
+          asset_balance_changes: [transfer({})],
+        }),
+        record({ type: 'payment', from: ESCROW, to: ME, amount: '5', ...usdc }),
+      ],
+      ESCROW,
+      'USDC',
+      ISSUER,
+    );
+    expect(transfers).toEqual([]);
   });
 });

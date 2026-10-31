@@ -10,6 +10,7 @@ import type { NotificationsService } from '../notifications/notifications.servic
 import { NotYetConfirmed } from '../stellar/chain-operations.service';
 import { DisputesService, splitFor } from './disputes.service';
 import type { EscrowService } from './escrow.service';
+import type { PayoutsService } from './payouts.service';
 import type { MilestonesService } from './milestones.service';
 
 const startup: AuthUser = {
@@ -96,6 +97,7 @@ describe('DisputesService', () => {
   };
   let milestones: { load: jest.Mock; completeIfDone: jest.Mock };
   let notifications: { notifyUsers: jest.Mock };
+  let payouts: { readMissing: jest.Mock };
   let service: DisputesService;
 
   beforeEach(() => {
@@ -129,11 +131,13 @@ describe('DisputesService', () => {
     };
     milestones = { load: jest.fn(), completeIfDone: jest.fn() };
     notifications = { notifyUsers: jest.fn() };
+    payouts = { readMissing: jest.fn().mockResolvedValue(undefined) };
     service = new DisputesService(
       prisma as unknown as PrismaService,
       escrow as unknown as EscrowService,
       milestones as unknown as MilestonesService,
       notifications as unknown as NotificationsService,
+      payouts as unknown as PayoutsService,
     );
   });
 
@@ -312,6 +316,7 @@ describe('DisputesService', () => {
         }),
       );
       expect(milestones.completeIfDone).toHaveBeenCalledWith('contract-1');
+      expect(payouts.readMissing).toHaveBeenCalledWith('contract-1');
       expect(notifications.notifyUsers).toHaveBeenCalledWith(['startup-1', 'specialist-1'], {
         type: 'dispute_resolved',
         disputeId: 'dispute-1',

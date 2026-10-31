@@ -16,11 +16,11 @@ Once there is a contract, each party sees the other's contact email, since they 
 
 ## Milestones
 
-1. The specialist delivers: a link and an optional note. Every version is kept.
+1. The specialist delivers: a link, an optional note and a result for each of the job's KPIs. Every version is kept.
 2. The startup approves it or asks for changes, with feedback on that version.
 3. Approving takes one signature from the startup. Pocket then releases the milestone to the specialist.
 
-When every milestone is paid, or its dispute resolved, the contract and the job are completed.
+When every milestone is paid, or its dispute resolved, the contract and the job are completed, and both parties are told its [results report](reports.md) is ready.
 
 | Contract state        | Meaning                                          |
 | --------------------- | ------------------------------------------------ |
@@ -63,12 +63,13 @@ Steps that need a signature come in pairs: `prepare` returns `{ operationId, xdr
 | `POST /contracts`                      | Approved startups     | Hires: `{ applicationId, milestones }`.                                         |
 | `GET /contracts/mine`                  | Startups, specialists | The user's contracts.                                                           |
 | `GET /contracts/:id`                   | Parties, managers     | Milestones, deliveries, disputes, contacts and confirmed on-chain transactions. |
+| `GET /contracts/:id/report`            | Parties, managers     | The [results report](reports.md). `/report/csv` has its payments as a CSV.      |
 | `POST /contracts/:id/accept`           | The specialist        | Accepts the terms; deploys the escrow.                                          |
 | `POST /contracts/:id/decline`          | The specialist        | Declines the terms.                                                             |
 | `POST /contracts/:id/fund/prepare`     | The startup           | Funding transaction to sign.                                                    |
 | `POST /contracts/:id/fund/submit`      | The startup           | Broadcasts it and activates the contract once the escrow is funded.             |
 | `POST /contracts/:id/fund/sync`        | The startup           | Checks the escrow again, when the deposit took a moment to show.                |
-| `POST /milestones/:id/deliveries`      | The specialist        | Delivers: `{ url, note? }`.                                                     |
+| `POST /milestones/:id/deliveries`      | The specialist        | Delivers: `{ url, note?, results? }`. One result per KPI of the job.            |
 | `POST /milestones/:id/request-changes` | The startup           | Sends it back: `{ feedback }`.                                                  |
 | `POST /milestones/:id/approve/prepare` | The startup           | Approval transaction to sign.                                                   |
 | `POST /milestones/:id/approve/submit`  | The startup           | Broadcasts it; Pocket then pays the milestone.                                  |

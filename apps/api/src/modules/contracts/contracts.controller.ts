@@ -1,10 +1,13 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Verified } from '../../common/decorators/verified.decorator';
 import type { AuthUser } from '../../common/types/auth';
+import { sendPrivateFile } from '../../common/uploads/send-file';
 import { ContractsService } from './contracts.service';
+import { ReportService } from './report.service';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { SignedTransactionDto } from '../stellar/dto/signed-transaction.dto';
 import { ESCROW_RATE_LIMIT, RateLimit } from '../../common/rate-limit/rate-limit.decorator';
@@ -13,7 +16,10 @@ import { ESCROW_RATE_LIMIT, RateLimit } from '../../common/rate-limit/rate-limit
 @ApiBearerAuth()
 @Controller('contracts')
 export class ContractsController {
-  constructor(private readonly contracts: ContractsService) {}
+  constructor(
+    private readonly contracts: ContractsService,
+    private readonly reports: ReportService,
+  ) {}
 
   /** Hire an applicant: pick their application and define the milestones. */
   @Roles('startup')
@@ -33,6 +39,22 @@ export class ContractsController {
   @Get(':id')
   detail(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.contracts.detail(user, id);
+  }
+
+  /** Results report: KPIs against targets, milestones against dates, payments. */
+  @Get(':id/report')
+  report(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.reports.report(user, id);
+  }
+
+  /** The report's payments as a CSV, for accounting. */
+  @Get(':id/report/csv')
+  async reportCsv(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() res: Response,
+  ) {
+    sendPrivateFile(res, await this.reports.csv(user, id));
   }
 
   /** The specialist accepts the terms and the escrow is deployed. */

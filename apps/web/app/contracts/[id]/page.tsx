@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { MilestoneCard } from '@/components/contract/milestone-card';
+import { ResultsCard } from '@/components/contract/results';
 import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { ReportTemplateButton } from '@/components/report-template';
 import { RequireAuth } from '@/components/require-auth';
@@ -127,6 +128,10 @@ function Contract({ user }: { user: User }) {
       </Card>
 
       <NextStep contract={data} user={user} />
+
+      {data.status === 'active' || data.status === 'completed' ? (
+        <ResultsCard contractId={data.id} />
+      ) : null}
 
       <section className="space-y-3">
         <h2 className="text-xl font-bold text-navy">Hitos</h2>
