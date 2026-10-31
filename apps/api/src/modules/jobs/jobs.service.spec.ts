@@ -126,6 +126,18 @@ describe('JobsService', () => {
       ['with a target too long', { name: 'Leads', target: 'x'.repeat(81) }],
       ['with a unit too long', { name: 'Leads', unit: 'x'.repeat(31) }],
       ['with a field nobody asked for', { name: 'Leads', weight: 3 }],
+      [
+        'with a negative target',
+        { name: 'Leads', targetValue: -1, direction: 'more_is_better' },
+      ],
+      [
+        'with a target that is not a number',
+        { name: 'Leads', targetValue: 'many', direction: 'more_is_better' },
+      ],
+      [
+        'with a direction nobody knows',
+        { name: 'Leads', targetValue: 5, direction: 'up' },
+      ],
     ])('refuses a KPI %s', async (_label, kpi) => {
       await expect(problems({ ...dto, kpis: [kpi] })).resolves.not.toEqual([]);
     });
@@ -145,6 +157,65 @@ describe('JobsService', () => {
           { name: 'Reply rate', unit: '%', position: 1 },
         ],
       });
+    });
+
+    it('stores a numeric target with the way that is better', async () => {
+      await service.create(startup, {
+        ...dto,
+        kpis: [
+          {
+            name: 'Qualified leads',
+            targetValue: 100,
+            direction: 'more_is_better',
+            unit: 'leads',
+          },
+          {
+            name: 'Cost per lead',
+            targetValue: 0,
+            direction: 'less_is_better',
+            unit: 'USDC',
+          },
+        ],
+      });
+      const { data } = prisma.job.create.mock.calls[0][0];
+      expect(data.kpis.create).toEqual([
+        {
+          name: 'Qualified leads',
+          targetValue: 100,
+          direction: 'more_is_better',
+          unit: 'leads',
+          position: 0,
+        },
+        {
+          name: 'Cost per lead',
+          targetValue: 0,
+          direction: 'less_is_better',
+          unit: 'USDC',
+          position: 1,
+        },
+      ]);
+    });
+
+    it.each([
+      ['a target without a direction', { name: 'Leads', targetValue: 100 }],
+      [
+        'a direction without a target',
+        { name: 'Leads', direction: 'less_is_better' as const },
+      ],
+    ])('refuses %s', async (_label, kpi) => {
+      await expect(service.create(startup, { ...dto, kpis: [kpi] })).rejects.toThrow(
+        'van juntas',
+      );
+      expect(prisma.job.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses a target of 0 when more is better', async () => {
+      await expect(
+        service.create(startup, {
+          ...dto,
+          kpis: [{ name: 'Leads', targetValue: 0, direction: 'more_is_better' }],
+        }),
+      ).rejects.toThrow('menos es mejor');
     });
 
     it('refuses the same KPI twice', async () => {

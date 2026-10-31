@@ -17,6 +17,7 @@ import {
 import { AddEvidenceDto, OpenDisputeDto, ResolveDisputeDto } from './dto/dispute.dto';
 import { DELIVERABLE_REPORT } from './deliverable-report';
 import { EscrowService } from './escrow.service';
+import { PayoutsService } from './payouts.service';
 import { MilestonesService } from './milestones.service';
 
 /** A milestone can be disputed while the work is under way or delivered. */
@@ -32,6 +33,7 @@ export class DisputesService {
     private readonly escrow: EscrowService,
     private readonly milestones: MilestonesService,
     private readonly notifications: NotificationsService,
+    private readonly payouts: PayoutsService,
   ) {}
 
   /** Dispute transaction for the party opening it to sign. */
@@ -284,6 +286,8 @@ export class DisputesService {
         startupAmount: startupAmount.toString(),
       },
     );
+    // What the resolution split into, for the report; never holds it up.
+    void this.payouts.readMissing(milestone.contractId);
     await this.milestones.completeIfDone(milestone.contractId);
     return resolved;
   }

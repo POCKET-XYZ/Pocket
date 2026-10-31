@@ -5,6 +5,7 @@ import type {
   DisputeOutcome,
   DisputeStatus,
   JobStatus,
+  KpiDirection,
   MilestoneStatus,
   ServiceCategory,
   StartupStage,
@@ -283,10 +284,18 @@ export interface JobInput {
   kpis?: JobKpiInput[];
 }
 
-/** Something the work is measured on, e.g. { name: 'Qualified leads', target: '50 per month' }. */
+/**
+ * Something the work is measured on, e.g. { name: 'Qualified leads',
+ * targetValue: 100, direction: 'more_is_better', unit: 'leads' }. Without a
+ * target it is only tracked: reported on, never counted as met or missed.
+ */
 export interface JobKpiInput {
   name: string;
-  /** Free text, e.g. "50 per month". */
+  /** A number to meet, 0 or more. Comes with `direction`. */
+  targetValue?: number;
+  /** Which way is better. Comes with `targetValue`. */
+  direction?: KpiDirection;
+  /** Free text, e.g. "50 per month". Only on KPIs from before targets were numbers. */
   target?: string;
   /** e.g. "leads", "%". */
   unit?: string;
@@ -297,7 +306,11 @@ export interface JobKpi {
   /** Order in which the startup listed it. */
   position: number;
   name: string;
+  /** Free text target from before targets were numbers. */
   target: string | null;
+  /** The numeric target, as a decimal string, or null when only tracked. */
+  targetValue: string | null;
+  direction: KpiDirection | null;
   unit: string | null;
 }
 
@@ -512,11 +525,19 @@ export interface DeliveryInput {
   results?: KpiResultInput[];
 }
 
-/** What a delivery reports for one of the job's KPIs. */
+/**
+ * What a delivery reports for one of the job's KPIs. A KPI with a numeric
+ * target takes `number`, or `notMeasurable` when it cannot be measured yet; a
+ * KPI that is only tracked takes `value`.
+ */
 export interface KpiResultInput {
   kpiId: string;
-  /** Free text, short: "62", "48 of 50", "Not measurable yet". */
-  value: string;
+  /** Free text, short: "62", "48 of 50". */
+  value?: string;
+  /** The result of a KPI with a numeric target. */
+  number?: number;
+  /** A KPI with a numeric target that cannot be measured yet. */
+  notMeasurable?: boolean;
   comment?: string;
 }
 
@@ -524,7 +545,10 @@ export interface KpiResult {
   id: string;
   deliverableId: string;
   kpiId: string;
+  /** As written, or "Todavía no se puede medir". */
   value: string;
+  /** The number reported for a KPI with a numeric target, as a decimal string. */
+  numericValue: string | null;
   comment: string | null;
 }
 
@@ -772,4 +796,131 @@ export interface ManagerMetrics {
   };
   /** The last 12 weeks, oldest first, the current week last. */
   weekly: MetricsWeek[];
+}
+
+/**
+ * How a KPI's result compares with its target in a results report.
+ * `not_measured`: it has a numeric target, but the result the startup
+ * accepted is not a number yet. `tracked`: it has no numeric target.
+ */
+export type KpiOutcome = 'met' | 'not_met' | 'not_measured' | 'tracked';
+
+/** A KPI in a results report, with the result the startup accepted last. */
+export interface ReportKpi {
+  id: string;
+  name: string;
+  unit: string | null;
+  /** Free text target from before targets were numbers. */
+  target: string | null;
+  targetValue: string | null;
+  direction: KpiDirection | null;
+  /**
+   * The result in the latest delivery the startup approved, or null while
+   * none was approved.
+   */
+  result: {
+    value: string;
+    numericValue: string | null;
+    comment: string | null;
+    milestoneTitle: string;
+    /** When the startup approved that delivery. */
+    approvedAt: IsoDate | null;
+  } | null;
+  outcome: KpiOutcome;
+  /** Result over target in percent, for a "more is better" KPI with both numbers. */
+  percent: number | null;
+}
+
+/**
+ * When a milestone's first delivery came, against the day committed to:
+ * before that day ended anywhere on Earth is on time. `upcoming`: not
+ * delivered yet, and the day has not ended.
+ */
+export type MilestoneTiming = 'on_time' | 'late' | 'upcoming';
+
+export interface ReportMilestone {
+  id: string;
+  position: number;
+  title: string;
+  amount: string;
+  status: MilestoneStatus;
+  dueDate: IsoDate;
+  firstDeliveredAt: IsoDate | null;
+  approvedAt: IsoDate | null;
+  paidAt: IsoDate | null;
+  timing: MilestoneTiming;
+  /** Versions delivered. */
+  deliveries: number;
+  /** Rounds of changes the startup asked for. */
+  changeRounds: number;
+  disputed: boolean;
+}
+
+/** USDC that left the escrow in one transaction, split as Stellar recorded it. */
+export interface PayoutBreakdown {
+  specialist: string;
+  /** Given back to the startup by a dispute resolution. */
+  startup: string;
+  pocket: string;
+  trustlessWork: string;
+  /** Anyone else; always 0 unless something is wrong. */
+  other: string;
+}
+
+/** A release or a dispute resolution of the contract. */
+export interface ReportPayment {
+  milestoneId: string;
+  milestonePosition: number;
+  milestoneTitle: string;
+  kind: 'release' | 'resolve';
+  txHash: string;
+  confirmedAt: IsoDate | null;
+  /** What the milestone held in the escrow. */
+  amount: string;
+  /** Read from the transaction on Stellar; null while it could not be read. */
+  breakdown: PayoutBreakdown | null;
+}
+
+/**
+ * GET /contracts/:id/report, for the parties and managers. What the contract
+ * achieved: each KPI against its target, each milestone against its date, and
+ * every payment as Stellar recorded it. It follows the contract while it runs
+ * and is final once the contract is completed. Results are reported by the
+ * specialist and accepted by the startup when it approves a delivery; payments
+ * are read from the chain. GET /contracts/:id/report.csv has the payments.
+ */
+export interface ContractReport {
+  generatedAt: IsoDate;
+  contract: Pick<
+    Contract,
+    'id' | 'status' | 'amount' | 'escrowId' | 'fundedAt' | 'completedAt' | 'createdAt'
+  >;
+  job: Pick<Job, 'id' | 'title' | 'category'>;
+  startup: { id: string; companyName: string | null };
+  specialist: { id: string; displayName: string | null };
+  summary: {
+    milestones: { total: number; done: number; onTime: number; late: number };
+    /** KPIs with a numeric target, and how many of them are met. */
+    kpis: { withTarget: number; met: number };
+    /** Rounds of changes asked for across every milestone. */
+    changeRounds: number;
+    disputes: number;
+  };
+  /** USDC. */
+  money: {
+    contract: string;
+    deposited: string;
+    /** Left the escrow: milestones paid or resolved. */
+    released: string;
+    inEscrow: string;
+    toSpecialist: string;
+    toStartup: string;
+    pocketFee: string;
+    trustlessWorkFee: string;
+    /** False while the split of some payment could not be read from Stellar. */
+    verified: boolean;
+  };
+  kpis: ReportKpi[];
+  milestones: ReportMilestone[];
+  payments: ReportPayment[];
 }

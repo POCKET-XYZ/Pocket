@@ -8,7 +8,8 @@ import type { AuthUser } from '../../common/types/auth';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { EscrowService } from './escrow.service';
-import { MilestonesService } from './milestones.service';
+import type { PayoutsService } from './payouts.service';
+import { MilestonesService, NOT_MEASURABLE } from './milestones.service';
 
 const startup: AuthUser = {
   sub: 'startup-1',
@@ -58,7 +59,7 @@ describe('MilestonesService', () => {
       findFirstOrThrow: jest.Mock;
       update: jest.Mock;
     };
-    contract: { update: jest.Mock };
+    contract: { updateMany: jest.Mock; findUniqueOrThrow: jest.Mock };
     job: { update: jest.Mock; findUniqueOrThrow: jest.Mock };
     jobKpi: { findMany: jest.Mock };
     $transaction: jest.Mock;
@@ -72,6 +73,7 @@ describe('MilestonesService', () => {
     release: jest.Mock;
   };
   let notifications: { notifyUsers: jest.Mock };
+  let payouts: { readMissing: jest.Mock };
   let service: MilestonesService;
 
   beforeEach(() => {
@@ -93,10 +95,15 @@ describe('MilestonesService', () => {
         update: jest.fn(),
       },
       contract: {
-        update: jest.fn().mockResolvedValue({ id: 'contract-1', jobId: 'job-1' }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          jobId: 'job-1',
+          startupId: 'startup-1',
+          specialistId: 'specialist-1',
+        }),
       },
       job: {
-        update: jest.fn(),
+        update: jest.fn().mockResolvedValue({ title: 'Outbound campaign' }),
         findUniqueOrThrow: jest.fn().mockResolvedValue({ revisionRounds: 2 }),
       },
       // Jobs have no KPIs unless a test gives them some.
@@ -118,10 +125,12 @@ describe('MilestonesService', () => {
       release: jest.fn(),
     };
     notifications = { notifyUsers: jest.fn() };
+    payouts = { readMissing: jest.fn().mockResolvedValue(undefined) };
     service = new MilestonesService(
       prisma as unknown as PrismaService,
       escrow as unknown as EscrowService,
       notifications as unknown as NotificationsService,
+      payouts as unknown as PayoutsService,
     );
   });
 
@@ -163,8 +172,23 @@ describe('MilestonesService', () => {
     });
 
     describe('results report', () => {
-      const LEADS = { id: '11111111-1111-4111-8111-111111111111', name: 'Qualified leads' };
-      const REPLIES = { id: '22222222-2222-4222-8222-222222222222', name: 'Reply rate' };
+      // Tracked only: free text results.
+      const LEADS = {
+        id: '11111111-1111-4111-8111-111111111111',
+        name: 'Qualified leads',
+        targetValue: null,
+      };
+      const REPLIES = {
+        id: '22222222-2222-4222-8222-222222222222',
+        name: 'Reply rate',
+        targetValue: null,
+      };
+      // With a numeric target: a number, or not measurable yet.
+      const COST = {
+        id: '44444444-4444-4444-8444-444444444444',
+        name: 'Cost per lead',
+        targetValue: new Prisma.Decimal(5),
+      };
       const OTHER_JOB_KPI = '33333333-3333-4333-8333-333333333333';
       const url = 'https://example.com/report';
 
@@ -275,6 +299,66 @@ describe('MilestonesService', () => {
             results: [{ kpiId: LEADS.id, value: '48' }],
           }),
         ).rejects.toThrow('no tiene KPI');
+      });
+
+      describe('with a numeric target', () => {
+        beforeEach(() => prisma.jobKpi.findMany.mockResolvedValue([COST]));
+
+        it('stores the number, also as written', async () => {
+          await service.deliver(specialist, 'milestone-1', {
+            url,
+            results: [{ kpiId: COST.id, number: 4.2, comment: ' Two ads paused ' }],
+          });
+          const { data } = prisma.deliverable.create.mock.calls[0][0];
+          expect(data.kpiResults.create).toEqual([
+            { kpiId: COST.id, value: '4.2', numericValue: 4.2, comment: 'Two ads paused' },
+          ]);
+        });
+
+        it('takes that it cannot be measured yet, without a number', async () => {
+          await service.deliver(specialist, 'milestone-1', {
+            url,
+            results: [{ kpiId: COST.id, notMeasurable: true }],
+          });
+          const { data } = prisma.deliverable.create.mock.calls[0][0];
+          expect(data.kpiResults.create).toEqual([
+            { kpiId: COST.id, value: NOT_MEASURABLE },
+          ]);
+        });
+
+        it('asks for a number rather than free text', async () => {
+          await expect(
+            service.deliver(specialist, 'milestone-1', {
+              url,
+              results: [{ kpiId: COST.id, value: 'about 4' }],
+            }),
+          ).rejects.toThrow('Reporta un número para "Cost per lead"');
+          expect(prisma.deliverable.create).not.toHaveBeenCalled();
+        });
+
+        it('refuses a number that also says it cannot be measured', async () => {
+          await expect(
+            service.deliver(specialist, 'milestone-1', {
+              url,
+              results: [{ kpiId: COST.id, number: 4, notMeasurable: true }],
+            }),
+          ).rejects.toThrow('no las dos cosas');
+        });
+      });
+
+      it('writes a number or "not measurable" as the text of a tracked KPI', async () => {
+        await service.deliver(specialist, 'milestone-1', {
+          url,
+          results: [
+            { kpiId: LEADS.id, number: 48 },
+            { kpiId: REPLIES.id, notMeasurable: true },
+          ],
+        });
+        const { data } = prisma.deliverable.create.mock.calls[0][0];
+        expect(data.kpiResults.create).toEqual([
+          { kpiId: LEADS.id, value: '48' },
+          { kpiId: REPLIES.id, value: NOT_MEASURABLE },
+        ]);
       });
     });
 
@@ -391,13 +475,18 @@ describe('MilestonesService', () => {
         milestoneTitle: 'Lead list',
         amount: '100',
       });
-      expect(prisma.contract.update).toHaveBeenCalledWith({
-        where: { id: 'contract-1' },
+      expect(payouts.readMissing).toHaveBeenCalledWith('contract-1');
+      expect(prisma.contract.updateMany).toHaveBeenCalledWith({
+        where: { id: 'contract-1', status: { not: 'completed' } },
         data: expect.objectContaining({ status: 'completed' }),
       });
-      expect(prisma.job.update).toHaveBeenCalledWith({
-        where: { id: 'job-1' },
-        data: { status: 'completed' },
+      expect(prisma.job.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'job-1' }, data: { status: 'completed' } }),
+      );
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(['startup-1', 'specialist-1'], {
+        type: 'report_ready',
+        contractId: 'contract-1',
+        jobTitle: 'Outbound campaign',
       });
     });
 
@@ -448,6 +537,14 @@ describe('MilestonesService', () => {
   it('leaves the contract open while a milestone is still unpaid', async () => {
     prisma.milestone.count.mockResolvedValue(1);
     await service.completeIfDone('contract-1');
-    expect(prisma.contract.update).not.toHaveBeenCalled();
+    expect(prisma.contract.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('tells the parties about the report only the first time the contract completes', async () => {
+    prisma.milestone.count.mockResolvedValue(0);
+    prisma.contract.updateMany.mockResolvedValue({ count: 0 });
+    await service.completeIfDone('contract-1');
+    expect(prisma.job.update).not.toHaveBeenCalled();
+    expect(notifications.notifyUsers).not.toHaveBeenCalled();
   });
 });

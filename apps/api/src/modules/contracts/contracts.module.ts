@@ -11,6 +11,8 @@ import { DisputesService } from './disputes.service';
 import { EscrowService } from './escrow.service';
 import { MilestonesController } from './milestones.controller';
 import { MilestonesService } from './milestones.service';
+import { PayoutsService } from './payouts.service';
+import { ReportService } from './report.service';
 
 @Module({
   imports: [JobsModule, StellarModule, NotificationsModule],
@@ -27,6 +29,8 @@ import { MilestonesService } from './milestones.service';
     MilestonesService,
     DeliverablesService,
     DisputesService,
+    PayoutsService,
+    ReportService,
   ],
 })
 export class ContractsModule {}

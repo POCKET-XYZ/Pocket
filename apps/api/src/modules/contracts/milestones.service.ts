@@ -12,8 +12,12 @@ import { NotificationsService } from '../notifications/notifications.service';
 import type { PreparedTransaction } from '../stellar/chain-operations.service';
 import { DeliverDto, KpiResultDto, RequestChangesDto } from './dto/milestone-actions.dto';
 import { EscrowService } from './escrow.service';
+import { PayoutsService } from './payouts.service';
 
 type MilestoneWithContract = Milestone & { contract: Contract };
+
+/** What a KPI result says when the specialist could not measure it yet. */
+export const NOT_MEASURABLE = 'Todavía no se puede medir';
 
 @Injectable()
 export class MilestonesService {
@@ -21,6 +25,7 @@ export class MilestonesService {
     private readonly prisma: PrismaService,
     private readonly escrow: EscrowService,
     private readonly notifications: NotificationsService,
+    private readonly payouts: PayoutsService,
   ) {}
 
   /** The specialist submits the work for a milestone. Every version is kept. */
@@ -233,24 +238,41 @@ export class MilestonesService {
       milestoneTitle: milestone.title,
       amount: milestone.amount.toString(),
     });
+    // What the payment split into, for the report. In the background: it never
+    // holds up the payment, and the report reads what is missing.
+    void this.payouts.readMissing(milestone.contractId);
     await this.completeIfDone(milestone.contractId);
     return paid;
   }
 
-  /** A contract is complete once every milestone is paid or its dispute resolved. */
+  /**
+   * A contract is complete once every milestone is paid or its dispute
+   * resolved. Both parties are told their results report is ready, once.
+   */
   async completeIfDone(contractId: string): Promise<void> {
     const open = await this.prisma.milestone.count({
       where: { contractId, status: { notIn: ['paid', 'resolved'] } },
     });
     if (open > 0) return;
 
-    const contract = await this.prisma.contract.update({
-      where: { id: contractId },
+    const completed = await this.prisma.contract.updateMany({
+      where: { id: contractId, status: { not: 'completed' } },
       data: { status: 'completed', completedAt: new Date() },
     });
-    await this.prisma.job.update({
+    if (completed.count !== 1) return;
+    const contract = await this.prisma.contract.findUniqueOrThrow({
+      where: { id: contractId },
+      select: { jobId: true, startupId: true, specialistId: true },
+    });
+    const job = await this.prisma.job.update({
       where: { id: contract.jobId },
       data: { status: 'completed' },
+      select: { title: true },
+    });
+    this.notifications.notifyUsers([contract.startupId, contract.specialistId], {
+      type: 'report_ready',
+      contractId,
+      jobTitle: job.title,
     });
   }
 
@@ -293,11 +315,13 @@ export class MilestonesService {
   private async kpiReport(
     jobId: string,
     results: KpiResultDto[],
-  ): Promise<{ kpiId: string; value: string; comment?: string }[]> {
+  ): Promise<
+    { kpiId: string; value: string; numericValue?: number; comment?: string }[]
+  > {
     const kpis = await this.prisma.jobKpi.findMany({
       where: { jobId },
       orderBy: { position: 'asc' },
-      select: { id: true, name: true },
+      select: { id: true, name: true, targetValue: true },
     });
     if (kpis.length === 0) {
       if (results.length > 0) {
@@ -318,14 +342,43 @@ export class MilestonesService {
     }
 
     return kpis.map((kpi) => {
-      const value = byKpi.get(kpi.id)?.value.trim();
+      const result = byKpi.get(kpi.id);
+      const comment = result?.comment?.trim();
+      const withComment = comment ? { comment } : {};
+      if (result?.number !== undefined && result.notMeasurable) {
+        throw new BadRequestException(
+          `En "${kpi.name}", indica un número o que todavía no se puede medir, no las dos cosas`,
+        );
+      }
+
+      // A numeric target is compared with a number, so it takes nothing else.
+      if (kpi.targetValue !== null) {
+        if (result?.number !== undefined) {
+          return {
+            kpiId: kpi.id,
+            value: String(result.number),
+            numericValue: result.number,
+            ...withComment,
+          };
+        }
+        if (result?.notMeasurable) {
+          return { kpiId: kpi.id, value: NOT_MEASURABLE, ...withComment };
+        }
+        throw new BadRequestException(
+          `Reporta un número para "${kpi.name}". Si todavía no se puede medir, indícalo`,
+        );
+      }
+
+      const value =
+        result?.value?.trim() ||
+        (result?.number !== undefined ? String(result.number) : '') ||
+        (result?.notMeasurable ? NOT_MEASURABLE : '');
       if (!value) {
         throw new BadRequestException(
           `Reporta un resultado para "${kpi.name}". Si todavía no se puede medir, indícalo`,
         );
       }
-      const comment = byKpi.get(kpi.id)?.comment?.trim();
-      return { kpiId: kpi.id, value, ...(comment ? { comment } : {}) };
+      return { kpiId: kpi.id, value, ...withComment };
     });
   }
 

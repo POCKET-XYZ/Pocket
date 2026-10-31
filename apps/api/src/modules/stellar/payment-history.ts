@@ -91,6 +91,44 @@ export function usdcPaymentsOf(
   return result;
 }
 
+/** USDC sent from one address to another, as a transaction recorded it. */
+export interface UsdcTransfer {
+  to: string;
+  /** Decimal string, as Horizon gives it. */
+  amount: string;
+}
+
+/**
+ * The USDC transfers out of `from` (an escrow) among a transaction's Horizon
+ * operation records: what a release or a dispute resolution paid, to whom.
+ * Anything that is not this USDC, failed, or leaves from elsewhere is left out.
+ */
+export function usdcTransfersOf(
+  records: readonly unknown[],
+  from: string,
+  code: string,
+  issuer: string,
+): UsdcTransfer[] {
+  const result: UsdcTransfer[] = [];
+  for (const raw of records as PaymentLike[]) {
+    if (raw.transaction_successful === false || raw.type !== 'invoke_host_function') {
+      continue;
+    }
+    for (const change of raw.asset_balance_changes ?? []) {
+      if (
+        change.type === 'transfer' &&
+        change.asset_code === code &&
+        change.asset_issuer === issuer &&
+        change.from === from &&
+        change.to
+      ) {
+        result.push({ to: change.to, amount: change.amount });
+      }
+    }
+  }
+  return result;
+}
+
 /** Which way money moved for `address`, or null when it is not in it (or both ends). */
 function directionOf(
   from: string | undefined,

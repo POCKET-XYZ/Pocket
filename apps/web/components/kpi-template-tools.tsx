@@ -28,7 +28,11 @@ export function kpiRowsProblem(kpis: KpiDraft[]): string | null {
     return 'Cada KPI necesita un nombre de al menos 2 caracteres';
   }
   const repeated = repeatedKpi(kpis);
-  return repeated ? `"${repeated}" aparece dos veces como KPI` : null;
+  if (repeated) return `"${repeated}" aparece dos veces como KPI`;
+  const withoutTarget = kpis.find((kpi) => kpi.mode !== 'tracked' && !kpi.target.trim());
+  return withoutTarget
+    ? `Pon una meta en número a "${withoutTarget.name.trim() || 'cada KPI'}", o márcalo como Solo seguimiento`
+    : null;
 }
 
 /**

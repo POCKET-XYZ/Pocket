@@ -22,7 +22,12 @@ import {
 
 import { securityEvent } from '../../common/security/security-log';
 import type { StellarNetwork } from '../../config/configuration';
-import { usdcPaymentsOf, type UsdcPaymentRecord } from './payment-history';
+import {
+  usdcPaymentsOf,
+  usdcTransfersOf,
+  type UsdcPaymentRecord,
+  type UsdcTransfer,
+} from './payment-history';
 import { assertPlatformTx, type PlatformTxPolicy } from './platform-tx-policy';
 
 /** Whether an address can receive USDC. */
@@ -268,6 +273,21 @@ export class StellarService implements OnApplicationBootstrap {
         0,
         limit,
       );
+    } catch (error) {
+      if (error instanceof NotFoundError) return [];
+      throw error;
+    }
+  }
+
+  /**
+   * The USDC a transaction moved out of `from` (an escrow), one entry per
+   * transfer, as Stellar recorded it. Empty while Horizon has not indexed the
+   * transaction yet; throws when Horizon cannot answer.
+   */
+  async usdcTransfersFrom(txHash: string, from: string): Promise<UsdcTransfer[]> {
+    try {
+      const page = await this.horizon.operations().forTransaction(txHash).limit(200).call();
+      return usdcTransfersOf(page.records, from, this.usdc.getCode(), this.usdcIssuer);
     } catch (error) {
       if (error instanceof NotFoundError) return [];
       throw error;

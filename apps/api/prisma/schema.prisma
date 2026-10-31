@@ -320,19 +320,32 @@ model JobMilestone {
   @@map("job_milestones")
 }
 
+// Whether a KPI's target is a floor to reach or a ceiling to stay under.
+enum KpiDirection {
+  // e.g. qualified leads: 120 against a target of 100 meets it.
+  more_is_better
+  // e.g. cost per lead: 4.20 against a target of 5 meets it.
+  less_is_better
+}
+
 // What the work will be measured on, posted with the job so applicants know
-// before applying: "Qualified leads", target "50 per month". Up to 10 per job.
+// before applying: "Qualified leads", target 100. Up to 10 per job.
 // A table rather than JSON on the job, so each delivery's results point at a
 // KPI that exists through a foreign key.
 model JobKpi {
-  id       String  @id @default(uuid()) @db.Uuid
-  jobId    String  @map("job_id") @db.Uuid
-  position Int
-  name     String
-  // Free text, e.g. "50 per month". Optional: some KPIs are only tracked.
-  target   String?
+  id          String        @id @default(uuid()) @db.Uuid
+  jobId       String        @map("job_id") @db.Uuid
+  position    Int
+  name        String
+  // Free text, e.g. "50 per month", from before targets were numbers. Shown
+  // as written; it never counts as met or missed.
+  target      String?
+  // A number to meet, and which way is better. Both set or both null: a KPI
+  // without them is only tracked.
+  targetValue Decimal?      @map("target_value") @db.Decimal(20, 7)
+  direction   KpiDirection?
   // e.g. "leads", "%", "USD".
-  unit     String?
+  unit        String?
 
   job     Job                    @relation(fields: [jobId], references: [id], onDelete: Cascade)
   results DeliverableKpiResult[]
@@ -518,11 +531,15 @@ model Deliverable {
 // The result a delivery reports for one of the job's KPIs. Every version of a
 // delivery has its own, so the startup sees how the numbers moved.
 model DeliverableKpiResult {
-  id            String  @id @default(uuid()) @db.Uuid
-  deliverableId String  @map("deliverable_id") @db.Uuid
-  kpiId         String  @map("kpi_id") @db.Uuid
-  // Free text, short: "62", "48 of 50", "Not measurable yet".
+  id            String   @id @default(uuid()) @db.Uuid
+  deliverableId String   @map("deliverable_id") @db.Uuid
+  kpiId         String   @map("kpi_id") @db.Uuid
+  // Free text, short: "62", "48 of 50", "Not measurable yet". For a KPI with
+  // a numeric target, the number as written, or that it is not measurable yet.
   value         String
+  // The number reported for a KPI with a numeric target. Null when it was not
+  // measurable yet, and for a KPI that is only tracked.
+  numericValue  Decimal? @map("numeric_value") @db.Decimal(20, 7)
   comment       String?
 
   deliverable Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
@@ -635,38 +652,71 @@ enum ChainOperationStatus {
 // that same hash is accepted back, so the API never relays anything it did not
 // build for that user and that purpose.
 model ChainOperation {
-  id          String               @id @default(uuid()) @db.Uuid
-  kind        ChainOperationKind
-  status      ChainOperationStatus @default(prepared)
+  id            String               @id @default(uuid()) @db.Uuid
+  kind          ChainOperationKind
+  status        ChainOperationStatus @default(prepared)
   // Hash of the transaction, hex. Signatures do not change it.
-  txHash      String               @unique @map("tx_hash")
+  txHash        String               @unique @map("tx_hash")
   // Who has to sign it; null when the platform signs.
-  signerId    String?              @map("signer_id") @db.Uuid
-  contractId  String?              @map("contract_id") @db.Uuid
-  milestoneId String?              @map("milestone_id") @db.Uuid
+  signerId      String?              @map("signer_id") @db.Uuid
+  contractId    String?              @map("contract_id") @db.Uuid
+  milestoneId   String?              @map("milestone_id") @db.Uuid
   // USDC moved by this operation, when it moves any.
-  amount      Decimal?             @db.Decimal(20, 7)
+  amount        Decimal?             @db.Decimal(20, 7)
   // Set while the operation is confirmed, to "<kind>:<contract or milestone id>".
   // Unique, so each escrow step happens once per contract (deploy, fund) or per
   // milestone (approve, release, dispute, resolve), even with parallel requests.
   // Cleared when the operation fails so the step can be retried. Null for
   // trustlines and payments, which are not tied to a contract.
-  stepKey     String?              @unique @map("step_key")
-  error       String?
-  createdAt   DateTime             @default(now()) @map("created_at")
-  confirmedAt DateTime?            @map("confirmed_at")
+  stepKey       String?              @unique @map("step_key")
+  error         String?
+  createdAt     DateTime             @default(now()) @map("created_at")
+  confirmedAt   DateTime?            @map("confirmed_at")
+  // For a confirmed release or resolution: when the USDC it moved out of the
+  // escrow was read from Stellar into `payouts`. Null until then.
+  payoutsReadAt DateTime?            @map("payouts_read_at")
 
   // Never deleted with what they belong to: this is the record of every
   // transaction the platform key signed, and the monitor alerts on any
   // platform transaction missing from it.
-  signer    User?      @relation(fields: [signerId], references: [id], onDelete: SetNull)
-  contract  Contract?  @relation(fields: [contractId], references: [id], onDelete: SetNull)
-  milestone Milestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  signer    User?         @relation(fields: [signerId], references: [id], onDelete: SetNull)
+  contract  Contract?     @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  milestone Milestone?    @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  payouts   ChainPayout[]
 
   @@index([contractId])
   @@index([milestoneId])
   @@index([signerId])
   @@map("chain_operations")
+}
+
+// Who received USDC from an escrow.
+enum PayoutRecipient {
+  specialist
+  // Money given back to the startup by a dispute resolution.
+  startup
+  // Pocket's fee, paid to the platform address.
+  pocket
+  // Trustless Work's protocol fee.
+  trustless_work
+  // Anyone else. Pocket's policies never sign such a payment; kept to show it.
+  other
+}
+
+// One USDC transfer out of an escrow in a confirmed release or resolution, as
+// Stellar recorded it, not as Pocket computed it: the split between the
+// specialist, Pocket and Trustless Work that reports show.
+model ChainPayout {
+  id          String          @id @default(uuid()) @db.Uuid
+  operationId String          @map("operation_id") @db.Uuid
+  recipient   PayoutRecipient
+  address     String
+  amount      Decimal         @db.Decimal(20, 7)
+
+  operation ChainOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+
+  @@index([operationId])
+  @@map("chain_payouts")
 }
 
 // Accounts approved on testnet and carried to mainnet. A Pollar login gets a

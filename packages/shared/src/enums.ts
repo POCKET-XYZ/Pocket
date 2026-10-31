@@ -86,6 +86,15 @@ export const ApplicationStatus = {
 export type ApplicationStatus =
   (typeof ApplicationStatus)[keyof typeof ApplicationStatus];
 
+/** Whether a KPI's numeric target is a floor to reach or a ceiling to stay under. */
+export const KpiDirection = {
+  /** e.g. qualified leads: 120 against a target of 100 meets it. */
+  MoreIsBetter: 'more_is_better',
+  /** e.g. cost per lead: 4.20 against a target of 5 meets it. */
+  LessIsBetter: 'less_is_better',
+} as const;
+export type KpiDirection = (typeof KpiDirection)[keyof typeof KpiDirection];
+
 /** A contract from the startup's offer to the last payment. */
 export const ContractStatus = {
   AwaitingSpecialist: 'awaiting_specialist',

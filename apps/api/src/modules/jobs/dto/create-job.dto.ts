@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ServiceCategory } from '@prisma/client';
+import { KpiDirection, ServiceCategory } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -56,14 +56,39 @@ export class JobMilestoneDto {
 /** The most KPIs a job can be measured on. */
 export const MAX_JOB_KPIS = 10;
 
-/** Something the work will be measured on, e.g. "Qualified leads". */
+/**
+ * Something the work will be measured on, e.g. "Qualified leads", target 100,
+ * more is better. Without a target it is only tracked.
+ */
 export class JobKpiDto {
   @ApiProperty({ example: 'Qualified leads' })
   @IsString()
   @Length(2, 80)
   name: string;
 
-  @ApiPropertyOptional({ description: 'Free text', example: '50 per month' })
+  @ApiPropertyOptional({
+    description: 'A number to meet. Comes with direction',
+    example: 100,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 7 })
+  @Min(0)
+  @Max(1_000_000_000_000)
+  targetValue?: number;
+
+  @ApiPropertyOptional({
+    enum: KpiDirection,
+    description: 'Which way is better. Comes with targetValue',
+  })
+  @IsOptional()
+  @IsEnum(KpiDirection)
+  direction?: KpiDirection;
+
+  @ApiPropertyOptional({
+    description: 'Free text, from before targets were numbers',
+    example: '50 per month',
+  })
   @IsOptional()
   @IsString()
   @Length(1, 80)
