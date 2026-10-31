@@ -48,6 +48,19 @@ The mainnet values were read from the network: the deployer and code from a depl
    It checks the platform account, the escrow code, the arguments the policies expect, and a deploy Trustless Work builds right now, without signing anything. Every line must say `ok`.
 7. **A real hire with small amounts.** Two test accounts signed in through Pollar, a 1 USDC job in two milestones: release the first, dispute the second and split it. Check on [stellar.expert](https://stellar.expert/explorer/public) that each party received its share net of fees and that the platform account received the 1%.
 
+## Going live on the domain
+
+Until launch, `pocketgrowth.xyz` serves the landing, `app.` the testnet web and `api.` the testnet API. Moving the domain to mainnet, in order:
+
+1. **Web.** In Vercel, move `app.pocketgrowth.xyz` from the testnet project (`pocket`) to the mainnet one (`pocket-mainnet`). Testnet can keep a name of its own, such as `testnet.pocketgrowth.xyz`.
+2. **API.** In Railway, add `api.pocketgrowth.xyz` to the `mainnet` environment and remove it from the testnet one.
+3. **DNS.** The CNAME and TXT records Vercel and Railway ask for.
+4. **Variables.** Mainnet API: `CORS_ORIGINS` with `https://app.pocketgrowth.xyz`, `API_PUBLIC_URL=https://api.pocketgrowth.xyz`, and `WEB_PUBLIC_URL` when emails are on. Mainnet web: `NEXT_PUBLIC_API_URL=https://api.pocketgrowth.xyz/api`. Redeploy both.
+5. **Pollar.** Add `app.pocketgrowth.xyz` to the mainnet app's allowed domains.
+6. **Landing.** `NEXT_PUBLIC_STELLAR_NETWORK=mainnet` in its Vercel project, and redeploy, so its answer about real money says yes.
+7. **Emails.** Off until `RESEND_API_KEY` and `EMAIL_FROM` are set, with the sending domain verified in Resend.
+8. **Check.** The web and the API answer on the domain, a test account signs in, and the uptime workflow (`UPTIME_API_URL`, `UPTIME_WEB_URL`, already on the domain) stays green.
+
 ## Accounts carried over from testnet
 
 Pollar gives each person a new wallet on mainnet, so testnet accounts cannot follow their address. Approved accounts chosen to carry over are copied into `migrated_accounts` in the mainnet database, by email, with their verification, profile, CV and logo. The first time that email signs in through Pollar on mainnet, the account is created already approved on the new wallet, and the wallet is activated. Each row is claimed once. Jobs, applications and contracts stay on testnet.
