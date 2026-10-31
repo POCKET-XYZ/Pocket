@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, Ip, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { ChallengeDto } from './dto/challenge.dto';
@@ -30,8 +30,8 @@ export class AuthController {
   /** Step 2: send the signed transaction back and receive an access token. */
   @Post('login')
   @HttpCode(200)
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto);
+  login(@Body() dto: LoginDto, @Ip() ip: string) {
+    return this.auth.login(dto, ip);
   }
 
   /** End every session of the signed-in user, on every device. */
@@ -48,7 +48,7 @@ export class AuthController {
    */
   @Post('pollar')
   @HttpCode(200)
-  pollar(@Body() dto: PollarLoginDto) {
-    return this.auth.loginWithPollar(dto);
+  pollar(@Body() dto: PollarLoginDto, @Ip() ip: string) {
+    return this.auth.loginWithPollar(dto, ip);
   }
 }
