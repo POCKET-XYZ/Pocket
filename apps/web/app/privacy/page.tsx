@@ -2,400 +2,448 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LegalPage, PRIVACY_EMAIL } from '@/components/legal-page';
 
-export const metadata: Metadata = { title: 'Privacy Policy' };
+export const metadata: Metadata = { title: 'Política de Privacidad' };
 
 export default function PrivacyPage() {
   return (
     <LegalPage
-      title="Privacy Policy"
+      lang="es"
+      title="Política de Privacidad"
+      otherLanguage="/privacy/en"
       summary={
         <>
-          <p className="font-semibold">The short version</p>
+          <p className="font-semibold">En resumen</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>
-              We use your data to run your account, verify you, publish your profile, and run
-              escrows and disputes. Nothing else.
-            </li>
-            <li>We do not sell your data, show ads, or track you across other sites.</li>
-            <li>
-              Your wallet address and your escrow payments are on a public blockchain, where
-              nobody can delete them.
+              Usamos tus datos para operar tu cuenta, publicar tu perfil y manejar los
+              contratos, las disputas y los reportes de resultados. Nada más.
             </li>
             <li>
-              You can download your data and delete your account from your{' '}
-              <Link href="/account">account page</Link>. For anything else, a person handles
-              your request at {PRIVACY_EMAIL}.
+              No vendemos tus datos, no mostramos anuncios y no te seguimos en otros
+              sitios.
+            </li>
+            <li>
+              Tu dirección de wallet y los pagos de tus contratos están en una blockchain
+              pública, donde nadie puede borrarlos.
+            </li>
+            <li>
+              Puedes descargar tus datos y eliminar tu cuenta desde tu{' '}
+              <Link href="/account">página de cuenta</Link>. Para todo lo demás, una
+              persona atiende tu solicitud en {PRIVACY_EMAIL}.
             </li>
           </ul>
         </>
       }
     >
-      <h2>1. Who is responsible for your data</h2>
+      <h2>1. Quién es responsable de tus datos</h2>
       <p>
-        Pocket (&quot;Pocket&quot;, &quot;we&quot;) is responsible for the personal data
-        described here. Pocket is operated by its founding team while a legal entity is being
-        incorporated. Until then, its founders are the controllers of your data. Once the entity
-        exists, it will be the controller, and we will publish here its legal name, registered
-        address and the contact of its data protection officer. You can reach us about privacy
-        at {PRIVACY_EMAIL}.
+        Pocket (&quot;Pocket&quot;, &quot;nosotros&quot;) es responsable de los datos
+        personales que se describen aquí. Pocket lo opera su equipo fundador mientras se
+        constituye una entidad legal. Hasta entonces, sus fundadores son los responsables
+        de tus datos. Cuando exista la entidad, ella será la responsable, y publicaremos
+        aquí su nombre legal, su domicilio registrado y el contacto de su encargado de
+        protección de datos. Puedes escribirnos sobre privacidad a {PRIVACY_EMAIL}.
       </p>
       <p>
-        This Policy applies to everyone who uses Pocket, in any country. Where the law of your
-        country gives you more rights than this Policy, you have them.
-      </p>
-
-      <h2>2. What we collect</h2>
-      <h3>What you give us</h3>
-      <ul>
-        <li>
-          <strong>Account:</strong> your Stellar wallet address and your role, startup or
-          specialist. If you sign in through Pollar, also your email and how you signed in, for
-          example Google, and your Pollar user identifier.
-        </li>
-        <li>
-          <strong>Verification:</strong> your full name, contact email and country, and
-          optionally your LinkedIn, your website and a note. Startups also give their company
-          name and, optionally, its registration number.
-        </li>
-        <li>
-          <strong>Specialist profile:</strong> name, headline, bio, categories, skills, tools,
-          years of experience, languages, time zone, weekly availability, hourly rate, smallest
-          project, location, past work with its links and results, and links to your portfolio,
-          LinkedIn and CV, or the CV you upload as a PDF.
-        </li>
-        <li>
-          <strong>Startup profile:</strong> company name, legal name, one-line description,
-          description, sector, stage, what it is looking for, website, logo, languages,
-          location and the role of its contact person.
-        </li>
-        <li>
-          <strong>Marketplace activity:</strong> the jobs you post, your applications, offers,
-          contracts, milestones, deliveries and their links, feedback, disputes, evidence and
-          comments.
-        </li>
-      </ul>
-      <h3>What we collect automatically</h3>
-      <ul>
-        <li>
-          <strong>Security data:</strong> when a request is refused (not signed in, not allowed,
-          or too many requests) and on security events such as sign-ins, sign-outs, account
-          deletion and data exports, we log your IP address, the request method and path, your
-          user identifier and the time. To limit abuse we count requests per IP address or
-          account, in memory, for about a minute.
-        </li>
-        <li>
-          <strong>Consent records:</strong> which version of our Terms and of this Policy you
-          accepted, when, and from which IP address.
-        </li>
-        <li>
-          <strong>Records we create:</strong> the result of your verification review and the
-          reviewer&apos;s notes, and the history of the blockchain transactions made through
-          Pocket for your account.
-        </li>
-        <li>
-          <strong>On your device:</strong> your session token and, if you use a browser wallet,
-          its address and name, stored in your browser&apos;s local storage. They are strictly
-          necessary for the Service to work. We use no cookies for advertising, no tracking and
-          no analytics. Pollar and wallet extensions may store their own data under their own
-          policies.
-        </li>
-      </ul>
-      <p>
-        We do not ask for sensitive data, such as health, ethnic origin, religion, political
-        views, union membership or sexual life, and we ask you not to include it anywhere in
-        Pocket (see section 4).
+        Esta Política se aplica a todas las personas que usan Pocket, en cualquier país.
+        Si la ley de tu país te da más derechos que esta Política, los tienes.
       </p>
 
-      <h2>3. Why we use it, and on what basis</h2>
+      <h2>2. Qué datos recopilamos</h2>
+      <h3>Lo que nos das</h3>
+      <ul>
+        <li>
+          <strong>Cuenta:</strong> tu dirección de wallet de Stellar y tu rol, startup o
+          experto. Si entras con Pollar, también tu correo y cómo entraste, por ejemplo
+          con Google, y tu identificador de usuario de Pollar.
+        </li>
+        <li>
+          <strong>Datos de tu cuenta:</strong> tu nombre completo, tu correo de contacto y
+          tu país, y de forma opcional tu LinkedIn, tu sitio web y una nota. Las startups
+          también dan el nombre de su empresa y, de forma opcional, su número de registro.
+        </li>
+        <li>
+          <strong>Perfil de experto:</strong> nombre, titular, biografía, categorías,
+          habilidades, herramientas, años de experiencia, idiomas, zona horaria,
+          disponibilidad semanal, tarifa por hora, proyecto mínimo, ubicación, trabajos
+          anteriores con sus enlaces y resultados, y enlaces a tu portafolio, LinkedIn y
+          CV, o el CV que subas en PDF.
+        </li>
+        <li>
+          <strong>Perfil de startup:</strong> nombre de la empresa, razón social,
+          descripción en una línea, descripción, sector, etapa, qué busca, sitio web,
+          logo, idiomas, ubicación y el cargo de su persona de contacto.
+        </li>
+        <li>
+          <strong>Actividad en el marketplace:</strong> los trabajos que publicas con los
+          KPIs con que se miden, tus postulaciones, ofertas, contratos, hitos, entregas
+          con sus enlaces, archivos y resultados reportados, comentarios de cambios,
+          disputas, pruebas y comentarios.
+        </li>
+      </ul>
+      <h3>Lo que recopilamos de forma automática</h3>
+      <ul>
+        <li>
+          <strong>Datos de seguridad:</strong> cuando se rechaza una solicitud (sin
+          sesión, sin permiso o demasiadas solicitudes) y en eventos de seguridad como
+          inicios y cierres de sesión, eliminación de cuentas y descargas de datos,
+          registramos tu dirección IP, el método y la ruta de la solicitud, tu
+          identificador de usuario y la hora. Para limitar abusos contamos las solicitudes
+          por dirección IP o por cuenta, en memoria, durante cerca de un minuto.
+        </li>
+        <li>
+          <strong>Reportes de errores:</strong> cuando algo falla, enviamos a Sentry
+          detalles técnicos de la falla, como la página o la solicitud, tu identificador
+          de usuario, tu dirección IP y tu navegador, para poder corregirla.
+        </li>
+        <li>
+          <strong>Registros de consentimiento:</strong> qué versión de nuestros Términos y
+          de esta Política aceptaste, cuándo y desde qué dirección IP.
+        </li>
+        <li>
+          <strong>Registros que generamos:</strong> el historial de las transacciones en
+          blockchain hechas a través de Pocket para tu cuenta, a quién pagó cada pago
+          según lo registró la blockchain, y el reporte de resultados de cada contrato,
+          armado con sus entregas y sus pagos.
+        </li>
+        <li>
+          <strong>En tu dispositivo:</strong> tu token de sesión y, si usas una wallet de
+          navegador, su dirección y su nombre, guardados en el almacenamiento local de tu
+          navegador. Son estrictamente necesarios para que el Servicio funcione. No usamos
+          cookies de publicidad, ni seguimiento, ni analítica. Pollar y las extensiones de
+          wallet pueden guardar sus propios datos según sus propias políticas.
+        </li>
+      </ul>
+      <p>
+        No pedimos datos sensibles, como salud, origen étnico, religión, opiniones
+        políticas, afiliación sindical o vida sexual, y te pedimos no incluirlos en
+        ninguna parte de Pocket (ver la sección 4).
+      </p>
+
+      <h2>3. Para qué los usamos y con qué base</h2>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left text-navy">
-              <th className="py-2 pr-4 font-semibold">Data</th>
-              <th className="py-2 pr-4 font-semibold">What for</th>
-              <th className="py-2 font-semibold">Legal basis</th>
+              <th className="py-2 pr-4 font-semibold">Datos</th>
+              <th className="py-2 pr-4 font-semibold">Para qué</th>
+              <th className="py-2 font-semibold">Base legal</th>
             </tr>
           </thead>
           <tbody className="align-top [&_td]:py-2 [&_td]:pr-4 [&_tr]:border-b [&_tr]:border-border">
             <tr>
-              <td>Wallet address, role, Pollar email and provider</td>
-              <td>Create and secure your account, and sign you in</td>
-              <td>Our contract with you</td>
+              <td>Dirección de wallet, rol, correo y proveedor de Pollar</td>
+              <td>Crear y proteger tu cuenta, e iniciar tu sesión</td>
+              <td>Nuestro contrato contigo</td>
             </tr>
             <tr>
-              <td>Verification data</td>
+              <td>Datos de tu cuenta</td>
               <td>
-                Verify people and companies and prevent fraud, including refusing a hire between
-                two accounts verified with the same email
+                Activar tu cuenta, mostrar a la otra parte de un contrato quién eres y
+                prevenir fraudes, incluido rechazar una contratación entre dos cuentas con
+                el mismo correo de contacto
               </td>
               <td>
-                Our contract; our legitimate interest in a trustworthy marketplace; legal
-                obligations
+                Nuestro contrato; nuestro interés legítimo en un marketplace confiable;
+                obligaciones legales
               </td>
             </tr>
             <tr>
-              <td>Profile, including the CV</td>
-              <td>Publish your profile so others can find and hire you</td>
-              <td>Our contract; your consent to publish your profile and CV</td>
+              <td>Perfil, incluido el CV</td>
+              <td>Publicar tu perfil para que otros te encuentren y te contraten</td>
+              <td>Nuestro contrato; tu consentimiento para publicar tu perfil y tu CV</td>
             </tr>
             <tr>
-              <td>Marketplace activity, contact email shared with the other party</td>
-              <td>Run Engagements, escrows, payments and disputes</td>
-              <td>Our contract</td>
+              <td>
+                Actividad en el marketplace, resultados, correo de contacto compartido con
+                la otra parte
+              </td>
+              <td>Operar contratos, pagos, disputas y reportes de resultados</td>
+              <td>Nuestro contrato</td>
             </tr>
             <tr>
-              <td>Security data</td>
-              <td>Protect accounts, prevent abuse and investigate incidents</td>
-              <td>Legitimate interest; legal obligations</td>
+              <td>Datos de seguridad y reportes de errores</td>
+              <td>
+                Proteger cuentas, prevenir abusos, investigar incidentes y corregir fallas
+              </td>
+              <td>Interés legítimo; obligaciones legales</td>
             </tr>
             <tr>
-              <td>Consent records</td>
-              <td>Prove what you accepted and when</td>
-              <td>Legal obligation; defence of legal claims</td>
+              <td>Registros de consentimiento</td>
+              <td>Demostrar qué aceptaste y cuándo</td>
+              <td>Obligación legal; defensa ante reclamos legales</td>
             </tr>
           </tbody>
         </table>
       </div>
       <p>
-        We do not use your data for marketing, advertising or profiling, and we do not sell it.
-        Fields marked optional can be left blank at no cost to you. Without the required data we
-        cannot create your account, verify you, or let you hire or be hired.
+        No usamos tus datos para marketing, publicidad ni perfilamiento, y no los
+        vendemos. Los campos opcionales puedes dejarlos vacíos sin ningún costo. Sin los
+        datos obligatorios no podemos crear ni activar tu cuenta, ni dejarte contratar o
+        ser contratado.
       </p>
-      <h3>Consent, and how to withdraw it</h3>
+      <h3>Consentimiento, y cómo retirarlo</h3>
       <p>
-        When you create your account we ask, separately from the Terms, for your consent to
-        process your data as this Policy describes, including publishing your profile and CV
-        once you are verified, and transferring your data abroad (section 6). You can withdraw
-        it at any time by deleting your CV or your profile, by deleting your account from your{' '}
-        <Link href="/account">account page</Link>, or by writing to {PRIVACY_EMAIL}. Withdrawing
-        does not affect what was done before. If the consent was needed for a feature, we will
-        have to stop that feature for you.
+        Al crear tu cuenta te pedimos, aparte de los Términos, tu consentimiento para
+        tratar tus datos como describe esta Política, incluido publicar tu perfil y tu CV
+        cuando tu cuenta esté activa, y transferir tus datos al extranjero (sección 6).
+        Puedes retirarlo cuando quieras borrando tu CV o tu perfil, eliminando tu cuenta
+        desde tu <Link href="/account">página de cuenta</Link>, o escribiendo a{' '}
+        {PRIVACY_EMAIL}. Retirarlo no afecta lo que se hizo antes. Si el consentimiento
+        era necesario para una función, tendremos que dejar de ofrecerte esa función.
       </p>
-      <h3>Automated decisions</h3>
+      <h3>Decisiones automatizadas</h3>
       <p>
-        Most decisions about you, such as approving a verification or resolving a dispute, are
-        made by people. Two are made automatically: we refuse a hire between two accounts
-        verified with the same email, to prevent self-dealing; and we temporarily block requests
-        that exceed our rate limits. If you think either affected you wrongly, write to{' '}
-        {PRIVACY_EMAIL} and a person will review it.
+        Tu cuenta se activa de forma automática cuando completas sus datos. Las decisiones
+        que valoran lo que pasó, como resolver una disputa, las toman personas. Dos
+        decisiones en tu contra se toman de forma automática: rechazamos una contratación
+        entre dos cuentas con el mismo correo de contacto, para evitar que alguien se
+        contrate a sí mismo; y bloqueamos por un rato las solicitudes que superan nuestros
+        límites. Si crees que alguna te afectó por error, escribe a {PRIVACY_EMAIL} y una
+        persona la revisará.
       </p>
 
-      <h2>4. Public profiles and sensitive data</h2>
+      <h2>4. Perfiles públicos y datos sensibles</h2>
       <p>
-        Once you are verified, your profile, including any CV you upload, is public: anyone can
-        see it, and download the CV, without an account. We ask search engines not to index
-        specialist profiles and CVs, but copies made by others are outside our control. Profiles
-        show a shortened wallet address, not the full one.
+        Cuando tu cuenta está activa, tu perfil, incluido el CV que subas, es público:
+        cualquiera puede verlo, y descargar el CV, sin tener cuenta. Pedimos a los
+        buscadores que no indexen los perfiles ni los CV de los expertos, pero las copias
+        que hagan otros quedan fuera de nuestro control. Los perfiles muestran una
+        dirección de wallet abreviada, no la completa.
       </p>
       <p>
-        <strong>Do not include sensitive data in your profile or CV</strong>: photos, date of
-        birth, identity document numbers, home address, health, ethnic origin, religion,
-        political views, union membership, sexual life or financial details. If we find it, we
-        may ask you to remove it or remove it ourselves. You can replace or delete your CV at any
-        time.
+        <strong>No incluyas datos sensibles en tu perfil ni en tu CV</strong>: fotos,
+        fecha de nacimiento, números de documentos de identidad, domicilio, salud, origen
+        étnico, religión, opiniones políticas, afiliación sindical, vida sexual o datos
+        financieros. Si los encontramos, podemos pedirte que los quites o quitarlos
+        nosotros. Puedes cambiar o borrar tu CV cuando quieras.
       </p>
 
-      <h2>5. Who can see your data</h2>
+      <h2>5. Quién puede ver tus datos</h2>
       <ul>
         <li>
-          <strong>Anyone:</strong> the public profiles of verified users, the CVs they upload,
-          and the jobs startups publish.
+          <strong>Cualquier persona:</strong> los perfiles públicos de las cuentas
+          activas, los CV que suben y los trabajos que publican las startups, con los KPIs
+          con que se miden.
         </li>
         <li>
-          <strong>The other party of an Engagement:</strong> your application, your deliveries
-          and your comments, and, once the specialist accepts the terms, your contact email.
+          <strong>La otra parte de un contrato:</strong> tu postulación, tus entregas, sus
+          resultados y tus comentarios, el reporte de resultados del contrato y, cuando el
+          experto acepta los términos, tu correo de contacto.
         </li>
         <li>
-          <strong>Pocket managers</strong>, on a need-to-know basis: verification requests and
-          their review notes, and everything in a dispute.
+          <strong>Los managers de Pocket</strong>, solo cuando lo necesitan: los datos de
+          tu cuenta, los reportes de resultados y todo lo de una disputa.
         </li>
         <li>
-          <strong>Service providers</strong> that process data on our instructions: Supabase
-          (database, United States), Railway (API hosting and its logs), Vercel (website
-          hosting), and Trustless Work (builds the escrow transactions, with wallet addresses,
-          amounts and milestones). Our private security alerts, sent to a Discord channel,
-          contain only technical data about Pocket&apos;s own account, never your name, email
-          or wallet.
+          <strong>Proveedores</strong> que tratan datos siguiendo nuestras instrucciones:
+          Supabase (base de datos, Estados Unidos), Railway (servidor de la API y sus
+          registros), Vercel (servidor del sitio web), Sentry (reportes de errores,
+          Estados Unidos), Resend (envía las notificaciones a tu correo de contacto,
+          Estados Unidos) y Trustless Work (arma las transacciones de los contratos, con
+          direcciones de wallet, montos e hitos). Nuestras alertas privadas de seguridad,
+          que llegan a un canal de Discord, solo tienen datos técnicos de la cuenta de
+          Pocket, nunca tu nombre, tu correo ni tu wallet.
         </li>
         <li>
-          <strong>Independent parties</strong> with their own privacy policies: Pollar, which
-          creates and holds wallets for email and Google sign-ins and knows your email; Google,
-          if you sign in with it; the Stellar network, which is public; and Circle, which issues
-          USDC.
+          <strong>Terceros independientes</strong> con sus propias políticas de
+          privacidad: Pollar, que crea y guarda las wallets de quienes entran con correo o
+          Google y conoce tu correo; Google, si entras con Google; la red de Stellar, que
+          es pública; y Circle, que emite el USDC.
         </li>
         <li>
-          <strong>Authorities</strong>, when the law requires it, or to protect the rights and
-          safety of users or of Pocket.
+          <strong>Autoridades</strong>, cuando la ley lo exija, o para proteger los
+          derechos y la seguridad de los usuarios o de Pocket.
         </li>
       </ul>
 
-      <h2>6. International transfers</h2>
+      <h2>6. Transferencias internacionales</h2>
       <p>
-        Your data is stored in the United States (Supabase, us-west-2) and processed by the
-        providers listed above, in the United States and elsewhere. We transfer it because it is
-        necessary to perform our contract with you and with your consent, and we will put in
-        place with our providers the safeguards the law of your country requires, such as
-        standard contractual clauses. You can ask us for a copy of those safeguards at{' '}
-        {PRIVACY_EMAIL}. Blockchain data is replicated worldwide by the Stellar network, which
-        is not a transfer we control (section 7).
+        Tus datos se guardan en Estados Unidos (Supabase, us-west-2) y los tratan los
+        proveedores de la lista anterior, en Estados Unidos y en otros lugares. Los
+        transferimos porque es necesario para cumplir nuestro contrato contigo y con tu
+        consentimiento, y acordaremos con nuestros proveedores las garantías que exija la
+        ley de tu país, como las cláusulas contractuales tipo. Puedes pedirnos una copia
+        de esas garantías en {PRIVACY_EMAIL}. Los datos de la blockchain los replica en
+        todo el mundo la red de Stellar, y esa no es una transferencia que controlemos
+        (sección 7).
       </p>
 
-      <h2>7. What is on the blockchain</h2>
+      <h2>7. Qué hay en la blockchain</h2>
       <p>
-        Your wallet address is personal data, because Pocket links it to your account. Each
-        escrow is a public smart contract on Stellar that stores the full wallet addresses of
-        the startup and the specialist, the milestone amounts, the status of the escrow and an
-        identifier of the Engagement. Every deposit, approval, release and dispute resolution is
-        a public transaction. Anyone can read this data, and anyone who knows your address, or
-        sees it next to your name, can link those payments to you.
+        Tu dirección de wallet es un dato personal, porque Pocket la vincula a tu cuenta.
+        Cada contrato de garantía es un contrato inteligente público en Stellar que guarda
+        las direcciones de wallet completas de la startup y del experto, los montos de los
+        hitos, el estado del contrato y un identificador del contrato. Cada depósito,
+        aprobación, liberación y resolución de disputa es una transacción pública.
+        Cualquiera puede leer estos datos, y quien conozca tu dirección, o la vea junto a
+        tu nombre, puede vincular esos pagos contigo.
       </p>
       <p>
-        The Stellar network, not Pocket, keeps this record, and nobody can change or delete it,
-        including us. When you delete your account, we delete what we hold outside the
-        blockchain and the link between your identity and your address, but the record on the
-        blockchain stays. To limit this, you can use a wallet you do not use for anything else.
-        Pollar and Circle can also see your activity on the blockchain, and Circle can freeze
-        USDC at an address under its own terms.
+        La red de Stellar, no Pocket, guarda este registro, y nadie puede cambiarlo ni
+        borrarlo, ni siquiera nosotros. Cuando eliminas tu cuenta, borramos lo que
+        guardamos fuera de la blockchain y el vínculo entre tu identidad y tu dirección,
+        pero el registro en la blockchain se queda. Para limitarlo, puedes usar una wallet
+        que no uses para nada más. Pollar y Circle también pueden ver tu actividad en la
+        blockchain, y Circle puede congelar el USDC de una dirección según sus propios
+        términos.
       </p>
 
-      <h2>8. How long we keep it</h2>
+      <h2>8. Cuánto tiempo los guardamos</h2>
       <ul>
         <li>
-          <strong>Profile and CV:</strong> until you change or delete them, or delete your
-          account.
+          <strong>Perfil y CV:</strong> hasta que los cambies o los borres, o elimines tu
+          cuenta.
         </li>
         <li>
-          <strong>Verification data:</strong> until you delete your account.
+          <strong>Datos de tu cuenta:</strong> hasta que elimines tu cuenta.
         </li>
         <li>
-          <strong>Contracts, payments, disputes, evidence and consent records:</strong> while
-          your account is open and afterwards for as long as commercial, tax and limitation
-          periods require, up to 10 years after the Engagement ends. When you delete your
-          account they stay attached to an anonymous account, because they are also the
-          records of the other party.
+          <strong>
+            Contratos, entregas y sus resultados, pagos, disputas, pruebas y registros de
+            consentimiento:
+          </strong>{' '}
+          mientras tu cuenta esté abierta y después durante los plazos que exijan las
+          leyes comerciales, fiscales y de prescripción, hasta 10 años después de que
+          termine el contrato. Cuando eliminas tu cuenta se quedan ligados a una cuenta
+          anónima, porque también son registros de la otra parte.
         </li>
         <li>
-          <strong>Security logs:</strong> up to 30 days, in our hosting provider.
+          <strong>Registros de seguridad:</strong> hasta 30 días, en nuestro proveedor de
+          hosting.
         </li>
         <li>
-          <strong>Sign-in challenges:</strong> minutes. They are deleted once used or expired.
+          <strong>Reportes de errores:</strong> hasta 90 días, en Sentry.
+        </li>
+        <li>
+          <strong>Retos de inicio de sesión:</strong> minutos. Se borran al usarse o al
+          vencer.
         </li>
       </ul>
       <p>
-        When a period ends we delete or anonymize the data. Blockchain records are permanent
-        (section 7).
+        Cuando termina un plazo, borramos o anonimizamos los datos. Los registros de la
+        blockchain son permanentes (sección 7).
       </p>
 
-      <h2>9. Your rights</h2>
+      <h2>9. Tus derechos</h2>
       <p>
-        Depending on where you live, you can: access your data and get a copy; correct it;
-        delete it; object to a use of it, or ask us to limit it; receive it in a portable
-        format; withdraw a consent you gave; ask which providers we share it with; and ask for a
-        person to review an automated decision. In Mexico these are your ARCO rights.
+        Según dónde vivas, puedes: acceder a tus datos y obtener una copia; corregirlos;
+        borrarlos; oponerte a un uso o pedirnos que lo limitemos; recibirlos en un formato
+        portable; retirar un consentimiento que diste; preguntar con qué proveedores los
+        compartimos; y pedir que una persona revise una decisión automatizada. En México
+        estos son tus derechos ARCO.
       </p>
       <ul>
         <li>
-          <strong>Yourself, at any time:</strong> download all your data, and delete your
-          account, from your <Link href="/account">account page</Link>. Correct your profile
-          from your <Link href="/profile">profile page</Link>.
+          <strong>Tú mismo, cuando quieras:</strong> descarga todos tus datos, y elimina
+          tu cuenta, desde tu <Link href="/account">página de cuenta</Link>. Corrige tu
+          perfil desde tu <Link href="/profile">página de perfil</Link>.
         </li>
         <li>
-          <strong>Anything else:</strong> write to {PRIVACY_EMAIL} from the email linked to your
-          account, or prove that you control your wallet by signing a message we send you. Tell
-          us your wallet address, the right you want to use and, for a correction, the correct
-          data. We may ask for proof of identity, and someone acting for you must prove they can.
+          <strong>Para todo lo demás:</strong> escribe a {PRIVACY_EMAIL} desde el correo
+          vinculado a tu cuenta, o demuestra que controlas tu wallet firmando un mensaje
+          que te enviemos. Dinos tu dirección de wallet, el derecho que quieres ejercer y,
+          para una corrección, el dato correcto. Podemos pedirte una prueba de identidad,
+          y quien actúe por ti debe demostrar que puede hacerlo.
         </li>
       </ul>
       <p>
-        Using your rights is free. We answer within the shortest period your law sets, and never
-        later than 15 business days. If we must keep some data, we will tell you which data and
-        why. Data on the blockchain cannot be deleted by anyone.
+        Ejercer tus derechos es gratis. Respondemos en el plazo más corto que fije tu ley,
+        y nunca después de 15 días hábiles. Si debemos conservar algún dato, te diremos
+        cuál y por qué. Nadie puede borrar los datos de la blockchain.
       </p>
 
-      <h2>10. How we protect it</h2>
+      <h2>10. Cómo los protegemos</h2>
       <p>
-        Data is encrypted in transit, between your browser and Pocket and between Pocket and its
-        database, and at rest by our database provider. Only the Pocket API and a small number
-        of authorized administrators can access the database. Sessions last up to 12 hours and
-        can be revoked. Session tokens are kept in your browser&apos;s local storage, which
-        protects them less than a secure cookie would. No system is perfectly secure. If a
-        breach creates a relevant risk for you, we will notify you and the competent authorities
-        within the time the law requires, explaining what happened, what data was affected and
-        what you can do.
+        Los datos viajan cifrados, entre tu navegador y Pocket y entre Pocket y su base de
+        datos, y nuestro proveedor de base de datos los guarda cifrados. Solo la API de
+        Pocket y un número reducido de administradores autorizados pueden acceder a la
+        base de datos. Las sesiones duran hasta 12 horas y se pueden revocar. Los tokens
+        de sesión se guardan en el almacenamiento local de tu navegador, que los protege
+        menos que una cookie segura. Ningún sistema es perfectamente seguro. Si una
+        filtración crea un riesgo relevante para ti, te avisaremos a ti y a las
+        autoridades competentes en el plazo que exija la ley, explicando qué pasó, qué
+        datos se vieron afectados y qué puedes hacer.
       </p>
 
-      <h2>11. Children</h2>
+      <h2>11. Menores de edad</h2>
       <p>
-        Pocket is only for people aged 18 or over, and we do not knowingly collect data from
-        minors. If you believe a minor has given us data, write to {PRIVACY_EMAIL} and we will
-        delete it.
+        Pocket es solo para personas de 18 años o más, y no recopilamos a sabiendas datos
+        de menores. Si crees que un menor nos dio sus datos, escribe a {PRIVACY_EMAIL} y
+        los borraremos.
       </p>
 
-      <h2>12. Complaints</h2>
+      <h2>12. Quejas</h2>
       <p>
-        Please write to us first, so we can try to solve it. You can also complain to the data
-        protection authority of your country, for example: in Brazil, the ANPD; in Mexico, the
-        authority designated under its federal data protection law; in Colombia, the
-        Superintendencia de Industria y Comercio; in Argentina, the Agencia de Acceso a la
-        Información Pública; in Chile, the Agencia de Protección de Datos Personales once it is
-        in operation, and the courts until then; in Peru, the Autoridad Nacional de Protección
-        de Datos Personales; in Costa Rica, PRODHAB; in Ecuador, the Superintendencia de
-        Protección de Datos Personales; in Uruguay, the URCDP; and in Bolivia, the courts,
-        through the constitutional action for the protection of privacy.
+        Escríbenos primero, para intentar resolverlo. También puedes presentar una queja
+        ante la autoridad de protección de datos de tu país, por ejemplo: en Brasil, la
+        ANPD; en México, la autoridad designada por su ley federal de protección de datos;
+        en Colombia, la Superintendencia de Industria y Comercio; en Argentina, la Agencia
+        de Acceso a la Información Pública; en Chile, la Agencia de Protección de Datos
+        Personales cuando esté en funcionamiento, y los tribunales mientras tanto; en
+        Perú, la Autoridad Nacional de Protección de Datos Personales; en Costa Rica, la
+        PRODHAB; en Ecuador, la Superintendencia de Protección de Datos Personales; en
+        Uruguay, la URCDP; y en Bolivia, los tribunales, mediante la acción de protección
+        de privacidad.
       </p>
 
-      <h2>13. Users in the European Union, the United Kingdom and elsewhere</h2>
+      <h2>13. Usuarios en la Unión Europea, el Reino Unido y otros lugares</h2>
       <p>
-        If you are in the European Union, the European Economic Area or the United Kingdom, the
-        General Data Protection Regulation, or its United Kingdom version, applies to your data.
-        In particular:
+        Si estás en la Unión Europea, el Espacio Económico Europeo o el Reino Unido, a tus
+        datos se les aplica el Reglamento General de Protección de Datos, o su versión del
+        Reino Unido. En particular:
       </p>
       <ul>
         <li>
-          The legal bases in section 3 are those of the Regulation: performance of a contract,
-          legitimate interests, legal obligations and consent.
+          Las bases legales de la sección 3 son las del Reglamento: ejecución de un
+          contrato, intereses legítimos, obligaciones legales y consentimiento.
         </li>
         <li>
-          You may object at any time to any use of your data based on our legitimate interests,
-          and we will stop unless we have compelling legitimate grounds, or need it to establish
-          or defend legal claims.
+          Puedes oponerte en cualquier momento a cualquier uso de tus datos basado en
+          nuestros intereses legítimos, y dejaremos de hacerlo salvo que tengamos motivos
+          legítimos imperiosos, o lo necesitemos para formular o defender reclamos
+          legales.
         </li>
         <li>
-          Transfers of your data outside the European Economic Area or the United Kingdom are
-          made under the European Commission&apos;s standard contractual clauses, or the United
-          Kingdom&apos;s equivalent, with our providers.
+          Las transferencias de tus datos fuera del Espacio Económico Europeo o del Reino
+          Unido se hacen con las cláusulas contractuales tipo de la Comisión Europea, o su
+          equivalente del Reino Unido, con nuestros proveedores.
         </li>
         <li>
-          None of the automated decisions in section 3 produces legal effects on you or
-          significantly affects you in a similar way; you can still ask a person to review them.
+          Ninguna de las decisiones automatizadas de la sección 3 produce efectos legales
+          sobre ti ni te afecta de forma similarmente significativa; aun así puedes pedir
+          que una persona las revise.
         </li>
         <li>
-          If we offer Pocket to people in the European Union or the United Kingdom, we will
-          appoint a representative there, as the Regulation requires, and publish its details
-          here.
+          Si ofrecemos Pocket a personas en la Unión Europea o el Reino Unido, nombraremos
+          un representante ahí, como exige el Reglamento, y publicaremos sus datos aquí.
         </li>
         <li>
-          You may complain to the data protection authority of the country where you live or
-          work, or where you think your rights were infringed; in the United Kingdom, the
-          Information Commissioner&apos;s Office.
+          Puedes presentar una queja ante la autoridad de protección de datos del país
+          donde vives o trabajas, o donde creas que se infringieron tus derechos; en el
+          Reino Unido, la Information Commissioner&apos;s Office.
         </li>
       </ul>
       <p>
-        If you live in the United States, we do not sell your personal information or share it
-        for cross-context behavioural advertising, and you can use the rights your state gives
-        you in the same way as those in section 9. Wherever you live, we handle your data as
-        this Policy describes, and you can use the rights in section 9.
+        Si vives en Estados Unidos, no vendemos tu información personal ni la compartimos
+        para publicidad conductual entre contextos, y puedes ejercer los derechos que te
+        da tu estado de la misma forma que los de la sección 9. Vivas donde vivas,
+        tratamos tus datos como describe esta Política, y puedes ejercer los derechos de
+        la sección 9.
       </p>
 
-      <h2>14. Changes to this Policy</h2>
+      <h2>14. Cambios a esta Política</h2>
       <p>
-        We may update this Policy. The version in force is shown at the top, with its date. We
-        will give at least 15 days&apos; notice of material changes, in the Service and by email
-        where we have yours, and ask you to accept them before you keep using Pocket.
+        Podemos actualizar esta Política. La versión vigente aparece arriba, con su fecha.
+        Avisaremos con al menos 15 días de anticipación de los cambios importantes, en el
+        Servicio y por correo cuando tengamos el tuyo, y te pediremos aceptarlos antes de
+        seguir usando Pocket. Esta Política está en español y en{' '}
+        <Link href="/privacy/en">inglés</Link>; si las dos versiones difieren, prevalece
+        la versión en español, salvo que la ley de tu país exija otra cosa.
       </p>
 
-      <h2>15. Contact</h2>
-      <p>For anything about your data, write to {PRIVACY_EMAIL}.</p>
+      <h2>15. Contacto</h2>
+      <p>Para cualquier tema sobre tus datos, escribe a {PRIVACY_EMAIL}.</p>
     </LegalPage>
   );
 }

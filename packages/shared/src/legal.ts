@@ -3,4 +3,4 @@
  * take effect. Changing it asks every user to accept the new text before they
  * go on, and each acceptance is recorded with the version accepted.
  */
-export const LEGAL_VERSION = '2026-10-01';
+export const LEGAL_VERSION = '2026-11-02';

@@ -1,561 +1,654 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { TRUSTLESS_WORK_FEE_PERCENT } from '@pocket/shared';
-import { LEGAL_EMAIL, LegalPage } from '@/components/legal-page';
+import { POCKET_FEE_PERCENT, TRUSTLESS_WORK_FEE_PERCENT } from '@pocket/shared';
+import { LEGAL_EMAIL, LegalPage, ON_MAINNET } from '@/components/legal-page';
 
-export const metadata: Metadata = { title: 'Terms of Service' };
+export const metadata: Metadata = { title: 'Términos de Servicio' };
+
+/** What the specialist receives of each payment, after both fees. */
+const SPECIALIST_SHARE = 100 - POCKET_FEE_PERCENT - TRUSTLESS_WORK_FEE_PERCENT;
+
+/** Percent as written in Spanish, with a decimal comma: 0,3 %. */
+const pct = (value: number) => `${String(value).replace('.', ',')} %`;
 
 export default function TermsPage() {
   return (
     <LegalPage
-      title="Terms of Service"
+      lang="es"
+      title="Términos de Servicio"
+      otherLanguage="/terms/en"
       summary={
         <>
-          <p className="font-semibold">The short version</p>
+          <p className="font-semibold">En resumen</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>
-              Pocket connects startups with growth, sales and marketing specialists. The work
-              agreement is between them. Pocket is not a party to it and employs no one.
+              Pocket conecta a startups con expertos en growth, ventas y marketing. El
+              acuerdo de trabajo es entre ellos. Pocket no es parte de ese acuerdo y no
+              emplea a nadie.
             </li>
             <li>
-              Payments sit in escrow smart contracts on the Stellar network. Pocket does not
-              hold your funds or your wallet&apos;s keys, but Pocket&apos;s own account controls
-              when escrowed funds are released and how disputed funds are split.
+              Los pagos se guardan en contratos inteligentes de garantía (escrow) en la
+              red de Stellar. Pocket no guarda tu dinero ni las llaves de tu wallet, pero
+              la cuenta de Pocket controla cuándo se libera el dinero guardado y cómo se
+              reparte en una disputa.
             </li>
             <li>
-              A milestone is released when the startup approves it. If there is a dispute, a
-              Pocket manager decides it, and that decision is final for the funds in escrow.
+              Un hito se paga cuando la startup lo aprueba. Si hay una disputa, la decide
+              un manager de Pocket, y esa decisión es final para el dinero guardado.
             </li>
             <li>
-              Pocket runs on the Stellar <strong>test network</strong> today. Test USDC has no
-              value.
+              Pocket cobra el {pct(POCKET_FEE_PERCENT)} de cada pago que sale de un
+              contrato, y Trustless Work el {pct(TRUSTLESS_WORK_FEE_PERCENT)}. Las dos
+              comisiones se descuentan del pago, así que el experto recibe el{' '}
+              {pct(SPECIALIST_SHARE)}.
+            </li>
+            {ON_MAINNET ? (
+              <li>
+                Pocket funciona en la <strong>red principal</strong> de Stellar: los pagos
+                son en USDC real.
+              </li>
+            ) : (
+              <li>
+                Este Pocket funciona en la <strong>red de pruebas</strong> de Stellar. El
+                USDC de prueba no tiene valor.
+              </li>
+            )}
+            <li>
+              Las transacciones en blockchain no se pueden deshacer. Cuida tu wallet y
+              revisa lo que firmas.
             </li>
             <li>
-              Blockchain transactions cannot be undone. Keep your wallet safe and check what you
-              sign.
-            </li>
-            <li>
-              If you are a consumer, the consumer protection law of your country applies, and
-              nothing here takes those rights away.
+              Si eres consumidor, se aplica la ley de protección al consumidor de tu país,
+              y nada de lo que dice aquí te quita esos derechos.
             </li>
           </ul>
-          <p className="mt-3">This summary helps you read the Terms. It does not replace them.</p>
+          <p className="mt-3">
+            Este resumen te ayuda a leer los Términos. No los reemplaza.
+          </p>
         </>
       }
     >
-      <h2>1. Who we are and what these Terms cover</h2>
+      <h2>1. Quiénes somos y qué cubren estos Términos</h2>
       <p>
-        Pocket (&quot;Pocket&quot;, &quot;we&quot;, &quot;us&quot;) is an online marketplace
-        available on the Pocket website and any site or app we run under the Pocket name (the
-        &quot;Service&quot;). Pocket is operated by its founding team while a legal entity is
-        being incorporated. Once it exists, that entity will operate the Service and be the
-        party to these Terms, and we will identify it here with its registered address.
+        Pocket (&quot;Pocket&quot;, &quot;nosotros&quot;) es un marketplace en línea
+        disponible en pocketgrowth.xyz y en cualquier sitio o app que operemos con el
+        nombre Pocket (el &quot;Servicio&quot;). Pocket lo opera su equipo fundador
+        mientras se constituye una entidad legal. Cuando exista, esa entidad operará el
+        Servicio y será la parte de estos Términos, y la identificaremos aquí con su
+        domicilio registrado.
       </p>
       <p>
-        These Terms of Service (the &quot;Terms&quot;) are a binding agreement between you and
-        Pocket. You accept them when you create an account, by ticking the box that says so.
-        Our <Link href="/privacy">Privacy Policy</Link> explains how we handle personal data.
-        If you do not agree with these Terms, do not use the Service.
+        Estos Términos de Servicio (los &quot;Términos&quot;) son un acuerdo obligatorio
+        entre tú y Pocket. Los aceptas al crear tu cuenta, marcando la casilla que lo
+        dice. Nuestra <Link href="/privacy">Política de Privacidad</Link> explica cómo
+        tratamos los datos personales. Si no estás de acuerdo con estos Términos, no uses
+        el Servicio.
       </p>
 
-      <h2>2. Who can use Pocket</h2>
+      <h2>2. Quién puede usar Pocket</h2>
       <ul>
-        <li>You must be at least 18 years old and able to enter into a binding contract.</li>
+        <li>Debes tener al menos 18 años y capacidad para celebrar un contrato.</li>
         <li>
-          If you use Pocket for a company, you confirm you are allowed to bind it, and
-          &quot;you&quot; includes that company.
+          Si usas Pocket en nombre de una empresa, confirmas que puedes obligarla, y
+          &quot;tú&quot; incluye a esa empresa.
         </li>
         <li>
-          You may not use Pocket if you are subject to sanctions (see section 13), or if using
-          it is against the law where you live.
+          No puedes usar Pocket si estás sujeto a sanciones (ver la sección 13), o si
+          usarlo va contra la ley del lugar donde vives.
         </li>
-        <li>One person or company, one account, unless we agree otherwise.</li>
+        <li>Una persona o empresa, una cuenta, salvo que acordemos otra cosa.</li>
       </ul>
 
-      <h2>3. Your account and your wallet</h2>
+      <h2>3. Tu cuenta y tu wallet</h2>
       <p>
-        Your Stellar wallet is your account. You can sign in with a wallet you hold yourself,
-        such as Freighter, xBull or Lobstr, or through Pollar, a third-party service that
-        creates a wallet for you when you sign in with email or Google.
+        Tu wallet de Stellar es tu cuenta. Puedes entrar con una wallet que tú controlas,
+        como Freighter, xBull o Lobstr, o a través de Pollar, un servicio de terceros que
+        crea una wallet para ti cuando entras con tu correo o con Google.
       </p>
       <ul>
         <li>
-          <strong>Your own wallet:</strong> only you hold its keys. Pocket cannot recover a lost
-          key, reverse a transaction or move funds for you.
+          <strong>Tu propia wallet:</strong> solo tú tienes sus llaves. Pocket no puede
+          recuperar una llave perdida, revertir una transacción ni mover fondos por ti.
         </li>
         <li>
-          <strong>A Pollar wallet:</strong> Pollar, a third party, creates the wallet and keeps
-          its keys on your behalf. Access depends on your Pollar login and on Pollar&apos;s
-          service. Pocket cannot access, recover or move funds in a Pollar wallet. Pollar&apos;s
-          own terms and policies, if any, apply to it.
+          <strong>Una wallet de Pollar:</strong> Pollar, un tercero, crea la wallet y
+          guarda sus llaves por ti. El acceso depende de tu inicio de sesión en Pollar y
+          de su servicio. Pocket no puede acceder, recuperar ni mover fondos de una wallet
+          de Pollar. Se aplican los términos y políticas propios de Pollar, si los tiene.
         </li>
         <li>
-          You are responsible for everything done with your account and for keeping your
-          devices, keys and logins secure. Tell us at once at {LEGAL_EMAIL} if you think someone
-          else is using your account.
+          Eres responsable de todo lo que se haga con tu cuenta y de mantener seguros tus
+          dispositivos, llaves y accesos. Avísanos de inmediato a {LEGAL_EMAIL} si crees
+          que alguien más está usando tu cuenta.
         </li>
         <li>
-          You choose your role, startup or specialist, when you create the account, and it
-          cannot be changed later.
-        </li>
-      </ul>
-
-      <h2>4. Verification</h2>
-      <p>
-        To post jobs or apply to them, you must be verified. You agree to give us true, current
-        and complete information and to keep it up to date. We may approve or reject a request,
-        ask for more information, or withdraw a verification, and we will tell you why when we
-        can.
-      </p>
-      <p>
-        Verification means a person at Pocket reviewed the information you gave us. It is not
-        a guarantee of anyone&apos;s identity, skills, solvency or conduct, and it is not an
-        endorsement. Use your own judgment before hiring or working with someone.
-      </p>
-
-      <h2>5. What Pocket is, and what it is not</h2>
-      <p>
-        Pocket is a venue. Startups publish jobs, specialists apply, and a startup can hire a
-        specialist under the terms and milestones they agree on (an &quot;Engagement&quot;).
-      </p>
-      <ul>
-        <li>
-          The Engagement is a contract between the startup and the specialist. Pocket is not a
-          party to it.
-        </li>
-        <li>
-          Specialists are independent. Pocket is not their employer, agent or partner, and does
-          not direct or supervise their work. Pocket&apos;s verification, dispute handling and
-          product features are not direction or control of anyone&apos;s work.
-        </li>
-        <li>
-          Startups are solely responsible for correctly classifying the people they hire under
-          the labour law that applies to them.
-        </li>
-        <li>
-          Pocket does not guarantee the quality, legality, timing or results of any work, nor
-          that a job will be filled or an application accepted.
-        </li>
-        <li>
-          Each party is responsible for issuing any invoices or tax receipts the law requires,
-          for any tax withholding, and for reporting its own income. Pocket does not issue
-          invoices for Engagements or withhold taxes, but may have to report information to tax
-          authorities where the law requires it.
+          Eliges tu rol, startup o experto, al crear la cuenta, y no se puede cambiar
+          después.
         </li>
       </ul>
 
-      <h2>6. Payments and escrow</h2>
-      <h3>How escrow works</h3>
+      <h2>4. Los datos de tu cuenta</h2>
       <p>
-        When a startup hires a specialist and the specialist accepts, an escrow smart contract
-        is deployed on the Stellar network through Trustless Work, a third-party escrow
-        protocol. The startup deposits the agreed amount in USDC, a stablecoin issued by
-        Circle, into that contract. The contract holds the funds, not Pocket.
+        Antes de publicar trabajos o postularte, completas los datos de tu cuenta: tu
+        nombre, un correo de contacto y tu país, y, si eres startup, el nombre de la
+        empresa. Tu cuenta queda activa al enviarlos. Te comprometes a dar información
+        verdadera, vigente y completa, y a mantenerla al día.
       </p>
-      <ul>
-        <li>
-          Every deposit, approval and dispute is signed by the user&apos;s own wallet. Pocket
-          signs only the transactions of its own escrow roles: creating escrows, releasing
-          approved milestones and executing dispute decisions. It never signs deposits,
-          approvals or disputes on your behalf.
-        </li>
-        <li>
-          When the startup approves a milestone, Pocket releases that milestone&apos;s payment
-          to the specialist. Approval cannot be undone: once approved, the milestone is released
-          and the funds leave the escrow. By approving, the startup confirms the milestone was
-          delivered to its satisfaction.
-        </li>
-        <li>
-          There is no automatic release. If a startup neither approves nor disputes a
-          milestone, its funds stay in escrow until one of the parties opens a dispute.
-        </li>
-        <li>Releases may take some time to be signed and confirmed on the network.</li>
-      </ul>
-      <h3>Pocket&apos;s roles in the escrow</h3>
       <p>
-        Pocket does not take custody of your funds. However, Pocket&apos;s Stellar account
-        holds the escrow roles that release a milestone after the startup approves it and that
-        resolve disputes. The smart contract itself would carry out any dispute resolution
-        Pocket signs, including a payment to any address. Pocket commits, and its systems are
-        built, to direct escrowed funds only to the startup or the specialist of that
-        Engagement, in the amounts shown in the Engagement or decided under section 7. If the
-        keys of Pocket&apos;s account were compromised, escrowed funds could be at risk. Pocket
-        protects those keys with reasonable security measures and monitors their use, and will
-        notify affected users without undue delay of any incident that affects their funds.
-      </p>
-      <h3>Fees</h3>
-      <p>
-        Pocket does not charge a platform fee today. Trustless Work keeps{' '}
-        {TRUSTLESS_WORK_FEE_PERCENT}% of each amount its escrow pays out, deducted from that
-        amount, so the specialist receives the milestone amount minus that fee. The Stellar
-        network charges small transaction fees. If Pocket introduces its own fees, we will show
-        them clearly before they apply to any new Engagement.
-      </p>
-      <h3>No refunds by Pocket</h3>
-      <p>
-        Since Pocket does not hold funds, it cannot refund, reverse or return a payment. Money
-        leaves an escrow only through a milestone release or a dispute resolution.
-      </p>
-      <h3>Payments outside Pocket</h3>
-      <p>
-        Payments made outside Pocket&apos;s escrow are outside the Service. Pocket cannot help
-        with them, will not resolve disputes about them, and they are not covered by these
-        Terms.
+        Hoy Pocket no verifica la identidad de nadie. Una cuenta activa no es garantía de
+        la identidad, las habilidades, la solvencia ni la conducta de nadie, y tampoco es
+        una recomendación. Revisa cada perfil y usa tu propio criterio antes de contratar
+        o trabajar con alguien. Más adelante podemos pedirte verificar tu identidad con un
+        proveedor externo, y te avisaremos antes de hacerlo. Podemos suspender una cuenta
+        que dio información falsa (ver la sección 14).
       </p>
 
-      <h2>7. Disputes between startups and specialists</h2>
+      <h2>5. Qué es Pocket y qué no es</h2>
       <p>
-        Either party can open a dispute on a funded milestone that has not been paid. Its funds
-        then stay in escrow until a Pocket manager resolves it. A dispute is the only way the
-        funds of an unapproved milestone can move.
+        Pocket es un punto de encuentro. Las startups publican trabajos, los expertos se
+        postulan, y una startup puede contratar a un experto con los términos e hitos que
+        acuerden (un &quot;Contrato&quot;).
       </p>
       <ul>
+        <li>El Contrato es entre la startup y el experto. Pocket no es parte de él.</li>
         <li>
-          Both parties can add evidence and comments. Each party will have a reasonable
-          opportunity, normally 7 days from the opening of the dispute, to do so.
+          Los expertos son independientes. Pocket no es su empleador, agente ni socio, y
+          no dirige ni supervisa su trabajo. El manejo de disputas, los reportes de
+          resultados y las funciones del producto no son dirección ni control del trabajo
+          de nadie.
         </li>
         <li>
-          The manager decides on the written terms of the Engagement, what was delivered and
-          the evidence given, records a written reason for the decision, and has no personal
-          interest in the outcome.
+          Cada startup es la única responsable de clasificar correctamente, según la ley
+          laboral que le aplique, a las personas que contrata.
         </li>
         <li>
-          The manager may pay the whole milestone to the specialist, return it to the startup,
-          or split it between them. Pocket will only direct disputed funds to those two parties.
+          Pocket no garantiza la calidad, legalidad, tiempos ni resultados de ningún
+          trabajo, ni que un trabajo se cubra o una postulación se acepte.
         </li>
         <li>
-          The decision is executed on the escrow and is final for those funds. It is not an
-          arbitral award, and it does not prevent either party from bringing any claim against
-          the other before the competent courts or authorities.
+          Los resultados de una entrega y del reporte de resultados de un contrato los
+          reporta el experto y los acepta la startup al aprobar la entrega. Pocket no los
+          comprueba. Solo los pagos de un reporte se leen de la blockchain.
         </li>
         <li>
-          Pocket is not liable for the outcome of a decision made in good faith under this
-          section, except for its gross negligence, wilful misconduct, or failure to execute the
-          decision as made.
+          Cada parte es responsable de emitir las facturas o comprobantes fiscales que
+          exija la ley, de cualquier retención de impuestos y de declarar sus propios
+          ingresos. Pocket no emite facturas por los Contratos ni retiene impuestos, pero
+          puede tener que informar a las autoridades fiscales cuando la ley lo exija.
         </li>
       </ul>
 
-      <h2>8. Blockchain and third-party risks</h2>
-      <p>By using Pocket you understand and accept that:</p>
+      <h2>6. Pagos y contratos de garantía</h2>
+      <h3>Cómo funciona el contrato de garantía</h3>
+      <p>
+        Cuando una startup contrata a un experto y el experto acepta, se crea un contrato
+        inteligente de garantía (escrow) en la red de Stellar a través de Trustless Work,
+        un protocolo de garantía de terceros. La startup deposita el monto acordado en
+        USDC, una moneda estable emitida por Circle, en ese contrato. El contrato guarda
+        el dinero, no Pocket.
+      </p>
       <ul>
         <li>
-          Blockchain transactions are public and irreversible. A transaction sent by mistake, or
-          to the wrong address, cannot be undone.
+          Cada depósito, aprobación y disputa la firma la wallet del propio usuario.
+          Pocket solo firma las transacciones de sus propios roles en el contrato: crear
+          el contrato, liberar los hitos aprobados y ejecutar las decisiones de disputas.
+          Nunca firma depósitos, aprobaciones ni disputas por ti.
         </li>
         <li>
-          Smart contracts, networks and wallets can fail, have bugs, be attacked or be
-          unavailable, which can delay or prevent payments. Protocol upgrades, forks or changes
-          to Trustless Work&apos;s contracts may affect escrows.
+          Cuando la startup aprueba un hito, Pocket libera el pago de ese hito al experto.
+          La aprobación no se puede deshacer: una vez aprobado, el hito se paga y el
+          dinero sale del contrato. Al aprobar, la startup confirma que el hito se entregó
+          a su satisfacción.
         </li>
         <li>
-          Circle&apos;s USDC terms govern USDC, and Circle may freeze USDC held at any address,
-          including an escrow. Pocket cannot unfreeze such funds. Stablecoins can lose their
-          peg.
+          No hay liberación automática. Si una startup no aprueba ni disputa un hito, su
+          dinero se queda guardado hasta que alguna de las partes abra una disputa.
         </li>
         <li>
-          Pocket relies on third parties it does not control, including the Stellar network,
-          Trustless Work, Pollar, Circle, wallet providers and hosting providers. Their services
-          are governed by their own terms.
+          Las liberaciones pueden tardar un poco en firmarse y confirmarse en la red.
+        </li>
+      </ul>
+      <h3>Los roles de Pocket en el contrato</h3>
+      <p>
+        Pocket no tiene la custodia de tu dinero. Sin embargo, la cuenta de Pocket en
+        Stellar tiene los roles del contrato que liberan un hito después de que la startup
+        lo aprueba y que resuelven disputas. El propio contrato inteligente ejecutaría
+        cualquier resolución de disputa que Pocket firme, incluido un pago a cualquier
+        dirección. Pocket se compromete, y sus sistemas están hechos para ello, a dirigir
+        el dinero guardado solo a la startup o al experto de ese Contrato, en los montos
+        que muestra el Contrato o que se decidan según la sección 7. Si las llaves de la
+        cuenta de Pocket se vieran comprometidas, el dinero guardado podría estar en
+        riesgo. Pocket protege esas llaves con medidas de seguridad razonables, vigila su
+        uso y avisará sin demora a los usuarios afectados de cualquier incidente que
+        afecte su dinero.
+      </p>
+      <h3>Comisiones</h3>
+      <p>
+        Pocket cobra una comisión del {pct(POCKET_FEE_PERCENT)} de cada monto que paga un
+        contrato, en la liberación de un hito o en la resolución de una disputa. Trustless
+        Work se queda con el {pct(TRUSTLESS_WORK_FEE_PERCENT)} del mismo monto. El propio
+        contrato descuenta las dos comisiones de ese monto, así que el experto recibe el{' '}
+        {pct(SPECIALIST_SHARE)} de un hito liberado; en la resolución de una disputa se
+        descuentan de la parte de cada uno. Pocket no cobra por publicar trabajos,
+        postularse ni depositar. La red de Stellar cobra pequeñas comisiones por
+        transacción. Un Contrato conserva las comisiones vigentes cuando se creó su
+        contrato de garantía; si nuestras comisiones cambian, mostraremos las nuevas con
+        claridad antes de que se apliquen a cualquier Contrato nuevo.
+      </p>
+      <h3>Pocket no hace reembolsos</h3>
+      <p>
+        Como Pocket no guarda el dinero, no puede reembolsar, revertir ni devolver un
+        pago. El dinero sale de un contrato solo con la liberación de un hito o la
+        resolución de una disputa.
+      </p>
+      <h3>Pagos fuera de Pocket</h3>
+      <p>
+        Los pagos que se hagan fuera de los contratos de Pocket están fuera del Servicio.
+        Pocket no puede ayudar con ellos, no resolverá disputas sobre ellos y no los
+        cubren estos Términos.
+      </p>
+
+      <h2>7. Disputas entre startups y expertos</h2>
+      <p>
+        Cualquiera de las partes puede abrir una disputa sobre un hito con dinero
+        depositado que no se haya pagado. Su dinero queda guardado en el contrato hasta
+        que un manager de Pocket la resuelva. Una disputa es la única forma en que puede
+        moverse el dinero de un hito no aprobado.
+      </p>
+      <ul>
+        <li>
+          Las dos partes pueden agregar pruebas y comentarios. Cada parte tendrá una
+          oportunidad razonable para hacerlo, normalmente 7 días desde que se abre la
+          disputa.
         </li>
         <li>
-          Your wallet address and your escrow transactions are recorded on a public blockchain,
-          where anyone can see them and nobody, Pocket included, can delete them.
+          El manager decide según los términos escritos del Contrato, lo que se entregó y
+          las pruebas aportadas, deja por escrito el motivo de su decisión y no tiene
+          ningún interés personal en el resultado.
+        </li>
+        <li>
+          El manager puede pagar el hito completo al experto, devolverlo a la startup o
+          repartirlo entre los dos. Pocket solo dirigirá el dinero en disputa a esas dos
+          partes.
+        </li>
+        <li>
+          La decisión se ejecuta en el contrato y es final para ese dinero. No es un laudo
+          arbitral, y no impide que cualquiera de las partes presente un reclamo contra la
+          otra ante los tribunales o autoridades competentes.
+        </li>
+        <li>
+          Pocket no es responsable del resultado de una decisión tomada de buena fe según
+          esta sección, salvo por su negligencia grave, dolo, o por no ejecutar la
+          decisión tal como se tomó.
+        </li>
+      </ul>
+
+      <h2>8. Riesgos de la blockchain y de terceros</h2>
+      <p>Al usar Pocket entiendes y aceptas que:</p>
+      <ul>
+        <li>
+          Las transacciones en blockchain son públicas e irreversibles. Una transacción
+          enviada por error, o a una dirección equivocada, no se puede deshacer.
+        </li>
+        <li>
+          Los contratos inteligentes, las redes y las wallets pueden fallar, tener
+          errores, sufrir ataques o no estar disponibles, lo que puede retrasar o impedir
+          pagos. Las actualizaciones del protocolo, las bifurcaciones o los cambios en los
+          contratos de Trustless Work pueden afectar a los contratos de garantía.
+        </li>
+        <li>
+          Los términos de Circle rigen el USDC, y Circle puede congelar el USDC de
+          cualquier dirección, incluido un contrato de garantía. Pocket no puede
+          descongelar ese dinero. Las monedas estables pueden perder su paridad.
+        </li>
+        <li>
+          Pocket depende de terceros que no controla, entre ellos la red de Stellar,
+          Trustless Work, Pollar, Circle, los proveedores de wallets y de hosting. Sus
+          servicios se rigen por sus propios términos.
+        </li>
+        <li>
+          Tu dirección de wallet y las transacciones de tus contratos quedan registradas
+          en una blockchain pública, donde cualquiera puede verlas y nadie, ni siquiera
+          Pocket, puede borrarlas.
         </li>
       </ul>
       <p>
-        Pocket gives no financial, investment, legal or tax advice, and nothing in the Service
-        is an offer of any financial product.
+        Pocket no da asesoría financiera, de inversión, legal ni fiscal, y nada en el
+        Servicio es una oferta de un producto financiero.
       </p>
 
-      <h2>9. Test network</h2>
-      <p>
-        Pocket currently runs on the Stellar test network. Test USDC and test XLM have no value
-        and cannot be exchanged for money. Accounts, data and test funds may be reset. Do not
-        send real funds or main network assets to any address shown in the Service while it
-        runs on the test network: they may be lost. No Engagement on the test network creates
-        an obligation to pay real money unless the parties agree otherwise outside Pocket.
-        Before Pocket moves to the Stellar main network, where payments use real money, we will
-        update these Terms and ask you to accept them again.
-      </p>
+      {ON_MAINNET ? (
+        <>
+          <h2>9. Dinero real</h2>
+          <p>
+            Pocket funciona en la red principal de Stellar. El USDC que se deposita en un
+            contrato es dinero real, y cada liberación, resolución y comisión mueve dinero
+            real. Revisa cada monto y cada dirección antes de firmar. Pocket no puede
+            devolver USDC enviado a una dirección equivocada, fuera de un contrato o en
+            otra red. Las comisiones de la wallet y de la red se pagan en XLM, que también
+            tiene valor real. Pocket también puede operar una versión de prueba del
+            Servicio, aparte, en la red de pruebas de Stellar; nada de lo que pase ahí
+            mueve dinero real.
+          </p>
+        </>
+      ) : (
+        <>
+          <h2>9. Red de pruebas</h2>
+          <p>
+            Este Pocket funciona en la red de pruebas de Stellar. El USDC y el XLM de
+            prueba no tienen valor y no se pueden cambiar por dinero. Las cuentas, los
+            datos y los fondos de prueba pueden reiniciarse. No envíes dinero real ni
+            activos de la red principal a ninguna dirección que muestre este Servicio:
+            podrían perderse. Ningún Contrato en la red de pruebas obliga a pagar dinero
+            real, salvo que las partes lo acuerden fuera de Pocket. Los pagos con dinero
+            real solo ocurren en el Pocket que funciona en la red principal de Stellar.
+          </p>
+        </>
+      )}
 
-      <h2>10. Your content</h2>
+      <h2>10. Tu contenido</h2>
       <p>
-        Your content is what you add to Pocket: your profile, CV, portfolio, jobs, applications,
-        deliveries, evidence and comments. You keep ownership of it.
+        Tu contenido es lo que agregas a Pocket: tu perfil, CV, portafolio, trabajos,
+        postulaciones, entregas y sus resultados, pruebas y comentarios. Sigue siendo
+        tuyo.
       </p>
       <ul>
         <li>
-          You give Pocket a worldwide, non-exclusive, royalty-free licence to host, store, copy,
-          display and process your content to run, secure and improve the Service. This licence
-          ends when your content is deleted, except for copies we must keep by law, to resolve
-          disputes, or as part of the records described in the Privacy Policy.
+          Le das a Pocket una licencia mundial, no exclusiva y gratuita para alojar,
+          guardar, copiar, mostrar y procesar tu contenido con el fin de operar, proteger
+          y mejorar el Servicio. Esta licencia termina cuando se borra tu contenido, salvo
+          las copias que debamos conservar por ley, para resolver disputas o como parte de
+          los registros que describe la Política de Privacidad.
         </li>
         <li>
-          Once you are verified, your public profile, and the CV you upload, are visible to
-          anyone. Share in them only what you want others to see.
+          Cuando tu cuenta está activa, tu perfil público y el CV que subas los puede ver
+          cualquiera. Comparte en ellos solo lo que quieras que otros vean.
         </li>
         <li>
-          Do not include in your profile or CV photos, identity document numbers, date of birth,
-          health data, religious or political beliefs, or other sensitive personal data. Pocket
-          may remove such content.
+          No incluyas en tu perfil ni en tu CV fotos, números de documentos de identidad,
+          fecha de nacimiento, datos de salud, creencias religiosas o políticas, ni otros
+          datos personales sensibles. Pocket puede quitar ese contenido.
         </li>
         <li>
-          You confirm you have the rights to everything you upload, and that it does not
-          infringe anyone&apos;s rights or break any law.
+          Confirmas que tienes los derechos de todo lo que subes, y que no infringe
+          derechos de nadie ni viola ninguna ley.
         </li>
         <li>
-          When a specialist accepts an Engagement, both parties&apos; contact emails are shared
-          with each other. Each party may use the other&apos;s data only for that Engagement,
-          and is responsible for handling it lawfully.
+          Cuando un experto acepta un Contrato, cada parte ve el correo de contacto de la
+          otra. Cada una puede usar los datos de la otra solo para ese Contrato, y es
+          responsable de tratarlos conforme a la ley.
         </li>
       </ul>
 
-      <h2>11. Work product</h2>
+      <h2>11. El resultado del trabajo</h2>
       <p>
-        Who owns the work a specialist delivers is agreed between the startup and the
-        specialist. If they agreed nothing else in writing, once a milestone is paid in full the
-        specialist assigns to the startup, to the extent the applicable law allows, the economic
-        rights in that milestone&apos;s deliverables, or, where assignment is not allowed,
-        grants the startup an exclusive, worldwide and perpetual licence to them. Moral rights
-        stay with the author where the law makes them inalienable. If a dispute ends in a
-        partial payment, the startup receives a non-exclusive licence to use the deliverables
-        for its own business, unless the parties agree otherwise. The specialist may show the
-        work in their portfolio unless the startup asks them in writing not to. Pocket claims
-        no rights in the work product.
+        A quién pertenece el trabajo que entrega un experto lo acuerdan la startup y el
+        experto. Si no acordaron otra cosa por escrito, cuando un hito se paga por
+        completo el experto cede a la startup, en la medida en que la ley aplicable lo
+        permita, los derechos patrimoniales sobre lo entregado en ese hito o, donde la
+        cesión no esté permitida, le otorga una licencia exclusiva, mundial y perpetua
+        sobre ello. Los derechos morales siguen siendo del autor cuando la ley los hace
+        irrenunciables. Si una disputa termina en un pago parcial, la startup recibe una
+        licencia no exclusiva para usar lo entregado en su propio negocio, salvo que las
+        partes acuerden otra cosa. El experto puede mostrar el trabajo en su portafolio,
+        salvo que la startup le pida por escrito que no lo haga. Pocket no reclama ningún
+        derecho sobre el resultado del trabajo.
       </p>
 
-      <h2>12. What you must not do</h2>
+      <h2>12. Lo que no puedes hacer</h2>
       <ul>
-        <li>Break any law, or use Pocket for fraud, money laundering or terrorist financing.</li>
-        <li>Give false information, impersonate anyone, or create accounts for someone else.</li>
         <li>
-          Harass, threaten or discriminate against anyone. Startups must not ask for, or make
-          hiring decisions based on, race, ethnicity, colour, gender, sexual orientation,
-          religion, disability, age, nationality, pregnancy or other protected characteristics.
+          Violar cualquier ley, o usar Pocket para fraude, lavado de dinero o
+          financiamiento del terrorismo.
         </li>
         <li>
-          Post jobs for illegal work, unsolicited bulk messages, deceptive marketing, fake
-          reviews, or adult, violent or hateful content.
-        </li>
-        <li>Upload malware, or anything that infringes intellectual property or privacy.</li>
-        <li>
-          Interfere with the Service: scraping it, overloading it, bypassing its limits or
-          security, or accessing accounts or data that are not yours.
+          Dar información falsa, hacerte pasar por otra persona o crear cuentas para
+          alguien más.
         </li>
         <li>
-          Test Pocket&apos;s security without following{' '}
+          Acosar, amenazar o discriminar a cualquier persona. Las startups no pueden
+          pedir, ni decidir una contratación con base en, raza, origen étnico, color,
+          género, orientación sexual, religión, discapacidad, edad, nacionalidad, embarazo
+          u otras características protegidas.
+        </li>
+        <li>
+          Publicar trabajos ilegales, mensajes masivos no solicitados, marketing engañoso,
+          reseñas falsas, o contenido para adultos, violento o de odio.
+        </li>
+        <li>
+          Subir software malicioso, o cualquier cosa que infrinja la propiedad intelectual
+          o la privacidad.
+        </li>
+        <li>
+          Interferir con el Servicio: extraer sus datos de forma automatizada,
+          sobrecargarlo, saltarte sus límites o su seguridad, o acceder a cuentas o datos
+          que no son tuyos.
+        </li>
+        <li>
+          Probar la seguridad de Pocket sin seguir{' '}
           <a
-            href="https://github.com/diegoveme/Pocket/security/policy"
+            href="https://github.com/POCKET-XYZ/Pocket/security/policy"
             target="_blank"
             rel="noreferrer"
           >
-            our security policy
+            nuestra política de seguridad
           </a>
-          , which explains how to report a vulnerability.
+          , que explica cómo reportar una vulnerabilidad.
         </li>
       </ul>
-      <h3>Reporting content, and how we moderate</h3>
+      <h3>Cómo reportar contenido y cómo moderamos</h3>
       <p>
-        Anyone can report content or a user they believe is illegal or breaks these Terms by
-        writing to {LEGAL_EMAIL}. Please include where the content is, why you believe it is
-        illegal or not allowed, your name and email, and a statement that your report is made
-        in good faith. We review reports with people, not automated tools, and tell the person
-        who reported what we decided.
+        Cualquier persona puede reportar contenido o un usuario que crea ilegal o
+        contrario a estos Términos escribiendo a {LEGAL_EMAIL}. Incluye dónde está el
+        contenido, por qué crees que es ilegal o no está permitido, tu nombre y correo, y
+        una declaración de que reportas de buena fe. Revisamos los reportes con personas,
+        no con herramientas automáticas, y le decimos a quien reportó lo que decidimos.
       </p>
       <p>
-        If we remove your content, or restrict or suspend your account, we will tell you what
-        we did, why, which rule or law it is based on, and how to ask us to review it. You can
-        ask for that review by replying to our message or writing to {LEGAL_EMAIL}, and a
-        different person at Pocket will look at it.
-      </p>
-
-      <h2>13. Regulatory status, sanctions and anti-money laundering</h2>
-      <p>
-        Pocket does not buy, sell, exchange or convert digital assets, does not exchange them
-        for money, and does not offer investment or deposit products. Pocket is not licensed or
-        registered as a financial institution, payment institution or virtual asset service
-        provider in any country. If the law of a country requires a licence or registration for
-        any part of the Service, Pocket may limit or stop the Service there.
-      </p>
-      <p>
-        You confirm that you are not, and are not owned or controlled by, a person listed on, or
-        located in a country subject to, sanctions of the United Nations, the United States, the
-        European Union or your country of residence. Pocket may screen users and wallet
-        addresses, ask for additional information, refuse or suspend accounts, decline to sign
-        releases or resolutions where the law requires it, and report to the competent
-        authorities.
+        Si quitamos tu contenido, o limitamos o suspendemos tu cuenta, te diremos qué
+        hicimos, por qué, en qué regla o ley se basa y cómo pedirnos que lo revisemos.
+        Puedes pedir esa revisión respondiendo a nuestro mensaje o escribiendo a{' '}
+        {LEGAL_EMAIL}, y la hará otra persona de Pocket.
       </p>
 
-      <h2>14. Closing your account, and suspension</h2>
+      <h2>13. Situación regulatoria, sanciones y prevención de lavado de dinero</h2>
       <p>
-        You can close your account at any time, from your account page or by writing to{' '}
-        {LEGAL_EMAIL}. You can also download a copy of your data there before you close it.
-        Closing is not possible while money you are part of is in an escrow: finish or resolve
-        those Engagements first. Offers still waiting for the specialist are withdrawn, open
-        jobs are closed and pending applications are withdrawn. What happens to your data is
-        explained in the Privacy Policy.
+        Pocket no compra, vende, intercambia ni convierte activos digitales, no los cambia
+        por dinero y no ofrece productos de inversión ni de depósito. Pocket no tiene
+        licencia ni registro como institución financiera, institución de pago ni proveedor
+        de servicios de activos virtuales en ningún país. Si la ley de un país exige una
+        licencia o registro para alguna parte del Servicio, Pocket puede limitar o detener
+        el Servicio ahí.
       </p>
       <p>
-        We may suspend or close an account, remove content, or refuse service if you break
-        these Terms, if the law requires it, or to protect users, third parties or Pocket. When
-        we can, we will tell you why and give you a chance to respond. Suspending an account
-        does not move funds already in an escrow: they stay in the contract, and are released
-        or resolved under sections 6 and 7. We may close accounts inactive for 24 months, after
-        30 days&apos; notice, but never while funds remain in an escrow.
-      </p>
-
-      <h2>15. The Service is provided as is</h2>
-      <p>
-        To the extent the law allows, the Service is provided &quot;as is&quot; and &quot;as
-        available&quot;, without warranties of any kind, express or implied, including fitness
-        for a particular purpose, availability, or that it will be free of errors. We may
-        change, suspend or discontinue any part of the Service, and will give reasonable notice
-        when a change affects funded Engagements.
+        Confirmas que no eres, ni te pertenece o controla, una persona incluida en listas
+        de sanciones, o ubicada en un país sancionado, por las Naciones Unidas, Estados
+        Unidos, la Unión Europea o tu país de residencia. Pocket puede revisar usuarios y
+        direcciones de wallet, pedir información adicional, rechazar o suspender cuentas,
+        negarse a firmar liberaciones o resoluciones cuando la ley lo exija, e informar a
+        las autoridades competentes.
       </p>
 
-      <h2>16. Limitation of liability</h2>
+      <h2>14. Cerrar tu cuenta y suspensiones</h2>
       <p>
-        Nothing in this section limits liability for fraud, wilful misconduct or gross
-        negligence, death or personal injury, breach of data protection law, Pocket&apos;s own
-        errors in signing a release or a dispute resolution, or any liability that cannot be
-        limited under the applicable law.
+        Puedes cerrar tu cuenta cuando quieras, desde tu{' '}
+        <Link href="/account">página de cuenta</Link> o escribiendo a {LEGAL_EMAIL}. Ahí
+        también puedes descargar una copia de tus datos antes de cerrarla. No puedes
+        cerrarla mientras haya dinero tuyo guardado en un contrato: primero termina o
+        resuelve esos Contratos. Las ofertas que el experto todavía no responde se
+        retiran, los trabajos abiertos se cierran y las postulaciones pendientes se
+        retiran. Lo que pasa con tus datos lo explica la Política de Privacidad.
+      </p>
+      <p>
+        Podemos suspender o cerrar una cuenta, quitar contenido o negar el servicio si
+        violas estos Términos, si la ley lo exige, o para proteger a los usuarios, a
+        terceros o a Pocket. Cuando podamos, te diremos por qué y te daremos la
+        oportunidad de responder. Suspender una cuenta no mueve el dinero que ya está en
+        un contrato: se queda ahí, y se libera o se resuelve según las secciones 6 y 7.
+        Podemos cerrar cuentas sin actividad durante 24 meses, con 30 días de aviso, pero
+        nunca mientras quede dinero en un contrato.
+      </p>
+
+      <h2>15. El Servicio se ofrece tal cual</h2>
+      <p>
+        En la medida en que la ley lo permita, el Servicio se ofrece &quot;tal cual&quot;
+        y &quot;según disponibilidad&quot;, sin garantías de ningún tipo, expresas o
+        implícitas, incluidas la idoneidad para un fin determinado, la disponibilidad o
+        que esté libre de errores. Podemos cambiar, suspender o dejar de ofrecer cualquier
+        parte del Servicio, y avisaremos con tiempo razonable cuando un cambio afecte a
+        Contratos con dinero depositado.
+      </p>
+
+      <h2>16. Límite de responsabilidad</h2>
+      <p>
+        Nada en esta sección limita la responsabilidad por fraude, dolo o negligencia
+        grave, muerte o lesiones personales, incumplimiento de la ley de protección de
+        datos, errores propios de Pocket al firmar una liberación o una resolución de
+        disputa, ni cualquier responsabilidad que la ley aplicable no permita limitar.
       </p>
       <ul>
         <li>
-          <strong>If you use Pocket for a business or profession</strong>, including as a
-          startup or as an independent specialist, and to the extent the law allows: Pocket is
-          not liable for indirect, incidental, special, consequential or punitive damages, or
-          for lost profits, revenue or data; and Pocket&apos;s total liability for all claims
-          relating to the Service is limited to the greater of the fees you paid Pocket in the
-          12 months before the claim, or 500 US dollars.
+          <strong>Si usas Pocket para un negocio o una profesión</strong>, incluso como
+          startup o como experto independiente, y en la medida en que la ley lo permita:
+          Pocket no responde por daños indirectos, incidentales, especiales, consecuentes
+          o punitivos, ni por lucro cesante, pérdida de ingresos o de datos; y la
+          responsabilidad total de Pocket por todos los reclamos relacionados con el
+          Servicio se limita a lo que sea mayor entre las comisiones que le pagaste a
+          Pocket en los 12 meses anteriores al reclamo, o 500 dólares estadounidenses.
         </li>
         <li>
-          <strong>If you are a consumer</strong> under the law of your country of residence,
-          Pocket is liable in accordance with that law, and the limits above apply only to the
-          extent that law allows.
+          <strong>Si eres consumidor</strong> según la ley de tu país de residencia,
+          Pocket responde conforme a esa ley, y los límites anteriores se aplican solo en
+          la medida en que esa ley lo permita.
         </li>
         <li>
-          Pocket is not responsible for the conduct of other users, or for the performance of
-          the Stellar network, Circle, Trustless Work, Pollar or wallet providers, except to the
-          extent a loss is caused by Pocket&apos;s own breach of these Terms.
+          Pocket no es responsable de la conducta de otros usuarios, ni del funcionamiento
+          de la red de Stellar, Circle, Trustless Work, Pollar o los proveedores de
+          wallets, salvo en la medida en que una pérdida la cause un incumplimiento de
+          Pocket de estos Términos.
         </li>
       </ul>
 
-      <h2>17. Indemnity</h2>
+      <h2>17. Indemnización</h2>
       <p>
-        If you use Pocket for a business or profession, you will indemnify Pocket against
-        claims by third parties, and the reasonable costs of defending them, to the extent they
-        result from your content, your breach of these Terms or your breach of the law. You will
-        not have to indemnify Pocket for losses caused by Pocket&apos;s own breach, negligence
-        or misconduct. Pocket will tell you promptly about any such claim and let you take part
-        in its defence. This section does not apply to consumers, except as their local law
-        allows.
+        Si usas Pocket para un negocio o una profesión, indemnizarás a Pocket por los
+        reclamos de terceros, y por los costos razonables de defenderse de ellos, en la
+        medida en que resulten de tu contenido, de tu incumplimiento de estos Términos o
+        de la ley. No tendrás que indemnizar a Pocket por pérdidas causadas por su propio
+        incumplimiento, negligencia o mala conducta. Pocket te avisará pronto de cualquier
+        reclamo así y te dejará participar en su defensa. Esta sección no se aplica a los
+        consumidores, salvo en lo que permita su ley local.
       </p>
 
-      <h2>18. Changes to these Terms</h2>
+      <h2>18. Cambios a estos Términos</h2>
       <p>
-        We may update these Terms to reflect changes in the Service, the law or how we operate.
-        The version in force is shown at the top, with its date. We will give at least 15
-        days&apos; notice, in the Service and by email where we have yours, before a new version
-        takes effect, unless the change is required by law or urgently needed for security.
-        Every new version must be accepted before you keep using the Service; if you do not
-        accept it, you can close your account at no cost. Funded Engagements continue under the
-        version in force when they were funded, unless the law requires otherwise.
+        Podemos actualizar estos Términos para reflejar cambios en el Servicio, en la ley
+        o en cómo operamos. La versión vigente aparece arriba, con su fecha. Avisaremos
+        con al menos 15 días de anticipación, en el Servicio y por correo cuando tengamos
+        el tuyo, antes de que una nueva versión entre en vigor, salvo que el cambio lo
+        exija la ley o sea urgente por seguridad. Cada nueva versión debe aceptarse para
+        seguir usando el Servicio; si no la aceptas, puedes cerrar tu cuenta sin costo.
+        Los Contratos con dinero depositado siguen con la versión vigente cuando se
+        depositó, salvo que la ley exija otra cosa.
       </p>
 
-      <h2>19. Governing law and disputes with Pocket</h2>
+      <h2>19. Ley aplicable y reclamos contra Pocket</h2>
       <p>
-        If you have a problem with Pocket, write to us first at {LEGAL_EMAIL}. Most issues can
-        be solved that way, and we will answer within 15 business days, or sooner if your law
-        requires it.
+        Si tienes un problema con Pocket, escríbenos primero a {LEGAL_EMAIL}. La mayoría
+        de los problemas se resuelven así, y te responderemos en un máximo de 15 días
+        hábiles, o antes si tu ley lo exige.
       </p>
       <p>
-        These Terms are governed by the laws of the country where Pocket&apos;s operating entity
-        is incorporated, which we will state here once it exists. This does not take away the
-        protection of the mandatory consumer and data protection laws of the country where you
-        live. If you are a consumer, you may bring proceedings in the courts of your place of
-        residence and file complaints with your consumer protection authority, and nothing in
-        these Terms requires you to go to arbitration or to give up collective actions.
+        Estos Términos se rigen por las leyes del país donde se constituya la entidad que
+        opere Pocket, que indicaremos aquí cuando exista. Esto no te quita la protección
+        de las leyes obligatorias de protección al consumidor y de datos del país donde
+        vives. Si eres consumidor, puedes presentar acciones ante los tribunales de tu
+        lugar de residencia y quejas ante tu autoridad de protección al consumidor, y nada
+        en estos Términos te obliga a ir a arbitraje ni a renunciar a acciones colectivas.
       </p>
 
-      <h2>20. Users in the European Union, the United Kingdom and elsewhere</h2>
+      <h2>20. Usuarios en la Unión Europea, el Reino Unido y otros lugares</h2>
       <ul>
         <li>
-          If you live in the European Union or the United Kingdom, you have the rights the
-          consumer and data protection laws of your country give you, and these Terms do not
-          limit them.
+          Si vives en la Unión Europea o en el Reino Unido, tienes los derechos que te dan
+          las leyes de protección al consumidor y de datos de tu país, y estos Términos no
+          los limitan.
         </li>
         <li>
-          Startups use Pocket as businesses. Specialists are independent professionals, and
-          Pocket asks them to act as such. Consumer protection rules that apply between a
-          business and a consumer may not apply to an Engagement between two businesses or
-          professionals.
+          Las startups usan Pocket como empresas. Los expertos son profesionales
+          independientes, y Pocket les pide actuar como tales. Las normas de protección al
+          consumidor que se aplican entre una empresa y un consumidor pueden no aplicarse
+          a un Contrato entre dos empresas o profesionales.
         </li>
         <li>
-          Our single point of contact for users and for authorities, including under the
-          European Union&apos;s Digital Services Act, is {LEGAL_EMAIL}, in English or Spanish.
+          Nuestro punto único de contacto para usuarios y autoridades, incluso según la
+          Ley de Servicios Digitales de la Unión Europea, es {LEGAL_EMAIL}, en español o
+          en inglés.
         </li>
         <li>
-          If you use Pocket for a business, you may ask us to review any decision to restrict,
-          suspend or close your account, as described in section 12, and we will give you at
-          least 15 days&apos; notice of changes to these Terms, as described in section 18.
+          Si usas Pocket para un negocio, puedes pedirnos que revisemos cualquier decisión
+          de limitar, suspender o cerrar tu cuenta, como describe la sección 12, y te
+          avisaremos con al menos 15 días de anticipación de los cambios a estos Términos,
+          como describe la sección 18.
         </li>
       </ul>
 
-      <h2>21. General</h2>
+      <h2>21. Disposiciones generales</h2>
       <ul>
         <li>
-          <strong>Electronic contracting and notices.</strong> You agree to enter into these
-          Terms electronically, and to receive notices in the Service and by email to the
-          contact address you gave us. These satisfy any requirement that they be in writing.
-          Notices to Pocket must be sent to {LEGAL_EMAIL}.
+          <strong>Contratación y avisos electrónicos.</strong> Aceptas celebrar estos
+          Términos de forma electrónica, y recibir avisos en el Servicio y por correo en
+          la dirección de contacto que nos diste. Esto cumple cualquier requisito de que
+          consten por escrito. Los avisos a Pocket deben enviarse a {LEGAL_EMAIL}.
         </li>
         <li>
-          <strong>Force majeure.</strong> Pocket is not liable for delays or failures caused by
-          events beyond its reasonable control, including network outages, blockchain
-          congestion or halts, actions of a stablecoin issuer, or acts of authorities.
+          <strong>Fuerza mayor.</strong> Pocket no responde por retrasos o fallas causados
+          por hechos fuera de su control razonable, como caídas de la red, congestión o
+          paros de la blockchain, actos de un emisor de moneda estable o actos de
+          autoridad.
         </li>
         <li>
-          <strong>Survival.</strong> The sections on escrow, disputes, content licences, work
-          product, liability, indemnity, governing law and this section continue after your
-          account is closed.
+          <strong>Vigencia.</strong> Las secciones sobre contratos de garantía, disputas,
+          licencias de contenido, resultado del trabajo, responsabilidad, indemnización,
+          ley aplicable y esta sección siguen vigentes después de cerrar tu cuenta.
         </li>
         <li>
-          <strong>No third-party beneficiaries.</strong> These Terms create no rights for anyone
-          other than you and Pocket.
+          <strong>Sin terceros beneficiarios.</strong> Estos Términos no crean derechos
+          para nadie más que tú y Pocket.
         </li>
         <li>
-          <strong>Feedback.</strong> If you send us suggestions, we may use them freely and
-          without any obligation to you.
+          <strong>Sugerencias.</strong> Si nos envías sugerencias, podemos usarlas
+          libremente y sin ninguna obligación contigo.
         </li>
         <li>
-          <strong>Trademarks.</strong> The Pocket name and logo belong to Pocket; you may not
-          use them without our permission.
+          <strong>Marcas.</strong> El nombre y el logo de Pocket pertenecen a Pocket; no
+          puedes usarlos sin nuestro permiso.
         </li>
         <li>
-          <strong>Authorities.</strong> Pocket may disclose information to authorities when the
-          law requires it, and will tell affected users where the law allows.
+          <strong>Autoridades.</strong> Pocket puede entregar información a las
+          autoridades cuando la ley lo exija, y avisará a los usuarios afectados cuando la
+          ley lo permita.
         </li>
         <li>
-          <strong>Whole agreement.</strong> These Terms, the Privacy Policy and any terms shown
-          for a specific feature are the whole agreement between you and Pocket about the
-          Service. If a provision is found invalid, the rest remains in force. Not enforcing a
-          provision is not a waiver of it.
+          <strong>Acuerdo completo.</strong> Estos Términos, la Política de Privacidad y
+          los términos que se muestren para una función específica son todo el acuerdo
+          entre tú y Pocket sobre el Servicio. Si una disposición resulta inválida, el
+          resto sigue vigente. No exigir una disposición no es renunciar a ella.
         </li>
         <li>
-          <strong>Transfer.</strong> You may not transfer your rights under these Terms without
-          our consent. We may transfer ours to the entity that operates Pocket, or as part of a
-          merger or sale, and will tell you if we do.
+          <strong>Cesión.</strong> No puedes ceder tus derechos de estos Términos sin
+          nuestro consentimiento. Podemos ceder los nuestros a la entidad que opere
+          Pocket, o como parte de una fusión o venta, y te avisaremos si lo hacemos.
         </li>
         <li>
-          <strong>Language.</strong> These Terms are written in English. Where the law of your
-          country requires a translation of consumer contracts, we will provide one, and it will
-          prevail to the extent that law requires.
+          <strong>Idioma.</strong> Estos Términos están en español y en{' '}
+          <Link href="/terms/en">inglés</Link>. Si las dos versiones difieren, prevalece
+          la versión en español, salvo que la ley de tu país exija otra cosa.
         </li>
       </ul>
 
-      <h2>22. Contact</h2>
-      <p>For anything about these Terms, write to {LEGAL_EMAIL}.</p>
+      <h2>22. Contacto</h2>
+      <p>Para cualquier tema sobre estos Términos, escribe a {LEGAL_EMAIL}.</p>
     </LegalPage>
   );
 }

@@ -29,7 +29,7 @@ export class UsersService {
    */
   async acceptTerms(id: string, version: string, ip?: string) {
     if (version !== LEGAL_VERSION) {
-      throw new BadRequestException('These are not the Terms in force. Reload the page');
+      throw new BadRequestException('Estos no son los Términos vigentes. Recarga la página');
     }
     return this.prisma.user.update({ where: { id }, data: termsAccepted(ip) });
   }
@@ -59,12 +59,12 @@ export class UsersService {
         disputeEvidence: true,
       },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('No encontramos al usuario');
     securityEvent('data_exported', { userId: id });
     return {
       exportedAt: new Date().toISOString(),
       note:
-        'Your wallet address and your escrow transactions are also on the public Stellar network, outside Pocket.',
+        'Tu dirección de wallet y las transacciones de tus contratos también están en la red pública de Stellar, fuera de Pocket.',
       ...user,
     };
   }
@@ -81,7 +81,7 @@ export class UsersService {
     const user = await this.findById(id);
     if (user.deletedAt) return;
     if (user.role === 'manager') {
-      throw new ForbiddenException('Manager accounts are closed by the Pocket team');
+      throw new ForbiddenException('Las cuentas de manager las cierra el equipo de Pocket');
     }
 
     const party = { OR: [{ startupId: id }, { specialistId: id }] };
@@ -93,7 +93,7 @@ export class UsersService {
     ]);
     if (inPlay > 0 || beingAccepted > 0) {
       throw new ConflictException(
-        'You have contracts with money in escrow. Finish or resolve them before deleting your account',
+        'Tienes contratos con dinero guardado. Termínalos o resuélvelos antes de eliminar tu cuenta',
       );
     }
 

@@ -62,25 +62,27 @@ export function TermsConsent({
   return (
     <div className={cn('space-y-3', className)}>
       <Box checked={value.terms} onChange={(terms) => onChange({ ...value, terms })}>
-        I am 18 or older and I accept the{' '}
+        Tengo 18 años o más y acepto los{' '}
         <Link href="/terms" target="_blank" className="underline">
-          Terms of Service
+          Términos de Servicio
         </Link>
         .
       </Box>
       <Box checked={value.data} onChange={(data) => onChange({ ...value, data })}>
-        I consent to Pocket processing my personal data as the{' '}
+        Doy mi consentimiento para que Pocket trate mis datos personales como lo describe
+        la{' '}
         <Link href="/privacy" target="_blank" className="underline">
-          Privacy Policy
-        </Link>{' '}
-        describes, including publishing my profile and CV once I am verified, and storing my
-        data in the United States.
+          Política de Privacidad
+        </Link>
+        , incluido publicar mi perfil y mi CV cuando mi cuenta esté activa, y guardar mis
+        datos en Estados Unidos.
       </Box>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Pocket uses your wallet address, email, verification and profile data to run your
-        account, verify you, publish your profile and run escrows on the public Stellar
-        blockchain. Your data is stored in the United States. You can use your rights, or limit
-        the use of your data, from your account page or at {PRIVACY_EMAIL}.
+        Pocket usa tu dirección de wallet, tu correo, los datos de tu cuenta y tu perfil
+        para operar tu cuenta, publicar tu perfil y manejar los contratos en la red
+        pública de Stellar. Tus datos se guardan en Estados Unidos. Puedes ejercer tus
+        derechos, o limitar el uso de tus datos, desde tu página de cuenta o en{' '}
+        {PRIVACY_EMAIL}.
       </p>
     </div>
   );
@@ -98,7 +100,9 @@ export function TermsGate() {
 
   // The documents, and the way out, stay reachable.
   if (!user || user.termsVersion === LEGAL_VERSION) return null;
-  if (['/terms', '/privacy', '/account'].includes(pathname)) return null;
+  if (['/terms', '/privacy', '/account'].some((path) => pathname.startsWith(path))) {
+    return null;
+  }
 
   async function accept() {
     setSaving(true);
@@ -120,24 +124,30 @@ export function TermsGate() {
       className="fixed inset-0 z-50 flex items-center justify-center bg-navy/60 p-4"
     >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-background p-6 shadow-xl">
-        <h2 id="terms-gate-title" className="font-heading text-xl font-semibold text-navy">
-          {user.termsVersion ? 'Our terms changed' : 'Before you go on'}
+        <h2
+          id="terms-gate-title"
+          className="font-heading text-xl font-semibold text-navy"
+        >
+          {user.termsVersion ? 'Actualizamos nuestros términos' : 'Antes de seguir'}
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Please read the Terms of Service and the Privacy Policy, and accept them to keep using
-          Pocket. If you do not want to, you can{' '}
+          Lee los Términos de Servicio y la Política de Privacidad, y acéptalos para
+          seguir usando Pocket. Si no quieres, puedes{' '}
           <Link href="/account" className="underline">
-            download your data or delete your account
+            descargar tus datos o eliminar tu cuenta
           </Link>
           .
         </p>
         <TermsConsent value={consent} onChange={setConsent} className="mt-5" />
         <div className="mt-6 flex gap-2">
-          <Button disabled={!consentGiven(consent) || saving} onClick={() => void accept()}>
-            {saving ? 'Saving...' : 'Accept and continue'}
+          <Button
+            disabled={!consentGiven(consent) || saving}
+            onClick={() => void accept()}
+          >
+            {saving ? 'Guardando...' : 'Aceptar y seguir'}
           </Button>
           <Button variant="ghost" onClick={signOut}>
-            Sign out
+            Cerrar sesión
           </Button>
         </div>
       </div>
@@ -150,16 +160,20 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-muted-foreground md:px-6">
-        <span>Pocket. Runs on the Stellar test network.</span>
+        <span>
+          {process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'mainnet'
+            ? 'Pocket. Funciona en la red principal de Stellar, con USDC real.'
+            : 'Pocket. Funciona en la red de pruebas de Stellar: el USDC no tiene valor.'}
+        </span>
         <nav className="flex flex-wrap gap-4">
           <Link href="/terms" className="hover:text-navy">
-            Terms of Service
+            Términos de Servicio
           </Link>
           <Link href="/privacy" className="hover:text-navy">
-            Privacy Policy
+            Política de Privacidad
           </Link>
           <Link href="/account" className="hover:text-navy">
-            Your account and data
+            Tu cuenta y tus datos
           </Link>
         </nav>
       </div>

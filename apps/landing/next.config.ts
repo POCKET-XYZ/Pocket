@@ -19,9 +19,11 @@ const APP_PAGES = [
   'jobs',
   'login',
   'manager',
+  'privacy',
   'profile',
   'specialists',
   'startups',
+  'terms',
   'verification',
   'wallet',
 ];

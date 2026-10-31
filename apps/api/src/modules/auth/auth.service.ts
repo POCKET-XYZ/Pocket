@@ -229,7 +229,7 @@ function requireTerms(accepted: string | undefined): void {
   if (accepted !== LEGAL_VERSION) {
     throw new BadRequestException({
       code: ApiErrorCode.TermsRequired,
-      message: 'Accept the Terms of Service and the Privacy Policy to create your account',
+      message: 'Acepta los Términos y la Política de Privacidad para crear tu cuenta',
     });
   }
 }

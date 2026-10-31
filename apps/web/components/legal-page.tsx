@@ -1,24 +1,67 @@
 import Link from 'next/link';
-import { LEGAL_VERSION } from '@pocket/shared';
 
 /** Where people write about legal and privacy matters. */
-export const LEGAL_EMAIL = 'legal@pocket.example';
-export const PRIVACY_EMAIL = 'privacy@pocket.example';
+export const LEGAL_EMAIL = 'pocket.stellar.xyz@gmail.com';
+export const PRIVACY_EMAIL = 'pocket.stellar.xyz@gmail.com';
 
-/** Layout shared by the Terms of Service and the Privacy Policy. */
+/** Which network this deployment runs on: the Terms say what that means for money. */
+export const ON_MAINNET = process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'mainnet';
+
+/** The day the version in force took effect, in each language. */
+const EFFECTIVE: Record<'es' | 'en', string> = {
+  es: 'Vigente desde el 2 de noviembre de 2026',
+  en: 'Effective November 2, 2026',
+};
+
+const SEE_ALSO = {
+  es: {
+    terms: 'Términos de Servicio',
+    privacy: 'Política de Privacidad',
+    prefix: 'Consulta también los',
+    and: 'y la',
+  },
+  en: {
+    terms: 'Terms of Service',
+    privacy: 'Privacy Policy',
+    prefix: 'See also the',
+    and: 'and the',
+  },
+};
+
+/**
+ * Layout shared by the Terms of Service and the Privacy Policy, in Spanish
+ * (at /terms and /privacy, the version that prevails) and in English (at
+ * /terms/en and /privacy/en).
+ */
 export function LegalPage({
+  lang,
   title,
   summary,
+  otherLanguage,
   children,
 }: {
+  lang: 'es' | 'en';
   title: string;
   summary: React.ReactNode;
+  /** The same document in the other language. */
+  otherLanguage: string;
   children: React.ReactNode;
 }) {
+  const base = lang === 'es' ? '' : '/en';
+  const see = SEE_ALSO[lang];
   return (
-    <article className="mx-auto max-w-3xl pb-16">
-      <h1 className="text-3xl font-bold text-navy md:text-4xl">{title}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Effective {LEGAL_VERSION}</p>
+    <article lang={lang} className="mx-auto max-w-3xl pb-16">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h1 className="text-3xl font-bold text-navy md:text-4xl">{title}</h1>
+        <Link
+          href={otherLanguage}
+          className="text-sm underline"
+          hrefLang={lang === 'es' ? 'en' : 'es'}
+        >
+          {lang === 'es' ? 'Read in English' : 'Leer en español'}
+        </Link>
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">{EFFECTIVE[lang]}</p>
       <div className="mt-6 rounded-2xl border border-border bg-celeste-light/40 p-5 text-sm leading-relaxed text-navy">
         {summary}
       </div>
@@ -26,8 +69,8 @@ export function LegalPage({
         {children}
       </div>
       <p className="mt-12 text-sm text-muted-foreground">
-        See also the <Link href="/terms">Terms of Service</Link> and the{' '}
-        <Link href="/privacy">Privacy Policy</Link>.
+        {see.prefix} <Link href={`/terms${base}`}>{see.terms}</Link> {see.and}{' '}
+        <Link href={`/privacy${base}`}>{see.privacy}</Link>.
       </p>
     </article>
   );

@@ -10,7 +10,13 @@ import { PRIVACY_EMAIL } from '@/components/legal-page';
 import { PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -29,8 +35,8 @@ export default function AccountPage() {
       {() => (
         <div className="mx-auto max-w-3xl space-y-6">
           <PageHeader
-            title="Your account and data"
-            description="Download everything Pocket holds about you, or delete your account."
+            title="Tu cuenta y tus datos"
+            description="Descarga todo lo que Pocket guarda sobre ti, o elimina tu cuenta."
           />
           <ExportCard />
           <RightsCard />
@@ -48,11 +54,13 @@ function ExportCard() {
     setBusy(true);
     try {
       const data = await api<unknown>('/users/me/export');
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: 'application/json',
+      });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `pocket-data-${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = `pocket-datos-${new Date().toISOString().slice(0, 10)}.json`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -65,17 +73,17 @@ function ExportCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Download your data</CardTitle>
+        <CardTitle>Descarga tus datos</CardTitle>
         <CardDescription>
-          Your account, verification, profile, jobs, applications, contracts, deliveries,
-          disputes and consent records, in one JSON file. Your CV is listed; download the PDF
-          from your profile.
+          Tu cuenta, tus datos de registro, tu perfil, trabajos, postulaciones, contratos,
+          entregas, disputas y registros de consentimiento, en un archivo JSON. Tu CV
+          aparece en la lista; el PDF se descarga desde tu perfil.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Button variant="outline" disabled={busy} onClick={() => void download()}>
           <DownloadIcon className="size-4" />
-          {busy ? 'Preparing...' : 'Download my data'}
+          {busy ? 'Preparando...' : 'Descargar mis datos'}
         </Button>
       </CardContent>
     </Card>
@@ -86,15 +94,19 @@ function RightsCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Correct or limit the use of your data</CardTitle>
+        <CardTitle>Corrige o limita el uso de tus datos</CardTitle>
         <CardDescription>
-          Correct your profile from <Link href="/profile" className="underline">your profile
-          page</Link>. To correct anything else, object to a use of your data, withdraw a consent
-          or ask anything about your data, write to {PRIVACY_EMAIL}. See the{' '}
+          Corrige tu perfil desde{' '}
+          <Link href="/profile" className="underline">
+            tu página de perfil
+          </Link>
+          . Para corregir cualquier otra cosa, oponerte a un uso de tus datos, retirar un
+          consentimiento o preguntar algo sobre tus datos, escribe a {PRIVACY_EMAIL}.
+          Todos tus derechos están en la{' '}
           <Link href="/privacy" className="underline">
-            Privacy Policy
-          </Link>{' '}
-          for all your rights.
+            Política de Privacidad
+          </Link>
+          .
         </CardDescription>
       </CardHeader>
     </Card>
@@ -112,8 +124,11 @@ function DeleteCard() {
   async function remove() {
     setBusy(true);
     try {
-      await api('/users/me/delete', { method: 'POST', body: { confirm } });
-      toast.success('Your account was deleted');
+      await api('/users/me/delete', {
+        method: 'POST',
+        body: { confirm: confirm.trim() },
+      });
+      toast.success('Tu cuenta se eliminó');
       signOut();
       router.replace('/');
     } catch (error) {
@@ -125,62 +140,62 @@ function DeleteCard() {
   return (
     <Card className="border-destructive/40">
       <CardHeader>
-        <CardTitle>Delete your account</CardTitle>
+        <CardTitle>Elimina tu cuenta</CardTitle>
         <CardDescription>
-          This cannot be undone. Download your data first if you want a copy.
+          No se puede deshacer. Si quieres una copia, descarga tus datos antes.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
           <li>
-            Deleted: your profile, your CV, your verification details, your email and the link
-            between your account and your wallet. You are signed out everywhere.
+            Se borra: tu perfil, tu CV, los datos de tu cuenta, tu correo y el vínculo
+            entre tu cuenta y tu wallet. Se cierra tu sesión en todos lados.
           </li>
           <li>
-            Closed: your open jobs and pending applications. Offers still waiting for the
-            specialist are withdrawn.
+            Se cierra: tus trabajos abiertos y tus postulaciones pendientes. Las ofertas
+            que el experto todavía no responde se retiran.
           </li>
           <li>
-            Kept, attached to an anonymous account: the contracts, payments and disputes you
-            took part in, because they are also the other party&apos;s records and the law asks
-            us to keep them.
+            Se guarda, ligado a una cuenta anónima: los contratos, pagos y disputas en los
+            que participaste, porque también son registros de la otra parte y la ley nos
+            pide conservarlos.
           </li>
           <li>
-            Not possible while money you are part of is in an escrow: finish or resolve those
-            contracts first.
+            No se puede mientras haya dinero tuyo guardado en un contrato: primero termina
+            o resuelve esos contratos.
           </li>
           <li>
-            Your wallet and its payments stay on the Stellar network, which nobody can delete.
-            A Pollar wallet stays with Pollar.
+            Tu wallet y sus pagos se quedan en la red de Stellar, que nadie puede borrar.
+            Una wallet de Pollar se queda con Pollar.
           </li>
         </ul>
         <Dialog>
           <DialogTrigger asChild>
             <Button variant="destructive">
               <Trash2Icon className="size-4" />
-              Delete my account
+              Eliminar mi cuenta
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Delete your account?</DialogTitle>
+              <DialogTitle>¿Eliminar tu cuenta?</DialogTitle>
               <DialogDescription>
-                Type DELETE to confirm. This cannot be undone.
+                Escribe ELIMINAR para confirmar. No se puede deshacer.
               </DialogDescription>
             </DialogHeader>
             <Input
               value={confirm}
               onChange={(event) => setConfirm(event.target.value)}
-              placeholder="DELETE"
-              aria-label="Type DELETE to confirm"
+              placeholder="ELIMINAR"
+              aria-label="Escribe ELIMINAR para confirmar"
             />
             <DialogFooter>
               <Button
                 variant="destructive"
-                disabled={confirm !== 'DELETE' || busy}
+                disabled={confirm.trim() !== 'ELIMINAR' || busy}
                 onClick={() => void remove()}
               >
-                {busy ? 'Deleting...' : 'Delete my account'}
+                {busy ? 'Eliminando...' : 'Eliminar mi cuenta'}
               </Button>
             </DialogFooter>
           </DialogContent>
