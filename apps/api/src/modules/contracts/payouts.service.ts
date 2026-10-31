@@ -27,6 +27,17 @@ export class PayoutsService {
    * or has not indexed yet, is read the next time.
    */
   async readMissing(contractId: string): Promise<void> {
+    // Callers run it in the background: an error here must never reach them.
+    try {
+      await this.read(contractId);
+    } catch (error) {
+      this.logger.warn(
+        `Could not read the payouts of contract ${contractId}: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  private async read(contractId: string): Promise<void> {
     const operations = await this.prisma.chainOperation.findMany({
       where: {
         contractId,

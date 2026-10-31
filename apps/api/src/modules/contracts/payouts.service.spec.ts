@@ -121,6 +121,11 @@ describe('PayoutsService', () => {
     expect(prisma.chainOperation.updateMany).not.toHaveBeenCalled();
   });
 
+  it('never throws when the database fails, since it runs in the background', async () => {
+    prisma.chainOperation.findMany.mockRejectedValue(new Error('connection lost'));
+    await expect(service.readMissing('contract-1')).resolves.toBeUndefined();
+  });
+
   it('asks nothing of Stellar when every payment is read', async () => {
     prisma.chainOperation.findMany.mockResolvedValue([]);
     await service.readMissing('contract-1');
