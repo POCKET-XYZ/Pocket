@@ -101,7 +101,7 @@ export function KpiRows({
       ) : null}
       {kpis.map((kpi, index) => (
         <div key={index} className="flex items-start gap-2 rounded-xl bg-muted/40 p-3">
-          <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[2fr_1.3fr_1fr_1fr]">
+          <div className="grid min-w-0 flex-1 gap-2">
             <Input
               aria-label={`Nombre del KPI ${index + 1}`}
               placeholder="Nombre, por ejemplo Leads calificados"
@@ -111,37 +111,43 @@ export function KpiRows({
               value={kpi.name}
               onChange={(event) => update(index, { name: event.target.value })}
             />
-            <select
-              aria-label={`Cómo se mide el KPI ${index + 1}`}
-              value={kpi.mode}
-              onChange={(event) => update(index, { mode: event.target.value as KpiMode })}
-              className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
-            >
-              {Object.entries(KPI_MODE_LABELS).map(([mode, label]) => (
-                <option key={mode} value={mode}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <Input
-              aria-label={`Meta del KPI ${index + 1}`}
-              type="number"
-              inputMode="decimal"
-              min={kpi.mode === 'more_is_better' ? 0.0000001 : 0}
-              step="any"
-              placeholder={kpi.mode === 'tracked' ? 'Sin meta' : 'Meta, por ejemplo 100'}
-              required={kpi.mode !== 'tracked'}
-              disabled={kpi.mode === 'tracked'}
-              value={kpi.mode === 'tracked' ? '' : kpi.target}
-              onChange={(event) => update(index, { target: event.target.value })}
-            />
-            <Input
-              aria-label={`Unidad del KPI ${index + 1}`}
-              placeholder="Unidad, por ejemplo leads"
-              maxLength={30}
-              value={kpi.unit}
-              onChange={(event) => update(index, { unit: event.target.value })}
-            />
+            <div className="grid gap-2 sm:grid-cols-[11rem_1fr_1fr]">
+              <select
+                aria-label={`Cómo se mide el KPI ${index + 1}`}
+                value={kpi.mode}
+                onChange={(event) =>
+                  update(index, { mode: event.target.value as KpiMode })
+                }
+                className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
+              >
+                {Object.entries(KPI_MODE_LABELS).map(([mode, label]) => (
+                  <option key={mode} value={mode}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <Input
+                aria-label={`Meta del KPI ${index + 1}`}
+                type="number"
+                inputMode="decimal"
+                min={kpi.mode === 'more_is_better' ? 0.0000001 : 0}
+                step="any"
+                placeholder={
+                  kpi.mode === 'tracked' ? 'Sin meta' : 'Meta, por ejemplo 100'
+                }
+                required={kpi.mode !== 'tracked'}
+                disabled={kpi.mode === 'tracked'}
+                value={kpi.mode === 'tracked' ? '' : kpi.target}
+                onChange={(event) => update(index, { target: event.target.value })}
+              />
+              <Input
+                aria-label={`Unidad del KPI ${index + 1}`}
+                placeholder="Unidad, por ejemplo leads"
+                maxLength={30}
+                value={kpi.unit}
+                onChange={(event) => update(index, { unit: event.target.value })}
+              />
+            </div>
           </div>
           <Button
             type="button"
