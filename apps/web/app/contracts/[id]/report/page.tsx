@@ -9,8 +9,10 @@ import { toast } from 'sonner';
 import { KpiOutcomeBadge, kpiTarget } from '@/components/contract/kpi-report';
 import {
   TIMING_LABELS,
+  deliveriesText,
   goalsLine,
   kpiResultText,
+  lateText,
   useContractReport,
 } from '@/components/contract/results';
 import { ErrorAlert, Loading } from '@/components/page';
@@ -108,7 +110,7 @@ function Report({ user }: { user: User }) {
             {data.summary.milestones.onTime} de {data.summary.milestones.total} hitos
             entregados a tiempo
             {data.summary.milestones.late > 0
-              ? ` · ${data.summary.milestones.late} atrasados`
+              ? ` · ${lateText(data.summary.milestones.late)}`
               : ''}
           </Fact>
           <Fact>
@@ -149,39 +151,56 @@ function Report({ user }: { user: User }) {
 
       {data.kpis.length > 0 ? (
         <Section title="Metas">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>KPI</TableHead>
-                <TableHead>Meta</TableHead>
-                <TableHead>Resultado</TableHead>
-                <TableHead>Estado</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.kpis.map((kpi) => (
-                <TableRow key={kpi.id}>
-                  <TableCell className="font-medium text-navy">{kpi.name}</TableCell>
-                  <TableCell className="whitespace-normal">{kpiTarget(kpi)}</TableCell>
-                  <TableCell className="whitespace-normal">
-                    {kpiResultText(kpi)}
-                    {kpi.result?.comment ? (
-                      <span className="block text-xs text-muted-foreground">
-                        {kpi.result.comment}
-                      </span>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>
-                    {kpi.outcome === 'tracked' ? (
-                      <span className="text-xs text-muted-foreground">Seguimiento</span>
-                    ) : (
-                      <KpiOutcomeBadge outcome={kpi.outcome} percent={kpi.percent} />
-                    )}
-                  </TableCell>
+          <ul className="space-y-2 sm:hidden print:hidden">
+            {data.kpis.map((kpi) => (
+              <li key={kpi.id} className="rounded-xl border border-border p-3 text-sm">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="font-medium text-navy">{kpi.name}</p>
+                  <KpiOutcomeBadge outcome={kpi.outcome} percent={kpi.percent} />
+                </div>
+                <p className="mt-1 text-muted-foreground">Meta: {kpiTarget(kpi)}</p>
+                <p className="font-semibold text-navy">Resultado: {kpiResultText(kpi)}</p>
+                {kpi.result?.comment ? (
+                  <p className="text-xs text-muted-foreground">{kpi.result.comment}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          <div className="hidden sm:block print:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>KPI</TableHead>
+                  <TableHead>Meta</TableHead>
+                  <TableHead>Resultado</TableHead>
+                  <TableHead>Estado</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {data.kpis.map((kpi) => (
+                  <TableRow key={kpi.id}>
+                    <TableCell className="font-medium text-navy">{kpi.name}</TableCell>
+                    <TableCell className="whitespace-normal">{kpiTarget(kpi)}</TableCell>
+                    <TableCell className="whitespace-normal">
+                      {kpiResultText(kpi)}
+                      {kpi.result?.comment ? (
+                        <span className="block text-xs text-muted-foreground">
+                          {kpi.result.comment}
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>
+                      {kpi.outcome === 'tracked' ? (
+                        <span className="text-xs text-muted-foreground">Seguimiento</span>
+                      ) : (
+                        <KpiOutcomeBadge outcome={kpi.outcome} percent={kpi.percent} />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
           <p className="mt-2 text-xs text-muted-foreground">
             Cada resultado es el de la última entrega que aprobó la startup
             {data.kpis[0]?.result ? ` (${data.kpis[0].result.milestoneTitle})` : ''}.
@@ -190,38 +209,62 @@ function Report({ user }: { user: User }) {
       ) : null}
 
       <Section title="Hitos">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Hito</TableHead>
-              <TableHead>Comprometido</TableHead>
-              <TableHead>Entregado</TableHead>
-              <TableHead>Entregas</TableHead>
-              <TableHead>Estado</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.milestones.map((milestone) => (
-              <TableRow key={milestone.id}>
-                <TableCell className="whitespace-normal font-medium text-navy">
+        <ul className="space-y-2 sm:hidden print:hidden">
+          {data.milestones.map((milestone) => (
+            <li
+              key={milestone.id}
+              className="rounded-xl border border-border p-3 text-sm"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="font-medium text-navy">
                   {milestone.position + 1} · {milestone.title}
-                </TableCell>
-                <TableCell>{date(milestone.dueDate)}</TableCell>
-                <TableCell>{day(milestone.firstDeliveredAt)}</TableCell>
-                <TableCell>
-                  {milestone.deliveries}
-                  {milestone.changeRounds > 0
-                    ? ` (${milestone.changeRounds} con cambios)`
-                    : ''}
-                </TableCell>
-                <TableCell>
+                </p>
+                <span className="font-medium text-navy">
                   {TIMING_LABELS[milestone.timing]}
                   {milestone.disputed ? ' · con disputa' : ''}
-                </TableCell>
+                </span>
+              </div>
+              <p className="mt-1 text-muted-foreground">
+                Comprometido el {date(milestone.dueDate)} · Entregado el{' '}
+                {day(milestone.firstDeliveredAt)}
+              </p>
+              <p className="text-muted-foreground">
+                {deliveriesText(milestone.deliveries, milestone.changeRounds)}
+              </p>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden sm:block print:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Hito</TableHead>
+                <TableHead>Comprometido</TableHead>
+                <TableHead>Entregado</TableHead>
+                <TableHead>Versiones</TableHead>
+                <TableHead>Estado</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {data.milestones.map((milestone) => (
+                <TableRow key={milestone.id}>
+                  <TableCell className="whitespace-normal font-medium text-navy">
+                    {milestone.position + 1} · {milestone.title}
+                  </TableCell>
+                  <TableCell>{date(milestone.dueDate)}</TableCell>
+                  <TableCell>{day(milestone.firstDeliveredAt)}</TableCell>
+                  <TableCell>
+                    {deliveriesText(milestone.deliveries, milestone.changeRounds)}
+                  </TableCell>
+                  <TableCell>
+                    {TIMING_LABELS[milestone.timing]}
+                    {milestone.disputed ? ' · con disputa' : ''}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Section>
 
       <Section title="Pagos (comprobables en Stellar)">
@@ -230,68 +273,114 @@ function Report({ user }: { user: User }) {
             Todavía no se liberó ningún pago.
           </p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Hito</TableHead>
-                <TableHead className="text-right">Pagado</TableHead>
-                <TableHead className="text-right">Experto</TableHead>
-                <TableHead className="text-right">Pocket</TableHead>
-                <TableHead className="text-right">Trustless Work</TableHead>
-                {refunds ? <TableHead className="text-right">Startup</TableHead> : null}
-                <TableHead>Transacción</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            <ul className="space-y-2 sm:hidden print:hidden">
               {data.payments.map((payment) => (
-                <TableRow key={payment.txHash}>
-                  <TableCell>{day(payment.confirmedAt)}</TableCell>
-                  <TableCell>
-                    {payment.milestonePosition + 1}
-                    {payment.kind === 'resolve' ? ' · disputa' : ''}
-                  </TableCell>
-                  <TableCell className="text-right">{amount(payment.amount)}</TableCell>
-                  {payment.breakdown ? (
-                    <>
-                      <TableCell className="text-right">
-                        {amount(payment.breakdown.specialist)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {amount(payment.breakdown.pocket)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {amount(payment.breakdown.trustlessWork)}
-                      </TableCell>
-                      {refunds ? (
-                        <TableCell className="text-right">
-                          {amount(payment.breakdown.startup)}
-                        </TableCell>
-                      ) : null}
-                    </>
-                  ) : (
-                    <TableCell
-                      colSpan={refunds ? 4 : 3}
-                      className="text-xs text-muted-foreground"
-                    >
-                      Leyendo el desglose de Stellar...
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    <a
-                      href={explorerTx(payment.txHash)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 underline"
-                    >
-                      Ver en stellar.expert{' '}
-                      <ExternalLinkIcon className="size-3 print:hidden" />
-                    </a>
-                  </TableCell>
-                </TableRow>
+                <li
+                  key={payment.txHash}
+                  className="rounded-xl border border-border p-3 text-sm"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="font-medium text-navy">
+                      {day(payment.confirmedAt)} · Hito {payment.milestonePosition + 1}
+                      {payment.kind === 'resolve' ? ' · disputa' : ''}
+                    </p>
+                    <span className="font-semibold text-navy">
+                      {usdc(payment.amount)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">
+                    {payment.breakdown
+                      ? [
+                          `Experto ${amount(payment.breakdown.specialist)}`,
+                          `Pocket ${amount(payment.breakdown.pocket)}`,
+                          `Trustless Work ${amount(payment.breakdown.trustlessWork)}`,
+                          ...(Number(payment.breakdown.startup) > 0
+                            ? [`Startup ${amount(payment.breakdown.startup)}`]
+                            : []),
+                        ].join(' · ')
+                      : 'Leyendo el desglose de Stellar...'}
+                  </p>
+                  <a
+                    href={explorerTx(payment.txHash)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 underline"
+                  >
+                    Ver en stellar.expert <ExternalLinkIcon className="size-3" />
+                  </a>
+                </li>
               ))}
-            </TableBody>
-          </Table>
+            </ul>
+            <div className="hidden sm:block print:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Hito</TableHead>
+                    <TableHead className="text-right">Pagado</TableHead>
+                    <TableHead className="text-right">Experto</TableHead>
+                    <TableHead className="text-right">Pocket</TableHead>
+                    <TableHead className="text-right">Trustless Work</TableHead>
+                    {refunds ? (
+                      <TableHead className="text-right">Startup</TableHead>
+                    ) : null}
+                    <TableHead>Transacción</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.payments.map((payment) => (
+                    <TableRow key={payment.txHash}>
+                      <TableCell>{day(payment.confirmedAt)}</TableCell>
+                      <TableCell>
+                        {payment.milestonePosition + 1}
+                        {payment.kind === 'resolve' ? ' · disputa' : ''}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {amount(payment.amount)}
+                      </TableCell>
+                      {payment.breakdown ? (
+                        <>
+                          <TableCell className="text-right">
+                            {amount(payment.breakdown.specialist)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {amount(payment.breakdown.pocket)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {amount(payment.breakdown.trustlessWork)}
+                          </TableCell>
+                          {refunds ? (
+                            <TableCell className="text-right">
+                              {amount(payment.breakdown.startup)}
+                            </TableCell>
+                          ) : null}
+                        </>
+                      ) : (
+                        <TableCell
+                          colSpan={refunds ? 4 : 3}
+                          className="text-xs text-muted-foreground"
+                        >
+                          Leyendo el desglose de Stellar...
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <a
+                          href={explorerTx(payment.txHash)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 underline"
+                        >
+                          Ver en stellar.expert{' '}
+                          <ExternalLinkIcon className="size-3 print:hidden" />
+                        </a>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
         <p className="mt-2 text-xs text-muted-foreground">Montos en USDC.</p>
       </Section>

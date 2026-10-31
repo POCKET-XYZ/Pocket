@@ -34,6 +34,18 @@ export function kpiResultText(kpi: ReportKpi): string {
     : kpi.result.value;
 }
 
+/** "1 atrasado", "2 atrasados". */
+export function lateText(late: number): string {
+  return `${late} ${late === 1 ? 'atrasado' : 'atrasados'}`;
+}
+
+/** "2 versiones · 1 cambio pedido": how many times a milestone was delivered. */
+export function deliveriesText(deliveries: number, changeRounds: number): string {
+  const versions = `${deliveries} ${deliveries === 1 ? 'versión' : 'versiones'}`;
+  if (changeRounds === 0) return versions;
+  return `${versions} · ${changeRounds} ${changeRounds === 1 ? 'cambio pedido' : 'cambios pedidos'}`;
+}
+
 /** "2 de 3 metas cumplidas", or null when no KPI has a numeric target. */
 export function goalsLine(report: ContractReport): string | null {
   const { withTarget, met } = report.summary.kpis;
@@ -75,7 +87,7 @@ export function ResultsCard({ contractId }: { contractId: string }) {
           <Detail label="Hitos">
             {milestones.done} de {milestones.total} completados · {milestones.onTime} a
             tiempo
-            {milestones.late > 0 ? ` · ${milestones.late} atrasados` : ''}
+            {milestones.late > 0 ? ` · ${lateText(milestones.late)}` : ''}
           </Detail>
           <Detail label="Metas">{goals ?? 'Sin metas en número'}</Detail>
         </div>
