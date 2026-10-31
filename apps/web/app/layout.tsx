@@ -4,6 +4,7 @@ import { AuthProvider } from '@/components/auth-provider';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 import { PollarSessionProvider } from '@/components/pollar-session';
 import { SiteHeader } from '@/components/site-header';
+import { SiteFooter, TermsGate } from '@/components/terms';
 import { ReactQueryClientProvider } from '@/components/tw-blocks/providers/ReactQueryClientProvider';
 import { WalletProvider } from '@/components/tw-blocks/providers/WalletProvider';
 import { Toaster } from '@/components/ui/sonner';
@@ -42,6 +43,8 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
                   <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:px-6 print:max-w-none print:p-0">
                     {children}
                   </main>
+                  <SiteFooter />
+                  <TermsGate />
                   <Toaster theme="light" richColors position="top-center" />
                 </ConfirmProvider>
               </AuthProvider>
