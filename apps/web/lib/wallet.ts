@@ -104,10 +104,14 @@ export type SignXdr = (
   purpose: TxPurpose,
 ) => Promise<string>;
 
+/** Where a money step is, for the screen to say so. */
+export type SigningStage = 'preparing' | 'signing' | 'sending';
+
 /**
  * The loop every money step follows: the API prepares the transaction, the
  * user's wallet signs it, and the API broadcasts it and checks the result on
- * chain. Pocket never holds a key, whoever signs.
+ * chain. Pocket never holds a key, whoever signs. `onStage` hears each step as
+ * it starts.
  */
 export async function prepareSignSubmit<T>(
   sign: SignXdr,
@@ -115,9 +119,13 @@ export async function prepareSignSubmit<T>(
   preparePath: string,
   submitPath: string,
   extra: Record<string, unknown> = {},
+  onStage?: (stage: SigningStage) => void,
 ): Promise<T> {
+  onStage?.('preparing');
   const prepared = await api<PreparedTransaction>(preparePath, { method: 'POST' });
+  onStage?.('signing');
   const signedXdr = await sign(prepared.xdr, prepared.networkPassphrase, purpose);
+  onStage?.('sending');
   return api<T>(submitPath, { method: 'POST', body: { signedXdr, ...extra } });
 }
 

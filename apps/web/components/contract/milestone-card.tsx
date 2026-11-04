@@ -9,7 +9,7 @@ import type {
   JobReportTemplate,
   User,
 } from '@pocket/shared';
-import { ExternalLinkIcon } from 'lucide-react';
+import { CheckIcon, ExternalLinkIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { formValues } from '@/components/form';
@@ -34,6 +34,7 @@ import {
   kpiOutcome,
   kpiTarget,
 } from '@/components/contract/kpi-report';
+import { MoneyStepStatus, stageLabel } from '@/components/contract/money-step-status';
 import { ReportTemplateButton } from '@/components/report-template';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -43,6 +44,8 @@ import { ATTACHMENT_ACCEPT } from '@/lib/files';
 import { toast } from 'sonner';
 import { date, dateTime, usdc } from '@/lib/format';
 import { useContractAction } from '@/lib/use-contract-action';
+import { useMoneyStep } from '@/lib/use-money-step';
+import { useNow } from '@/lib/use-now';
 import { useSigner } from '@/components/use-signer';
 import { prepareSignSubmit, type PreparedTransaction } from '@/lib/wallet';
 import { linkHost, safeHref } from '@/lib/links';
@@ -51,6 +54,15 @@ type MilestoneWithHistory = ContractDetail['milestones'][number];
 
 /** A milestone can be disputed while the work is under way or delivered. */
 const DISPUTABLE = ['pending', 'delivered', 'changes_requested'];
+
+/**
+ * An approval sent this long ago without the milestone moving on most likely
+ * stopped halfway: offer to check it again.
+ */
+const APPROVAL_STUCK_MS = 2 * 60 * 1000;
+
+/** How a KPI result reads when the specialist could not measure it yet. */
+const UNMEASURED = /todav[ií]a no se puede medir/i;
 
 export function MilestoneCard({
   contract,
@@ -68,8 +80,21 @@ export function MilestoneCard({
   const active = contract.status === 'active';
   const lastDispute: Dispute | undefined = milestone.disputes.at(-1);
   const latest: Deliverable | undefined = milestone.deliverables.at(-1);
+  const older = milestone.deliverables.slice(0, -1).reverse();
+  const changesAsked = milestone.status === 'changes_requested' && latest?.feedback;
   const signer = useSigner();
   const confirm = useConfirm();
+  const money = useMoneyStep();
+  const now = useNow(30_000);
+
+  // An approval already sent (this page, or before a reload): the API finishes
+  // it and releases the payment, so the button must not come back meanwhile.
+  const sentApproval = contract.chainOperations.find(
+    (operation) => operation.kind === 'approve' && operation.milestoneId === milestone.id,
+  );
+  const approving = milestone.status === 'delivered' && Boolean(sentApproval);
+  const sentAt = sentApproval?.confirmedAt ? Date.parse(sentApproval.confirmedAt) : null;
+  const approvalStuck = approving && sentAt !== null && now - sentAt > APPROVAL_STUCK_MS;
 
   const approve = useContractAction(
     contract.id,
@@ -79,7 +104,9 @@ export function MilestoneCard({
         { kind: 'approve', escrowId: contract.escrowId },
         `/milestones/${milestone.id}/approve/prepare`,
         `/milestones/${milestone.id}/approve/submit`,
-      ),
+        {},
+        money.onStage,
+      ).finally(money.done),
     'Aprobado. El pago se liberó al experto.',
   );
   const retryRelease = useContractAction(
@@ -87,9 +114,14 @@ export function MilestoneCard({
     () => api(`/milestones/${milestone.id}/release`, { method: 'POST' }),
     'Pago liberado',
   );
+  const approvalBusy = approve.isPending || approving;
+  const unmeasured =
+    latest?.kpiResults.some(
+      (result) => result.numericValue === null && UNMEASURED.test(result.value),
+    ) ?? false;
 
   return (
-    <Card>
+    <Card id={`hito-${milestone.position + 1}`} className="scroll-mt-24">
       <CardContent className="space-y-4 pt-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div>
@@ -108,7 +140,7 @@ export function MilestoneCard({
                 {milestone.acceptanceCriteria}
               </p>
             ) : null}
-            {milestone.revisionsUsed > 0 ? (
+            {milestone.revisionsUsed > 0 && !changesAsked ? (
               <p className="mt-2 text-xs text-muted-foreground">
                 {milestone.revisionsUsed} de {contract.job.revisionRounds} rondas de
                 cambios usadas.
@@ -117,47 +149,72 @@ export function MilestoneCard({
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <span className="font-semibold text-navy">{usdc(milestone.amount)}</span>
-            <StatusBadge status={milestone.status} />
+            <StatusBadge status={approving ? 'paying' : milestone.status} />
           </div>
         </div>
 
-        {milestone.deliverables.length > 0 ? (
-          <div className="space-y-2 rounded-xl bg-muted/60 p-3">
-            {milestone.deliverables
-              .slice()
-              .reverse()
-              .map((deliverable) => (
-                <div key={deliverable.id} className="text-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-navy">
-                      Versión {deliverable.version}
-                    </span>
-                    <a
-                      href={safeHref(deliverable.url)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 break-all underline"
-                    >
-                      {deliverable.url} <ExternalLinkIcon className="size-3 shrink-0" />
-                    </a>
-                    <span className="text-xs text-muted-foreground">
-                      {linkHost(deliverable.url)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {dateTime(deliverable.createdAt)}
-                    </span>
-                  </div>
-                  {deliverable.note ? (
-                    <p className="mt-1 text-foreground/80">{deliverable.note}</p>
-                  ) : null}
-                  <KpiReport kpis={contract.job.kpis} deliverable={deliverable} />
-                  {deliverable.feedback ? (
-                    <p className="mt-1 rounded-lg bg-yellow/25 px-2 py-1 text-navy">
-                      Cambios pedidos: {deliverable.feedback}
-                    </p>
-                  ) : null}
+        {/* What the startup asked for comes first: it is what has to happen next. */}
+        {changesAsked && latest ? (
+          <div className="space-y-2 rounded-xl border border-yellow bg-yellow/15 p-3 text-sm">
+            <p className="font-semibold text-navy">
+              La startup pidió cambios
+              {latest.feedbackAt ? (
+                <span className="font-normal text-muted-foreground">
+                  {' '}
+                  · {dateTime(latest.feedbackAt)}
+                </span>
+              ) : null}
+            </p>
+            <p className="whitespace-pre-line">{latest.feedback}</p>
+            <p className="text-xs text-muted-foreground">
+              {milestone.revisionsUsed} de {contract.job.revisionRounds} rondas de cambios
+              usadas.
+              {roundsLeft
+                ? ''
+                : isSpecialist
+                  ? ' Esta es la última: si la startup no aprueba la nueva versión, la siguiente opción es una disputa.'
+                  : ' Era la última: la próxima versión se aprueba o se lleva a una disputa.'}
+            </p>
+            {isSpecialist ? (
+              <p className="font-medium text-navy">
+                Tu siguiente paso: entrega una nueva versión con estos cambios.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {latest ? (
+          <div className="space-y-3 rounded-xl bg-muted/60 p-3">
+            <Version
+              deliverable={latest}
+              kpis={contract.job.kpis}
+              label={
+                changesAsked
+                  ? `Versión ${latest.version}, con cambios pedidos`
+                  : `Versión ${latest.version} · versión actual`
+              }
+            />
+            {older.length > 0 ? (
+              <details className="text-sm">
+                <summary className="cursor-pointer text-muted-foreground underline">
+                  Ver{' '}
+                  {older.length === 1
+                    ? 'la versión anterior'
+                    : `las ${older.length} versiones anteriores`}
+                </summary>
+                <div className="mt-3 space-y-3 border-l-2 border-border pl-3">
+                  {older.map((deliverable) => (
+                    <Version
+                      key={deliverable.id}
+                      deliverable={deliverable}
+                      kpis={contract.job.kpis}
+                      label={`Versión ${deliverable.version}`}
+                      answeredBy={deliverable.version + 1}
+                    />
+                  ))}
                 </div>
-              ))}
+              </details>
+            ) : null}
           </div>
         ) : null}
 
@@ -166,6 +223,26 @@ export function MilestoneCard({
             Disputa resuelta por un manager: {usdc(lastDispute.specialistAmount)} para el
             experto y {usdc(lastDispute.startupAmount)} de vuelta a la startup.
             {lastDispute.resolutionNote ? ` "${lastDispute.resolutionNote}"` : ''}
+          </p>
+        ) : null}
+
+        {active &&
+        isStartup &&
+        milestone.status === 'delivered' &&
+        unmeasured &&
+        !approving ? (
+          <p className="text-sm text-muted-foreground">
+            Algunos resultados todavía no se pueden medir. Puedes aprobar igual: el
+            experto los reporta en entregas siguientes y el reporte de resultados los
+            muestra.
+          </p>
+        ) : null}
+
+        {approving ? (
+          <p className="rounded-lg bg-celeste-light/50 px-3 py-2 text-sm text-navy">
+            {isSpecialist
+              ? 'La startup aprobó tu entrega. El pago se está liberando a tu wallet.'
+              : 'Tu aprobación se está procesando y el pago se libera solo. No hace falta aprobar de nuevo: esta página se actualiza sola.'}
           </p>
         ) : null}
 
@@ -179,14 +256,19 @@ export function MilestoneCard({
               kpis={contract.job.kpis}
               jobId={contract.job.id}
               reportTemplate={contract.job.reportTemplate}
+              again={milestone.status === 'changes_requested'}
             />
           ) : null}
 
-          {active && isSpecialist && milestone.status === 'delivered' && latest ? (
+          {active &&
+          isSpecialist &&
+          milestone.status === 'delivered' &&
+          latest &&
+          !approving ? (
             <AttachFileButton contractId={contract.id} deliverable={latest} />
           ) : null}
 
-          {active && isStartup && milestone.status === 'delivered' ? (
+          {active && isStartup && milestone.status === 'delivered' && !approving ? (
             <>
               <Button
                 disabled={approve.isPending}
@@ -202,12 +284,15 @@ export function MilestoneCard({
                   if (confirmed) approve.mutate();
                 }}
               >
-                {approve.isPending ? 'Esperando tu wallet...' : 'Aprobar y pagar'}
+                {money.stage
+                  ? stageLabel(money.stage, 'Liberando el pago...')
+                  : 'Aprobar y pagar'}
               </Button>
               {roundsLeft ? (
                 <RequestChangesDialog
                   contractId={contract.id}
                   milestoneId={milestone.id}
+                  disabled={approve.isPending}
                 />
               ) : (
                 <p className="self-center text-sm text-muted-foreground">
@@ -215,6 +300,17 @@ export function MilestoneCard({
                 </p>
               )}
             </>
+          ) : null}
+
+          {/* An approval that never moved on: the API checks the chain and pays. */}
+          {active && (isStartup || isManager) && approvalStuck ? (
+            <Button
+              variant="outline"
+              disabled={retryRelease.isPending}
+              onClick={() => retryRelease.mutate()}
+            >
+              {retryRelease.isPending ? 'Revisando...' : '¿Sigue igual? Revisar de nuevo'}
+            </Button>
           ) : null}
 
           {/* Approved but not paid yet: the release failed or is still confirming. */}
@@ -237,11 +333,13 @@ export function MilestoneCard({
 
           {active &&
           (isStartup || isSpecialist) &&
-          DISPUTABLE.includes(milestone.status) ? (
+          DISPUTABLE.includes(milestone.status) &&
+          !approving ? (
             <OpenDisputeDialog
               contractId={contract.id}
               escrowId={contract.escrowId}
               milestoneId={milestone.id}
+              disabled={approvalBusy}
             />
           ) : null}
 
@@ -251,8 +349,66 @@ export function MilestoneCard({
             </Button>
           ) : null}
         </div>
+
+        <MoneyStepStatus
+          stage={money.stage}
+          slow={money.slow}
+          sending="Pocket confirma tu aprobación y libera el pago al experto."
+        />
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * One delivered version: the link, the specialist's note and the results. An
+ * older version shows what was asked on it as answered by the next one.
+ */
+function Version({
+  deliverable,
+  kpis,
+  label,
+  answeredBy,
+}: {
+  deliverable: Deliverable;
+  kpis: JobKpi[];
+  label: string;
+  /** The version that answered the changes asked on this one. */
+  answeredBy?: number;
+}) {
+  return (
+    <div className="text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-medium text-navy">{label}</span>
+        <a
+          href={safeHref(deliverable.url)}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 break-all underline"
+        >
+          {deliverable.url} <ExternalLinkIcon className="size-3 shrink-0" />
+        </a>
+        <span className="text-xs text-muted-foreground">{linkHost(deliverable.url)}</span>
+        <span className="text-xs text-muted-foreground">
+          {dateTime(deliverable.createdAt)}
+        </span>
+      </div>
+      {deliverable.note ? (
+        <p className="mt-1 whitespace-pre-line text-foreground/80">
+          <span className="font-medium text-navy">Nota del experto: </span>
+          {deliverable.note}
+        </p>
+      ) : null}
+      <KpiReport kpis={kpis} deliverable={deliverable} />
+      {deliverable.feedback && answeredBy ? (
+        <p className="mt-1 flex items-start gap-1.5 rounded-lg bg-muted px-2 py-1 text-muted-foreground">
+          <CheckIcon className="mt-0.5 size-3.5 shrink-0" aria-label="Atendido" />
+          <span>
+            Cambios pedidos, atendidos en la versión {answeredBy}: {deliverable.feedback}
+          </span>
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -329,12 +485,15 @@ function DeliverDialog({
   kpis,
   jobId,
   reportTemplate,
+  again = false,
 }: {
   contractId: string;
   milestoneId: string;
   kpis: JobKpi[];
   jobId: string;
   reportTemplate: JobReportTemplate | null;
+  /** A new version after the startup asked for changes. */
+  again?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -410,13 +569,17 @@ function DeliverDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Entregar</Button>
+        <Button>{again ? 'Entregar nueva versión' : 'Entregar'}</Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Entregar este hito</DialogTitle>
+          <DialogTitle>
+            {again ? 'Entregar una nueva versión' : 'Entregar este hito'}
+          </DialogTitle>
           <DialogDescription>
-            Comparte un enlace al trabajo: un documento, carpeta, reporte o campaña.
+            {again
+              ? 'Comparte el enlace a la versión con los cambios que pidió la startup.'
+              : 'Comparte un enlace al trabajo: un documento, carpeta, reporte o campaña.'}
             {kpis.length > 0
               ? ' Luego indica cómo va cada KPI, para que la startup pueda compararlo con la meta.'
               : ''}
@@ -435,7 +598,11 @@ function DeliverDialog({
           <Textarea
             name="note"
             maxLength={2000}
-            placeholder="Una nota para la startup (opcional)"
+            placeholder={
+              again
+                ? 'Qué cambiaste en esta versión (opcional)'
+                : 'Una nota para la startup (opcional)'
+            }
             aria-label="Nota para la startup"
           />
 
@@ -488,9 +655,12 @@ function DeliverDialog({
 function RequestChangesDialog({
   contractId,
   milestoneId,
+  disabled = false,
 }: {
   contractId: string;
   milestoneId: string;
+  /** While the payment is being approved. */
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const request = useContractAction(
@@ -513,7 +683,9 @@ function RequestChangesDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Pedir cambios</Button>
+        <Button variant="outline" disabled={disabled}>
+          Pedir cambios
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -545,29 +717,40 @@ function OpenDisputeDialog({
   contractId,
   escrowId,
   milestoneId,
+  disabled = false,
 }: {
   contractId: string;
   escrowId: string | null;
   milestoneId: string;
+  /** While the payment is being approved. */
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const signer = useSigner();
+  const money = useMoneyStep();
   // The reason travels with the signed transaction, so this does not use prepareSignSubmit.
   const dispute = useContractAction(
     contractId,
     async (reason: string) => {
-      const prepared = await api<PreparedTransaction>(
-        `/milestones/${milestoneId}/dispute/prepare`,
-        { method: 'POST' },
-      );
-      const signedXdr = await signer.sign(prepared.xdr, prepared.networkPassphrase, {
-        kind: 'dispute',
-        escrowId,
-      });
-      return api(`/milestones/${milestoneId}/dispute`, {
-        method: 'POST',
-        body: { signedXdr, reason },
-      });
+      try {
+        money.onStage('preparing');
+        const prepared = await api<PreparedTransaction>(
+          `/milestones/${milestoneId}/dispute/prepare`,
+          { method: 'POST' },
+        );
+        money.onStage('signing');
+        const signedXdr = await signer.sign(prepared.xdr, prepared.networkPassphrase, {
+          kind: 'dispute',
+          escrowId,
+        });
+        money.onStage('sending');
+        return await api(`/milestones/${milestoneId}/dispute`, {
+          method: 'POST',
+          body: { signedXdr, reason },
+        });
+      } finally {
+        money.done();
+      }
     },
     'Disputa abierta. Un manager la revisará.',
   );
@@ -582,7 +765,9 @@ function OpenDisputeDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive">Abrir una disputa</Button>
+        <Button variant="destructive" disabled={disabled}>
+          Abrir una disputa
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -603,9 +788,16 @@ function OpenDisputeDialog({
           />
           <DialogFooter>
             <Button type="submit" variant="destructive" disabled={dispute.isPending}>
-              {dispute.isPending ? 'Esperando tu wallet...' : 'Firmar y abrir la disputa'}
+              {money.stage
+                ? stageLabel(money.stage, 'Abriendo la disputa...')
+                : 'Firmar y abrir la disputa'}
             </Button>
           </DialogFooter>
+          <MoneyStepStatus
+            stage={money.stage}
+            slow={money.slow}
+            sending="Pocket registra la disputa en el contrato."
+          />
         </form>
       </DialogContent>
     </Dialog>

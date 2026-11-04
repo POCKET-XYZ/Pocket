@@ -1,5 +1,6 @@
 import {
   afterFees,
+  feeBreakdown,
   POCKET_FEE_BASIS_POINTS,
   POCKET_FEE_PERCENT,
   totalAfterFees,
@@ -41,5 +42,23 @@ describe('what a payout leaves after both fees', () => {
 
   it('refuses what is not an amount', () => {
     expect(() => afterFees('-1')).toThrow('Not a USDC amount');
+  });
+});
+
+describe('the fee breakdown the screens show', () => {
+  it('lists each fee and what is left, as the screens explain a payout', () => {
+    expect(feeBreakdown(['3'])).toEqual({
+      total: '3',
+      pocket: '0.03',
+      trustlessWork: '0.009',
+      net: '2.961',
+    });
+  });
+
+  it('adds up, payout by payout, to what the specialist receives', () => {
+    const amounts = ['450.5', '49.5', '0.000005', '0.000005'];
+    const lines = feeBreakdown(amounts);
+    expect(lines.net).toBe(totalAfterFees(amounts));
+    expect(lines.total).toBe('500.00001');
   });
 });

@@ -581,8 +581,10 @@ export interface Deliverable {
   version: number;
   url: string;
   note: string | null;
-  /** What the startup asked to change on this version. */
+  /** What the startup asked to change on this version, and when. */
   feedback: string | null;
+  /** Null for requests made before Pocket recorded the time. */
+  feedbackAt?: IsoDate | null;
   /** The result reported for each KPI of the job, empty when it has none. */
   kpiResults: KpiResult[];
   /** The file backing the report, if the specialist attached one. */

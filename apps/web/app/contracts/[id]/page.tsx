@@ -1,20 +1,17 @@
 'use client';
 
-import {
-  POCKET_FEE_PERCENT,
-  TRUSTLESS_WORK_FEE_PERCENT,
-  totalAfterFees,
-  type ChainOperationKind,
-  type ContractDetail,
-  type User,
-} from '@pocket/shared';
+import type { ContractDetail, User } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLinkIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { ContractSteps } from '@/components/contract/contract-steps';
+import { FeeBreakdown } from '@/components/contract/fee-breakdown';
 import { MilestoneCard } from '@/components/contract/milestone-card';
+import { MoneyStepStatus, stageLabel } from '@/components/contract/money-step-status';
 import { ResultsCard } from '@/components/contract/results';
+import { WorkHistory } from '@/components/contract/work-history';
 import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { ReportTemplateButton } from '@/components/report-template';
 import { RequireAuth } from '@/components/require-auth';
@@ -31,22 +28,20 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { ApiError, api, errorMessage } from '@/lib/api';
-import { dateTime, explorerContract, explorerTx, shortAddress, usdc } from '@/lib/format';
+import { dateTime, explorerContract, usdc } from '@/lib/format';
 import { ON_MAINNET } from '@/lib/network';
 import { useContractAction } from '@/lib/use-contract-action';
+import { useMoneyStep } from '@/lib/use-money-step';
+import { useNow } from '@/lib/use-now';
 import { useSigner } from '@/components/use-signer';
 import { prepareSignSubmit } from '@/lib/wallet';
 
-const OPERATION_LABELS: Record<ChainOperationKind, string> = {
-  trustline: 'USDC habilitado',
-  deploy: 'Contrato creado en Stellar',
-  fund: 'Pago depositado en el contrato',
-  approve: 'Hito aprobado',
-  release: 'Pago liberado',
-  dispute: 'Disputa abierta',
-  resolve: 'Disputa resuelta',
-  payment: 'USDC enviado',
-};
+/**
+ * A contract being created on the network this long without moving on most
+ * likely stopped halfway: let the specialist accept again (the API frees a
+ * step whose transaction never landed).
+ */
+const DEPLOY_STUCK_MS = 2 * 60 * 1000;
 
 export default function ContractPage() {
   return (
@@ -76,8 +71,6 @@ function Contract({ user }: { user: User }) {
     data.status === 'awaiting_specialist'
       ? 'Se comparte cuando se aceptan los términos'
       : 'No indicado';
-  const titleFor = (milestoneId: string | null) =>
-    data.milestones.find((milestone) => milestone.id === milestoneId)?.title;
 
   return (
     <div className="space-y-6">
@@ -94,8 +87,12 @@ function Contract({ user }: { user: User }) {
             </Link>
           </>
         }
-        actions={<StatusBadge status={data.status} className="px-3 py-1 text-sm" />}
+        actions={
+          <StatusBadge status={headerStatus(data)} className="px-3 py-1 text-sm" />
+        }
       />
+
+      <ContractSteps contract={data} user={user} />
 
       {isParty && data.status !== 'completed' && data.status !== 'cancelled' ? (
         <UsdcStatus user={user} />
@@ -104,19 +101,18 @@ function Contract({ user }: { user: User }) {
       <Card>
         <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-4">
           <Detail label="Total">{usdc(data.amount)}</Detail>
-          <Detail label="Contrato en Stellar">
+          <Detail label="Pago protegido">
+            {protectionText(data)}
             {data.escrowId ? (
               <a
                 href={explorerContract(data.escrowId)}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 underline"
+                className="mt-1 flex w-fit items-center gap-1 text-xs text-muted-foreground underline"
               >
-                {shortAddress(data.escrowId)} <ExternalLinkIcon className="size-3" />
+                Ver comprobante <ExternalLinkIcon className="size-3" />
               </a>
-            ) : (
-              'Todavía no está creado'
-            )}
+            ) : null}
           </Detail>
           {/* Contacts are shared once the specialist accepts the terms. */}
           <Detail label={`Contacto de ${startupName}`}>
@@ -128,7 +124,7 @@ function Contract({ user }: { user: User }) {
         </CardContent>
       </Card>
 
-      <NextStep contract={data} user={user} />
+      <NextStep contract={data} user={user} specialistName={specialistName} />
 
       {data.status === 'active' || data.status === 'completed' ? (
         <ResultsCard contractId={data.id} />
@@ -159,66 +155,73 @@ function Contract({ user }: { user: User }) {
         ))}
       </section>
 
-      {data.chainOperations.length > 0 ? (
-        <section>
-          <h2 className="mb-3 text-xl font-bold text-navy">Historial en Stellar</h2>
-          <Card>
-            <CardContent className="divide-y divide-border pt-2">
-              {data.chainOperations.map((operation) => (
-                <div
-                  key={operation.id}
-                  className="flex flex-col gap-1 py-3 text-sm md:flex-row md:items-center md:justify-between"
-                >
-                  <div>
-                    <span className="font-medium text-navy">
-                      {OPERATION_LABELS[operation.kind]}
-                    </span>
-                    {titleFor(operation.milestoneId) ? (
-                      <span className="text-muted-foreground">
-                        {' '}
-                        · {titleFor(operation.milestoneId)}
-                      </span>
-                    ) : null}
-                    {operation.amount ? (
-                      <span className="text-muted-foreground">
-                        {' '}
-                        · {usdc(operation.amount)}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    <span>{dateTime(operation.confirmedAt)}</span>
-                    <a
-                      href={explorerTx(operation.txHash)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 font-mono text-xs underline"
-                    >
-                      {operation.txHash.slice(0, 10)}...{' '}
-                      <ExternalLinkIcon className="size-3" />
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </section>
-      ) : null}
+      <WorkHistory
+        contract={data}
+        startupName={startupName}
+        specialistName={specialistName}
+      />
     </div>
   );
 }
 
+/** A step sent to the network shows in the badge before the contract moves on. */
+function headerStatus(contract: ContractDetail): string {
+  const sent = (kind: string) =>
+    contract.chainOperations.some((operation) => operation.kind === kind);
+  if (contract.status === 'awaiting_specialist' && sent('deploy')) return 'preparing';
+  if (contract.status === 'awaiting_funding' && sent('fund')) return 'confirming_deposit';
+  return contract.status;
+}
+
+/** Where the money stands, in words instead of a network address. */
+function protectionText(contract: ContractDetail): string {
+  switch (contract.status) {
+    case 'awaiting_specialist':
+      return contract.chainOperations.some((operation) => operation.kind === 'deploy')
+        ? 'Se está creando'
+        : 'Se crea cuando el experto acepta';
+    case 'awaiting_funding':
+      return 'Creado, esperando el depósito';
+    case 'active':
+      return 'Activo: el pago está depositado';
+    case 'completed':
+      return 'Terminado';
+    default:
+      return 'No se creó';
+  }
+}
+
 /** The step the contract is waiting for, and who has to take it. */
-function NextStep({ contract, user }: { contract: ContractDetail; user: User }) {
+function NextStep({
+  contract,
+  user,
+  specialistName,
+}: {
+  contract: ContractDetail;
+  user: User;
+  specialistName: string;
+}) {
   const isStartup = user.id === contract.startupId;
   const isSpecialist = user.id === contract.specialistId;
   const signer = useSigner();
   const confirm = useConfirm();
+  const accepting = useMoneyStep();
+  const funding = useMoneyStep();
+  const now = useNow(30_000);
+  const amounts = contract.milestones.map((milestone) => milestone.amount);
 
   const accept = useContractAction(
     contract.id,
-    () => api(`/contracts/${contract.id}/accept`, { method: 'POST' }),
-    'Aceptaste. El contrato ya está creado en Stellar y espera el depósito de la startup.',
+    async () => {
+      // Pocket creates the contract on the network now: guard the page meanwhile.
+      accepting.onStage('sending');
+      try {
+        return await api(`/contracts/${contract.id}/accept`, { method: 'POST' });
+      } finally {
+        accepting.done();
+      }
+    },
+    'Aceptaste. El pago protegido está listo y espera el depósito de la startup.',
   );
   const decline = useContractAction(
     contract.id,
@@ -233,21 +236,31 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
         { kind: 'fund', escrowId: contract.escrowId, amount: contract.amount },
         `/contracts/${contract.id}/fund/prepare`,
         `/contracts/${contract.id}/fund/submit`,
-      ),
-    'Pago depositado en el contrato. El experto ya puede empezar.',
+        {},
+        funding.onStage,
+      ).finally(funding.done),
+    'Pago depositado. El experto ya puede empezar.',
   );
   const sync = useContractAction(
     contract.id,
     () => api(`/contracts/${contract.id}/fund/sync`, { method: 'POST' }),
-    'Pago depositado en el contrato. El experto ya puede empezar.',
+    'Pago depositado. El experto ya puede empezar.',
   );
-  // The network can take a while to confirm a deposit (409 or 503): say so,
-  // and never offer a second deposit as the way out.
+
+  const sentDeploy = contract.chainOperations.find(
+    (operation) => operation.kind === 'deploy',
+  );
+  const deploySentAt = sentDeploy?.confirmedAt
+    ? Date.parse(sentDeploy.confirmedAt)
+    : null;
+  // Sent before a reload, or by another tab: wait for it unless it is stuck.
+  const deploying =
+    deploySentAt !== null && now - deploySentAt < DEPLOY_STUCK_MS && !accept.isPending;
+  // A deposit already sent (this page, an error, or before a reload): the
+  // network is confirming it, so a second deposit is never the way out.
   const fundingPending =
-    fund.error instanceof ApiError && [409, 503].includes(fund.error.status);
-  const specialistReceives = usdc(
-    totalAfterFees(contract.milestones.map((milestone) => milestone.amount)),
-  );
+    contract.chainOperations.some((operation) => operation.kind === 'fund') ||
+    (fund.error instanceof ApiError && [409, 503].includes(fund.error.status));
 
   if (contract.status === 'awaiting_specialist') {
     if (isStartup) return <WithdrawOffer contract={contract} />;
@@ -259,37 +272,62 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
         />
       );
     }
+    const preparing = accept.isPending || deploying;
     return (
       <Card className="border-yellow">
         <CardHeader>
-          <CardTitle>Revisa los términos</CardTitle>
+          <CardTitle>
+            {preparing
+              ? 'Preparando tu contrato'
+              : 'Tu siguiente paso: revisa los hitos y acepta los términos'}
+          </CardTitle>
           <CardDescription>
-            Si aceptas, Pocket crea un contrato en Stellar con estos hitos y con tu wallet
-            como destino de los pagos. Después, la startup deposita el pago. Trustless
-            Work, que opera el contrato, se queda con el {TRUSTLESS_WORK_FEE_PERCENT}% de
-            cada pago y Pocket con el {POCKET_FEE_PERCENT}%, así que recibes{' '}
-            {specialistReceives} de los {usdc(contract.amount)}.
+            {preparing
+              ? 'Pocket está creando el pago protegido con estos hitos y con tu wallet como destino de los pagos. Toma unos segundos.'
+              : 'Si aceptas, Pocket crea un pago protegido con estos hitos y con tu wallet como destino de los pagos. Después la startup deposita el pago y empiezas a trabajar.'}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button disabled={accept.isPending} onClick={() => accept.mutate()}>
-            {accept.isPending ? 'Creando el contrato en Stellar...' : 'Aceptar términos'}
-          </Button>
-          <Button
-            variant="outline"
-            disabled={decline.isPending}
-            onClick={async () => {
-              const confirmed = await confirm({
-                title: '¿Rechazar estos términos?',
-                description: 'La startup podrá elegir a otra persona.',
-                confirmText: 'Rechazar',
-                destructive: true,
-              });
-              if (confirmed) decline.mutate();
-            }}
-          >
-            Rechazar
-          </Button>
+        <CardContent className="space-y-4">
+          <FeeBreakdown
+            amounts={amounts}
+            totalLabel="Monto del contrato"
+            netLabel="Recibes en total"
+          />
+          {deploying ? (
+            <p className="text-sm text-muted-foreground">
+              Esta página se actualiza sola cuando el contrato esté listo.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={accept.isPending} onClick={() => accept.mutate()}>
+                {accept.isPending
+                  ? 'Preparando tu contrato...'
+                  : accept.isError
+                    ? 'Reintentar'
+                    : 'Aceptar términos'}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={decline.isPending || accept.isPending}
+                onClick={async () => {
+                  const confirmed = await confirm({
+                    title: '¿Rechazar estos términos?',
+                    description: 'La startup podrá elegir a otra persona.',
+                    confirmText: 'Rechazar',
+                    destructive: true,
+                  });
+                  if (confirmed) decline.mutate();
+                }}
+              >
+                Rechazar
+              </Button>
+            </div>
+          )}
+          <MoneyStepStatus
+            stage={accepting.stage}
+            slow={accepting.slow}
+            sending="Pocket está creando el pago protegido."
+          />
         </CardContent>
       </Card>
     );
@@ -299,53 +337,70 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
     if (!isStartup) {
       return (
         <Waiting
-          title="Esperando que la startup deposite el pago en el contrato"
-          text="No empieces el trabajo antes de que el pago esté depositado en el contrato."
+          title="Esperando que la startup deposite el pago"
+          text="No empieces el trabajo antes de que el pago esté depositado: esta página te avisa cuando pase."
         />
       );
     }
     return (
       <Card className="border-yellow">
         <CardHeader>
-          <CardTitle>Deposita el pago en el contrato</CardTitle>
+          <CardTitle>
+            {fundingPending
+              ? 'Tu depósito se está confirmando'
+              : 'Tu siguiente paso: deposita el pago'}
+          </CardTitle>
           <CardDescription>
-            Firma una transacción para depositar {usdc(contract.amount)} en el contrato.
-            Nadie puede mover ese dinero por su cuenta: cada hito se libera cuando lo
-            apruebas. Trustless Work se queda con el {TRUSTLESS_WORK_FEE_PERCENT}% de cada
-            pago y Pocket con el {POCKET_FEE_PERCENT}%, así que el experto recibe{' '}
-            {specialistReceives}.
+            Firma una transacción para depositar {usdc(contract.amount)} en el pago
+            protegido. Nadie puede mover ese dinero por su cuenta: cada hito se libera
+            cuando lo apruebas.
             {ON_MAINNET
               ? ' Es USDC real: revisa el monto en tu wallet antes de firmar.'
               : ''}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
+          <FeeBreakdown
+            amounts={amounts}
+            totalLabel="Depositas"
+            netLabel="Recibe el experto"
+          />
           {fundingPending ? (
             <p className="text-sm text-muted-foreground">
-              La red está confirmando tu depósito. Vuelve a revisar en un minuto; no
-              deposites de nuevo.
+              La red está confirmando tu depósito. No deposites de nuevo: esta página se
+              actualiza sola.
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
             {fundingPending ? null : (
               <Button disabled={fund.isPending} onClick={() => fund.mutate()}>
-                {fund.isPending
-                  ? 'Esperando tu wallet...'
+                {funding.stage
+                  ? stageLabel(funding.stage, 'Depositando...')
                   : `Depositar ${usdc(contract.amount)}`}
               </Button>
             )}
             {/* Always there: after a reload the error is gone, the deposit is not. */}
             <Button
               variant="outline"
-              disabled={sync.isPending}
+              disabled={sync.isPending || fund.isPending}
               onClick={() => sync.mutate()}
             >
               {sync.isPending ? 'Revisando...' : '¿Ya depositaste? Revisar de nuevo'}
             </Button>
           </div>
+          <MoneyStepStatus
+            stage={funding.stage}
+            slow={funding.slow}
+            sending="Depositando el pago en el contrato."
+          />
         </CardContent>
       </Card>
     );
+  }
+
+  if (contract.status === 'active') {
+    const next = activeStep(contract, isStartup, isSpecialist, specialistName);
+    return next ? <Waiting title={next.title} text={next.text} href={next.href} /> : null;
   }
 
   if (contract.status === 'completed') {
@@ -384,6 +439,83 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
   return null;
 }
 
+/** What an active contract waits for, and from whom, pointing at the milestone. */
+function activeStep(
+  contract: ContractDetail,
+  isStartup: boolean,
+  isSpecialist: boolean,
+  specialistName: string,
+): { title: string; text: string; href?: string } | null {
+  const first = (...statuses: string[]) =>
+    contract.milestones.find((milestone) => statuses.includes(milestone.status));
+  const anchor = (milestone: { position: number }) => `#hito-${milestone.position + 1}`;
+
+  const disputed = first('disputed');
+  if (disputed) {
+    return {
+      title: `Hay una disputa abierta en el hito ${disputed.position + 1}`,
+      text: 'Un manager de Pocket la revisa y decide cómo se reparte ese pago. El resto del contrato sigue.',
+      href: anchor(disputed),
+    };
+  }
+  // A delivery whose approval was already sent is being paid, not reviewed.
+  const paying = contract.milestones.find(
+    (milestone) =>
+      milestone.status === 'approved' ||
+      (milestone.status === 'delivered' &&
+        contract.chainOperations.some(
+          (operation) =>
+            operation.kind === 'approve' && operation.milestoneId === milestone.id,
+        )),
+  );
+  if (paying) {
+    return {
+      title: `El pago del hito ${paying.position + 1} se está liberando`,
+      text: isSpecialist
+        ? 'La startup aprobó tu entrega. El pago llega a tu wallet en cuanto la red lo confirme.'
+        : 'Tu aprobación ya se envió. El pago se libera solo: no hace falta aprobar de nuevo.',
+      href: anchor(paying),
+    };
+  }
+  const delivered = first('delivered');
+  const toDeliver = first('changes_requested', 'pending');
+  if (isStartup && delivered) {
+    return {
+      title: `Tu siguiente paso: revisa la entrega del hito ${delivered.position + 1}`,
+      text: 'Apruébala para liberar el pago, o pide cambios si algo falta.',
+      href: anchor(delivered),
+    };
+  }
+  if (isSpecialist && toDeliver) {
+    return {
+      title:
+        toDeliver.status === 'changes_requested'
+          ? `Tu siguiente paso: entrega una nueva versión del hito ${toDeliver.position + 1}`
+          : `Tu siguiente paso: entrega el hito ${toDeliver.position + 1}`,
+      text:
+        toDeliver.status === 'changes_requested'
+          ? 'La startup pidió cambios. Están arriba de tu última versión.'
+          : 'Cuando lo tengas, compártelo con un enlace y reporta cómo van los KPIs.',
+      href: anchor(toDeliver),
+    };
+  }
+  if (isSpecialist && delivered) {
+    return {
+      title: `Esperando que la startup revise tu entrega del hito ${delivered.position + 1}`,
+      text: 'Cuando la apruebe, el pago llega a tu wallet.',
+      href: anchor(delivered),
+    };
+  }
+  if (isStartup && toDeliver) {
+    return {
+      title: `Esperando que ${specialistName} entregue el hito ${toDeliver.position + 1}`,
+      text: 'Te avisamos cuando haya una entrega para revisar.',
+      href: anchor(toDeliver),
+    };
+  }
+  return null;
+}
+
 /**
  * The startup waits for the specialist, and can take the terms back to fix
  * them or to choose someone else while they are not accepted.
@@ -411,6 +543,16 @@ function WithdrawOffer({ contract }: { contract: ContractDetail }) {
       await queryClient.invalidateQueries({ queryKey: ['contracts', contract.id] });
     },
   });
+
+  // Once the specialist accepted, Pocket is creating the contract: nothing to take back.
+  if (contract.chainOperations.some((operation) => operation.kind === 'deploy')) {
+    return (
+      <Waiting
+        title="El experto aceptó"
+        text="Pocket está creando el pago protegido. En cuanto esté listo, te toca depositar el pago."
+      />
+    );
+  }
 
   return (
     <Alert className="border-celeste bg-celeste-light/40">
@@ -440,11 +582,23 @@ function WithdrawOffer({ contract }: { contract: ContractDetail }) {
   );
 }
 
-function Waiting({ title, text }: { title: string; text: string }) {
+function Waiting({ title, text, href }: { title: string; text: string; href?: string }) {
   return (
     <Alert className="border-celeste bg-celeste-light/40">
       <AlertTitle>{title}</AlertTitle>
-      <AlertDescription>{text}</AlertDescription>
+      <AlertDescription>
+        <p>
+          {text}
+          {href ? (
+            <>
+              {' '}
+              <a href={href} className="font-medium underline">
+                Ir al hito
+              </a>
+            </>
+          ) : null}
+        </p>
+      </AlertDescription>
     </Alert>
   );
 }

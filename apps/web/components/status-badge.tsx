@@ -39,6 +39,10 @@ const STATUSES: Record<string, { label: string; feminine?: string; tone: Tone }>
   cancelled: { label: 'Cancelado', feminine: 'Cancelada', tone: 'neutral' },
   // Milestones
   delivered: { label: 'Entregado', tone: 'info' },
+  // Shown while the network confirms a step the page already sent.
+  paying: { label: 'Liberando el pago', tone: 'info' },
+  preparing: { label: 'Preparando el contrato', tone: 'warning' },
+  confirming_deposit: { label: 'Confirmando el depósito', tone: 'warning' },
   changes_requested: { label: 'Cambios pedidos', tone: 'warning' },
   paid: { label: 'Pagado', tone: 'success' },
   disputed: { label: 'En disputa', tone: 'danger' },
