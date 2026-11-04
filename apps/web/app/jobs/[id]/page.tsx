@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  POCKET_FEE_PERCENT,
-  TRUSTLESS_WORK_FEE_PERCENT,
-  afterFees,
-  type JobListing,
-  type MyApplication,
-  type User,
-} from '@pocket/shared';
+import type { JobListing, MyApplication, User } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -15,6 +8,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { activationAction, activationHint, useKycEnabled } from '@/components/activation';
 import { useAuth } from '@/components/auth-provider';
+import { FeeBreakdown } from '@/components/contract/fee-breakdown';
 import { Avatar } from '@/components/avatar';
 import { KpiList } from '@/components/contract/kpi-report';
 import {
@@ -412,22 +406,27 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
   );
 }
 
-/** How the offer compares to the budget, and what is left after the fees. */
+/** How the offer compares to the budget, and what is left after the fees, line by line. */
 function PriceNote({ price, budget }: { price: string; budget: string }) {
   const offered = Number(price);
   const posted = Number(budget);
   if (!Number.isFinite(offered) || offered <= 0) return null;
   const difference = offered - posted;
-  const net = usdc(afterFees(offered));
-  const fees = `Trustless Work se queda con el ${TRUSTLESS_WORK_FEE_PERCENT}% y Pocket con el ${POCKET_FEE_PERCENT}%, así que recibes ${net}.`;
   return (
-    <p className="text-sm text-muted-foreground">
-      {difference === 0
-        ? `Igual al presupuesto. ${fees}`
-        : `${difference > 0 ? '+' : '-'}${usdc(Math.abs(difference))} ${
-            difference > 0 ? 'por encima' : 'por debajo'
-          } del presupuesto de ${usdc(budget)}. ${fees}`}
-    </p>
+    <div className="space-y-2 rounded-xl bg-muted/50 p-3">
+      <p className="text-sm text-muted-foreground">
+        {difference === 0
+          ? `Igual al presupuesto de la startup, ${usdc(budget)}.`
+          : `${usdc(Math.abs(difference))} ${
+              difference > 0 ? 'por encima' : 'por debajo'
+            } del presupuesto de la startup, ${usdc(budget)}.`}
+      </p>
+      <FeeBreakdown
+        amounts={[price]}
+        totalLabel="Monto de tu propuesta"
+        netLabel="Recibes en total"
+      />
+    </div>
   );
 }
 
