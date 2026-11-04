@@ -1,14 +1,7 @@
 'use client';
 
 import type { User } from '@pocket/shared';
-import {
-  ArrowDownToLineIcon,
-  EyeIcon,
-  EyeOffIcon,
-  HistoryIcon,
-  RefreshCwIcon,
-  WalletIcon,
-} from 'lucide-react';
+import { EyeIcon, EyeOffIcon, RefreshCwIcon, WalletIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { PageHeader } from '@/components/page';
 import { usePollarSession, type PollarSession } from '@/components/pollar-session';
@@ -44,7 +37,10 @@ function BalanceCard({ pollar }: { pollar: PollarSession }) {
 
   const balances = (pollar.balances ?? []).filter((asset) => asset.balance !== null);
   const usdc = balances.find((asset) => asset.code === 'USDC');
-  const rest = balances.filter((asset) => asset !== usdc);
+  // XLM only pays network fees, which Pocket takes care of: not shown here.
+  const rest = balances.filter(
+    (asset) => asset !== usdc && asset.code !== 'XLM' && asset.code !== 'native',
+  );
 
   return (
     <Card>
@@ -122,8 +118,11 @@ const PROVIDER_NAMES: Record<string, string> = {
   'albedo-native': 'Albedo',
 };
 
-/** What a wallet the user holds has in USDC and in XLM for network fees. */
-function WalletBalance() {
+/**
+ * What the wallet has in USDC and, for a wallet the user holds, in XLM for
+ * network fees. A Pollar wallet's owner never sees XLM: Pocket takes care of it.
+ */
+function WalletBalance({ showXlm }: { showXlm: boolean }) {
   const status = useUsdcStatus();
   if (!status.data || status.data.usdc === 'no_account') return null;
   return (
@@ -137,7 +136,7 @@ function WalletBalance() {
             {status.data.usdcSpendable ?? '0'} <span className="text-lg">USDC</span>
           </p>
         </div>
-        {status.data.xlmForFees !== null ? (
+        {showXlm && status.data.xlmForFees !== null ? (
           <p className="text-sm text-muted-foreground">
             {Number(status.data.xlmForFees).toFixed(2)} XLM para comisiones de red
           </p>
@@ -180,26 +179,23 @@ function WalletView({ user }: { user: User }) {
               ? `Se creó para ti cuando iniciaste sesión con ${PROVIDER_NAMES[user.walletProvider ?? ''] ?? 'Pollar'}. Apruebas cada pago desde Pocket y no tienes que pagar las comisiones de red.`
               : 'Una wallet propia, bajo tu control. Cada pago se firma en tu wallet.'}
           </p>
-          {throughPollar ? (
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={pollar.openReceive}>
-                <ArrowDownToLineIcon className="size-4" /> Recibir en Pollar
-              </Button>
-              <Button variant="outline" size="sm" onClick={pollar.openHistory}>
-                <HistoryIcon className="size-4" /> Historial en Pollar
-              </Button>
-            </div>
-          ) : null}
         </CardContent>
       </Card>
 
-      {throughPollar ? <BalanceCard pollar={pollar} /> : <WalletBalance />}
+      {throughPollar ? (
+        <BalanceCard pollar={pollar} />
+      ) : (
+        <WalletBalance showXlm={user.walletCustody !== 'pollar'} />
+      )}
 
       <div id={USDC_STATUS_ANCHOR} className="scroll-mt-24 empty:hidden">
         <UsdcStatus user={user} showReady />
       </div>
 
-      <ReceiveUsdcCard address={user.stellarAddress} />
+      <ReceiveUsdcCard
+        address={user.stellarAddress}
+        throughPollar={user.walletCustody === 'pollar'}
+      />
 
       <SendUsdcCard user={user} />
 

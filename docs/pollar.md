@@ -46,6 +46,12 @@ A Stellar account costs XLM: a base reserve plus 0.5 XLM per trustline, paid by 
 
 The call is idempotent: a wallet that is already funded answers `409`, which counts as success. A failure never blocks the approval, and each Pollar sign-in of an approved account with an inactive wallet tries again.
 
+## XLM stays out of sight
+
+Someone who signs in with email or Google never hears of XLM. For a Pollar wallet the web app shows no XLM balance and no network fee warning, and enables USDC on its own when the wallet can pay for the trustline. When it cannot (no XLM to lock the trustline's reserve, or almost none left for fees), `WalletService` raises the `pollar_wallet_needs_xlm` alert, at most every six hours per wallet, so the team tops it up. A wallet the user holds keeps every detail, because its owner manages it.
+
+This works because Pollar gives every new wallet its USDC trustline and a starting XLM balance (the Treasury settings below). A Pollar app without them creates wallets with 0 XLM and no trustline, which is what the alert catches.
+
 ## Configuration
 
 | Where | Setting                                                    | Why                                                                |

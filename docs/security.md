@@ -84,6 +84,7 @@ Security events are written as one JSON line each under the `Security` logger. T
 | `kyc_decision` | Didit approved or declined an identity check. **Alert** when it sends a case to a person: decide it in Didit's console |
 | `kyc_unavailable` | **Alert.** Didit refused Pocket (no credit left, a revoked key): nobody can activate an account until it is fixed |
 | `kyc_webhook_refused` | A Didit webhook with a bad signature or an old timestamp (warning). **Alert** when a session does not belong to the request it names |
+| `pollar_wallet_needs_xlm` | **Alert.** A Pollar wallet of an approved account cannot enable USDC or is almost out of XLM for fees. Top it up; its owner is never asked to |
 
 The platform monitor polls Horizon every 30 seconds. Every transaction the platform key sends through Pocket is recorded in `chain_operations` before it is sent, so any other one means the key was used somewhere else.
 
