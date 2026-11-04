@@ -37,6 +37,36 @@ export function afterFees(amount: string | number): string {
   return fromUnits(units - trustlessWork - pocket);
 }
 
+/** What both fees take from a set of payouts, and what is left of them. */
+export interface FeeBreakdown {
+  total: string;
+  pocket: string;
+  trustlessWork: string;
+  net: string;
+}
+
+/**
+ * Each fee over a set of payouts, charged payout by payout as the escrow does,
+ * so the lines always add up to the total.
+ */
+export function feeBreakdown(amounts: (string | number)[]): FeeBreakdown {
+  let total = 0n;
+  let pocket = 0n;
+  let trustlessWork = 0n;
+  for (const amount of amounts) {
+    const units = toUnits(String(amount));
+    total += units;
+    trustlessWork += (units * TRUSTLESS_WORK_FEE_BASIS_POINTS) / BASIS_POINTS;
+    pocket += (units * BigInt(POCKET_FEE_BASIS_POINTS)) / BASIS_POINTS;
+  }
+  return {
+    total: fromUnits(total),
+    pocket: fromUnits(pocket),
+    trustlessWork: fromUnits(trustlessWork),
+    net: fromUnits(total - pocket - trustlessWork),
+  };
+}
+
 /** Sum of each payout after both fees: what the specialist receives in total. */
 export function totalAfterFees(amounts: (string | number)[]): string {
   const total = amounts.reduce<bigint>(

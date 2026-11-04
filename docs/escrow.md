@@ -46,6 +46,8 @@ Delivery stays off chain: the escrow contract does not require the milestone sta
 - **Funding is checked first.** Before preparing the funding transaction, the API reads the startup's spendable USDC on Horizon (balance minus what open DEX offers lock) and answers `INSUFFICIENT_USDC` with the missing amount, instead of handing over a transaction that fails after the user signs it.
 - **The chain decides whether a milestone can be approved.** The V1 contract lets the approver approve a milestone that is in dispute, but that milestone can then only be settled by the dispute resolution, never released. So the API reads the milestone's flags before preparing an approval and again before sending it: a disputed, released or resolved milestone is refused, and one already approved is synced so its payment can be released.
 - **Rate limit.** Trustless Work allows 50 requests per minute per API key. A `429` is retried up to 3 times, waiting what `Retry-After` asks or 1, 2 and 4 seconds, and then reported as a clear `503`.
+- **Server errors.** Building a transaction or reading an escrow changes nothing, so a `5xx` from Trustless Work is retried twice, after 2 and 4 seconds, before the user sees it. Sending a signed transaction is never retried on a `5xx`: it may have gone out, and the step checks the chain before anyone tries again.
+- **Paid already.** Asking to release a milestone that is paid already (a reload, a second tab) answers with the paid milestone, not an error.
 
 ## Leftover funds
 

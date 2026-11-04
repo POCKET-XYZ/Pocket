@@ -109,7 +109,7 @@ export class MilestonesService {
       }
       await tx.deliverable.update({
         where: { id: latest.id },
-        data: { feedback: dto.feedback },
+        data: { feedback: dto.feedback, feedbackAt: new Date() },
       });
       return tx.milestone.findUniqueOrThrow({ where: { id: milestoneId } });
     });
@@ -205,6 +205,11 @@ export class MilestonesService {
 
   private async release(milestoneId: string) {
     const milestone = await this.load(milestoneId);
+    // A second try (a reload, another tab) after the first one paid: that is
+    // the outcome the person wanted, not an error.
+    if (milestone.status === 'paid') {
+      return this.prisma.milestone.findUniqueOrThrow({ where: { id: milestoneId } });
+    }
     if (milestone.status !== 'approved') {
       throw new BadRequestException('Solo se puede pagar un hito aprobado');
     }
