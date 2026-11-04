@@ -63,11 +63,39 @@ describe('MigratedAccountsService', () => {
       $transaction: jest.fn((run: (t: unknown) => unknown) => run(tx)),
     };
     wallets = { activate: jest.fn().mockResolvedValue(true) };
-    service = new MigratedAccountsService(
+    service = makeService({});
+  });
+
+  /** The service with these settings on top of the API's public address. */
+  function makeService(settings: Record<string, string>): MigratedAccountsService {
+    const values: Record<string, string> = {
+      apiPublicUrl: 'https://api.mainnet.example/api',
+      ...settings,
+    };
+    return new MigratedAccountsService(
       prisma as unknown as PrismaService,
-      { get: () => 'https://api.mainnet.example/api' } as unknown as ConfigService,
+      { get: (key: string) => values[key] } as unknown as ConfigService,
       wallets as unknown as PollarWalletsService,
     );
+  }
+
+  it('with identity checks on, brings the account over waiting for one', async () => {
+    service = makeService({
+      'kyc.diditApiKey': 'key',
+      'kyc.diditWorkflowId': 'wf-1',
+      'kyc.diditWebhookSecret': 'whsec',
+    });
+
+    await service.claim(session);
+
+    expect(tx.user.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ verificationStatus: 'pending' }) as object,
+    });
+    expect(tx.verificationRequest.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ userId: NEW_USER_ID, status: 'pending' }) as object,
+    });
+    // A testnet approval is not an identity check: no wallet paid for yet.
+    expect(wallets.activate).not.toHaveBeenCalled();
   });
 
   it('matches the email in lowercase and creates an approved account on the new wallet', async () => {

@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { CheckIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { activationHint, useKycEnabled } from '@/components/activation';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,13 +25,14 @@ interface Step {
  * What a new startup or specialist has to do before they can use the
  * marketplace, and which step they are on. It disappears once they are set up.
  *
- * Completing the account details approves the account on the spot, so every
- * step is in the user's hands.
+ * Activating the account takes the account details and, when Didit is set
+ * up, an identity check: every step is in the user's hands.
  */
 export function Onboarding({ className }: { className?: string }) {
   const { user } = useAuth();
   const pathname = usePathname();
   const approved = user?.verificationStatus === 'approved';
+  const kyc = useKycEnabled(Boolean(user) && !approved);
 
   const profile = useQuery({
     queryKey: ['profile', 'me'],
@@ -45,7 +47,7 @@ export function Onboarding({ className }: { className?: string }) {
   const hasProfile = Boolean(profile.data);
   if (approved && hasProfile) return null;
 
-  const steps = stepsFor(user, hasProfile);
+  const steps = stepsFor(user, hasProfile, kyc);
 
   return (
     <Card className={cn('border-celeste bg-celeste-light/30', className)}>
@@ -86,19 +88,25 @@ export function Onboarding({ className }: { className?: string }) {
   );
 }
 
-function stepsFor(user: User, hasProfile: boolean): Step[] {
+function stepsFor(user: User, hasProfile: boolean, kyc: boolean): Step[] {
   const approved = user.verificationStatus === 'approved';
   const isStartup = user.role === 'startup';
 
   const verification: Step = {
-    title: 'Completa los datos de tu cuenta',
+    title: kyc ? 'Activa tu cuenta' : 'Completa los datos de tu cuenta',
     text: approved
       ? 'Tu cuenta está activa.'
-      : 'Un formulario corto, sin documentos. Al enviarlo tu cuenta queda activa.',
+      : activationHint(kyc, user.verificationStatus),
     state: approved ? 'done' : 'current',
     action: approved
       ? undefined
-      : { label: 'Completar mis datos', href: '/verification' },
+      : {
+          label:
+            kyc && user.verificationStatus === 'pending'
+              ? 'Verificar mi identidad'
+              : 'Completar mis datos',
+          href: '/verification',
+        },
   };
 
   const profile: Step = {

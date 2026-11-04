@@ -126,8 +126,20 @@ model VerificationRequest {
   companyName           String?            @map("company_name")
   companyRegistrationId String?            @map("company_registration_id")
   note                  String?
+  // Identity check through Didit's hosted flow, when it is turned on: the
+  // session, its status as Didit names it (Not Started, In Progress, Approved,
+  // Declined, In Review, Abandoned, Expired) and, when it was declined or held
+  // for a review, why. No document data or images are kept: Didit holds them.
+  kycSessionId          String?            @unique @map("kyc_session_id")
+  kycStatus             String?            @map("kyc_status")
+  kycReason             String?            @map("kyc_reason")
+  kycCheckedAt          DateTime?          @map("kyc_checked_at")
+  // When the person gave their express consent to Didit's processing of their
+  // document and biometric data, before their first session.
+  kycConsentAt          DateTime?          @map("kyc_consent_at")
   // Who approved it and when. Requests from the manual review era name a
-  // manager; since then completing the details approves the account itself.
+  // manager; later ones were approved by completing the details or, with
+  // Didit on, by the identity check.
   reviewNote            String?            @map("review_note")
   reviewedById          String?            @map("reviewed_by") @db.Uuid
   reviewedAt            DateTime?          @map("reviewed_at")

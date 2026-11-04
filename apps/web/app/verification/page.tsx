@@ -1,14 +1,18 @@
 'use client';
 
-import type { User, VerificationRequest } from '@pocket/shared';
+import type { KycSession, User, VerificationRequest } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useKycSettings } from '@/components/activation';
 import { useAuth } from '@/components/auth-provider';
 import { Field, compact, formValues } from '@/components/form';
 import { Loading, PageHeader } from '@/components/page';
 import { Onboarding } from '@/components/onboarding';
 import { RequireAuth } from '@/components/require-auth';
 import { StatusBadge } from '@/components/status-badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -19,6 +23,20 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api';
+
+/** Didit statuses after which the result is still on its way, or never came. */
+const KYC_UNDECIDED: (string | null | undefined)[] = [
+  null,
+  undefined,
+  '',
+  'Not Started',
+  'In Progress',
+  'Abandoned',
+  'Expired',
+];
+
+/** How many times the page asks for the result after coming back from Didit: two minutes. */
+const MAX_POLLS = 24;
 
 export default function VerificationPage() {
   return (
@@ -31,27 +49,93 @@ export default function VerificationPage() {
 function Verification({ user }: { user: User }) {
   const { refreshUser } = useAuth();
   const queryClient = useQueryClient();
+  const kycSettings = useKycSettings();
+  const kyc = kycSettings.data?.enabled === true;
+  const kycLoading = kycSettings.isLoading;
+  // Back from Didit's page: Didit adds verificationSessionId to the link.
+  const [returned] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).has('verificationSessionId'),
+  );
   const latest = useQuery({
-    // Keyed on the status: once the account is approved, the details are
-    // loaded again.
+    // Keyed on the status: when a decision arrives, the request (and the
+    // reason it was turned down) is loaded again.
     queryKey: ['verification', 'me', user.verificationStatus],
     queryFn: () => api<VerificationRequest | null>('/verification/me'),
+    // While Didit's result is on its way after the person came back.
+    refetchInterval: (query) =>
+      returned &&
+      user.verificationStatus === 'pending' &&
+      query.state.data?.status === 'pending' &&
+      KYC_UNDECIDED.includes(query.state.data.kycStatus) &&
+      query.state.dataUpdateCount < MAX_POLLS
+        ? 5000
+        : false,
   });
+  const previous = latest.data;
+
+  const startKyc = useMutation({
+    mutationFn: () =>
+      api<KycSession>('/verification/kyc', { method: 'POST', body: { consent: true } }),
+    onSuccess: ({ url }) => window.location.assign(url),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  // Read the result back as soon as the person returns, without waiting for
+  // Didit's webhook.
+  const refresh = useMutation({
+    mutationFn: () =>
+      api<VerificationRequest | null>('/verification/kyc/refresh', { method: 'POST' }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['verification', 'me'] });
+      await refreshUser();
+    },
+  });
+  const { mutate: refreshNow } = refresh;
+  useEffect(() => {
+    if (returned && kyc && user.verificationStatus === 'pending') refreshNow();
+  }, [returned, kyc, user.verificationStatus, refreshNow]);
+
+  // A decision lands on the request first: bring the account along with it.
+  const decided = previous?.status === 'approved' || previous?.status === 'rejected';
+  useEffect(() => {
+    if (decided && user.verificationStatus === 'pending') void refreshUser();
+  }, [decided, user.verificationStatus, refreshUser]);
 
   const submit = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       api('/verification', { method: 'POST', body }),
     onSuccess: async () => {
-      toast.success('Listo. Tu cuenta ya está activa.');
+      // With the identity check on, its step shows up in place of the form.
+      if (!kyc) toast.success('Listo. Tu cuenta ya está activa.');
       await queryClient.invalidateQueries({ queryKey: ['verification', 'me'] });
       await refreshUser();
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
 
-  const canSubmit = user.verificationStatus !== 'approved';
+  const canSubmit =
+    user.verificationStatus === 'not_submitted' ||
+    user.verificationStatus === 'rejected' ||
+    // Waiting for an identity check that is no longer set up: the form approves.
+    (user.verificationStatus === 'pending' && !kyc && !kycLoading);
   const isStartup = user.role === 'startup';
-  const previous = latest.data;
+  const kycStatus = previous?.status === 'pending' ? previous.kycStatus : null;
+  const inReview = kycStatus === 'In Review';
+  // Read on every render, and each poll renders: the last one turns this off.
+  const polls =
+    queryClient.getQueryState(['verification', 'me', user.verificationStatus])
+      ?.dataUpdateCount ?? 0;
+  const waitingForResult =
+    returned &&
+    polls < MAX_POLLS &&
+    (refresh.isPending || kycStatus === 'In Progress' || kycStatus === 'Not Started');
+  const pendingCheck = user.verificationStatus === 'pending' && kyc;
+  const turnedDown =
+    user.verificationStatus === 'rejected' && previous?.status === 'rejected'
+      ? previous.reviewNote
+      : null;
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,8 +147,12 @@ function Verification({ user }: { user: User }) {
     <div className="mx-auto max-w-2xl">
       <Onboarding className="mb-6" />
       <PageHeader
-        title="Datos de tu cuenta"
-        description="Un formulario corto, sin documentos. Al enviarlo tu cuenta queda activa y puedes usar todo el marketplace."
+        title={kyc ? 'Activa tu cuenta' : 'Datos de tu cuenta'}
+        description={
+          kyc
+            ? 'Completa tus datos y verifica tu identidad con tu documento y una selfie. Toma unos minutos, y después puedes usar todo el marketplace.'
+            : 'Un formulario corto, sin documentos. Al enviarlo tu cuenta queda activa y puedes usar todo el marketplace.'
+        }
       />
 
       <Card className="mb-6">
@@ -73,11 +161,24 @@ function Verification({ user }: { user: User }) {
           <StatusBadge feminine status={user.verificationStatus} />
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          {user.verificationStatus === 'approved'
-            ? 'Tu cuenta está activa. Puedes usar todo el marketplace.'
-            : 'Completa el formulario de abajo para activar tu cuenta.'}
+          <p>{statusText()}</p>
         </CardContent>
       </Card>
+
+      {turnedDown ? (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTitle>No pudimos activar tu cuenta</AlertTitle>
+          <AlertDescription>{turnedDown}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {pendingCheck && !inReview && !waitingForResult ? (
+        <IdentityCheck
+          started={kycStatus === 'In Progress'}
+          busy={startKyc.isPending}
+          onStart={() => startKyc.mutate()}
+        />
+      ) : null}
 
       {latest.isLoading ? (
         <Loading />
@@ -184,12 +285,105 @@ function Verification({ user }: { user: User }) {
                 />
               </Field>
               <Button type="submit" size="lg" disabled={submit.isPending}>
-                {submit.isPending ? 'Activando...' : 'Activar mi cuenta'}
+                {submitLabel()}
               </Button>
             </form>
           </CardContent>
         </Card>
       ) : null}
     </div>
+  );
+
+  function statusText(): string {
+    switch (user.verificationStatus) {
+      case 'approved':
+        return kyc
+          ? 'Tu identidad está verificada y tu cuenta está activa. Puedes usar todo el marketplace.'
+          : 'Tu cuenta está activa. Puedes usar todo el marketplace.';
+      case 'rejected':
+        return 'Revisa tus datos y vuelve a intentarlo.';
+      case 'pending':
+        if (!kyc) return 'Confirma tus datos abajo para activar tu cuenta.';
+        if (inReview) {
+          return 'Tu verificación está en revisión. Normalmente termina en menos de un día: vuelve a entrar más tarde para ver el resultado.';
+        }
+        if (waitingForResult) {
+          return 'Estamos recibiendo el resultado de tu verificación. Toma unos segundos.';
+        }
+        return 'Tus datos están listos. Falta verificar tu identidad.';
+      default:
+        return kyc
+          ? 'Paso 1 de 2: completa tus datos abajo. Después verificas tu identidad.'
+          : 'Completa el formulario de abajo para activar tu cuenta.';
+    }
+  }
+
+  function submitLabel(): string {
+    if (submit.isPending) return kyc ? 'Enviando...' : 'Activando...';
+    return kyc ? 'Continuar' : 'Activar mi cuenta';
+  }
+}
+
+/**
+ * The identity check, with the express consent biometric data needs: asked
+ * apart from everything else, and never ticked in advance.
+ */
+function IdentityCheck({
+  started,
+  busy,
+  onStart,
+}: {
+  started: boolean;
+  busy: boolean;
+  onStart: () => void;
+}) {
+  const [consent, setConsent] = useState(false);
+  return (
+    <Card className="mb-6 border-celeste">
+      <CardHeader>
+        <CardTitle>
+          {started ? 'Termina de verificar tu identidad' : 'Verifica tu identidad'}
+        </CardTitle>
+        <CardDescription>
+          {started
+            ? 'Empezaste la verificación pero no la terminaste. Puedes continuar donde la dejaste.'
+            : 'Paso 2 de 2. Lo hace Didit, un servicio de verificación de identidad, en unos minutos.'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4 text-sm">
+        <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+          <li>Ten a mano tu documento oficial vigente: INE, pasaporte o cédula.</li>
+          <li>Usa un celular o una computadora con cámara, en un lugar con buena luz.</li>
+          <li>
+            Pocket no recibe ni guarda las fotos de tu documento ni tu selfie: solo el
+            resultado.
+          </li>
+        </ul>
+        <label className="flex items-start gap-3 text-foreground">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(event) => setConsent(event.target.checked)}
+            className="mt-0.5 size-4 shrink-0 accent-navy"
+          />
+          <span>
+            Doy mi consentimiento expreso para que Didit trate la foto de mi documento y
+            mis datos biométricos (selfie y prueba de vida) para verificar mi identidad,
+            como lo describe la{' '}
+            <Link href="/privacy" target="_blank" className="underline">
+              Política de Privacidad
+            </Link>
+            .
+          </span>
+        </label>
+        <Button size="lg" disabled={!consent || busy} onClick={onStart}>
+          {busy
+            ? 'Abriendo...'
+            : started
+              ? 'Continuar la verificación'
+              : 'Verificar mi identidad'}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

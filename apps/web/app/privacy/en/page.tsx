@@ -60,6 +60,16 @@ export default function PrivacyPageEn() {
           company name and, optionally, its registration number.
         </li>
         <li>
+          <strong>Identity verification:</strong> to activate your account, Didit, the
+          provider that verifies identities for Pocket, takes a photo of your official ID,
+          a selfie and a liveness check, compares your face with the one on your ID and
+          screens sanctions lists. Your face is biometric data, which the law treats as
+          sensitive, and it is processed only with your express consent. Pocket does not
+          receive or keep the photos, your ID details or your biometric data: only the
+          result (approved, declined or under review), the session identifier, the date of
+          your consent and, if it was not approved, the reason.
+        </li>
+        <li>
           <strong>Specialist profile:</strong> name, headline, bio, categories, skills,
           tools, years of experience, languages, time zone, weekly availability, hourly
           rate, smallest project, location, past work with its links and results, and
@@ -110,9 +120,9 @@ export default function PrivacyPageEn() {
         </li>
       </ul>
       <p>
-        We do not ask for sensitive data, such as health, ethnic origin, religion,
-        political views, union membership or sexual life, and we ask you not to include it
-        anywhere in Pocket (see section 4).
+        Apart from identity verification, we do not ask for sensitive data, such as
+        health, ethnic origin, religion, political views, union membership or sexual life,
+        and we ask you not to include it anywhere in Pocket (see section 4).
       </p>
 
       <h2>3. Why we use it, and on what basis</h2>
@@ -130,6 +140,20 @@ export default function PrivacyPageEn() {
               <td>Wallet address, role, Pollar email and provider</td>
               <td>Create and secure your account, and sign you in</td>
               <td>Our contract with you</td>
+            </tr>
+            <tr>
+              <td>
+                Identity verification: ID, selfie and liveness check, processed by Didit;
+                Pocket keeps only the result
+              </td>
+              <td>
+                Confirm you are who you say you are, keep one account per person, and
+                prevent fraud
+              </td>
+              <td>
+                Your express consent for your biometric data; our legitimate interest in a
+                trustworthy marketplace; legal obligations
+              </td>
             </tr>
             <tr>
               <td>Account details</td>
@@ -181,19 +205,24 @@ export default function PrivacyPageEn() {
         When you create your account we ask, separately from the Terms, for your consent
         to process your data as this Policy describes, including publishing your profile
         and CV once your account is active, and transferring your data abroad (section 6).
-        You can withdraw it at any time by deleting your CV or your profile, by deleting
-        your account from your <Link href="/account">account page</Link>, or by writing to{' '}
-        {PRIVACY_EMAIL}. Withdrawing does not affect what was done before. If the consent
-        was needed for a feature, we will have to stop that feature for you.
+        Before you verify your identity we ask, also separately, for your express consent
+        for Didit to process your ID and your biometric data. You can withdraw it at any
+        time by deleting your CV or your profile, by deleting your account from your{' '}
+        <Link href="/account">account page</Link>, or by writing to {PRIVACY_EMAIL}.
+        Withdrawing does not affect what was done before. If the consent was needed for a
+        feature, we will have to stop that feature for you.
       </p>
       <h3>Automated decisions</h3>
       <p>
-        Your account is activated automatically when you complete its details. Decisions
-        that weigh what happened, such as resolving a dispute, are made by people. Two
-        decisions against you are made automatically: we refuse a hire between two
-        accounts with the same contact email, to prevent self-dealing; and we temporarily
-        block requests that exceed our rate limits. If you think either affected you
-        wrongly, write to {PRIVACY_EMAIL} and a person will review it.
+        Your account is activated automatically when Didit confirms your identity. Didit
+        may pass a doubtful case to a person for review. Decisions that weigh what
+        happened, such as resolving a dispute, are made by people. Three decisions against
+        you are made automatically: we do not activate an account when Didit could not
+        confirm the identity, or when the same ID or face was already verified on another
+        Pocket account; we refuse a hire between two accounts with the same contact email,
+        to prevent self-dealing; and we temporarily block requests that exceed our rate
+        limits. If you think any of them affected you wrongly, write to {PRIVACY_EMAIL}{' '}
+        and a person will review it.
       </p>
 
       <h2>4. Public profiles and sensitive data</h2>
@@ -230,10 +259,12 @@ export default function PrivacyPageEn() {
           <strong>Service providers</strong> that process data on our instructions:
           Supabase (database, United States), Railway (API hosting and its logs), Vercel
           (website hosting), Sentry (error reports, United States), Resend (sends
-          notification emails to your contact email, United States) and Trustless Work
-          (builds the escrow transactions, with wallet addresses, amounts and milestones).
-          Our private security alerts, sent to a Discord channel, contain only technical
-          data about Pocket&apos;s own account, never your name, email or wallet.
+          notification emails to your contact email, United States), Didit (verifies your
+          identity with your ID, selfie and liveness check, and sends us the result) and
+          Trustless Work (builds the escrow transactions, with wallet addresses, amounts
+          and milestones). Our private security alerts, sent to a Discord channel, contain
+          only technical data about Pocket&apos;s own account, never your name, email or
+          wallet.
         </li>
         <li>
           <strong>Independent parties</strong> with their own privacy policies: Pollar,
@@ -285,6 +316,12 @@ export default function PrivacyPageEn() {
         </li>
         <li>
           <strong>Account details:</strong> until you delete your account.
+        </li>
+        <li>
+          <strong>Identity verification:</strong> Pocket keeps the result until you delete
+          your account. Didit keeps the photos of your ID, your selfie and your biometric
+          data for the retention period we set with it, and then deletes them. You can ask
+          for them to be deleted sooner by writing to {PRIVACY_EMAIL}.
         </li>
         <li>
           <strong>
