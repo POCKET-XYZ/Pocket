@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/card';
 import { ApiError, api, errorMessage } from '@/lib/api';
 import { dateTime, explorerContract, explorerTx, shortAddress, usdc } from '@/lib/format';
+import { ON_MAINNET } from '@/lib/network';
 import { useContractAction } from '@/lib/use-contract-action';
 import { useSigner } from '@/components/use-signer';
 import { prepareSignSubmit } from '@/lib/wallet';
@@ -313,6 +314,9 @@ function NextStep({ contract, user }: { contract: ContractDetail; user: User }) 
             apruebas. Trustless Work se queda con el {TRUSTLESS_WORK_FEE_PERCENT}% de cada
             pago y Pocket con el {POCKET_FEE_PERCENT}%, así que el experto recibe{' '}
             {specialistReceives}.
+            {ON_MAINNET
+              ? ' Es USDC real: revisa el monto en tu wallet antes de firmar.'
+              : ''}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

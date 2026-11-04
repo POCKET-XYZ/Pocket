@@ -38,6 +38,7 @@ import { ReportTemplateButton } from '@/components/report-template';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { api, errorMessage, upload } from '@/lib/api';
+import { ON_MAINNET } from '@/lib/network';
 import { ATTACHMENT_ACCEPT } from '@/lib/files';
 import { toast } from 'sonner';
 import { date, dateTime, usdc } from '@/lib/format';
@@ -192,7 +193,9 @@ export function MilestoneCard({
                 onClick={async () => {
                   const confirmed = await confirm({
                     title: `¿Aprobar esta entrega y liberar ${usdc(milestone.amount)} al experto?`,
-                    description: 'Una aprobación no se puede deshacer.',
+                    description: ON_MAINNET
+                      ? 'Se paga con USDC real y una aprobación no se puede deshacer.'
+                      : 'Una aprobación no se puede deshacer.',
                     confirmText: 'Aprobar y pagar',
                     irreversible: true,
                   });
