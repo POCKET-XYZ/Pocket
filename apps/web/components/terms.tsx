@@ -74,14 +74,14 @@ export function TermsConsent({
         <Link href="/privacy" target="_blank" className="underline">
           Política de Privacidad
         </Link>
-        , incluido publicar mi perfil y mi CV cuando mi cuenta esté activa, y guardar mis
-        datos en Estados Unidos.
+        , incluido publicar mi perfil y mi CV cuando mi cuenta esté activa, y que mis
+        datos se guarden fuera de mi país.
       </Box>
       <p className="text-xs leading-relaxed text-muted-foreground">
         Pocket usa tu dirección de wallet, tu correo, los datos de tu cuenta y tu perfil
         para operar tu cuenta, publicar tu perfil y manejar los contratos en la red
-        pública de Stellar. Tus datos se guardan en Estados Unidos. Puedes ejercer tus
-        derechos, o limitar el uso de tus datos, desde tu página de cuenta o en{' '}
+        pública de Stellar. Tus datos se pueden guardar fuera de tu país. Puedes ejercer
+        tus derechos, o limitar el uso de tus datos, desde tu página de cuenta o en{' '}
         {PRIVACY_EMAIL}.
       </p>
     </div>
