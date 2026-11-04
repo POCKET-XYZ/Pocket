@@ -1,10 +1,7 @@
 import Link from 'next/link';
 
-/**
- * Where people write about legal and privacy matters. The address is still to
- * be decided, and must be set here before these documents are published.
- */
-export const LEGAL_EMAIL = '[correo de contacto pendiente]';
+/** Where people write about legal and privacy matters. */
+export const LEGAL_EMAIL = 'pocket.stellar.xyz@gmail.com';
 export const PRIVACY_EMAIL = LEGAL_EMAIL;
 
 /** Which network this deployment runs on: the Terms say what that means for money. */
