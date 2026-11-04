@@ -6,4 +6,6 @@ export const links = {
   // The login page preselects the role from ?role=.
   startup: `${APP_URL}/login?role=startup`,
   expert: `${APP_URL}/login?role=specialist`,
+  terms: `${APP_URL}/terms`,
+  privacy: `${APP_URL}/privacy`,
 };

@@ -133,6 +133,9 @@ export function SiteHeader() {
                     </DropdownMenuItem>
                   </>
                 ) : null}
+                <DropdownMenuItem asChild>
+                  <Link href="/account">Tu cuenta y tus datos</Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={signOut}>Cerrar sesión</DropdownMenuItem>
               </DropdownMenuContent>
