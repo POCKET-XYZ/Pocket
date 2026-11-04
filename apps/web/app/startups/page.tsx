@@ -79,8 +79,21 @@ export default function StartupsPage() {
           ))}
         </div>
       ) : (
-        <EmptyState title="Ninguna startup coincide">Prueba con otra búsqueda.</EmptyState>
+        <NoStartups query={query} />
       )}
     </div>
+  );
+}
+
+/** An empty directory and a search that found nothing are not the same news. */
+function NoStartups({ query }: { query: string }) {
+  return query ? (
+    <EmptyState title={`Ninguna startup coincide con «${query}»`}>
+      Prueba con otra búsqueda.
+    </EmptyState>
+  ) : (
+    <EmptyState title="Todavía no hay startups con su perfil publicado">
+      Cuando una startup activa su cuenta y completa su perfil, aparece aquí.
+    </EmptyState>
   );
 }
