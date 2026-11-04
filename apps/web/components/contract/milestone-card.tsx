@@ -35,6 +35,7 @@ import {
   kpiTarget,
 } from '@/components/contract/kpi-report';
 import { MoneyStepStatus, stageLabel } from '@/components/contract/money-step-status';
+import { sentStep } from '@/components/contract/sent-step';
 import { ReportTemplateButton } from '@/components/report-template';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -54,12 +55,6 @@ type MilestoneWithHistory = ContractDetail['milestones'][number];
 
 /** A milestone can be disputed while the work is under way or delivered. */
 const DISPUTABLE = ['pending', 'delivered', 'changes_requested'];
-
-/**
- * An approval sent this long ago without the milestone moving on most likely
- * stopped halfway: offer to check it again.
- */
-const APPROVAL_STUCK_MS = 2 * 60 * 1000;
 
 /** How a KPI result reads when the specialist could not measure it yet. */
 const UNMEASURED = /todav[ií]a no se puede medir/i;
@@ -89,12 +84,13 @@ export function MilestoneCard({
 
   // An approval already sent (this page, or before a reload): the API finishes
   // it and releases the payment, so the button must not come back meanwhile.
-  const sentApproval = contract.chainOperations.find(
-    (operation) => operation.kind === 'approve' && operation.milestoneId === milestone.id,
-  );
-  const approving = milestone.status === 'delivered' && Boolean(sentApproval);
-  const sentAt = sentApproval?.confirmedAt ? Date.parse(sentApproval.confirmedAt) : null;
-  const approvalStuck = approving && sentAt !== null && now - sentAt > APPROVAL_STUCK_MS;
+  // One that never moved on is offered again, with a way to check it first.
+  const approval =
+    milestone.status === 'delivered'
+      ? sentStep(contract, 'approve', milestone.id, now)
+      : 'none';
+  const approving = approval === 'sending';
+  const approvalStuck = approval === 'stuck';
 
   const approve = useContractAction(
     contract.id,
@@ -235,6 +231,14 @@ export function MilestoneCard({
             Algunos resultados todavía no se pueden medir. Puedes aprobar igual: el
             experto los reporta en entregas siguientes y el reporte de resultados los
             muestra.
+          </p>
+        ) : null}
+
+        {approvalStuck && (isStartup || isManager) ? (
+          <p className="rounded-lg bg-yellow/15 px-3 py-2 text-sm text-navy">
+            La aprobación que enviaste no terminó de confirmarse. Revisa de nuevo: si la
+            red ya la tiene, el pago se libera; si no, puedes aprobar otra vez sin pagar
+            dos veces.
           </p>
         ) : null}
 

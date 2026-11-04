@@ -11,6 +11,7 @@ import { FeeBreakdown } from '@/components/contract/fee-breakdown';
 import { MilestoneCard } from '@/components/contract/milestone-card';
 import { MoneyStepStatus, stageLabel } from '@/components/contract/money-step-status';
 import { ResultsCard } from '@/components/contract/results';
+import { sentStep } from '@/components/contract/sent-step';
 import { WorkHistory } from '@/components/contract/work-history';
 import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { ReportTemplateButton } from '@/components/report-template';
@@ -36,13 +37,6 @@ import { useNow } from '@/lib/use-now';
 import { useSigner } from '@/components/use-signer';
 import { prepareSignSubmit } from '@/lib/wallet';
 
-/**
- * A contract being created on the network this long without moving on most
- * likely stopped halfway: let the specialist accept again (the API frees a
- * step whose transaction never landed).
- */
-const DEPLOY_STUCK_MS = 2 * 60 * 1000;
-
 export default function ContractPage() {
   return (
     <RequireAuth roles={['startup', 'specialist', 'manager']}>
@@ -53,6 +47,7 @@ export default function ContractPage() {
 
 function Contract({ user }: { user: User }) {
   const { id } = useParams<{ id: string }>();
+  const now = useNow(30_000);
   const contract = useQuery({
     queryKey: ['contracts', id],
     queryFn: () => api<ContractDetail>(`/contracts/${id}`),
@@ -88,7 +83,7 @@ function Contract({ user }: { user: User }) {
           </>
         }
         actions={
-          <StatusBadge status={headerStatus(data)} className="px-3 py-1 text-sm" />
+          <StatusBadge status={headerStatus(data, now)} className="px-3 py-1 text-sm" />
         }
       />
 
@@ -102,7 +97,7 @@ function Contract({ user }: { user: User }) {
         <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-4">
           <Detail label="Total">{usdc(data.amount)}</Detail>
           <Detail label="Pago protegido">
-            {protectionText(data)}
+            {protectionText(data, now)}
             {data.escrowId ? (
               <a
                 href={explorerContract(data.escrowId)}
@@ -165,19 +160,21 @@ function Contract({ user }: { user: User }) {
 }
 
 /** A step sent to the network shows in the badge before the contract moves on. */
-function headerStatus(contract: ContractDetail): string {
-  const sent = (kind: string) =>
-    contract.chainOperations.some((operation) => operation.kind === kind);
-  if (contract.status === 'awaiting_specialist' && sent('deploy')) return 'preparing';
-  if (contract.status === 'awaiting_funding' && sent('fund')) return 'confirming_deposit';
+function headerStatus(contract: ContractDetail, now: number): string {
+  const sending = (kind: 'deploy' | 'fund') =>
+    sentStep(contract, kind, null, now) === 'sending';
+  if (contract.status === 'awaiting_specialist' && sending('deploy')) return 'preparing';
+  if (contract.status === 'awaiting_funding' && sending('fund')) {
+    return 'confirming_deposit';
+  }
   return contract.status;
 }
 
 /** Where the money stands, in words instead of a network address. */
-function protectionText(contract: ContractDetail): string {
+function protectionText(contract: ContractDetail, now: number): string {
   switch (contract.status) {
     case 'awaiting_specialist':
-      return contract.chainOperations.some((operation) => operation.kind === 'deploy')
+      return sentStep(contract, 'deploy', null, now) === 'sending'
         ? 'Se está creando'
         : 'Se crea cuando el experto acepta';
     case 'awaiting_funding':
@@ -247,23 +244,17 @@ function NextStep({
     'Pago depositado. El experto ya puede empezar.',
   );
 
-  const sentDeploy = contract.chainOperations.find(
-    (operation) => operation.kind === 'deploy',
-  );
-  const deploySentAt = sentDeploy?.confirmedAt
-    ? Date.parse(sentDeploy.confirmedAt)
-    : null;
   // Sent before a reload, or by another tab: wait for it unless it is stuck.
   const deploying =
-    deploySentAt !== null && now - deploySentAt < DEPLOY_STUCK_MS && !accept.isPending;
+    sentStep(contract, 'deploy', null, now) === 'sending' && !accept.isPending;
   // A deposit already sent (this page, an error, or before a reload): the
-  // network is confirming it, so a second deposit is never the way out.
+  // network is confirming it, so a second deposit is not offered meanwhile.
   const fundingPending =
-    contract.chainOperations.some((operation) => operation.kind === 'fund') ||
+    sentStep(contract, 'fund', null, now) === 'sending' ||
     (fund.error instanceof ApiError && [409, 503].includes(fund.error.status));
 
   if (contract.status === 'awaiting_specialist') {
-    if (isStartup) return <WithdrawOffer contract={contract} />;
+    if (isStartup) return <WithdrawOffer contract={contract} now={now} />;
     if (!isSpecialist) {
       return (
         <Waiting
@@ -399,7 +390,7 @@ function NextStep({
   }
 
   if (contract.status === 'active') {
-    const next = activeStep(contract, isStartup, isSpecialist, specialistName);
+    const next = activeStep(contract, isStartup, isSpecialist, specialistName, now);
     return next ? <Waiting title={next.title} text={next.text} href={next.href} /> : null;
   }
 
@@ -445,6 +436,7 @@ function activeStep(
   isStartup: boolean,
   isSpecialist: boolean,
   specialistName: string,
+  now: number,
 ): { title: string; text: string; href?: string } | null {
   const first = (...statuses: string[]) =>
     contract.milestones.find((milestone) => statuses.includes(milestone.status));
@@ -463,10 +455,7 @@ function activeStep(
     (milestone) =>
       milestone.status === 'approved' ||
       (milestone.status === 'delivered' &&
-        contract.chainOperations.some(
-          (operation) =>
-            operation.kind === 'approve' && operation.milestoneId === milestone.id,
-        )),
+        sentStep(contract, 'approve', milestone.id, now) === 'sending'),
   );
   if (paying) {
     return {
@@ -520,7 +509,7 @@ function activeStep(
  * The startup waits for the specialist, and can take the terms back to fix
  * them or to choose someone else while they are not accepted.
  */
-function WithdrawOffer({ contract }: { contract: ContractDetail }) {
+function WithdrawOffer({ contract, now }: { contract: ContractDetail; now: number }) {
   const router = useRouter();
   const confirm = useConfirm();
   const queryClient = useQueryClient();
@@ -545,7 +534,7 @@ function WithdrawOffer({ contract }: { contract: ContractDetail }) {
   });
 
   // Once the specialist accepted, Pocket is creating the contract: nothing to take back.
-  if (contract.chainOperations.some((operation) => operation.kind === 'deploy')) {
+  if (sentStep(contract, 'deploy', null, now) === 'sending') {
     return (
       <Waiting
         title="El experto aceptó"
