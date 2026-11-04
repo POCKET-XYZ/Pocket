@@ -137,9 +137,22 @@ export function UsdcStatus({
         <AlertDescription>
           <p>
             Cada paso del contrato que firmas paga una pequeña comisión en XLM, y a tu
-            wallet le quedan {status.data.xlmForFees}. Recárgala antes de depositar,
-            aprobar o abrir una disputa, o esos pasos van a fallar.
+            wallet le quedan {status.data.xlmForFees}. Recárgala antes de{' '}
+            {/* Each side signs different steps: name only the ones this one signs. */}
+            {user.role === 'startup'
+              ? 'depositar, aprobar o abrir una disputa'
+              : 'habilitar USDC o abrir una disputa'}
+            , o esos pasos van a fallar.
           </p>
+          {IS_TESTNET ? null : (
+            <p className="mt-2">
+              Envía 1 XLM o más a la dirección de tu wallet desde un exchange u otra
+              wallet, por la red Stellar. No hace falta memo.
+              {status.data.usdc === 'ready'
+                ? ''
+                : ' Cuando llegue, habilita USDC aquí mismo.'}
+            </p>
+          )}
           {IS_TESTNET ? (
             <Button asChild size="sm" variant="outline" className="mt-3">
               <a
