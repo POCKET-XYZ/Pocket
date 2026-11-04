@@ -1,5 +1,9 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { securityEvent } from '../../common/security/security-log';
+
+/** The team hears about Didit refusing Pocket at most this often. */
+const ALERT_EVERY_MS = 30 * 60 * 1000;
 
 /** Didit's answer takes a few hundred milliseconds; past this something is wrong. */
 const TIMEOUT_MS = 10_000;
@@ -116,7 +120,7 @@ export function readDecision(body: Record<string, unknown>): KycDecision {
 
 /**
  * Didit's hosted identity check: Pocket opens a session for a user, sends them
- * to Didit's page (ID, selfie, liveness, sanctions lists) and reads the
+ * to Didit's page (ID, selfie, liveness, face match) and reads the
  * decision back. Only the API talks to Didit: the key never reaches a browser.
  *
  * Endpoints follow https://docs.didit.me/sessions-api/create-session and
@@ -124,6 +128,8 @@ export function readDecision(body: Record<string, unknown>): KycDecision {
  */
 @Injectable()
 export class DiditClient {
+  /** When the team was last told Didit refused Pocket. */
+  private lastAlert = 0;
   private readonly logger = new Logger(DiditClient.name);
   private readonly apiUrl: string;
   private readonly apiKey: string;
@@ -207,9 +213,23 @@ export class DiditClient {
     if (!response.ok) {
       // The body may echo personal data: only the status goes to the log.
       this.logger.error(`Didit ${method} ${path} answered ${response.status}`);
+      this.alertTeam(response.status);
       throw this.unavailable();
     }
     return (await response.json()) as Record<string, unknown>;
+  }
+
+  /**
+   * Nobody can activate an account while Didit refuses Pocket (no credit
+   * left, a revoked key): tell the team, at most every half hour.
+   */
+  private alertTeam(status: number): void {
+    // A session Didit does not know is an answer, not an outage.
+    if (status === 404) return;
+    const now = Date.now();
+    if (now - this.lastAlert < ALERT_EVERY_MS) return;
+    this.lastAlert = now;
+    securityEvent('kyc_unavailable', { status }, 'alert');
   }
 
   private unavailable(): ServiceUnavailableException {

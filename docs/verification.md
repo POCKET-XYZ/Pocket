@@ -1,6 +1,6 @@
 # Verification
 
-Nobody operates on Pocket before their account is active. Activating it takes two steps: the account details, and an identity check through [Didit](https://didit.me)'s hosted flow (official ID, selfie with liveness, face match, sanctions lists). Nobody reviews accounts by hand at Pocket: Didit decides, and Didit's own console holds the cases it sends to a person.
+Nobody operates on Pocket before their account is active. Activating it takes two steps: the account details, and an identity check through [Didit](https://didit.me)'s hosted flow (official ID, selfie with passive liveness, face match, device and IP analysis). Nobody reviews accounts by hand at Pocket: Didit decides, and Didit's own console holds the cases it sends to a person.
 
 The identity check is on when `DIDIT_API_KEY`, `DIDIT_WORKFLOW_ID` and `DIDIT_WEBHOOK_SECRET` are all set (the API refuses to start with only some of them). Without them, sending the details approves the account on the spot, which is what local runs and tests use.
 
@@ -84,11 +84,12 @@ Every submission is stored as its own row. Rows from the manual review era keep 
 
 ## Setting up Didit
 
-1. Console → Workflows: a KYC workflow with ID verification, liveness, face match and AML screening, published. Its id is `DIDIT_WORKFLOW_ID`.
+1. Console → Workflows: a KYC workflow with ID verification, passive liveness, face match and device and IP analysis, published. Its id is `DIDIT_WORKFLOW_ID`. AML screening is a paid add-on Pocket does not use: adding it means saying so in the Privacy Policy first.
 2. Console → API Keys: `DIDIT_API_KEY`.
 3. Console → Webhooks: destination `https://<api>/api/verification/kyc/webhook`, event `status.updated`. The secret shown once is `DIDIT_WEBHOOK_SECRET`.
-4. Set a data retention period, as the Privacy Policy says Didit deletes the images after it.
+4. App Settings → Data retention: the Privacy Policy says Didit keeps the images for one year, the Free plan's default. Change both together.
 5. `WEB_PUBLIC_URL` must be the web app: Didit sends people back to `/verification` there.
+6. Live sessions are billed (about $0.33 per full check): keep credit in Business Console, or `POST /verification/kyc` fails with Didit's "not enough credits".
 
 Use a separate Didit application for testnet and for mainnet.
 

@@ -50,7 +50,7 @@ export interface AppConfig {
   kyc: {
     diditApiUrl: string;
     diditApiKey: string;
-    /** The published KYC workflow sessions run: ID, liveness, face match, AML. */
+    /** The published KYC workflow sessions run: ID, liveness, face match. */
     diditWorkflowId: string;
     /** Signs Didit's webhooks; shown once when the destination is created. */
     diditWebhookSecret: string;

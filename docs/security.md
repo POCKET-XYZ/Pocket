@@ -82,6 +82,7 @@ Security events are written as one JSON line each under the `Security` logger. T
 | `platform_balance_low` | **Alert.** Less than `PLATFORM_MIN_XLM` (20 by default) left for fees |
 | `platform_usdc_trustline_missing` | **Alert.** The platform account cannot receive USDC, so no escrow can be deployed and Pocket's fee cannot be paid. Run `bun run stellar:setup` |
 | `kyc_decision` | Didit approved or declined an identity check. **Alert** when it sends a case to a person: decide it in Didit's console |
+| `kyc_unavailable` | **Alert.** Didit refused Pocket (no credit left, a revoked key): nobody can activate an account until it is fixed |
 | `kyc_webhook_refused` | A Didit webhook with a bad signature or an old timestamp (warning). **Alert** when a session does not belong to the request it names |
 
 The platform monitor polls Horizon every 30 seconds. Every transaction the platform key sends through Pocket is recorded in `chain_operations` before it is sent, so any other one means the key was used somewhere else.

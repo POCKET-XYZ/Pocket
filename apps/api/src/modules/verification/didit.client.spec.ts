@@ -1,4 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
+import * as securityLog from '../../common/security/security-log';
 import {
   DiditClient,
   isKycEnabled,
@@ -161,6 +162,33 @@ describe('DiditClient', () => {
     await expect(new DiditClient(config(ON)).decision('sess-1')).rejects.toThrow(
       'servicio de verificación',
     );
+  });
+
+  it('tells the team when Didit refuses Pocket, at most every half hour', async () => {
+    const events = jest
+      .spyOn(securityLog, 'securityEvent')
+      .mockImplementation(() => undefined);
+    try {
+      const client = new DiditClient(config(ON));
+      fetchMock.mockImplementation(() =>
+        Promise.resolve(new Response('{"detail":"not enough credits"}', { status: 400 })),
+      );
+      await expect(client.createSession('user-1', 'req-1')).rejects.toThrow();
+      await expect(client.createSession('user-2', 'req-2')).rejects.toThrow();
+      const alerts = events.mock.calls.filter(([name]) => name === 'kyc_unavailable');
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0][2]).toBe('alert');
+
+      // A session Didit does not know is an answer, not an outage.
+      events.mockClear();
+      fetchMock.mockImplementation(() =>
+        Promise.resolve(new Response('{}', { status: 404 })),
+      );
+      await expect(new DiditClient(config(ON)).decision('sess-x')).rejects.toThrow();
+      expect(events).not.toHaveBeenCalled();
+    } finally {
+      events.mockRestore();
+    }
   });
 
   it('reads a decision from the session it names', async () => {

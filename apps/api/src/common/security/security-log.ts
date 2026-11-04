@@ -15,7 +15,8 @@ export type SecurityEventName =
   | 'account_deleted'
   | 'data_exported'
   | 'kyc_decision'
-  | 'kyc_webhook_refused';
+  | 'kyc_webhook_refused'
+  | 'kyc_unavailable';
 
 type Fields = Record<string, string | number | boolean | null | undefined>;
 

@@ -66,11 +66,12 @@ export default function PrivacyPage() {
           <strong>Verificación de identidad:</strong> para activar tu cuenta, Didit, el
           proveedor que verifica identidades para Pocket, toma una foto de tu documento
           oficial, una selfie y una prueba de vida, compara tu cara con la de tu documento
-          y revisa listas de sanciones. Tu cara es un dato biométrico, que la ley
-          considera sensible, y solo se trata con tu consentimiento expreso. Pocket no
-          recibe ni guarda las fotos, los datos de tu documento ni tus datos biométricos:
-          solo el resultado (aprobada, rechazada o en revisión), el identificador de la
-          sesión, la fecha de tu consentimiento y, si no se aprobó, el motivo.
+          y revisa el dispositivo y la dirección IP desde los que te verificas, para
+          detectar fraudes. Tu cara es un dato biométrico, que la ley considera sensible,
+          y solo se trata con tu consentimiento expreso. Pocket no recibe ni guarda las
+          fotos, los datos de tu documento ni tus datos biométricos: solo el resultado
+          (aprobada, rechazada o en revisión), el identificador de la sesión, la fecha de
+          tu consentimiento y, si no se aprobó, el motivo.
         </li>
         <li>
           <strong>Perfil de experto:</strong> nombre, titular, biografía, categorías,
@@ -332,8 +333,9 @@ export default function PrivacyPage() {
         <li>
           <strong>Verificación de identidad:</strong> Pocket guarda el resultado hasta que
           elimines tu cuenta. Las fotos de tu documento, tu selfie y tus datos biométricos
-          los guarda Didit durante el plazo de retención que le fijamos, y después los
-          borra. Puedes pedir que los borre antes escribiendo a {PRIVACY_EMAIL}.
+          los guarda Didit durante el plazo de retención que configuramos, hoy un año, y
+          después los borra. Puedes pedir que los borre antes escribiendo a{' '}
+          {PRIVACY_EMAIL}.
         </li>
         <li>
           <strong>

@@ -63,11 +63,12 @@ export default function PrivacyPageEn() {
           <strong>Identity verification:</strong> to activate your account, Didit, the
           provider that verifies identities for Pocket, takes a photo of your official ID,
           a selfie and a liveness check, compares your face with the one on your ID and
-          screens sanctions lists. Your face is biometric data, which the law treats as
-          sensitive, and it is processed only with your express consent. Pocket does not
-          receive or keep the photos, your ID details or your biometric data: only the
-          result (approved, declined or under review), the session identifier, the date of
-          your consent and, if it was not approved, the reason.
+          checks the device and IP address you verify from, to detect fraud. Your face is
+          biometric data, which the law treats as sensitive, and it is processed only with
+          your express consent. Pocket does not receive or keep the photos, your ID
+          details or your biometric data: only the result (approved, declined or under
+          review), the session identifier, the date of your consent and, if it was not
+          approved, the reason.
         </li>
         <li>
           <strong>Specialist profile:</strong> name, headline, bio, categories, skills,
@@ -320,8 +321,8 @@ export default function PrivacyPageEn() {
         <li>
           <strong>Identity verification:</strong> Pocket keeps the result until you delete
           your account. Didit keeps the photos of your ID, your selfie and your biometric
-          data for the retention period we set with it, and then deletes them. You can ask
-          for them to be deleted sooner by writing to {PRIVACY_EMAIL}.
+          data for the retention period we configured, one year today, and then deletes
+          them. You can ask for them to be deleted sooner by writing to {PRIVACY_EMAIL}.
         </li>
         <li>
           <strong>
