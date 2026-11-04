@@ -17,7 +17,7 @@ Once there is a contract, each party sees the other's contact email, since they 
 ## Milestones
 
 1. The specialist delivers: a link, an optional note and a result for each of the job's KPIs. Every version is kept.
-2. The startup approves it or asks for changes, with feedback on that version.
+2. The startup approves it or asks for changes, with feedback on that version. The time of the request is kept (`feedbackAt`) for the contract's work history; requests from before it was recorded have none.
 3. Approving takes one signature from the startup. Pocket then releases the milestone to the specialist.
 
 When every milestone is paid, or its dispute resolved, the contract and the job are completed, and both parties are told its [results report](reports.md) is ready.
