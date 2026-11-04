@@ -2,7 +2,9 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { UsdcPaymentRecord } from '@pocket/shared';
 import { StrKey } from '@stellar/stellar-sdk';
+import { securityEvent } from '../../common/security/security-log';
 import type { AuthUser } from '../../common/types/auth';
+import { PrismaService } from '../../prisma/prisma.service';
 import {
   ChainOperationsService,
   type PreparedTransaction,
@@ -14,6 +16,17 @@ export const MAX_MEMO_BYTES = 28;
 
 /** How many payments the wallet page lists. */
 const HISTORY_SIZE = 20;
+
+/**
+ * XLM a Pollar wallet needs on its own: the 0.5 XLM its USDC trustline locks
+ * plus that transaction's fee, or, once it trusts USDC, enough for a few
+ * dozen escrow signatures.
+ */
+const POLLAR_TRUSTLINE_XLM = 0.51;
+const POLLAR_LOW_XLM = 0.05;
+
+/** The team hears about the same wallet at most this often. */
+const ALERT_EVERY_MS = 6 * 60 * 60 * 1000;
 
 /** A payment the user asked for, as the client sends it. */
 export interface UsdcPaymentRequest {
@@ -30,9 +43,13 @@ export interface UsdcPaymentRequest {
  */
 @Injectable()
 export class WalletService {
+  /** When the team was last told about each Pollar wallet, by address. */
+  private readonly alerted = new Map<string, number>();
+
   constructor(
     private readonly stellar: StellarService,
     private readonly operations: ChainOperationsService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -51,7 +68,52 @@ export class WalletService {
       this.stellar.spendableXlm(user.stellarAddress),
       this.stellar.spendableUsdc(user.stellarAddress),
     ]);
+    await this.alertIfPollarWalletIsShort(user, usdc, xlmForFees);
     return { address: user.stellarAddress, usdc, xlmForFees, usdcSpendable };
+  }
+
+  /**
+   * Someone who signed in with email or Google never hears of XLM, so when
+   * their wallet cannot enable USDC or is about to run out of network fees,
+   * the Pocket team is told instead, to top it up. A wallet the user holds is
+   * left to its owner, who sees those details in the app.
+   */
+  private async alertIfPollarWalletIsShort(
+    user: AuthUser,
+    usdc: UsdcReadiness,
+    xlmForFees: string | null,
+  ): Promise<void> {
+    const xlm = Number(xlmForFees ?? 0);
+    const short =
+      (usdc === 'no_trustline' && xlm < POLLAR_TRUSTLINE_XLM) ||
+      (usdc === 'ready' && xlm < POLLAR_LOW_XLM);
+    if (!short) return;
+
+    const last = this.alerted.get(user.stellarAddress);
+    if (last !== undefined && Date.now() - last < ALERT_EVERY_MS) return;
+    const account = await this.prisma.user.findUnique({
+      where: { id: user.sub },
+      select: { walletCustody: true, verificationStatus: true },
+    });
+    // An account not approved yet has no activated wallet to top up.
+    if (
+      account?.walletCustody !== 'pollar' ||
+      account.verificationStatus !== 'approved'
+    ) {
+      return;
+    }
+    this.alerted.set(user.stellarAddress, Date.now());
+    securityEvent(
+      'pollar_wallet_needs_xlm',
+      {
+        userId: user.sub,
+        account: user.stellarAddress,
+        usdc,
+        xlm: xlmForFees ?? '0',
+        needs: usdc === 'no_trustline' ? 'XLM to enable USDC' : 'XLM for network fees',
+      },
+      'alert',
+    );
   }
 
   async prepareTrustline(user: AuthUser): Promise<PreparedTransaction> {
@@ -97,10 +159,14 @@ export class WalletService {
       throw new BadRequestException('Esa no es una dirección de Stellar válida');
     }
     if (destination === user.stellarAddress) {
-      throw new BadRequestException('Esa es tu propia dirección. Ingresa la dirección a la que quieres pagar');
+      throw new BadRequestException(
+        'Esa es tu propia dirección. Ingresa la dirección a la que quieres pagar',
+      );
     }
     if (memo !== undefined && Buffer.byteLength(memo, 'utf8') > MAX_MEMO_BYTES) {
-      throw new BadRequestException(`El memo puede tener como máximo ${MAX_MEMO_BYTES} bytes`);
+      throw new BadRequestException(
+        `El memo puede tener como máximo ${MAX_MEMO_BYTES} bytes`,
+      );
     }
 
     const [spendable, recipient] = await Promise.all([
@@ -152,7 +218,11 @@ export class WalletService {
       // Cannot happen: only the prepared payment gets this far.
       throw new BadRequestException('Esta transacción no es un pago');
     }
-    return { txHash: operation.txHash, amount: payment.amount, destination: payment.destination };
+    return {
+      txHash: operation.txHash,
+      amount: payment.amount,
+      destination: payment.destination,
+    };
   }
 
   /** The latest USDC in and out of the user's wallet. */
