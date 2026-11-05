@@ -8,6 +8,7 @@ import type {
   KpiDirection,
   MilestoneStatus,
   ServiceCategory,
+  SocialPlatform,
   StartupStage,
   UserRole,
   VerificationStatus,
@@ -195,6 +196,16 @@ export interface CaseStudy {
   result: string;
 }
 
+/** A creator's account. The figures are what the creator declares, unverified. */
+export interface SocialAccount {
+  platform: SocialPlatform;
+  url: string;
+  followers?: number | null;
+  avgViews?: number | null;
+  /** When the figures last changed. Set by the API, never sent by the form. */
+  statsUpdatedAt?: IsoDate | null;
+}
+
 export interface SpecialistProfile {
   id: string;
   userId: string;
@@ -220,6 +231,11 @@ export interface SpecialistProfile {
   cvUrl?: string | null;
   avatarUrl?: string | null;
   location?: string | null;
+  socialAccounts?: SocialAccount[] | null;
+  /** What the creator's content is about, e.g. fintech or gaming. */
+  niches?: string[] | null;
+  /** Where most of the creator's audience is. */
+  audienceCountries?: string[] | null;
   updatedAt: IsoDate;
 }
 
