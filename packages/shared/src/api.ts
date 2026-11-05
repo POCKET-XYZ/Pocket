@@ -156,9 +156,27 @@ export interface VerificationRequest extends VerificationSubmission {
   id: string;
   userId: string;
   status: Exclude<VerificationStatus, 'not_submitted'>;
+  /**
+   * The identity check through Didit, when it is on: the status as Didit
+   * names it (Not Started, In Progress, Approved, Declined, In Review,
+   * Abandoned, Expired) and why it was declined or held for a review.
+   */
+  kycStatus?: string | null;
+  kycReason?: string | null;
+  kycCheckedAt?: IsoDate | null;
   reviewNote?: string | null;
   reviewedAt?: IsoDate | null;
   submittedAt: IsoDate;
+}
+
+/** Whether accounts are activated by an identity check through Didit. */
+export interface KycSettings {
+  enabled: boolean;
+}
+
+/** Where to send the person for their identity check. */
+export interface KycSession {
+  url: string;
 }
 
 /** Manager's decision on a request. A rejection must say why. */

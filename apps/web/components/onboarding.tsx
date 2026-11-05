@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { CheckIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { activationAction, activationHint, useKycEnabled } from '@/components/activation';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,8 +35,8 @@ interface Step {
  * With `full`, on the home panel, it follows them through their first contract
  * and disappears when that is done. Every step is read from the real state.
  *
- * Completing the account details approves the account on the spot, so every
- * step is in the user's hands.
+ * Activating the account takes the account details and, when Didit is set
+ * up, an identity check: every step is in the user's hands.
  */
 export function Onboarding({
   className,
@@ -48,6 +49,7 @@ export function Onboarding({
   const pathname = usePathname();
   const approved = user?.verificationStatus === 'approved';
   const isStartup = user?.role === 'startup';
+  const kyc = useKycEnabled(Boolean(user) && !approved);
 
   const profile = useQuery({
     queryKey: ['profile', 'me'],
@@ -84,6 +86,7 @@ export function Onboarding({
   const steps = stepsFor(
     user,
     hasProfile,
+    kyc,
     full
       ? {
           contracts: contracts.data ?? [],
@@ -154,7 +157,12 @@ interface Progress {
   hasStarted: boolean;
 }
 
-function stepsFor(user: User, hasProfile: boolean, progress: Progress | null): Step[] {
+function stepsFor(
+  user: User,
+  hasProfile: boolean,
+  kyc: boolean,
+  progress: Progress | null,
+): Step[] {
   const approved = user.verificationStatus === 'approved';
   const isStartup = user.role === 'startup';
   const milestones = (progress?.contracts ?? []).flatMap(
@@ -172,14 +180,17 @@ function stepsFor(user: User, hasProfile: boolean, progress: Progress | null): S
 
   const steps: (Omit<Step, 'state'> & { done: boolean })[] = [
     {
-      title: 'Completa los datos de tu cuenta',
+      title: kyc ? 'Activa tu cuenta' : 'Completa los datos de tu cuenta',
       text: approved
         ? 'Tu cuenta está activa.'
-        : 'Un formulario corto, sin documentos. Al enviarlo tu cuenta queda activa.',
+        : activationHint(kyc, user.verificationStatus),
       done: approved,
       action: approved
         ? undefined
-        : { label: 'Completar mis datos', href: '/verification' },
+        : {
+            label: activationAction(kyc, user.verificationStatus),
+            href: '/verification',
+          },
     },
     {
       title: isStartup
