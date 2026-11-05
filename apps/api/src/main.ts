@@ -10,7 +10,8 @@ import { AppModule } from './app.module';
 import { securityEventsMiddleware } from './common/security/security-events.middleware';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // rawBody: Didit's webhook signature can be checked against the exact bytes.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
 
   // Behind the host's proxy every request would look like it came from the

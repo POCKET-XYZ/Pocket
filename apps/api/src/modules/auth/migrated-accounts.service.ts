@@ -4,6 +4,7 @@ import { Prisma, type User } from '@prisma/client';
 import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PollarWalletsService } from '../pollar/pollar-wallets.service';
+import { isKycEnabled } from '../verification/didit.client';
 
 /** What a new Pocket account takes from the Pollar session that claims it. */
 export interface ClaimingSession {
@@ -29,7 +30,9 @@ type VerificationSnapshot = Pick<
  * Accounts approved on testnet and carried to mainnet. Pollar gives each
  * person a new wallet on mainnet, so the account cannot be matched by address:
  * it is matched by the email Pollar verified, once, on the first login, and
- * arrives approved with its profile, CV and logo.
+ * arrives with its profile, CV and logo. With identity checks on, it arrives
+ * waiting for one: an approval on testnet was not an identity check, and the
+ * wallet is activated once Didit approves. Without them it arrives approved.
  */
 @Injectable()
 export class MigratedAccountsService {
@@ -48,6 +51,7 @@ export class MigratedAccountsService {
     const waiting = await this.prisma.migratedAccount.findUnique({ where: { email } });
     if (!waiting || waiting.claimedAt) return null;
 
+    const needsKyc = isKycEnabled(this.config);
     const user = await this.prisma.$transaction(async (tx) => {
       // Claimed first, so two logins at once cannot both take it.
       const taken = await tx.migratedAccount.updateMany({
@@ -61,16 +65,21 @@ export class MigratedAccountsService {
           ...session.userFields,
           stellarAddress: session.stellarAddress,
           role: waiting.role,
-          verificationStatus: 'approved',
+          verificationStatus: needsKyc ? 'pending' : 'approved',
         },
       });
       await tx.verificationRequest.create({
         data: {
           ...(waiting.verification as unknown as VerificationSnapshot),
           userId: created.id,
-          status: 'approved',
-          reviewedAt: new Date(),
-          reviewNote: 'Aprobada en la red de pruebas de Pocket y trasladada a la red principal.',
+          ...(needsKyc
+            ? { status: 'pending' }
+            : {
+                status: 'approved',
+                reviewedAt: new Date(),
+                reviewNote:
+                  'Aprobada en la red de pruebas de Pocket y trasladada a la red principal.',
+              }),
         },
       });
 
@@ -120,8 +129,9 @@ export class MigratedAccountsService {
     if (!user) return null;
 
     securityEvent('migrated_account_claimed', { userId: user.id, role: user.role });
-    // Approved accounts get their wallet's reserve, as any approval does.
-    await this.wallets.activate(user.id);
+    // Approved accounts get their wallet's reserve, as any approval does; one
+    // waiting for its identity check gets it once Didit approves it.
+    if (!needsKyc) await this.wallets.activate(user.id);
     this.logger.log(`Migrated ${user.role} account claimed by ${user.id}`);
     return user;
   }

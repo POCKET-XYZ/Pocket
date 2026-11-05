@@ -129,16 +129,18 @@ export default function TermsPageEn() {
       <p>
         Before you post jobs or apply to them, you complete your account details: your
         name, a contact email and your country, and, for a startup, the company&apos;s
-        name. Your account becomes active when you send them. You agree to give true,
-        current and complete information and to keep it up to date.
+        name. Then you verify your identity with Didit, a third-party identity
+        verification provider, using your official ID and a selfie. Your account becomes
+        active when Didit confirms your identity. Each person may hold only one account.
+        You agree to give true, current and complete information and to keep it up to
+        date.
       </p>
       <p>
-        Pocket does not verify anyone&apos;s identity today. An active account is not a
-        guarantee of anyone&apos;s identity, skills, solvency or conduct, and it is not an
-        endorsement. Look at each profile and use your own judgment before hiring or
-        working with someone. We may ask you to verify your identity through a third-party
-        provider in the future, and will tell you before we do. We may suspend an account
-        that gave false information (see section 14).
+        Verification confirms that a person is who they say they are, and nothing more. An
+        active account is not a guarantee of anyone&apos;s skills, solvency or conduct,
+        and it is not an endorsement. Look at each profile and use your own judgment
+        before hiring or working with someone. We may suspend an account that gave false
+        information or uses someone else&apos;s identity (see section 14).
       </p>
 
       <h2>5. What Pocket is, and what it is not</h2>

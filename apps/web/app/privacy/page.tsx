@@ -63,6 +63,17 @@ export default function PrivacyPage() {
           también dan el nombre de su empresa y, de forma opcional, su número de registro.
         </li>
         <li>
+          <strong>Verificación de identidad:</strong> para activar tu cuenta, Didit, el
+          proveedor que verifica identidades para Pocket, toma una foto de tu documento
+          oficial, una selfie y una prueba de vida, compara tu cara con la de tu documento
+          y revisa el dispositivo y la dirección IP desde los que te verificas, para
+          detectar fraudes. Tu cara es un dato biométrico, que la ley considera sensible,
+          y solo se trata con tu consentimiento expreso. Pocket no recibe ni guarda las
+          fotos, los datos de tu documento ni tus datos biométricos: solo el resultado
+          (aprobada, rechazada o en revisión), el identificador de la sesión, la fecha de
+          tu consentimiento y, si no se aprobó, el motivo.
+        </li>
+        <li>
           <strong>Perfil de experto:</strong> nombre, titular, biografía, categorías,
           habilidades, herramientas, años de experiencia, idiomas, zona horaria,
           disponibilidad semanal, tarifa por hora, proyecto mínimo, ubicación, trabajos
@@ -115,9 +126,9 @@ export default function PrivacyPage() {
         </li>
       </ul>
       <p>
-        No pedimos datos sensibles, como salud, origen étnico, religión, opiniones
-        políticas, afiliación sindical o vida sexual, y te pedimos no incluirlos en
-        ninguna parte de Pocket (ver la sección 4).
+        Fuera de la verificación de identidad, no pedimos datos sensibles, como salud,
+        origen étnico, religión, opiniones políticas, afiliación sindical o vida sexual, y
+        te pedimos no incluirlos en ninguna parte de Pocket (ver la sección 4).
       </p>
 
       <h2>3. Para qué los usamos y con qué base</h2>
@@ -146,6 +157,20 @@ export default function PrivacyPage() {
               <td>
                 Nuestro contrato; nuestro interés legítimo en un marketplace confiable;
                 obligaciones legales
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Verificación de identidad: documento, selfie y prueba de vida, que trata
+                Didit; Pocket solo guarda el resultado
+              </td>
+              <td>
+                Confirmar que eres quien dices ser, que cada persona tenga una sola cuenta
+                y prevenir fraudes
+              </td>
+              <td>
+                Tu consentimiento expreso para tus datos biométricos; nuestro interés
+                legítimo en un marketplace confiable; obligaciones legales
               </td>
             </tr>
             <tr>
@@ -187,6 +212,8 @@ export default function PrivacyPage() {
         Al crear tu cuenta te pedimos, aparte de los Términos, tu consentimiento para
         tratar tus datos como describe esta Política, incluido publicar tu perfil y tu CV
         cuando tu cuenta esté activa, y transferir tus datos al extranjero (sección 6).
+        Antes de verificar tu identidad te pedimos, también por separado, tu
+        consentimiento expreso para que Didit trate tu documento y tus datos biométricos.
         Puedes retirarlo cuando quieras borrando tu CV o tu perfil, eliminando tu cuenta
         desde tu <Link href="/account">página de cuenta</Link>, o escribiendo a{' '}
         {PRIVACY_EMAIL}. Retirarlo no afecta lo que se hizo antes. Si el consentimiento
@@ -194,13 +221,16 @@ export default function PrivacyPage() {
       </p>
       <h3>Decisiones automatizadas</h3>
       <p>
-        Tu cuenta se activa de forma automática cuando completas sus datos. Las decisiones
-        que valoran lo que pasó, como resolver una disputa, las toman personas. Dos
-        decisiones en tu contra se toman de forma automática: rechazamos una contratación
-        entre dos cuentas con el mismo correo de contacto, para evitar que alguien se
-        contrate a sí mismo; y bloqueamos por un rato las solicitudes que superan nuestros
-        límites. Si crees que alguna te afectó por error, escribe a {PRIVACY_EMAIL} y una
-        persona la revisará.
+        Tu cuenta se activa de forma automática cuando Didit confirma tu identidad. Didit
+        puede pasar un caso dudoso a la revisión de una persona. Las decisiones que
+        valoran lo que pasó, como resolver una disputa, las toman personas. Tres
+        decisiones en tu contra se toman de forma automática: no activamos una cuenta si
+        Didit no pudo confirmar la identidad, o si el mismo documento o la misma cara ya
+        se verificaron en otra cuenta de Pocket; rechazamos una contratación entre dos
+        cuentas con el mismo correo de contacto, para evitar que alguien se contrate a sí
+        mismo; y bloqueamos por un rato las solicitudes que superan nuestros límites. Si
+        crees que alguna te afectó por error, escribe a {PRIVACY_EMAIL} y una persona la
+        revisará.
       </p>
 
       <h2>4. Perfiles públicos y datos sensibles</h2>
@@ -240,10 +270,12 @@ export default function PrivacyPage() {
           Supabase (base de datos, Estados Unidos), Railway (servidor de la API y sus
           registros), Vercel (servidor del sitio web), Sentry (reportes de errores,
           Estados Unidos), Resend (envía las notificaciones a tu correo de contacto,
-          Estados Unidos) y Trustless Work (arma las transacciones de los contratos, con
-          direcciones de wallet, montos e hitos). Nuestras alertas privadas de seguridad,
-          que llegan a un canal de Discord, solo tienen datos técnicos de la cuenta de
-          Pocket, nunca tu nombre, tu correo ni tu wallet.
+          Estados Unidos), Didit (verifica tu identidad con tu documento, tu selfie y tu
+          prueba de vida, y nos devuelve el resultado) y Trustless Work (arma las
+          transacciones de los contratos, con direcciones de wallet, montos e hitos).
+          Nuestras alertas privadas de seguridad, que llegan a un canal de Discord, solo
+          tienen datos técnicos de la cuenta de Pocket, nunca tu nombre, tu correo ni tu
+          wallet.
         </li>
         <li>
           <strong>Terceros independientes</strong> con sus propias políticas de
@@ -297,6 +329,13 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Datos de tu cuenta:</strong> hasta que elimines tu cuenta.
+        </li>
+        <li>
+          <strong>Verificación de identidad:</strong> Pocket guarda el resultado hasta que
+          elimines tu cuenta. Las fotos de tu documento, tu selfie y tus datos biométricos
+          los guarda Didit durante el plazo de retención que configuramos, hoy un año, y
+          después los borra. Puedes pedir que los borre antes escribiendo a{' '}
+          {PRIVACY_EMAIL}.
         </li>
         <li>
           <strong>

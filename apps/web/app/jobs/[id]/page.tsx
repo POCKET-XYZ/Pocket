@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { activationAction, activationHint, useKycEnabled } from '@/components/activation';
 import { useAuth } from '@/components/auth-provider';
 import { FeeBreakdown } from '@/components/contract/fee-breakdown';
 import { Avatar } from '@/components/avatar';
@@ -204,6 +205,7 @@ export default function JobPage() {
 }
 
 function ApplyCard({ job, user }: { job: JobListing; user: User }) {
+  const kyc = useKycEnabled(user.verificationStatus !== 'approved');
   const [price, setPrice] = useState(String(Number(job.budget)));
   const [days, setDays] = useState('');
   const queryClient = useQueryClient();
@@ -271,14 +273,18 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Completa tu cuenta para postularte</CardTitle>
+          <CardTitle>Activa tu cuenta para postularte</CardTitle>
           <CardDescription>
-            Un formulario corto, sin documentos. Al enviarlo ya puedes postularte.
+            {kyc
+              ? activationHint(kyc, user.verificationStatus)
+              : 'Un formulario corto, sin documentos. Al enviarlo ya puedes postularte.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild className="w-full">
-            <Link href="/verification">Completar mis datos</Link>
+            <Link href="/verification">
+              {activationAction(kyc, user.verificationStatus)}
+            </Link>
           </Button>
         </CardContent>
       </Card>

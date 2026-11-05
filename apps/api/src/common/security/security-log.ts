@@ -14,7 +14,10 @@ export type SecurityEventName =
   | 'platform_usdc_trustline_missing'
   | 'migrated_account_claimed'
   | 'account_deleted'
-  | 'data_exported';
+  | 'data_exported'
+  | 'kyc_decision'
+  | 'kyc_webhook_refused'
+  | 'kyc_unavailable';
 
 type Fields = Record<string, string | number | boolean | null | undefined>;
 

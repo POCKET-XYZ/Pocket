@@ -43,6 +43,18 @@ export interface AppConfig {
     /** Public address of the web app, for the links in each email. */
     webPublicUrl: string;
   };
+  /**
+   * Identity checks through Didit's hosted flow. Off when the three values are
+   * not all set: then completing the account details approves the account.
+   */
+  kyc: {
+    diditApiUrl: string;
+    diditApiKey: string;
+    /** The published KYC workflow sessions run: ID, liveness, face match. */
+    diditWorkflowId: string;
+    /** Signs Didit's webhooks; shown once when the destination is created. */
+    diditWebhookSecret: string;
+  };
 }
 
 const REQUIRED = [
@@ -71,6 +83,12 @@ export const USDC_ISSUERS: Record<StellarNetwork, string> = {
   testnet: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
   mainnet: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
 };
+/** The variables that turn identity checks on; all or none. */
+const KYC_VARIABLES = ['DIDIT_API_KEY', 'DIDIT_WORKFLOW_ID', 'DIDIT_WEBHOOK_SECRET'] as const;
+
+/** Didit's verification API. */
+const DEFAULT_DIDIT_API = 'https://verification.didit.me';
+
 /** Pollar's backend API. Secret-key routes only. */
 const DEFAULT_POLLAR_SERVER = 'https://server.api.pollar.xyz';
 
@@ -133,6 +151,22 @@ export function validateEnv(env: Record<string, unknown>): Record<string, unknow
       );
     }
   }
+  // Half a KYC setup would send people to a flow whose result never arrives,
+  // or accept results nobody can verify: all three values or none.
+  const kycSet = KYC_VARIABLES.filter((key) => env[key]);
+  if (kycSet.length > 0 && kycSet.length < KYC_VARIABLES.length) {
+    const kycMissing = KYC_VARIABLES.filter((key) => !env[key]);
+    throw new Error(`Identity checks need ${kycMissing.join(', ')} too`);
+  }
+  if (kycSet.length > 0) {
+    // Didit sends people back here after the check.
+    const webUrl = typeof env.WEB_PUBLIC_URL === 'string' ? env.WEB_PUBLIC_URL : '';
+    if (!/^https?:\/\/[^\s/]+/.test(webUrl)) {
+      throw new Error(
+        'WEB_PUBLIC_URL must be the http(s) address of the web app when DIDIT_API_KEY is set',
+      );
+    }
+  }
   return env;
 }
 
@@ -181,6 +215,12 @@ export default (): AppConfig => {
       resendApiKey: process.env.RESEND_API_KEY ?? '',
       from: process.env.EMAIL_FROM ?? '',
       webPublicUrl: (process.env.WEB_PUBLIC_URL ?? '').replace(/\/+$/, ''),
+    },
+    kyc: {
+      diditApiUrl: (process.env.DIDIT_API_URL || DEFAULT_DIDIT_API).replace(/\/+$/, ''),
+      diditApiKey: process.env.DIDIT_API_KEY ?? '',
+      diditWorkflowId: process.env.DIDIT_WORKFLOW_ID ?? '',
+      diditWebhookSecret: process.env.DIDIT_WEBHOOK_SECRET ?? '',
     },
   };
 };

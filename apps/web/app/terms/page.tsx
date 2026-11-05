@@ -131,16 +131,18 @@ export default function TermsPage() {
       <p>
         Antes de publicar trabajos o postularte, completas los datos de tu cuenta: tu
         nombre, un correo de contacto y tu país, y, si eres startup, el nombre de la
-        empresa. Tu cuenta queda activa al enviarlos. Te comprometes a dar información
-        verdadera, vigente y completa, y a mantenerla al día.
+        empresa. Después verificas tu identidad con Didit, un proveedor externo de
+        verificación de identidad, con tu documento oficial y una selfie. Tu cuenta queda
+        activa cuando Didit confirma tu identidad. Cada persona puede tener una sola
+        cuenta. Te comprometes a dar información verdadera, vigente y completa, y a
+        mantenerla al día.
       </p>
       <p>
-        Hoy Pocket no verifica la identidad de nadie. Una cuenta activa no es garantía de
-        la identidad, las habilidades, la solvencia ni la conducta de nadie, y tampoco es
-        una recomendación. Revisa cada perfil y usa tu propio criterio antes de contratar
-        o trabajar con alguien. Más adelante podemos pedirte verificar tu identidad con un
-        proveedor externo, y te avisaremos antes de hacerlo. Podemos suspender una cuenta
-        que dio información falsa (ver la sección 14).
+        La verificación confirma que una persona es quien dice ser, y nada más. Una cuenta
+        activa no es garantía de las habilidades, la solvencia ni la conducta de nadie, y
+        tampoco es una recomendación. Revisa cada perfil y usa tu propio criterio antes de
+        contratar o trabajar con alguien. Podemos suspender una cuenta que dio información
+        falsa o que usa la identidad de otra persona (ver la sección 14).
       </p>
 
       <h2>5. Qué es Pocket y qué no es</h2>

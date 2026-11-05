@@ -2,6 +2,7 @@
 
 import type { User, UserRole } from '@pocket/shared';
 import Link from 'next/link';
+import { activationAction, activationHint, useKycEnabled } from '@/components/activation';
 import { useAuth } from '@/components/auth-provider';
 import { EmptyState, Loading } from '@/components/page';
 import { Button } from '@/components/ui/button';
@@ -68,15 +69,21 @@ export function RequireAuth({
   }
 
   if (verified && user.role !== 'manager' && user.verificationStatus !== 'approved') {
-    return (
-      <EmptyState title="Tu cuenta todavía no está activa">
-        <p>Completa los datos de tu cuenta. Es un formulario corto, sin documentos.</p>
-        <Button asChild className="mt-4">
-          <Link href="/verification">Completar mis datos</Link>
-        </Button>
-      </EmptyState>
-    );
+    return <NotActiveYet user={user} />;
   }
 
   return <>{children(user)}</>;
+}
+
+/** What is missing before the account can use this page, and the way there. */
+function NotActiveYet({ user }: { user: User }) {
+  const kyc = useKycEnabled();
+  return (
+    <EmptyState title="Tu cuenta todavía no está activa">
+      <p>{activationHint(kyc, user.verificationStatus)}</p>
+      <Button asChild className="mt-4">
+        <Link href="/verification">{activationAction(kyc, user.verificationStatus)}</Link>
+      </Button>
+    </EmptyState>
+  );
 }
