@@ -2,16 +2,19 @@
 
 import {
   ServiceCategory,
+  SocialPlatform,
   StartupStage,
   type CaseStudy,
+  type SocialAccount,
   type SpecialistProfile,
   type StartupProfile,
   type User,
   type VerificationRequest,
 } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronDownIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Field, compact, formValues } from '@/components/form';
 import { Loading, PageHeader } from '@/components/page';
@@ -25,7 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { api, errorMessage, upload } from '@/lib/api';
 import { imageSrc } from '@/lib/links';
 import { TIME_ZONES, guessTimeZone } from '@/lib/timezones';
-import { CATEGORY_LABELS, STAGE_LABELS } from '@/lib/format';
+import { CATEGORY_LABELS, PLATFORM_LABELS, STAGE_LABELS } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 export default function ProfilePage() {
@@ -397,8 +400,17 @@ function SpecialistForm({
   const [categories, setCategories] = useState<ServiceCategory[]>(
     initial?.categories ?? [],
   );
+  const [accounts, setAccounts] = useState<AccountRow[]>(() =>
+    accountRows(initial?.socialAccounts ?? []),
+  );
+  const [linkedinUrl, setLinkedinUrl] = useState(
+    initial?.linkedinUrl ?? known?.linkedinUrl ?? '',
+  );
   const [cvUrl, setCvUrl] = useState(initial?.cvUrl ?? '');
   const [uploadingCv, setUploadingCv] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+  const isCreator = categories.includes(ServiceCategory.Content);
   // A saved value that is not in the list stays selectable.
   const zones =
     initial?.timezone && !TIME_ZONES.includes(initial.timezone)
@@ -448,11 +460,12 @@ function SpecialistForm({
       return;
     }
     const values = formValues(event.currentTarget);
-    if (!values.linkedinUrl && !values.portfolioUrl && !values.cvUrl) {
-      toast.error('Agrega al menos uno: tu LinkedIn, tu portafolio o tu CV');
+    if (!isCreator && !values.cvUrl) {
+      toast.error('Agrega tu CV, en PDF o como enlace');
       return;
     }
-    const problem = specialistListProblem(values);
+    const problem =
+      specialistListProblem(values) ?? (isCreator ? accountsProblem(accounts) : null);
     if (problem) {
       toast.error(problem);
       return;
@@ -462,23 +475,92 @@ function SpecialistForm({
         ...values,
         categories,
         skills: splitList(values.skills, /,/),
-        tools: splitList(values.tools, /,/),
         languages: splitList(values.languages, /,/),
         caseStudies: parseCaseStudies(values.caseStudies),
-        hourlyRate: values.hourlyRate ? Number(values.hourlyRate) : undefined,
-        minProjectBudget: values.minProjectBudget
-          ? Number(values.minProjectBudget)
-          : undefined,
-        yearsExperience: values.yearsExperience
-          ? Number(values.yearsExperience)
-          : undefined,
         weeklyHours: values.weeklyHours ? Number(values.weeklyHours) : undefined,
+        // Saving replaces the profile, so what the form no longer asks for goes
+        // back as it was, and so does the audience of whoever stops being a creator.
+        tools: initial?.tools,
+        hourlyRate: initial?.hourlyRate ? Number(initial.hourlyRate) : undefined,
+        minProjectBudget: initial?.minProjectBudget
+          ? Number(initial.minProjectBudget)
+          : undefined,
+        yearsExperience: initial?.yearsExperience,
+        socialAccounts: isCreator
+          ? accountsToSave(accounts)
+          : accountsToSave(accountRows(initial?.socialAccounts ?? [])),
+        niches: isCreator
+          ? splitList(values.niches, /,/)
+          : (initial?.niches ?? undefined),
+        audienceCountries: isCreator
+          ? splitList(values.audienceCountries, /,/)
+          : (initial?.audienceCountries ?? undefined),
       }),
     );
   }
 
+  // Controlled, so what was typed survives moving between the two places.
+  const linkedinField = (
+    <Field label="LinkedIn" htmlFor="linkedinUrl">
+      <Input
+        id="linkedinUrl"
+        name="linkedinUrl"
+        type="url"
+        pattern="https://.+"
+        title="Un enlace que empiece con https://"
+        placeholder="https://"
+        value={linkedinUrl}
+        onChange={(event) => setLinkedinUrl(event.target.value)}
+      />
+    </Field>
+  );
+  const cvField = (
+    <Field
+      label="CV"
+      htmlFor="cvUrl"
+      hint="Súbelo en PDF (hasta 4 MB) o pega un enlace."
+      required={!isCreator}
+    >
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
+          id="cvUrl"
+          name="cvUrl"
+          type="url"
+          pattern="https://.+"
+          title="Un enlace que empiece con https://"
+          placeholder="https://"
+          value={cvUrl}
+          onChange={(event) => setCvUrl(event.target.value)}
+        />
+        <Button type="button" variant="outline" disabled={uploadingCv} asChild>
+          <label className="cursor-pointer whitespace-nowrap">
+            {uploadingCv ? 'Subiendo...' : 'Subir PDF'}
+            <input
+              type="file"
+              accept="application/pdf"
+              className="sr-only"
+              disabled={uploadingCv}
+              onChange={(event) => void onCvChosen(event)}
+            />
+          </label>
+        </Button>
+      </div>
+    </Field>
+  );
+
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form
+      onSubmit={onSubmit}
+      // A field the browser refuses can be inside the folded section, where it
+      // can't point at it: unfold it first and then show what is wrong.
+      onInvalidCapture={(event) => {
+        const field = event.target as HTMLInputElement;
+        if (showMore || !moreRef.current?.contains(field)) return;
+        setShowMore(true);
+        requestAnimationFrame(() => field.reportValidity());
+      }}
+      className="space-y-4"
+    >
       <Field label="Nombre" htmlFor="displayName" required>
         <Input
           id="displayName"
@@ -490,9 +572,9 @@ function SpecialistForm({
         />
       </Field>
       <Field
-        label="Titular"
+        label="¿A qué te dedicas?"
         htmlFor="headline"
-        hint='Por ejemplo "Experta en outbound para SaaS B2B".'
+        hint='En una línea, por ejemplo "Creadora de contenido sobre finanzas personales" o "Experta en outbound para SaaS B2B".'
         required
       >
         <Input
@@ -534,15 +616,55 @@ function SpecialistForm({
           ))}
         </div>
       </Field>
-      <Field label="Habilidades" htmlFor="skills" hint="Separadas por comas, hasta 20.">
-        <Input id="skills" name="skills" defaultValue={initial?.skills.join(', ')} />
+      {/* Disabled while hidden, so the browser and the form skip it, but what
+          was typed is still there if the category is marked again. */}
+      <fieldset disabled={!isCreator} hidden={!isCreator} className="space-y-4">
+        <SocialAccountsField accounts={accounts} onChange={setAccounts} />
+        <Field
+          label="Nichos"
+          htmlFor="niches"
+          hint="Separados por comas, hasta 5. Por ejemplo fintech, gaming."
+        >
+          <Input id="niches" name="niches" defaultValue={initial?.niches?.join(', ')} />
+        </Field>
+        <Field
+          label="Países de la audiencia"
+          htmlFor="audienceCountries"
+          hint="Separados por comas, hasta 3."
+        >
+          <Input
+            id="audienceCountries"
+            name="audienceCountries"
+            defaultValue={initial?.audienceCountries?.join(', ')}
+          />
+        </Field>
+      </fieldset>
+      <Field
+        label="Habilidades y herramientas"
+        htmlFor="skills"
+        hint="Separadas por comas, hasta 20. Por ejemplo copywriting, Meta Ads, HubSpot."
+        required
+      >
+        <Input
+          id="skills"
+          name="skills"
+          required
+          defaultValue={initial?.skills.join(', ')}
+        />
       </Field>
       <Field
-        label="Herramientas"
-        htmlFor="tools"
-        hint="Separadas por comas, por ejemplo Meta Ads, GA4, HubSpot."
+        label="Idiomas"
+        htmlFor="languages"
+        hint="Separados por comas. Las startups de otros países se fijan en esto."
+        required
       >
-        <Input id="tools" name="tools" defaultValue={initial?.tools.join(', ')} />
+        <Input
+          id="languages"
+          name="languages"
+          required
+          placeholder="Español, inglés"
+          defaultValue={initial?.languages.join(', ')}
+        />
       </Field>
       <Field
         label="Casos de éxito con su resultado"
@@ -559,81 +681,6 @@ function SpecialistForm({
             .join('\n')}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Años de experiencia" htmlFor="yearsExperience">
-          <Input
-            id="yearsExperience"
-            name="yearsExperience"
-            type="number"
-            min={0}
-            max={60}
-            defaultValue={initial?.yearsExperience ?? ''}
-          />
-        </Field>
-        <Field
-          label="Horas por semana"
-          htmlFor="weeklyHours"
-          hint="Las que puedes dedicar."
-        >
-          <Input
-            id="weeklyHours"
-            name="weeklyHours"
-            type="number"
-            min={1}
-            max={80}
-            defaultValue={initial?.weeklyHours ?? ''}
-          />
-        </Field>
-        <Field label="Zona horaria" htmlFor="timezone">
-          <select
-            id="timezone"
-            name="timezone"
-            defaultValue={initial?.timezone ?? guessTimeZone() ?? ''}
-            className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
-          >
-            <option value="">Elige una</option>
-            {zones.map((zone) => (
-              <option key={zone} value={zone}>
-                {zone}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
-      <Field
-        label="Idiomas"
-        htmlFor="languages"
-        hint="Separados por comas. Las startups de otros países se fijan en esto."
-      >
-        <Input
-          id="languages"
-          name="languages"
-          placeholder="Español, inglés"
-          defaultValue={initial?.languages.join(', ')}
-        />
-      </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Tarifa por hora (USDC)" htmlFor="hourlyRate">
-          <Input
-            id="hourlyRate"
-            name="hourlyRate"
-            type="number"
-            min={0}
-            step="any"
-            defaultValue={initial?.hourlyRate ?? ''}
-          />
-        </Field>
-        <Field label="Proyecto mínimo (USDC)" htmlFor="minProjectBudget">
-          <Input
-            id="minProjectBudget"
-            name="minProjectBudget"
-            type="number"
-            min={0}
-            step="any"
-            defaultValue={initial?.minProjectBudget ?? ''}
-          />
-        </Field>
-      </div>
       <Field label="Portafolio" htmlFor="portfolioUrl">
         <Input
           id="portfolioUrl"
@@ -645,60 +692,214 @@ function SpecialistForm({
           defaultValue={initial?.portfolioUrl ?? known?.websiteUrl ?? ''}
         />
       </Field>
-      <Field label="LinkedIn" htmlFor="linkedinUrl">
-        <Input
-          id="linkedinUrl"
-          name="linkedinUrl"
-          type="url"
-          pattern="https://.+"
-          title="Un enlace que empiece con https://"
-          placeholder="https://"
-          defaultValue={initial?.linkedinUrl ?? known?.linkedinUrl ?? ''}
-        />
-      </Field>
-      <Field
-        label="CV"
-        htmlFor="cvUrl"
-        hint="Súbelo en PDF (hasta 4 MB) o pega un enlace."
+      {isCreator ? null : (
+        <>
+          {cvField}
+          {linkedinField}
+        </>
+      )}
+      <Button
+        type="button"
+        variant="ghost"
+        aria-expanded={showMore}
+        aria-controls="more-details"
+        onClick={() => setShowMore((open) => !open)}
       >
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            id="cvUrl"
-            name="cvUrl"
-            type="url"
-            pattern="https://.+"
-            title="Un enlace que empiece con https://"
-            placeholder="https://"
-            value={cvUrl}
-            onChange={(event) => setCvUrl(event.target.value)}
-          />
-          <Button type="button" variant="outline" disabled={uploadingCv} asChild>
-            <label className="cursor-pointer whitespace-nowrap">
-              {uploadingCv ? 'Subiendo...' : 'Subir PDF'}
-              <input
-                type="file"
-                accept="application/pdf"
-                className="sr-only"
-                disabled={uploadingCv}
-                onChange={(event) => void onCvChosen(event)}
-              />
-            </label>
-          </Button>
+        {showMore ? 'Ocultar' : 'Agregar más'}
+        <ChevronDownIcon className={cn('size-4 transition', showMore && 'rotate-180')} />
+      </Button>
+      {/* Only hidden, never removed: saving replaces the profile, so a field
+          taken out of the form would be erased. */}
+      <div ref={moreRef} id="more-details" hidden={!showMore} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Horas por semana"
+            htmlFor="weeklyHours"
+            hint="Las que puedes dedicar."
+          >
+            <Input
+              id="weeklyHours"
+              name="weeklyHours"
+              type="number"
+              min={1}
+              max={80}
+              defaultValue={initial?.weeklyHours ?? ''}
+            />
+          </Field>
+          <Field label="Zona horaria" htmlFor="timezone">
+            <select
+              id="timezone"
+              name="timezone"
+              defaultValue={initial?.timezone ?? guessTimeZone() ?? ''}
+              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+            >
+              <option value="">Elige una</option>
+              {zones.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
-      </Field>
-      <Field label="Ubicación" htmlFor="location">
-        <Input
-          id="location"
-          name="location"
-          minLength={2}
-          maxLength={120}
-          defaultValue={initial?.location ?? ''}
-        />
-      </Field>
+        <Field label="Ubicación" htmlFor="location">
+          <Input
+            id="location"
+            name="location"
+            minLength={2}
+            maxLength={120}
+            defaultValue={initial?.location ?? ''}
+          />
+        </Field>
+        {isCreator ? (
+          <>
+            {linkedinField}
+            {cvField}
+          </>
+        ) : null}
+      </div>
       <Button type="submit" size="lg" disabled={saving}>
         {saving ? 'Guardando...' : 'Guardar perfil'}
       </Button>
     </form>
+  );
+}
+
+const MAX_ACCOUNTS = 6;
+
+/** One account as the form holds it: text until it is saved. */
+interface AccountRow {
+  platform: SocialPlatform | '';
+  url: string;
+  followers: string;
+  avgViews: string;
+}
+
+const EMPTY_ACCOUNT: AccountRow = { platform: '', url: '', followers: '', avgViews: '' };
+
+/** The saved accounts, with room for the two a creator needs. */
+function accountRows(saved: SocialAccount[]): AccountRow[] {
+  const rows: AccountRow[] = saved.map((account) => ({
+    platform: account.platform,
+    url: account.url,
+    followers: account.followers?.toString() ?? '',
+    avgViews: account.avgViews?.toString() ?? '',
+  }));
+  while (rows.length < 2) rows.push(EMPTY_ACCOUNT);
+  return rows;
+}
+
+/** The accounts to send. The API dates the figures itself. */
+function accountsToSave(rows: AccountRow[]) {
+  return rows
+    .filter((row) => row.platform || row.url)
+    .map((row) => ({
+      platform: row.platform,
+      url: row.url,
+      followers: row.followers ? Number(row.followers) : undefined,
+      avgViews: row.avgViews ? Number(row.avgViews) : undefined,
+    }));
+}
+
+function accountsProblem(rows: AccountRow[]): string | null {
+  const given = rows.filter((row) => row.platform || row.url);
+  const unfinished = given.find((row) => !row.platform || !row.url);
+  if (unfinished) return 'Cada red necesita su plataforma y su enlace';
+  if (new Set(given.map((row) => row.platform)).size < 2)
+    return 'Agrega al menos 2 redes de plataformas distintas';
+  return null;
+}
+
+function SocialAccountsField({
+  accounts,
+  onChange,
+}: {
+  accounts: AccountRow[];
+  onChange: (accounts: AccountRow[]) => void;
+}) {
+  function update(index: number, change: Partial<AccountRow>) {
+    onChange(accounts.map((row, i) => (i === index ? { ...row, ...change } : row)));
+  }
+
+  return (
+    <Field
+      label="Redes"
+      htmlFor="account-platform-0"
+      hint="Al menos 2 de plataformas distintas. Las cifras son opcionales y el perfil las muestra como declaradas por ti, sin verificar por Pocket."
+      required
+    >
+      <div className="space-y-3">
+        {accounts.map((row, index) => (
+          <div
+            key={index}
+            className="grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-2"
+          >
+            <select
+              id={`account-platform-${index}`}
+              aria-label={`Plataforma de la red ${index + 1}`}
+              value={row.platform}
+              onChange={(event) =>
+                update(index, { platform: event.target.value as SocialPlatform })
+              }
+              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+            >
+              <option value="">Elige una plataforma</option>
+              {Object.values(SocialPlatform).map((platform) => (
+                <option key={platform} value={platform}>
+                  {PLATFORM_LABELS[platform]}
+                </option>
+              ))}
+            </select>
+            <Input
+              aria-label={`Enlace de la red ${index + 1}`}
+              type="url"
+              pattern="https://.+"
+              title="Un enlace que empiece con https://"
+              placeholder="https://"
+              value={row.url}
+              onChange={(event) => update(index, { url: event.target.value })}
+            />
+            <Input
+              aria-label={`Seguidores de la red ${index + 1}`}
+              type="number"
+              min={0}
+              step={1}
+              placeholder="Seguidores"
+              value={row.followers}
+              onChange={(event) => update(index, { followers: event.target.value })}
+            />
+            <Input
+              aria-label={`Vistas promedio de la red ${index + 1}`}
+              type="number"
+              min={0}
+              step={1}
+              placeholder="Vistas promedio"
+              value={row.avgViews}
+              onChange={(event) => update(index, { avgViews: event.target.value })}
+            />
+            {accounts.length > 2 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="sm:col-span-2 sm:justify-self-end"
+                onClick={() => onChange(accounts.filter((_, i) => i !== index))}
+              >
+                Quitar esta red
+              </Button>
+            ) : null}
+          </div>
+        ))}
+        {accounts.length < MAX_ACCOUNTS ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onChange([...accounts, EMPTY_ACCOUNT])}
+          >
+            Agregar otra red
+          </Button>
+        ) : null}
+      </div>
+    </Field>
   );
 }
 
@@ -725,9 +926,13 @@ function specialistListProblem(values: Record<string, string>): string | null {
   // Each list: its name, what one item is called, the items and their limits.
   const lists: [string, string, string[], number, number][] = [
     ['habilidades', 'habilidad', splitList(values.skills, /,/), 20, 60],
-    ['herramientas', 'herramienta', splitList(values.tools, /,/), 20, 60],
     ['idiomas', 'idioma', splitList(values.languages, /,/), 10, 40],
+    ['nichos', 'nicho', splitList(values.niches, /,/), 5, 60],
+    ['países', 'país', splitList(values.audienceCountries, /,/), 3, 60],
   ];
+  if (splitList(values.skills, /,/).length === 0)
+    return 'Agrega al menos una habilidad o herramienta';
+  if (splitList(values.languages, /,/).length === 0) return 'Agrega al menos un idioma';
   for (const [name, one, items, most, longest] of lists) {
     if (items.length > most)
       return `Máximo ${most} ${name}. Usa una coma entre cada ${one}`;

@@ -107,7 +107,7 @@ function stepsFor(user: User, hasProfile: boolean): Step[] {
       : 'Completa tu perfil de experto',
     text: isStartup
       ? 'Qué hace tu empresa, en qué etapa está y en qué necesitas ayuda. Los expertos lo ven en tus trabajos.'
-      : 'Tu titular, tus fortalezas, tus categorías y tu tarifa. Las startups lo miran para elegir.',
+      : 'A qué te dedicas, tus categorías y tus habilidades. Las startups lo miran para elegir.',
     state: !approved ? 'later' : hasProfile ? 'done' : 'current',
     action: { label: hasProfile ? 'Editar perfil' : 'Crear perfil', href: '/profile' },
   };

@@ -1,4 +1,4 @@
-import type { ServiceCategory, StartupStage } from '@pocket/shared';
+import type { ServiceCategory, SocialPlatform, StartupStage } from '@pocket/shared';
 
 /** USDC amounts come from the API as strings to keep their decimals. */
 export function usdc(amount: string | number | null | undefined): string {
@@ -45,6 +45,18 @@ export const CATEGORY_LABELS: Record<ServiceCategory, string> = {
   sales: 'Ventas',
   marketing: 'Marketing',
   digital_marketing: 'Marketing digital',
+  content: 'Contenido e influencers',
+};
+
+export const PLATFORM_LABELS: Record<SocialPlatform, string> = {
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+  youtube: 'YouTube',
+  x: 'X',
+  linkedin: 'LinkedIn',
+  facebook: 'Facebook',
+  twitch: 'Twitch',
+  other: 'Otra',
 };
 
 export const STAGE_LABELS: Record<StartupStage, string> = {

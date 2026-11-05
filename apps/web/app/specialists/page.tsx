@@ -10,7 +10,7 @@ import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api';
-import { CATEGORY_LABELS, usdc } from '@/lib/format';
+import { CATEGORY_LABELS } from '@/lib/format';
 
 export default function SpecialistsPage() {
   const [category, setCategory] = useState<ServiceCategory | null>(null);
@@ -36,7 +36,7 @@ export default function SpecialistsPage() {
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <CategoryFilter value={category} onChange={setCategory} />
         <Input
-          placeholder="Busca por habilidad o titular"
+          placeholder="Busca por habilidad, nicho o dedicación"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           className="md:w-72"
@@ -76,11 +76,6 @@ export default function SpecialistsPage() {
                   </Badge>
                 ))}
               </div>
-              {specialist.hourlyRate ? (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  {usdc(specialist.hourlyRate)} / hora
-                </p>
-              ) : null}
             </Link>
           ))}
         </div>
