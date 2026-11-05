@@ -27,6 +27,7 @@ const dto: ApplyDto = { approach: 'p'.repeat(60), price: 450, estimatedDays: 14 
 describe('ApplicationsService', () => {
   let prisma: {
     job: { findUnique: jest.Mock };
+    contract: { findMany: jest.Mock };
     application: {
       create: jest.Mock;
       findMany: jest.Mock;
@@ -40,6 +41,7 @@ describe('ApplicationsService', () => {
 
   beforeEach(() => {
     prisma = {
+      contract: { findMany: jest.fn().mockResolvedValue([]) },
       job: {
         findUnique: jest.fn().mockResolvedValue({ status: 'open' }),
       },
@@ -132,6 +134,11 @@ describe('ApplicationsService', () => {
           id: 'app-1',
           price: '450',
           specialist: { displayName: 'Ana', headline: 'Growth', avatarUrl: null },
+          trackRecord: {
+            completed: 0,
+            milestones: { total: 0, onTime: 0 },
+            kpis: { withTarget: 0, met: 0 },
+          },
         },
       ]);
     });

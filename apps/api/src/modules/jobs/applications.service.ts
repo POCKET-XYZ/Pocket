@@ -8,6 +8,7 @@ import {
 import { Prisma, type Application } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
+import { TRACK_RECORD_INCLUDE, trackRecordSummaryOf } from '../contracts/track-record';
 import { ApplyDto } from './dto/apply.dto';
 import { JobsService } from './jobs.service';
 
@@ -75,9 +76,22 @@ export class ApplicationsService {
         contract: { select: { id: true, status: true } },
       },
     });
+    // All at once, so the list does not take one query per applicant.
+    const finished = await this.prisma.contract.findMany({
+      where: {
+        specialistId: { in: applications.map((each) => each.specialistId) },
+        status: 'completed',
+      },
+      include: TRACK_RECORD_INCLUDE,
+    });
+    const now = new Date();
     return applications.map(({ specialist, ...application }) => ({
       ...application,
       specialist: specialist.specialistProfile,
+      trackRecord: trackRecordSummaryOf(
+        finished.filter((each) => each.specialistId === application.specialistId),
+        now,
+      ),
     }));
   }
 

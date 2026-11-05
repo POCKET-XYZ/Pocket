@@ -3,6 +3,7 @@
 import type { KycSession, User, VerificationRequest } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useKycSettings } from '@/components/activation';
@@ -23,6 +24,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api';
+import { useMyProfile } from '@/lib/use-my-profile';
 
 /** Didit statuses after which the result is still on its way, or never came. */
 const KYC_UNDECIDED: (string | null | undefined)[] = [
@@ -48,6 +50,7 @@ export default function VerificationPage() {
 
 function Verification({ user }: { user: User }) {
   const { refreshUser } = useAuth();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const kycSettings = useKycSettings();
   const kyc = kycSettings.data?.enabled === true;
@@ -108,12 +111,28 @@ function Verification({ user }: { user: User }) {
       api('/verification', { method: 'POST', body }),
     onSuccess: async () => {
       // With the identity check on, its step shows up in place of the form.
-      if (!kyc) toast.success('Listo. Tu cuenta ya está activa.');
+      if (!kyc) {
+        toast.success('Listo. Tu cuenta ya está activa.');
+        setSubmittedHere(true);
+      }
       await queryClient.invalidateQueries({ queryKey: ['verification', 'me'] });
       await refreshUser();
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+
+  // Just activated here: on to what comes next. Coming to this page later on,
+  // the status stays on screen with a way back.
+  const [submittedHere, setSubmittedHere] = useState(false);
+  const profile = useMyProfile();
+  const justActivated =
+    (returned || submittedHere) && user.verificationStatus === 'approved' && !profile.isLoading;
+  const hasProfile = Boolean(profile.data);
+  useEffect(() => {
+    if (!justActivated) return;
+    if (returned) toast.success('Tu identidad está verificada. Tu cuenta ya está activa.');
+    router.replace(hasProfile ? '/' : '/profile');
+  }, [justActivated, returned, hasProfile, router]);
 
   const canSubmit =
     user.verificationStatus === 'not_submitted' ||
@@ -162,6 +181,13 @@ function Verification({ user }: { user: User }) {
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
           <p>{statusText()}</p>
+          {user.verificationStatus === 'approved' ? (
+            <Button asChild className="mt-4">
+              <Link href={hasProfile ? '/' : '/profile'}>
+                {hasProfile ? 'Ir a mi inicio' : 'Crear mi perfil'}
+              </Link>
+            </Button>
+          ) : null}
         </CardContent>
       </Card>
 

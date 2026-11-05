@@ -96,14 +96,30 @@ export function Onboarding({
         }
       : null,
   );
-  if (steps.every((step) => step.state === 'done')) return null;
+  const doneSteps = steps.filter((step) => step.state === 'done').length;
+  if (doneSteps === steps.length) return null;
 
   return (
     <Card className={cn('border-celeste bg-celeste-light/30', className)}>
       <CardContent className="pt-6">
-        <h2 className="font-heading text-lg font-semibold text-navy">
-          Primeros pasos en Pocket
-        </h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-heading text-lg font-semibold text-navy">
+            Primeros pasos en Pocket
+          </h2>
+          {full ? (
+            <span className="shrink-0 text-sm text-muted-foreground">
+              {doneSteps} de {steps.length}
+            </span>
+          ) : null}
+        </div>
+        {full ? (
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white" aria-hidden>
+            <div
+              className="h-full rounded-full bg-navy"
+              style={{ width: `${(doneSteps / steps.length) * 100}%` }}
+            />
+          </div>
+        ) : null}
         <ol className="mt-4 space-y-3">
           {steps.map((step, index) => (
             <li key={step.title} className="flex flex-wrap items-center gap-3">

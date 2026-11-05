@@ -473,6 +473,78 @@ export interface Application {
 /** GET /jobs/:id/applications: what the startup sees about each applicant. */
 export interface Applicant extends Application {
   specialist: Pick<SpecialistProfile, 'displayName' | 'headline' | 'avatarUrl'> | null;
+  trackRecord: TrackRecordSummary;
+}
+
+/** What a specialist finished on Pocket, in counts. Public: no amounts. */
+export interface TrackRecordSummary {
+  completed: number;
+  milestones: { total: number; onTime: number };
+  kpis: { withTarget: number; met: number };
+}
+
+/** GET /profiles/:userId/track-record. The startup's sector, never its name. */
+export interface TrackRecord extends TrackRecordSummary {
+  /** A creator's strongest result the startup approved. Absent for everyone else. */
+  bestResult?: { result: string; sector: string | null; reportedAt: IsoDate };
+  jobs: {
+    contractId: string;
+    title: string;
+    sector: string | null;
+    category: ServiceCategory;
+    completedAt: IsoDate;
+    kpis: { withTarget: number; met: number };
+    onTime: boolean;
+  }[];
+}
+
+/** One of a dashboard's twelve weeks: an amount of USDC, as a decimal string. */
+export interface DashboardWeek {
+  weekStart: IsoDate;
+  amount: string;
+}
+
+/** A delivery still to come in a contract under way. */
+export interface DashboardUpcoming {
+  contractId: string;
+  jobTitle: string;
+  milestoneTitle: string;
+  dueDate: IsoDate;
+  amount: string;
+}
+
+interface DashboardCounts {
+  /** In progress means from the offer until the last payment. */
+  contracts: { active: number; completed: number };
+  /** Targets judged so far: those with a result the startup approved. */
+  kpis: { withTarget: number; met: number };
+  milestones: { total: number; done: number; onTime: number; late: number };
+  weeks: DashboardWeek[];
+  upcoming: DashboardUpcoming[];
+}
+
+/** GET /dashboard/startup. Amounts are USDC, as Stellar recorded them. */
+export interface StartupDashboard extends DashboardCounts {
+  /** What left the startup's escrows: paid to specialists plus the fees. */
+  spent: string;
+  /** Held right now by the escrows of its contracts. */
+  held: string;
+  byCategory: { category: ServiceCategory; spent: string }[];
+  specialists: {
+    id: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    contracts: number;
+    kpis: { withTarget: number; met: number };
+  }[];
+}
+
+/** GET /dashboard/specialist. Amounts are USDC, after fees. */
+export interface SpecialistDashboard extends DashboardCounts {
+  /** What reached their wallet. */
+  collected: string;
+  /** What contracts under way will pay them as each milestone is approved. */
+  toCollect: string;
 }
 
 /** GET /applications/mine: the specialist's applications with their job. */
@@ -649,10 +721,7 @@ export interface ChainOperation {
 /** GET /contracts/mine */
 export interface ContractSummary extends Contract {
   job: Pick<Job, 'id' | 'title' | 'category'>;
-  milestones: (Pick<Milestone, 'id' | 'position' | 'title' | 'amount' | 'status'> & {
-    /** For a resolved dispute: the specialist's share, before fees. */
-    resolvedToSpecialist: string | null;
-  })[];
+  milestones: Pick<Milestone, 'id' | 'position' | 'title' | 'amount' | 'status'>[];
 }
 
 /** GET /contracts/:id */

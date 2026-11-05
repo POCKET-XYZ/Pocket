@@ -162,8 +162,8 @@ export class ContractsService {
   }
 
   /** Contracts the signed-in user is a party to, newest first. */
-  async mine(user: AuthUser) {
-    const contracts = await this.prisma.contract.findMany({
+  mine(user: AuthUser) {
+    return this.prisma.contract.findMany({
       where:
         user.role === 'startup' ? { startupId: user.sub } : { specialistId: user.sub },
       orderBy: { createdAt: 'desc' },
@@ -171,27 +171,10 @@ export class ContractsService {
         job: { select: { id: true, title: true, category: true } },
         milestones: {
           orderBy: { position: 'asc' },
-          select: {
-            id: true,
-            position: true,
-            title: true,
-            amount: true,
-            status: true,
-            disputes: {
-              where: { status: 'resolved' },
-              select: { specialistAmount: true },
-            },
-          },
+          select: { id: true, position: true, title: true, amount: true, status: true },
         },
       },
     });
-    return contracts.map((contract) => ({
-      ...contract,
-      milestones: contract.milestones.map(({ disputes, ...milestone }) => ({
-        ...milestone,
-        resolvedToSpecialist: disputes.at(-1)?.specialistAmount ?? null,
-      })),
-    }));
   }
 
   /**
