@@ -74,7 +74,9 @@ export default function PrivacyPageEn() {
           <strong>Specialist profile:</strong> name, headline, bio, categories, skills,
           tools, years of experience, languages, time zone, weekly availability, hourly
           rate, smallest project, location, past work with its links and results, and
-          links to your portfolio, LinkedIn and CV, or the CV you upload as a PDF.
+          links to your portfolio, LinkedIn and CV, or the CV you upload as a PDF. If you
+          create content, also your social accounts with their links, the followers and
+          views you declare, your niches and the countries of your audience.
         </li>
         <li>
           <strong>Startup profile:</strong> company name, legal name, one-line
