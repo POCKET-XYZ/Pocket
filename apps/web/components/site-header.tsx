@@ -26,7 +26,7 @@ const PUBLIC_LINKS = [
 
 const ROLE_LINKS: Record<UserRole, { href: string; label: string }[]> = {
   startup: [
-    { href: '/dashboard', label: 'Mis trabajos' },
+    { href: '/dashboard', label: 'Mis publicaciones' },
     { href: '/contracts', label: 'Contratos' },
     { href: '/profile', label: 'Perfil' },
   ],
@@ -48,10 +48,16 @@ const ROLE_LABELS: Record<UserRole, string> = {
   manager: 'Manager',
 };
 
+function isCurrent(pathname: string, href: string): boolean {
+  return href === '/' ? pathname === '/' : pathname.startsWith(href);
+}
+
 export function SiteHeader() {
   const { status, user, signOut } = useAuth();
   const pathname = usePathname();
-  const links = [...PUBLIC_LINKS, ...(user ? ROLE_LINKS[user.role] : [])];
+  const links = user
+    ? [{ href: '/', label: 'Inicio' }, ...PUBLIC_LINKS, ...ROLE_LINKS[user.role]]
+    : PUBLIC_LINKS;
 
   // The sign-in page stands alone: the menu and its Sign in button next to
   // the sign-in options confused people.
@@ -67,14 +73,14 @@ export function SiteHeader() {
           Pocket<span className="text-yellow">.</span>
         </Link>
 
-        <nav className="hidden flex-1 items-center gap-1 md:flex">
+        <nav className="hidden flex-1 items-center gap-1 lg:flex">
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
                 'rounded-lg px-3 py-2 text-sm text-off-white/75 transition hover:bg-white/10 hover:text-off-white',
-                pathname.startsWith(link.href) && 'bg-white/10 text-off-white',
+                isCurrent(pathname, link.href) && 'bg-white/10 text-off-white',
               )}
             >
               {link.label}
@@ -83,19 +89,19 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* On a phone the nav collapses into a menu of its own, for everyone. */}
+          {/* Short of room for all the links, the nav collapses into a menu of its own. */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-off-white hover:bg-white/10 hover:text-off-white md:hidden"
+                className="text-off-white hover:bg-white/10 hover:text-off-white lg:hidden"
                 aria-label="Menú"
               >
                 <MenuIcon />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 md:hidden">
+            <DropdownMenuContent align="end" className="w-56 lg:hidden">
               {links.map((link) => (
                 <DropdownMenuItem key={link.href} asChild>
                   <Link href={link.href}>{link.label}</Link>

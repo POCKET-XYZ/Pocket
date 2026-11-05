@@ -409,6 +409,8 @@ export interface Job {
 export interface JobListing extends Job {
   startup: { companyName: string; logoUrl?: string | null } | null;
   applicationCount: number;
+  /** Applications nobody has answered yet. Only in a startup's own list. */
+  submittedApplications?: number;
 }
 
 /** GET /jobs */
@@ -629,7 +631,10 @@ export interface ChainOperation {
 /** GET /contracts/mine */
 export interface ContractSummary extends Contract {
   job: Pick<Job, 'id' | 'title' | 'category'>;
-  milestones: Pick<Milestone, 'id' | 'position' | 'title' | 'amount' | 'status'>[];
+  milestones: (Pick<Milestone, 'id' | 'position' | 'title' | 'amount' | 'status'> & {
+    /** For a resolved dispute: the specialist's share, before fees. */
+    resolvedToSpecialist: string | null;
+  })[];
 }
 
 /** GET /contracts/:id */

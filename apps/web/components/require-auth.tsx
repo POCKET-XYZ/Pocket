@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useAuth } from '@/components/auth-provider';
 import { EmptyState, Loading } from '@/components/page';
 import { Button } from '@/components/ui/button';
-import { homeFor } from '@/lib/home';
 
 /** How each role reads inside a sentence. */
 const ROLE_NAMES: Record<UserRole, string> = {
@@ -61,7 +60,7 @@ export function RequireAuth({
           Solo es para cuentas de {roles.map((role) => ROLE_NAMES[role]).join(' o ')}.
         </p>
         <Button asChild className="mt-4">
-          <Link href={homeFor(user)}>Ir a tu inicio</Link>
+          <Link href="/">Ir a tu inicio</Link>
         </Button>
       </EmptyState>
     );

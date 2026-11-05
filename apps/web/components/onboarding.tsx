@@ -1,6 +1,13 @@
 'use client';
 
-import type { SpecialistProfile, StartupProfile, User } from '@pocket/shared';
+import type {
+  ContractSummary,
+  JobListing,
+  MyApplication,
+  SpecialistProfile,
+  StartupProfile,
+  User,
+} from '@pocket/shared';
 import { useQuery } from '@tanstack/react-query';
 import { CheckIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -9,6 +16,7 @@ import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { api } from '@/lib/api';
+import { HOW_IT_WORKS_URL } from '@/lib/home';
 import { cn } from '@/lib/utils';
 
 type StepState = 'done' | 'current' | 'later';
@@ -23,14 +31,23 @@ interface Step {
 /**
  * What a new startup or specialist has to do before they can use the
  * marketplace, and which step they are on. It disappears once they are set up.
+ * With `full`, on the home panel, it follows them through their first contract
+ * and disappears when that is done. Every step is read from the real state.
  *
  * Completing the account details approves the account on the spot, so every
  * step is in the user's hands.
  */
-export function Onboarding({ className }: { className?: string }) {
+export function Onboarding({
+  className,
+  full = false,
+}: {
+  className?: string;
+  full?: boolean;
+}) {
   const { user } = useAuth();
   const pathname = usePathname();
   const approved = user?.verificationStatus === 'approved';
+  const isStartup = user?.role === 'startup';
 
   const profile = useQuery({
     queryKey: ['profile', 'me'],
@@ -38,14 +55,45 @@ export function Onboarding({ className }: { className?: string }) {
     enabled: Boolean(user) && approved,
   });
 
+  const contracts = useQuery({
+    queryKey: ['contracts', 'mine'],
+    queryFn: () => api<ContractSummary[]>('/contracts/mine'),
+    enabled: full && Boolean(user) && user?.role !== 'manager',
+  });
+  const jobs = useQuery({
+    queryKey: ['jobs', 'mine'],
+    queryFn: () => api<JobListing[]>('/jobs/mine'),
+    enabled: full && isStartup,
+  });
+  const applications = useQuery({
+    queryKey: ['applications', 'mine'],
+    queryFn: () => api<MyApplication[]>('/applications/mine'),
+    enabled: full && user?.role === 'specialist',
+  });
+
   if (!user || user.role === 'manager') return null;
-  // Do not guess the profile step while it is still loading.
+  // Do not guess a step while what it depends on is still loading.
   if (approved && profile.isLoading) return null;
+  if (full && (contracts.isLoading || jobs.isLoading || applications.isLoading)) {
+    return null;
+  }
 
   const hasProfile = Boolean(profile.data);
-  if (approved && hasProfile) return null;
+  if (!full && approved && hasProfile) return null;
 
-  const steps = stepsFor(user, hasProfile);
+  const steps = stepsFor(
+    user,
+    hasProfile,
+    full
+      ? {
+          contracts: contracts.data ?? [],
+          hasStarted: isStartup
+            ? (jobs.data?.length ?? 0) > 0
+            : (applications.data?.length ?? 0) > 0,
+        }
+      : null,
+  );
+  if (steps.every((step) => step.state === 'done')) return null;
 
   return (
     <Card className={cn('border-celeste bg-celeste-light/30', className)}>
@@ -69,7 +117,11 @@ export function Onboarding({ className }: { className?: string }) {
                 <p className="text-sm text-muted-foreground">{step.text}</p>
               </div>
               {/* No button to the page you are already on: the form is right below. */}
-              {step.action && step.state !== 'later' && step.action.href !== pathname ? (
+              {/* On the panel a finished step has nothing left to offer. */}
+              {step.action &&
+              step.state !== 'later' &&
+              !(full && step.state === 'done') &&
+              step.action.href !== pathname ? (
                 <Button
                   asChild
                   size="sm"
@@ -81,49 +133,124 @@ export function Onboarding({ className }: { className?: string }) {
             </li>
           ))}
         </ol>
+        {full ? (
+          <a
+            href={HOW_IT_WORKS_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-block text-sm text-muted-foreground underline hover:text-navy"
+          >
+            ¿Cómo funciona Pocket?
+          </a>
+        ) : null}
       </CardContent>
     </Card>
   );
 }
 
-function stepsFor(user: User, hasProfile: boolean): Step[] {
+/** The first contract, for the steps that only the home panel shows. */
+interface Progress {
+  contracts: ContractSummary[];
+  hasStarted: boolean;
+}
+
+function stepsFor(user: User, hasProfile: boolean, progress: Progress | null): Step[] {
   const approved = user.verificationStatus === 'approved';
   const isStartup = user.role === 'startup';
+  const milestones = (progress?.contracts ?? []).flatMap(
+    (contract) => contract.milestones,
+  );
+  const anyMilestone = (...statuses: string[]) =>
+    milestones.some((milestone) => statuses.includes(milestone.status));
+  const paid = anyMilestone('paid', 'resolved');
+  const toFund = progress?.contracts.find(
+    (contract) => contract.status === 'awaiting_funding',
+  );
+  const funded = (progress?.contracts ?? []).some((contract) =>
+    ['active', 'completed'].includes(contract.status),
+  );
 
-  const verification: Step = {
-    title: 'Completa los datos de tu cuenta',
-    text: approved
-      ? 'Tu cuenta está activa.'
-      : 'Un formulario corto, sin documentos. Al enviarlo tu cuenta queda activa.',
-    state: approved ? 'done' : 'current',
-    action: approved
-      ? undefined
-      : { label: 'Completar mis datos', href: '/verification' },
-  };
+  const steps: (Omit<Step, 'state'> & { done: boolean })[] = [
+    {
+      title: 'Completa los datos de tu cuenta',
+      text: approved
+        ? 'Tu cuenta está activa.'
+        : 'Un formulario corto, sin documentos. Al enviarlo tu cuenta queda activa.',
+      done: approved,
+      action: approved
+        ? undefined
+        : { label: 'Completar mis datos', href: '/verification' },
+    },
+    {
+      title: isStartup
+        ? 'Completa el perfil de tu startup'
+        : 'Completa tu perfil de experto',
+      text: isStartup
+        ? 'Qué hace tu empresa, en qué etapa está y en qué necesitas ayuda. Los expertos lo ven en tus trabajos.'
+        : 'Tu titular, tus fortalezas, tus categorías y tu tarifa. Las startups lo miran para elegir.',
+      done: hasProfile,
+      action: { label: hasProfile ? 'Editar perfil' : 'Crear perfil', href: '/profile' },
+    },
+    {
+      title: isStartup ? 'Publica tu primer trabajo' : 'Postúlate a un trabajo',
+      text: isStartup
+        ? 'Describe el trabajo y el presupuesto. Los expertos se postularán y tú eliges a uno.'
+        : 'Los trabajos abiertos están en la sección Trabajos. Postúlate con tu propuesta, tu precio y cuánto tiempo te toma.',
+      done: Boolean(progress?.hasStarted) || milestones.length > 0,
+      // On the panel, the empty state right below already has this button.
+      action: progress
+        ? undefined
+        : isStartup
+          ? { label: 'Publicar un trabajo', href: '/jobs/new' }
+          : { label: 'Ver trabajos', href: '/jobs' },
+    },
+  ];
 
-  const profile: Step = {
-    title: isStartup
-      ? 'Completa el perfil de tu startup'
-      : 'Completa tu perfil de experto',
-    text: isStartup
-      ? 'Qué hace tu empresa, en qué etapa está y en qué necesitas ayuda. Los expertos lo ven en tus trabajos.'
-      : 'Tu titular, tus fortalezas, tus categorías y tu tarifa. Las startups lo miran para elegir.',
-    state: !approved ? 'later' : hasProfile ? 'done' : 'current',
-    action: { label: hasProfile ? 'Editar perfil' : 'Crear perfil', href: '/profile' },
-  };
+  if (progress) {
+    steps.push(
+      ...(isStartup
+        ? [
+            {
+              title: 'Guarda el pago en el contrato',
+              text: 'Cuando el experto acepta, depositas el pago. Queda guardado hasta que apruebes cada hito.',
+              done: funded,
+              action: toFund
+                ? { label: 'Depositar', href: `/contracts/${toFund.id}` }
+                : undefined,
+            },
+            {
+              title: 'Aprueba la primera entrega',
+              text: 'Al aprobar un hito, su pago se libera al experto.',
+              done: paid,
+            },
+          ]
+        : [
+            {
+              title: 'Haz tu primera entrega',
+              text: 'Cuando una startup te contrata y deposita el pago, entregas cada hito desde el contrato.',
+              done: anyMilestone(
+                'delivered',
+                'changes_requested',
+                'approved',
+                'paid',
+                'disputed',
+                'resolved',
+              ),
+            },
+            {
+              title: 'Recibe tu primer pago',
+              text: 'Cuando la startup aprueba un hito, su pago llega a tu wallet.',
+              done: paid,
+            },
+          ]),
+    );
+  }
 
-  const first: Step = {
-    title: isStartup ? 'Publica tu primer trabajo' : 'Postúlate a un trabajo',
-    text: isStartup
-      ? 'Describe el trabajo y el presupuesto. Los expertos se postularán y tú eliges a uno.'
-      : 'Los trabajos abiertos están en la sección Trabajos. Postúlate con tu propuesta, tu precio y cuánto tiempo te toma.',
-    state: approved && hasProfile ? 'current' : 'later',
-    action: isStartup
-      ? { label: 'Publicar un trabajo', href: '/jobs/new' }
-      : { label: 'Ver trabajos', href: '/jobs' },
-  };
-
-  return [verification, profile, first];
+  const current = steps.findIndex((step) => !step.done);
+  return steps.map(({ done, ...step }, index) => ({
+    ...step,
+    state: done ? 'done' : index === current ? 'current' : 'later',
+  }));
 }
 
 function StepMark({ state, number }: { state: StepState; number: number }) {

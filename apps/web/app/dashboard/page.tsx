@@ -29,8 +29,8 @@ function Dashboard({ user }: { user: User }) {
     <div className="space-y-6">
       <Onboarding className="mb-6" />
       <PageHeader
-        title="Mis trabajos"
-        description="Todo lo que publicaste, desde los abiertos hasta los completados."
+        title="Mis publicaciones"
+        description="Los trabajos que publicaste y quién se postuló. Cuando contratas a alguien, el pago y las entregas siguen en Contratos."
         actions={
           <Button asChild>
             <Link href="/jobs/new">Publicar un trabajo</Link>
