@@ -18,16 +18,17 @@ import { useEffect } from 'react';
 import { Avatar } from '@/components/avatar';
 import { Detail, ErrorAlert, Loading } from '@/components/page';
 import { Badge } from '@/components/ui/badge';
+import { TrackRecordSection } from '@/components/track-record';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import { CATEGORY_LABELS, date, usdc } from '@/lib/format';
+import { CATEGORY_LABELS, date } from '@/lib/format';
 import { linkHost, safeHref } from '@/lib/links';
 
 /**
  * A specialist's public profile, laid out the way a startup reads a CV: who
- * they are and how to check them first, then the work they have done with what
- * it achieved, then the practical details for working together.
+ * they are and how to check them first, then the work they finished on Pocket
+ * and the work they have done elsewhere with what it achieved, then the practical details for working together.
  */
 export default function SpecialistProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -56,7 +57,7 @@ export default function SpecialistProfilePage() {
         <div className="space-y-6 md:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Acerca de</CardTitle>
+              <CardTitle>Sobre mí</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="whitespace-pre-line text-sm leading-relaxed">
@@ -64,6 +65,8 @@ export default function SpecialistProfilePage() {
               </p>
             </CardContent>
           </Card>
+
+          <TrackRecordSection userId={id} />
 
           <PastWork caseStudies={specialist.caseStudies} />
 
@@ -84,8 +87,7 @@ export default function SpecialistProfilePage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Miembro de Pocket desde el {date(profile.data.memberSince)}. Wallet{' '}
-        {profile.data.wallet}.
+        Miembro de Pocket desde el {date(profile.data.memberSince)}.
       </p>
     </div>
   );
@@ -191,8 +193,16 @@ function PastWork({ caseStudies }: { caseStudies: CaseStudy[] }) {
   );
 }
 
-/** What a startup needs to know before hiring: experience, time, place, price. */
+/** What a startup needs to know before hiring: experience, language, place, time. */
 function WorkingTogether({ specialist }: { specialist: SpecialistProfile }) {
+  if (
+    specialist.yearsExperience == null &&
+    specialist.languages.length === 0 &&
+    !specialist.location &&
+    !specialist.timezone &&
+    !specialist.weeklyHours
+  )
+    return null;
   return (
     <Card className="h-fit">
       <CardHeader>
@@ -233,12 +243,6 @@ function WorkingTogether({ specialist }: { specialist: SpecialistProfile }) {
                 {specialist.weeklyHours === 1 ? 'hora por semana' : 'horas por semana'}
               </span>
             </Detail>
-          ) : null}
-          {specialist.hourlyRate ? (
-            <Detail label="Tarifa por hora">{usdc(specialist.hourlyRate)}</Detail>
-          ) : null}
-          {specialist.minProjectBudget ? (
-            <Detail label="Proyecto mínimo">{usdc(specialist.minProjectBudget)}</Detail>
           ) : null}
         </dl>
       </CardContent>
