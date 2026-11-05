@@ -60,8 +60,22 @@ export const ServiceCategory = {
   Sales: 'sales',
   Marketing: 'marketing',
   DigitalMarketing: 'digital_marketing',
+  Content: 'content',
 } as const;
 export type ServiceCategory = (typeof ServiceCategory)[keyof typeof ServiceCategory];
+
+/** Where a content creator publishes. */
+export const SocialPlatform = {
+  Instagram: 'instagram',
+  TikTok: 'tiktok',
+  YouTube: 'youtube',
+  X: 'x',
+  LinkedIn: 'linkedin',
+  Facebook: 'facebook',
+  Twitch: 'twitch',
+  Other: 'other',
+} as const;
+export type SocialPlatform = (typeof SocialPlatform)[keyof typeof SocialPlatform];
 
 /** Company stage shown on the standardized startup profile. */
 export const StartupStage = {
