@@ -25,6 +25,7 @@ import { Avatar } from '@/components/avatar';
 import { IdentitySeal } from '@/components/identity-seal';
 import { Detail, ErrorAlert, Loading } from '@/components/page';
 import { Badge } from '@/components/ui/badge';
+import { TrackRecordSection } from '@/components/track-record';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
@@ -33,8 +34,8 @@ import { linkHost, safeHref } from '@/lib/links';
 
 /**
  * A specialist's public profile, laid out the way a startup reads a CV: who
- * they are and how to check them first, then the work they have done with what
- * it achieved, then the practical details for working together.
+ * they are and how to check them first, then the work they finished on Pocket
+ * and the work they have done elsewhere with what it achieved, then the practical details for working together.
  */
 export default function SpecialistProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -63,7 +64,7 @@ export default function SpecialistProfilePage() {
         <div className="space-y-6 md:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Acerca de</CardTitle>
+              <CardTitle>Sobre mí</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="whitespace-pre-line text-sm leading-relaxed">
@@ -75,6 +76,7 @@ export default function SpecialistProfilePage() {
           {specialist.categories.includes(ServiceCategory.Content) ? (
             <Audience specialist={specialist} />
           ) : null}
+          <TrackRecordSection userId={id} />
 
           <PastWork caseStudies={specialist.caseStudies} />
 
@@ -97,7 +99,7 @@ export default function SpecialistProfilePage() {
       <p className="text-xs text-muted-foreground">
         {profile.data.waiting
           ? 'Se registró en la red de pruebas de Pocket y todavía no activa su cuenta aquí.'
-          : `Miembro de Pocket desde el ${date(profile.data.memberSince)}. Wallet ${profile.data.wallet}.`}
+          : `Miembro de Pocket desde el ${date(profile.data.memberSince)}.`}
       </p>
     </div>
   );
