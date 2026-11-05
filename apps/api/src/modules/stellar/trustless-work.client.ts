@@ -159,13 +159,17 @@ export class TrustlessWorkClient {
     });
   }
 
-  /** Broadcast a signed transaction. Returns the deployed contract id, if any. */
+  /**
+   * Broadcast a signed transaction. Returns the deployed contract id, if any.
+   * Never retried on a server error: the transaction may have gone out, and
+   * the caller checks the chain before trying again.
+   */
   async send(signedXdr: string): Promise<{ contractId?: string }> {
     const result = await this.request<{
       status?: string;
       message?: string;
       contractId?: string;
-    }>('POST', '/helper/send-transaction', { signedXdr });
+    }>('POST', '/helper/send-transaction', { signedXdr }, false);
     // Only an explicit SUCCESS counts; an answer without a status is not one.
     if (result.status !== 'SUCCESS') {
       this.logger.error(
@@ -201,12 +205,18 @@ export class TrustlessWorkClient {
     return unsignedTransaction;
   }
 
+  /**
+   * `retryServerErrors`: building a transaction or reading an escrow changes
+   * nothing, so a passing 5xx from Trustless Work (it has answered 520 once
+   * and worked ten seconds later) is tried again before the user sees it.
+   */
   private async request<T>(
     method: 'GET' | 'POST',
     path: string,
     body?: unknown,
+    retryServerErrors = true,
   ): Promise<T> {
-    const response = await this.fetchWithRetry(method, path, body);
+    const response = await this.fetchWithRetry(method, path, body, retryServerErrors);
     const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     if (!response.ok) {
       this.logger.error(
@@ -226,8 +236,10 @@ export class TrustlessWorkClient {
   private async fetchWithRetry(
     method: 'GET' | 'POST',
     path: string,
-    body?: unknown,
+    body: unknown,
+    retryServerErrors: boolean,
   ): Promise<Response> {
+    let serverErrors = 0;
     for (let attempt = 0; ; attempt++) {
       if (this.budget.take('trustless-work', TRUSTLESS_WORK_BUDGET_PER_MINUTE, 60_000) > 0) {
         this.logger.warn(`${method} ${path} held back: Pocket's Trustless Work budget is spent`);
@@ -240,6 +252,17 @@ export class TrustlessWorkClient {
         headers: { 'content-type': 'application/json', 'x-api-key': this.apiKey },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
+      if (
+        retryServerErrors &&
+        response.status >= 500 &&
+        serverErrors < SERVER_ERROR_RETRIES
+      ) {
+        serverErrors += 1;
+        const waitMs = SERVER_ERROR_DELAY_MS * serverErrors;
+        this.logger.warn(`${method} ${path} -> ${response.status}, retrying in ${waitMs} ms`);
+        await this.sleep(waitMs);
+        continue;
+      }
       if (response.status !== 429) return response;
       if (attempt >= RATE_LIMIT_RETRIES) {
         this.logger.error(`${method} ${path} -> 429 after ${attempt + 1} tries`);
@@ -264,6 +287,10 @@ export const TRUSTLESS_WORK_BUDGET_PER_MINUTE = 40;
 
 /** Retries after a 429 before giving up. */
 const RATE_LIMIT_RETRIES = 3;
+/** Retries after a 5xx, for requests that change nothing. */
+const SERVER_ERROR_RETRIES = 2;
+/** Wait 2 seconds, then 4, before trying a 5xx again. */
+const SERVER_ERROR_DELAY_MS = 2_000;
 /** Never wait longer than this for one retry, whatever the server says. */
 const MAX_RETRY_DELAY_MS = 20_000;
 

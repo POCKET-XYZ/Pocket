@@ -85,10 +85,30 @@ export default function SpecialistsPage() {
           ))}
         </div>
       ) : (
-        <EmptyState title="Ningún experto coincide">
-          Prueba con otra categoría u otra búsqueda.
-        </EmptyState>
+        <NoSpecialists query={query} filtered={category !== null} />
       )}
     </div>
+  );
+}
+
+/** An empty directory and a filter that found nothing are not the same news. */
+function NoSpecialists({ query, filtered }: { query: string; filtered: boolean }) {
+  if (!query && !filtered) {
+    return (
+      <EmptyState title="Todavía no hay expertos con su perfil publicado">
+        Cuando un experto activa su cuenta y completa su perfil, aparece aquí.
+      </EmptyState>
+    );
+  }
+  return (
+    <EmptyState
+      title={
+        query
+          ? `Ningún experto coincide con «${query}»`
+          : 'Ningún experto en esta categoría'
+      }
+    >
+      Prueba con otra categoría u otra búsqueda.
+    </EmptyState>
   );
 }

@@ -81,6 +81,32 @@ describe('TrustlessWorkClient', () => {
     expect(client.waits).toEqual([1000, 2000, 4000]);
   });
 
+  it('tries a passing server error again when building a transaction', async () => {
+    fetchMock
+      .mockResolvedValueOnce(reply(520))
+      .mockResolvedValueOnce(reply(502))
+      .mockResolvedValueOnce(reply(200, { unsignedTransaction: 'AAAA' }));
+    await expect(client.approve('CESCROW', 0, 'GSTARTUP')).resolves.toBe('AAAA');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(client.waits).toEqual([2000, 4000]);
+  });
+
+  it('gives up on server errors after two retries', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(reply(520)));
+    await expect(client.approve('CESCROW', 0, 'GSTARTUP')).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('never sends a signed transaction twice on a server error', async () => {
+    fetchMock.mockResolvedValue(reply(520));
+    await expect(client.send('signed-xdr')).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('does not retry other errors', async () => {
     fetchMock.mockResolvedValue(reply(400, { message: 'Escrow not found' }));
     await expect(client.fund('CESCROW', 'GSTARTUP', 10)).rejects.toThrow(

@@ -1,6 +1,12 @@
 'use client';
 
-import type { ChallengeResponse, LoginResponse, SignUpRole, User } from '@pocket/shared';
+import {
+  LEGAL_VERSION,
+  type ChallengeResponse,
+  type LoginResponse,
+  type SignUpRole,
+  type User,
+} from '@pocket/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createContext,
@@ -159,7 +165,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         finishLogin(
           await api<LoginResponse>('/auth/pollar', {
             method: 'POST',
-            body: { accessToken, ...(role ? { role } : {}) },
+            // A role means a new account, created only from the step where
+            // the user ticked the Terms and Privacy Policy.
+            body: { accessToken, ...(role ? { role, acceptTerms: LEGAL_VERSION } : {}) },
           }),
         );
       } catch (error) {
@@ -223,7 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const login = (signedXdr: string) =>
         api<LoginResponse>('/auth/login', {
           method: 'POST',
-          body: { stellarAddress: address, signedXdr, role },
+          body: { stellarAddress: address, signedXdr, role, acceptTerms: LEGAL_VERSION },
         });
       try {
         finishLogin(await login(pendingSignUp.signedXdr));

@@ -125,14 +125,20 @@ export function SiteHeader() {
                     <DropdownMenuItem asChild>
                       <Link href="/profile">Mi perfil</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/verification">Datos de la cuenta</Link>
-                    </DropdownMenuItem>
+                    {/* Only while there is something to do there: the badge above says the rest. */}
+                    {user.verificationStatus !== 'approved' ? (
+                      <DropdownMenuItem asChild>
+                        <Link href="/verification">Activar mi cuenta</Link>
+                      </DropdownMenuItem>
+                    ) : null}
                     <DropdownMenuItem asChild>
                       <Link href="/wallet">Wallet y USDC</Link>
                     </DropdownMenuItem>
                   </>
                 ) : null}
+                <DropdownMenuItem asChild>
+                  <Link href="/account">Tu cuenta y tus datos</Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={signOut}>Cerrar sesión</DropdownMenuItem>
               </DropdownMenuContent>

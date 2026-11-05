@@ -44,7 +44,15 @@ export function Closing() {
             <span className="font-heading font-bold text-off-white">Pocket</span> ·
             Talento de growth con pago protegido
           </p>
-          <p>© 2026 Pocket</p>
+          <nav className="flex flex-wrap gap-x-6 gap-y-2">
+            <a href={links.terms} className="hover:text-off-white">
+              Términos
+            </a>
+            <a href={links.privacy} className="hover:text-off-white">
+              Privacidad
+            </a>
+            <span>© 2026 Pocket</span>
+          </nav>
         </div>
       </footer>
     </>

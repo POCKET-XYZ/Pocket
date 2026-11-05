@@ -81,6 +81,7 @@ Security events are written as one JSON line each under the `Security` logger. T
 | `unrecorded_platform_operation` | **Alert.** The platform account sent a transaction Pocket did not record |
 | `platform_balance_low` | **Alert.** Less than `PLATFORM_MIN_XLM` (20 by default) left for fees |
 | `platform_usdc_trustline_missing` | **Alert.** The platform account cannot receive USDC, so no escrow can be deployed and Pocket's fee cannot be paid. Run `bun run stellar:setup` |
+| `pollar_wallet_needs_xlm` | **Alert.** A Pollar wallet of an approved account cannot enable USDC or is almost out of XLM for fees. Top it up; its owner is never asked to |
 
 The platform monitor polls Horizon every 30 seconds. Every transaction the platform key sends through Pocket is recorded in `chain_operations` before it is sent, so any other one means the key was used somewhere else.
 

@@ -10,8 +10,11 @@ export type SecurityEventName =
   | 'platform_refused'
   | 'unrecorded_platform_operation'
   | 'platform_balance_low'
+  | 'pollar_wallet_needs_xlm'
   | 'platform_usdc_trustline_missing'
-  | 'migrated_account_claimed';
+  | 'migrated_account_claimed'
+  | 'account_deleted'
+  | 'data_exported';
 
 type Fields = Record<string, string | number | boolean | null | undefined>;
 

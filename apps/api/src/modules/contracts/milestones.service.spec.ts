@@ -377,7 +377,8 @@ describe('MilestonesService', () => {
 
     expect(prisma.deliverable.update).toHaveBeenCalledWith({
       where: { id: 'deliverable-2' },
-      data: { feedback: 'Add sources' },
+      // When it was asked, for the work history.
+      data: { feedback: 'Add sources', feedbackAt: expect.any(Date) as Date },
     });
     expect(prisma.milestone.updateMany).toHaveBeenCalledWith({
       where: { id: 'milestone-1', status: 'delivered', revisionsUsed: { lt: 2 } },
@@ -531,6 +532,17 @@ describe('MilestonesService', () => {
       await expect(
         service.retryRelease(specialist, 'milestone-1'),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('answers a milestone paid already with the payment, not an error', async () => {
+      prisma.milestone.findUnique.mockResolvedValue(milestone('paid'));
+      prisma.milestone.findUniqueOrThrow.mockResolvedValue({ id: 'milestone-1', status: 'paid' });
+
+      await expect(service.retryRelease(startup, 'milestone-1')).resolves.toMatchObject({
+        status: 'paid',
+      });
+      expect(escrow.release).not.toHaveBeenCalled();
+      expect(notifications.notifyUsers).not.toHaveBeenCalled();
     });
   });
 

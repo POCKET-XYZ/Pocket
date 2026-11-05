@@ -16,4 +16,12 @@ export class PollarLoginDto {
   @IsOptional()
   @IsIn(SIGN_UP_ROLES)
   role?: SignUpRole;
+
+  @ApiPropertyOptional({
+    description: 'Version of the Terms and Privacy Policy accepted. Required to create the account',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 20)
+  acceptTerms?: string;
 }

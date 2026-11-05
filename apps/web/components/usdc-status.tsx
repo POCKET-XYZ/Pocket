@@ -3,6 +3,7 @@
 import type { User, WalletStatus } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2Icon } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,12 @@ const IS_TESTNET = process.env.NEXT_PUBLIC_STELLAR_NETWORK !== 'mainnet';
  */
 const LOW_FEE_XLM = 0.02;
 
+/**
+ * XLM a wallet needs to enable USDC on its own: the 0.5 XLM the trustline
+ * locks, plus the fee of that one transaction.
+ */
+const TRUSTLINE_XLM = 0.51;
+
 export function useUsdcStatus(enabled = true) {
   return useQuery({
     queryKey: ['wallet', 'usdc'],
@@ -33,6 +40,12 @@ export function useUsdcStatus(enabled = true) {
 /**
  * What the wallet still needs before it can send or receive USDC, with the
  * one-click fix. Renders nothing once the wallet is ready, unless `showReady`.
+ *
+ * A wallet created through Pollar belongs to someone who should never hear of
+ * XLM: nothing here mentions it to them. Its USDC is enabled on its own, and
+ * a wallet short of XLM is the Pocket team's problem (the API alerts it), not
+ * the user's. A wallet the user holds keeps every detail, since its owner
+ * manages it.
  */
 export function UsdcStatus({
   user,
@@ -44,6 +57,7 @@ export function UsdcStatus({
   const queryClient = useQueryClient();
   const status = useUsdcStatus();
   const signer = useSigner();
+  const throughPollar = user.walletCustody === 'pollar';
 
   const enable = useMutation({
     mutationFn: () =>
@@ -54,21 +68,67 @@ export function UsdcStatus({
         '/wallet/usdc-trustline/submit',
       ),
     onSuccess: async () => {
-      toast.success('USDC quedó habilitado en tu wallet');
+      // A Pollar wallet was enabled without asking: there is nothing to announce.
+      if (!throughPollar) toast.success('USDC quedó habilitado en tu wallet');
       await queryClient.invalidateQueries({ queryKey: ['wallet', 'usdc'] });
     },
     onError: (error) => {
-      if (!isWalletDismissed(error)) toast.error(errorMessage(error));
+      if (!throughPollar && !isWalletDismissed(error)) toast.error(errorMessage(error));
     },
   });
 
+  // A Pollar wallet that can pay for its trustline gets it on its own, once
+  // per visit, as soon as its signer is ready.
+  const autoEnabled = useRef(false);
+  const canEnableAlone =
+    throughPollar &&
+    signer.ready &&
+    status.data?.usdc === 'no_trustline' &&
+    Number(status.data.xlmForFees ?? 0) >= TRUSTLINE_XLM;
+  const { mutate: enableUsdc } = enable;
+  useEffect(() => {
+    if (!canEnableAlone || autoEnabled.current) return;
+    autoEnabled.current = true;
+    enableUsdc();
+  }, [canEnableAlone, enableUsdc]);
+
   if (!status.data) return null;
+
+  if (throughPollar && status.data.usdc === 'no_trustline') {
+    return (
+      <Alert className="border-yellow bg-yellow/15">
+        <AlertTitle>Estamos preparando tu wallet para recibir USDC</AlertTitle>
+        <AlertDescription>
+          {enable.isError ? (
+            <>
+              <p>No se pudo terminar de prepararla. Inténtalo de nuevo en un momento.</p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3"
+                disabled={enable.isPending}
+                onClick={() => enable.mutate()}
+              >
+                {enable.isPending ? 'Preparando...' : 'Reintentar'}
+              </Button>
+            </>
+          ) : (
+            <p>
+              Toma unos segundos y no tienes que hacer nada. Si tarda, el equipo de Pocket
+              ya está avisado y lo resuelve por ti.
+            </p>
+          )}
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   const outOfFees =
     status.data.xlmForFees !== null && Number(status.data.xlmForFees) < LOW_FEE_XLM;
 
   // Nothing can be signed without it, so this comes before the USDC notices.
-  if (outOfFees) {
+  // Never shown for a Pollar wallet: the API alerts the Pocket team instead.
+  if (outOfFees && !throughPollar) {
     return (
       <Alert variant="destructive">
         <AlertTitle>
@@ -77,9 +137,22 @@ export function UsdcStatus({
         <AlertDescription>
           <p>
             Cada paso del contrato que firmas paga una pequeña comisión en XLM, y a tu
-            wallet le quedan {status.data.xlmForFees}. Recárgala antes de depositar,
-            aprobar o abrir una disputa, o esos pasos van a fallar.
+            wallet le quedan {status.data.xlmForFees}. Recárgala antes de{' '}
+            {/* Each side signs different steps: name only the ones this one signs. */}
+            {user.role === 'startup'
+              ? 'depositar, aprobar o abrir una disputa'
+              : 'habilitar USDC o abrir una disputa'}
+            , o esos pasos van a fallar.
           </p>
+          {IS_TESTNET ? null : (
+            <p className="mt-2">
+              Envía 1 XLM o más a la dirección de tu wallet desde un exchange u otra
+              wallet, por la red Stellar. No hace falta memo.
+              {status.data.usdc === 'ready'
+                ? ''
+                : ' Cuando llegue, habilita USDC aquí mismo.'}
+            </p>
+          )}
           {IS_TESTNET ? (
             <Button asChild size="sm" variant="outline" className="mt-3">
               <a
@@ -124,15 +197,15 @@ export function UsdcStatus({
   }
 
   if (status.data.usdc === 'no_account') {
-    // A wallet Pocket created through Pollar is activated when a manager
-    // approves the account, so there is nothing for the user to do but wait.
-    if (user.walletCustody === 'pollar') {
+    // A wallet Pocket created through Pollar is activated when the account
+    // completes its details, so there is nothing for the user to do but wait.
+    if (throughPollar) {
       return (
         <Alert className="border-yellow bg-yellow/15">
           <AlertTitle>Tu wallet se está activando</AlertTitle>
           <AlertDescription>
-            Pocket activa tu wallet en la red Stellar una vez que se aprueba tu cuenta.
-            Toma unos segundos y no tienes que pagar nada.
+            Pocket activa tu wallet cuando completas los datos de tu cuenta. Toma unos
+            segundos y no tienes que pagar nada.
           </AlertDescription>
         </Alert>
       );

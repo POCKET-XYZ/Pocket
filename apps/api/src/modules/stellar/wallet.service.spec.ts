@@ -2,6 +2,8 @@ import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Keypair } from '@stellar/stellar-sdk';
 import type { AuthUser } from '../../common/types/auth';
+import * as securityLog from '../../common/security/security-log';
+import type { PrismaService } from '../../prisma/prisma.service';
 import type { ChainOperationsService } from './chain-operations.service';
 import type { StellarService } from './stellar.service';
 import { WalletService } from './wallet.service';
@@ -17,8 +19,10 @@ describe('WalletService payments', () => {
     buildUsdcPayment: jest.Mock;
     parse: jest.Mock;
     usdcPayments: jest.Mock;
+    spendableXlm?: jest.Mock;
   };
   let operations: { prepare: jest.Mock; submitSigned: jest.Mock };
+  let prisma: { user: { findUnique: jest.Mock } };
   let wallet: WalletService;
 
   beforeEach(() => {
@@ -37,10 +41,62 @@ describe('WalletService payments', () => {
       }),
       submitSigned: jest.fn().mockResolvedValue({ txHash: 'hash-1', amount: null }),
     };
+    prisma = {
+      user: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ walletCustody: 'pollar', verificationStatus: 'approved' }),
+      },
+    };
     wallet = new WalletService(
       stellar as unknown as StellarService,
       operations as unknown as ChainOperationsService,
+      prisma as unknown as PrismaService,
     );
+  });
+
+  describe('a Pollar wallet short of XLM', () => {
+    let alert: jest.SpyInstance;
+    beforeEach(() => {
+      alert = jest
+        .spyOn(securityLog, 'securityEvent')
+        .mockImplementation(() => undefined);
+      stellar.spendableXlm = jest.fn().mockResolvedValue('0.0000000');
+      stellar.usdcReadiness.mockResolvedValue('no_trustline');
+    });
+    afterEach(() => alert.mockRestore());
+
+    const alerts = (): unknown[][] =>
+      (alert.mock.calls as unknown[][]).filter(
+        ([name]) => name === 'pollar_wallet_needs_xlm',
+      );
+
+    it('tells the team, not the user, once in a while', async () => {
+      await wallet.usdcStatus(USER);
+      await wallet.usdcStatus(USER);
+      expect(alerts()).toHaveLength(1);
+      expect(alerts()[0][1]).toMatchObject({ account: ME, usdc: 'no_trustline' });
+      expect(alerts()[0][2]).toBe('alert');
+    });
+
+    it('says nothing about a wallet the user holds', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        walletCustody: 'external',
+        verificationStatus: 'approved',
+      });
+      await wallet.usdcStatus(USER);
+      expect(alerts()).toHaveLength(0);
+    });
+
+    it('says nothing while the wallet can still enable USDC or pay its fees', async () => {
+      stellar.spendableXlm = jest.fn().mockResolvedValue('1.0000000');
+      await wallet.usdcStatus(USER);
+      stellar.usdcReadiness.mockResolvedValue('ready');
+      stellar.spendableXlm = jest.fn().mockResolvedValue('0.5000000');
+      await wallet.usdcStatus(USER);
+      expect(alerts()).toHaveLength(0);
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    });
   });
 
   const refused = (request: { destination: string; amount: string; memo?: string }) =>
