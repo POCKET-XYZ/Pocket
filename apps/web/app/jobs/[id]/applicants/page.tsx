@@ -8,6 +8,7 @@ import { HireDialog } from '@/components/hire-dialog';
 import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
 import { StatusBadge } from '@/components/status-badge';
+import { TrackRecordLine } from '@/components/track-record';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { api } from '@/lib/api';
@@ -65,6 +66,7 @@ function Applicants() {
                   <p className="text-sm text-muted-foreground">
                     {applicant.specialist?.headline}
                   </p>
+                  <TrackRecordLine applicant={applicant} />
                   <p className="mt-3 whitespace-pre-line text-sm">{applicant.approach}</p>
                   {applicant.similarWorkUrl ? (
                     <p className="mt-2 text-sm">

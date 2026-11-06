@@ -254,6 +254,31 @@ export interface PublicProfile {
   profile: StartupProfile | SpecialistProfile;
 }
 
+/** A specialist's counts over the contracts they completed on Pocket. */
+export interface TrackRecordSummary {
+  completed: number;
+  milestones: { total: number; onTime: number };
+  kpis: { withTarget: number; met: number };
+}
+
+/**
+ * GET /profiles/:userId/track-record. Public, so it carries no amounts and only
+ * the startup's sector, never its name.
+ */
+export interface TrackRecord extends TrackRecordSummary {
+  /** A creator's strongest result the startup approved. Absent for everyone else. */
+  bestResult?: { result: string; sector: string | null; reportedAt: IsoDate };
+  jobs: {
+    contractId: string;
+    title: string;
+    sector: string | null;
+    category: ServiceCategory;
+    completedAt: IsoDate;
+    kpis: { withTarget: number; met: number };
+    onTime: boolean;
+  }[];
+}
+
 /** A startup as the directory lists it. */
 export interface StartupListing extends StartupProfile {
   /** Jobs it has open right now. */
@@ -471,6 +496,8 @@ export interface Application {
 /** GET /jobs/:id/applications: what the startup sees about each applicant. */
 export interface Applicant extends Application {
   specialist: Pick<SpecialistProfile, 'displayName' | 'headline' | 'avatarUrl'> | null;
+  /** Optional until the API sends it: absent means unknown, not new on Pocket. */
+  trackRecord?: TrackRecordSummary;
 }
 
 /** GET /applications/mine: the specialist's applications with their job. */
