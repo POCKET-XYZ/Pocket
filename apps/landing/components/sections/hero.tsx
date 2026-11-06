@@ -97,14 +97,14 @@ export function Hero() {
             </Magnetic>
           </div>
         </div>
-        <div data-parallax className="mx-auto w-1/2 max-w-[380px] md:w-4/5">
+        <div data-parallax className="mx-auto w-1/3 max-w-[220px] md:w-3/5">
           <div data-float>
             {/* The P from the logo, in 3D: celeste on navy, as the brand kit asks. */}
             <img
               className="intro-pop w-full"
               src="/brand/p-3d-celeste-640.png"
               srcSet="/brand/p-3d-celeste-320.png 320w, /brand/p-3d-celeste-480.png 480w, /brand/p-3d-celeste-640.png 640w"
-              sizes="(min-width: 768px) 380px, 50vw"
+              sizes="(min-width: 768px) 220px, 33vw"
               alt="La P de Pocket con una moneda adentro"
               width={640}
               height={809}
