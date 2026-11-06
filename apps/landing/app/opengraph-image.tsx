@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { ImageResponse } from 'next/og';
 
 // The preview shown when the landing is shared (WhatsApp, LinkedIn, X, Slack).
-export const alt = 'Pocket: tu equipo de growth, sin miedo a contratar';
+export const alt = 'Pocket: crece más rápido, paga seguro. Talento para startups latinas';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -13,7 +13,7 @@ export default async function Image() {
   const [extraBold, medium, pocket, logo] = await Promise.all([
     readFile(join(fonts, 'figtree-latin-800-normal.woff')),
     readFile(join(fonts, 'figtree-latin-500-normal.woff')),
-    readFile(join(process.cwd(), 'assets/og-pocket.png')),
+    readFile(join(process.cwd(), 'public/brand/p-3d-celeste-480.png')),
     readFile(join(process.cwd(), 'public/brand/logo-white.svg')),
   ]);
 
@@ -47,15 +47,15 @@ export default async function Image() {
             letterSpacing: '-0.01em',
           }}
         >
-          Tu equipo de growth, sin miedo a contratar.
+          Crece más rápido. Paga seguro.
         </div>
         <div style={{ marginTop: 32, fontSize: 32, fontWeight: 500, color: '#86d4e6' }}>
-          Solo pagas cuando apruebas el trabajo.
+          Talento para startups latinas
         </div>
       </div>
       <img
         src={`data:image/png;base64,${pocket.toString('base64')}`}
-        width={400}
+        width={316}
         height={400}
         alt=""
       />

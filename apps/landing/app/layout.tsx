@@ -22,7 +22,7 @@ const inter = Inter({
   subsets: ['latin'],
 });
 
-const title = 'Pocket: tu equipo de growth, sin miedo a contratar';
+const title = 'Pocket: crece más rápido, paga seguro';
 const description =
   'Encuentra expertos en marketing, ventas y growth. Solo pagas cuando apruebas el trabajo.';
 
