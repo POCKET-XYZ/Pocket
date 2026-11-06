@@ -12,6 +12,13 @@ if [ -z "$previous" ]; then
   exit 1
 fi
 
+# The same commit again is a Redeploy someone asked for, usually after a
+# variable changed: NEXT_PUBLIC_* values are fixed at build time, so build.
+if [ "$previous" = "${VERCEL_GIT_COMMIT_SHA:-}" ]; then
+  echo "Commit $previous deployed again: building."
+  exit 1
+fi
+
 root="$(git rev-parse --show-toplevel 2>/dev/null)"
 if [ -z "$root" ]; then
   echo "Not inside a git checkout: building."
