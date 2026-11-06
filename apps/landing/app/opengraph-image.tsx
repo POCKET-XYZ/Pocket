@@ -7,13 +7,14 @@ export const alt = 'Pocket: tu equipo de growth, sin miedo a contratar';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-const fonts = join(process.cwd(), 'node_modules/@fontsource/fredoka/files');
+const fonts = join(process.cwd(), 'node_modules/@fontsource/figtree/files');
 
 export default async function Image() {
-  const [bold, medium, pocket] = await Promise.all([
-    readFile(join(fonts, 'fredoka-latin-700-normal.woff')),
-    readFile(join(fonts, 'fredoka-latin-500-normal.woff')),
+  const [extraBold, medium, pocket, logo] = await Promise.all([
+    readFile(join(fonts, 'figtree-latin-800-normal.woff')),
+    readFile(join(fonts, 'figtree-latin-500-normal.woff')),
     readFile(join(process.cwd(), 'assets/og-pocket.png')),
+    readFile(join(process.cwd(), 'public/brand/logo-white.svg')),
   ]);
 
   return new ImageResponse(
@@ -27,16 +28,21 @@ export default async function Image() {
         padding: '72px 80px',
         background: '#0f2e52',
         color: '#f4fbfd',
-        fontFamily: 'Fredoka',
+        fontFamily: 'Figtree',
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', width: 660 }}>
-        <div style={{ fontSize: 44, fontWeight: 700 }}>Pocket</div>
+        <img
+          src={`data:image/svg+xml;base64,${logo.toString('base64')}`}
+          width={198}
+          height={48}
+          alt="Pocket"
+        />
         <div
           style={{
             marginTop: 48,
             fontSize: 76,
-            fontWeight: 700,
+            fontWeight: 800,
             lineHeight: 1.02,
             letterSpacing: '-0.01em',
           }}
@@ -57,8 +63,8 @@ export default async function Image() {
     {
       ...size,
       fonts: [
-        { name: 'Fredoka', data: bold, weight: 700, style: 'normal' },
-        { name: 'Fredoka', data: medium, weight: 500, style: 'normal' },
+        { name: 'Figtree', data: extraBold, weight: 800, style: 'normal' },
+        { name: 'Figtree', data: medium, weight: 500, style: 'normal' },
       ],
     },
   );

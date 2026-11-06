@@ -57,7 +57,7 @@ export default function SpecialistsPage() {
               <div className="flex items-center gap-3">
                 <Avatar name={specialist.displayName} />
                 <div className="min-w-0">
-                  <p className="truncate font-heading text-lg font-semibold text-navy group-hover:underline">
+                  <p className="truncate font-heading text-lg font-bold text-navy group-hover:underline">
                     {specialist.displayName}
                   </p>
                   <p className="truncate text-sm text-muted-foreground">

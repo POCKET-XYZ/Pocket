@@ -52,7 +52,7 @@ export function Onboarding({ className }: { className?: string }) {
   return (
     <Card className={cn('border-celeste bg-celeste-light/30', className)}>
       <CardContent className="pt-6">
-        <h2 className="font-heading text-lg font-semibold text-navy">
+        <h2 className="font-heading text-lg font-bold text-navy">
           Primeros pasos en Pocket
         </h2>
         <ol className="mt-4 space-y-3">

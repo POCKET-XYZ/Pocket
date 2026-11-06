@@ -1,12 +1,20 @@
 import type { Metadata, Viewport } from 'next';
-import { Fredoka, Inter } from 'next/font/google';
+import { Anton, Figtree, Inter } from 'next/font/google';
 import { SmoothScroll } from '@/components/smooth-scroll';
 import './globals.css';
 
-const fredoka = Fredoka({
-  variable: '--font-fredoka',
+// Brand type (brand/BRAND-KIT.md): Figtree for titles, Anton for big data,
+// Inter for everything else.
+const figtree = Figtree({
+  variable: '--font-figtree',
   subsets: ['latin'],
-  weight: ['500', '600', '700'],
+  weight: ['700', '800'],
+});
+
+const anton = Anton({
+  variable: '--font-anton',
+  subsets: ['latin'],
+  weight: '400',
 });
 
 const inter = Inter({
@@ -34,7 +42,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="es" className={`${fredoka.variable} ${inter.variable} antialiased`}>
+    <html
+      lang="es"
+      className={`${figtree.variable} ${anton.variable} ${inter.variable} antialiased`}
+    >
       <body>
         <SmoothScroll>{children}</SmoothScroll>
       </body>

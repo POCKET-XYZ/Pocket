@@ -124,10 +124,7 @@ export function TermsGate() {
       className="fixed inset-0 z-50 flex items-center justify-center bg-navy/60 p-4"
     >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-background p-6 shadow-xl">
-        <h2
-          id="terms-gate-title"
-          className="font-heading text-xl font-semibold text-navy"
-        >
+        <h2 id="terms-gate-title" className="font-heading text-xl font-bold text-navy">
           {user.termsVersion ? 'Actualizamos nuestros términos' : 'Antes de seguir'}
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">

@@ -170,7 +170,7 @@ export function Protected() {
                 onClick={() => setScenario(s.key)}
                 className={`press rounded-full px-5 py-2.5 font-medium transition-colors ${
                   s.key === scenario
-                    ? 'bg-yellow text-navy'
+                    ? 'bg-mandarina text-navy'
                     : 'bg-off-white/10 text-off-white hover:bg-off-white/20'
                 }`}
               >
@@ -207,14 +207,14 @@ export function Protected() {
             <span
               data-coin
               aria-hidden
-              className="absolute left-0 top-0 z-10 rounded-full bg-yellow px-3 py-1 text-xs font-bold text-navy shadow-[0_6px_16px_-4px_rgb(0_0_0_/_0.5)] ring-2 ring-navy"
+              className="absolute left-0 top-0 z-10 rounded-full bg-mandarina px-3 py-1 text-xs font-bold text-navy shadow-[0_6px_16px_-4px_rgb(0_0_0_/_0.5)] ring-2 ring-navy"
             >
               USDC
             </span>
             <span
               data-coin-split
               aria-hidden
-              className="invisible absolute left-0 top-0 z-10 rounded-full bg-yellow px-3 py-1 text-xs font-bold text-navy opacity-0 shadow-[0_6px_16px_-4px_rgb(0_0_0_/_0.5)] ring-2 ring-navy"
+              className="invisible absolute left-0 top-0 z-10 rounded-full bg-mandarina px-3 py-1 text-xs font-bold text-navy opacity-0 shadow-[0_6px_16px_-4px_rgb(0_0_0_/_0.5)] ring-2 ring-navy"
             >
               USDC
             </span>

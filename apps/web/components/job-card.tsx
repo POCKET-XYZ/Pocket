@@ -25,7 +25,7 @@ export function JobCard({
         </Badge>
         {showStatus ? <StatusBadge status={job.status} /> : null}
       </div>
-      <h3 className="mt-3 font-heading text-lg font-semibold text-navy group-hover:underline">
+      <h3 className="mt-3 font-heading text-lg font-bold text-navy group-hover:underline">
         {job.title}
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">

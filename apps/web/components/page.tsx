@@ -60,7 +60,7 @@ export function EmptyState({
 }) {
   return (
     <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-14 text-center">
-      <p className="font-heading text-lg font-semibold text-navy">{title}</p>
+      <p className="font-heading text-lg font-bold text-navy">{title}</p>
       {children ? (
         <div className="mt-2 text-sm text-muted-foreground">{children}</div>
       ) : null}

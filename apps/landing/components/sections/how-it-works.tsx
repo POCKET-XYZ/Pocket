@@ -74,7 +74,13 @@ function DemoCard() {
         <span className="size-2.5 rounded-full bg-navy/15" />
         <span className="size-2.5 rounded-full bg-navy/15" />
         <span className="size-2.5 rounded-full bg-navy/15" />
-        <span className="ml-3 font-heading text-sm font-bold text-navy/70">Pocket</span>
+        <img
+          src="/brand/logo-navy-chico.svg"
+          alt=""
+          width={66}
+          height={16}
+          className="ml-3 h-4 w-auto opacity-70"
+        />
       </div>
       <div className={stack}>
         {/* 1. Publish, then pick an expert */}
@@ -124,7 +130,7 @@ function DemoCard() {
                   {chosen && (
                     <span
                       data-p1-badge
-                      className="absolute -right-2 -top-3 rounded-full bg-yellow px-3 py-1 text-xs font-bold"
+                      className="absolute -right-2 -top-3 rounded-full bg-mandarina px-3 py-1 text-xs font-bold"
                     >
                       Elegida
                     </span>
@@ -162,12 +168,12 @@ function DemoCard() {
           <p className="font-heading text-xl font-bold">Guardar el pago</p>
           <div className={box}>
             <p className={small}>Total del trabajo</p>
-            <p className="font-heading text-4xl font-bold">1.500 USDC</p>
+            <p className="font-data text-4xl tracking-wide">1.500 USDC</p>
             <p className="text-sm text-navy/60">2 hitos: 500 + 1.000 USDC</p>
           </div>
           <span
             data-p3-btn
-            className={`${stack} rounded-full bg-yellow py-3 text-center font-medium`}
+            className={`${stack} rounded-full bg-mandarina py-3 text-center font-medium`}
           >
             <span data-p3-idle className={hidden}>
               Guardar en el contrato
@@ -196,7 +202,7 @@ function DemoCard() {
           <span
             data-p3-coin
             aria-hidden
-            className={`absolute left-0 top-0 size-7 rounded-full border-4 border-[#f2b705] bg-yellow ${hidden}`}
+            className={`absolute left-0 top-0 size-7 rounded-full border-4 border-[#e5832a] bg-mandarina ${hidden}`}
           />
         </div>
 
@@ -218,7 +224,7 @@ function DemoCard() {
                 <span data-p4-wait={m.id} className={`${pill} bg-navy/10 ${hidden}`}>
                   En curso
                 </span>
-                <span data-p4-check={m.id} className={`${pill} bg-yellow ${hidden}`}>
+                <span data-p4-check={m.id} className={`${pill} bg-mandarina ${hidden}`}>
                   Por confirmar
                 </span>
                 <span data-p4-paid={m.id} className={`${pill} bg-celeste`}>

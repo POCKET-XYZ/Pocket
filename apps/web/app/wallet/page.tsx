@@ -75,7 +75,7 @@ function BalanceCard({ pollar }: { pollar: PollarSession }) {
           className="block text-left"
           title={shown ? 'Haz clic para ocultar' : 'Haz clic para mostrar'}
         >
-          <span className="font-heading text-3xl font-semibold text-navy">
+          <span className="font-heading text-3xl font-bold text-navy">
             {pollar.balances === null && pollar.balancesLoading
               ? 'Cargando...'
               : shown
@@ -104,7 +104,10 @@ function BalanceCard({ pollar }: { pollar: PollarSession }) {
 function amount(value: string | null | undefined): string {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed)
-    ? parsed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    ? parsed.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
     : '0.00';
 }
 
@@ -157,7 +160,9 @@ export default function WalletPage() {
 function WalletView({ user }: { user: User }) {
   const pollar = usePollarSession();
   const throughPollar =
-    user.walletCustody === 'pollar' && pollar.ready && pollar.address === user.stellarAddress;
+    user.walletCustody === 'pollar' &&
+    pollar.ready &&
+    pollar.address === user.stellarAddress;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">

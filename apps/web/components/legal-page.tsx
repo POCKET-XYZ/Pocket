@@ -65,7 +65,7 @@ export function LegalPage({
       <div className="mt-6 rounded-2xl border border-border bg-celeste-light/40 p-5 text-sm leading-relaxed text-navy">
         {summary}
       </div>
-      <div className="mt-8 space-y-4 text-[15px] leading-relaxed text-foreground [&_a]:underline [&_h2]:mt-10 [&_h2]:font-heading [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-navy [&_h3]:mt-6 [&_h3]:font-semibold [&_h3]:text-navy [&_li]:ml-5 [&_li]:list-disc [&_ul]:space-y-1">
+      <div className="mt-8 space-y-4 text-[15px] leading-relaxed text-foreground [&_a]:underline [&_h2]:mt-10 [&_h2]:font-heading [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-navy [&_h3]:mt-6 [&_h3]:font-bold [&_h3]:text-navy [&_li]:ml-5 [&_li]:list-disc [&_ul]:space-y-1">
         {children}
       </div>
       <p className="mt-12 text-sm text-muted-foreground">

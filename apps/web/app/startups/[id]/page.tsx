@@ -52,7 +52,10 @@ export default function StartupProfilePage() {
               <h1 className="text-3xl font-bold text-navy">{startup.companyName}</h1>
               <p className="text-muted-foreground">{startup.oneLiner}</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                <Badge variant="secondary" className="border-0 bg-celeste-light text-navy">
+                <Badge
+                  variant="secondary"
+                  className="border-0 bg-celeste-light text-navy"
+                >
                   {startup.sector}
                 </Badge>
                 <Badge variant="outline">{STAGE_LABELS[startup.stage]}</Badge>
@@ -61,11 +64,7 @@ export default function StartupProfilePage() {
           </div>
           {startup.websiteUrl ? (
             <Button asChild variant="outline">
-              <a
-                href={safeHref(startup.websiteUrl)}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a href={safeHref(startup.websiteUrl)} target="_blank" rel="noreferrer">
                 <GlobeIcon className="size-4" /> {linkHost(startup.websiteUrl)}
               </a>
             </Button>
@@ -117,7 +116,7 @@ export default function StartupProfilePage() {
       </div>
 
       <section>
-        <h2 className="mb-3 font-heading text-xl font-semibold text-navy">
+        <h2 className="mb-3 font-heading text-xl font-bold text-navy">
           Trabajos abiertos
         </h2>
         {jobs.isLoading ? (

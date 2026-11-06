@@ -98,7 +98,7 @@ export default function LoginPage() {
               )}
             >
               <option.icon className="size-7 text-navy" />
-              <p className="mt-4 font-heading text-xl font-semibold text-navy">
+              <p className="mt-4 font-heading text-xl font-bold text-navy">
                 {option.title}
               </p>
               <p className="mt-2 text-sm text-muted-foreground">{option.text}</p>
@@ -124,9 +124,14 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto max-w-xl text-center">
-      <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-navy text-yellow">
-        <WalletIcon className="size-8" />
-      </div>
+      {/* The menu is hidden here, so the page carries the logo itself. */}
+      <img
+        src="/brand/logo-navy.svg"
+        alt="Pocket"
+        width={165}
+        height={40}
+        className="mx-auto h-10 w-auto"
+      />
       <h1 className="mt-6 text-3xl font-bold text-navy">Entra a Pocket</h1>
       <p className="mt-3 text-muted-foreground">
         Tu wallet de Stellar es tu cuenta. Usa la tuya o deja que Pocket te cree una. En
@@ -143,7 +148,7 @@ export default function LoginPage() {
           >
             <MailIcon className="mt-1 size-6 shrink-0 text-navy" />
             <span>
-              <span className="block font-heading text-lg font-semibold text-navy">
+              <span className="block font-heading text-lg font-bold text-navy">
                 Continuar con correo o Google
               </span>
               <span className="mt-1 block text-sm text-muted-foreground">
@@ -161,7 +166,7 @@ export default function LoginPage() {
           >
             <WalletIcon className="mt-1 size-6 shrink-0 text-navy" />
             <span>
-              <span className="block font-heading text-lg font-semibold text-navy">
+              <span className="block font-heading text-lg font-bold text-navy">
                 {busy ? 'Esperando tu wallet...' : 'Conectar mi wallet de Stellar'}
               </span>
               <span className="mt-1 block text-sm text-muted-foreground">

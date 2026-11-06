@@ -54,7 +54,7 @@ export default function StartupsPage() {
               <div className="flex items-center gap-3">
                 <Avatar name={startup.companyName} url={startup.logoUrl} />
                 <div className="min-w-0">
-                  <p className="truncate font-heading text-lg font-semibold text-navy group-hover:underline">
+                  <p className="truncate font-heading text-lg font-bold text-navy group-hover:underline">
                     {startup.companyName}
                   </p>
                   <p className="truncate text-sm text-muted-foreground">
@@ -63,7 +63,10 @@ export default function StartupsPage() {
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-1.5">
-                <Badge variant="secondary" className="border-0 bg-celeste-light text-navy">
+                <Badge
+                  variant="secondary"
+                  className="border-0 bg-celeste-light text-navy"
+                >
                   {startup.sector}
                 </Badge>
                 <Badge variant="outline">{STAGE_LABELS[startup.stage]}</Badge>
