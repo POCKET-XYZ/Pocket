@@ -7,13 +7,14 @@ export function Closing() {
     <>
       <section className="pb-24 pt-24 md:pb-36 md:pt-36">
         <Reveal className="wrap flex flex-col items-center gap-10 text-center" stagger>
+          {/* The P from the logo, in 3D: celeste on navy, as the brand kit asks. */}
           <img
-            src="/renders/sm/hero.webp"
+            src="/brand/p-3d-celeste.png"
             alt=""
-            width={320}
+            width={253}
             height={320}
             loading="lazy"
-            className="size-32"
+            className="h-32 w-auto md:h-40"
           />
           <h2 className="headline-xl max-w-4xl">
             Contrata growth sin miedo. Cobra sin perseguir a nadie.
