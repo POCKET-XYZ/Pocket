@@ -72,8 +72,8 @@ export function Hero() {
             className="intro-fade max-w-xl text-lg text-muted md:text-xl"
             style={{ '--delay': '450ms' } as React.CSSProperties}
           >
-            Encuentra expertos en marketing, ventas y growth. Solo pagas cuando apruebas
-            el trabajo.
+            Encuentra expertos en marketing, ventas e influencers. Tu pago queda protegido
+            hasta que apruebas el trabajo, y el experto cobra seguro.
           </p>
           <div
             className="intro-fade flex flex-wrap items-center gap-4"
