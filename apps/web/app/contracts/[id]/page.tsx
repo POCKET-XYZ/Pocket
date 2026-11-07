@@ -265,7 +265,7 @@ function NextStep({
     }
     const preparing = accept.isPending || deploying;
     return (
-      <Card className="border-yellow">
+      <Card className="border-warning">
         <CardHeader>
           <CardTitle>
             {preparing
@@ -334,7 +334,7 @@ function NextStep({
       );
     }
     return (
-      <Card className="border-yellow">
+      <Card className="border-warning">
         <CardHeader>
           <CardTitle>
             {fundingPending

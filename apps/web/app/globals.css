@@ -8,11 +8,13 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
-  --font-heading: var(--font-fredoka);
+  --font-heading: var(--font-figtree);
   --color-navy: var(--navy);
   --color-celeste: var(--celeste);
   --color-celeste-light: var(--celeste-light);
-  --color-yellow: var(--yellow);
+  --color-mandarina: var(--mandarina);
+  --color-coin: var(--coin);
+  --color-warning: var(--warning);
   --color-off-white: var(--off-white);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -52,12 +54,17 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Pocket brand, shared with the landing page. */
+/* Pocket brand (November 2026), the same tokens as apps/landing/app/globals.css. */
 :root {
   --navy: #0f2e52;
   --celeste: #86d4e6;
   --celeste-light: #b8e7f1;
-  --yellow: #ffd23f;
+  /* Contrast for big data, details and accent buttons (navy text on it). */
+  --mandarina: #ff9f45;
+  /* Only the coin in the logo. */
+  --coin: #ffd23f;
+  /* Status color for notices that need attention; not a brand accent. */
+  --warning: #ffd23f;
   --off-white: #f4fbfd;
 
   --background: var(--off-white);
@@ -80,7 +87,7 @@
   --ring: var(--celeste);
   --chart-1: var(--navy);
   --chart-2: var(--celeste);
-  --chart-3: var(--yellow);
+  --chart-3: var(--mandarina);
   --chart-4: #4f6a86;
   --chart-5: #b8e7f1;
   --radius: 0.875rem;
@@ -106,7 +113,7 @@
   h1,
   h2,
   h3 {
-    font-family: var(--font-fredoka), system-ui, sans-serif;
+    font-family: var(--font-figtree), system-ui, sans-serif;
     letter-spacing: -0.01em;
   }
 }

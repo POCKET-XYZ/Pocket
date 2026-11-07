@@ -225,7 +225,11 @@ function StartupFigures({
         <StatTile
           label="Hitos a tiempo"
           value={percent(onTime)}
-          hint={judged > 0 ? `${dashboard.milestones.onTime} de ${judged}` : 'Sin entregas aún'}
+          hint={
+            judged > 0
+              ? `${dashboard.milestones.onTime} de ${judged}`
+              : 'Sin entregas aún'
+          }
           meter={onTime}
           icon={TimerIcon}
         />
@@ -376,7 +380,11 @@ function SpecialistHome({ user }: { user: User }) {
             <StatTile
               label="Entregas a tiempo"
               value={percent(onTime)}
-              hint={judged > 0 ? `${stats.milestones.onTime} de ${judged}` : 'Sin entregas aún'}
+              hint={
+                judged > 0
+                  ? `${stats.milestones.onTime} de ${judged}`
+                  : 'Sin entregas aún'
+              }
               meter={onTime}
               icon={TimerIcon}
             />
@@ -422,7 +430,10 @@ function ManagerHome() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Hola" description="Lo que tienes pendiente hoy y cómo va Pocket." />
+      <PageHeader
+        title="Hola"
+        description="Lo que tienes pendiente hoy y cómo va Pocket."
+      />
       {error ? <ErrorAlert error={error} /> : null}
       {!disputes.data || !data ? (
         error ? null : (
@@ -478,9 +489,7 @@ function ManagerHome() {
             />
             <StatTile
               label="Cuentas nuevas"
-              value={
-                data.users.startups.newInPeriod + data.users.specialists.newInPeriod
-              }
+              value={data.users.startups.newInPeriod + data.users.specialists.newInPeriod}
               hint="Últimos 30 días"
               href="/manager/metrics"
               icon={UserPlusIcon}
@@ -504,7 +513,9 @@ function shareOfMoney(part: string, other: string): number | null {
 
 function contractsLine(contracts: { active: number; completed: number }): string {
   const inProgress =
-    contracts.active === 1 ? '1 contrato en curso' : `${contracts.active} contratos en curso`;
+    contracts.active === 1
+      ? '1 contrato en curso'
+      : `${contracts.active} contratos en curso`;
   return `${inProgress} · ${contracts.completed} ${
     contracts.completed === 1 ? 'completado' : 'completados'
   }`;
@@ -556,7 +567,7 @@ function MoneyCard({
       {moved !== undefined && moved !== null ? (
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/15" aria-hidden>
           <div
-            className="h-full rounded-full bg-yellow"
+            className="h-full rounded-full bg-mandarina"
             style={{ width: `${Math.round(moved * 100)}%` }}
           />
         </div>
@@ -609,7 +620,7 @@ function UpcomingCard({ upcoming }: { upcoming: DashboardUpcoming[] }) {
                   <span
                     className={cn(
                       'w-16 shrink-0 rounded-lg px-1 py-1.5 text-center text-xs font-medium',
-                      late ? 'bg-yellow text-navy' : 'bg-celeste-light/60 text-navy',
+                      late ? 'bg-warning text-navy' : 'bg-celeste-light/60 text-navy',
                     )}
                   >
                     {late ? 'Atrasado' : weekLabel(item.dueDate)}
@@ -645,7 +656,10 @@ function RankedBars({
   return (
     <ul className="space-y-2 py-1">
       {rows.map((row) => (
-        <li key={row.label} className="grid grid-cols-[7rem_1fr_auto] items-center gap-3 text-sm">
+        <li
+          key={row.label}
+          className="grid grid-cols-[7rem_1fr_auto] items-center gap-3 text-sm"
+        >
           <span className="truncate text-navy">{row.label}</span>
           <span className="h-3 overflow-hidden rounded-r bg-transparent">
             <span
@@ -705,10 +719,12 @@ function TodoList({ items }: { items: TodoItem[] }) {
           <Link
             key={`${item.href}-${item.step}`}
             href={item.href}
-            className="flex flex-col gap-2 rounded-2xl border border-yellow bg-yellow/10 p-4 transition hover:bg-yellow/20 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-2 rounded-2xl border border-warning bg-warning/10 p-4 transition hover:bg-warning/20 sm:flex-row sm:items-center sm:justify-between"
           >
-            <span className="min-w-0 font-medium break-words text-navy">{item.title}</span>
-            <span className="flex w-fit shrink-0 items-center gap-1 rounded-full bg-yellow px-3 py-1 text-xs font-semibold text-navy">
+            <span className="min-w-0 font-medium break-words text-navy">
+              {item.title}
+            </span>
+            <span className="flex w-fit shrink-0 items-center gap-1 rounded-full bg-warning px-3 py-1 text-xs font-semibold text-navy">
               {item.step}
               <ChevronRightIcon className="size-3.5" aria-hidden />
             </span>

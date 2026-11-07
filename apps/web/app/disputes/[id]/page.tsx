@@ -78,7 +78,9 @@ function DisputeView({ user }: { user: User }) {
               </Link>
             </>
           }
-          actions={<StatusBadge feminine status={data.status} className="px-3 py-1 text-sm" />}
+          actions={
+            <StatusBadge feminine status={data.status} className="px-3 py-1 text-sm" />
+          }
         />
 
         <Card>
@@ -296,7 +298,7 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
   if (dispute.outcome) {
     const label = OUTCOMES.find((option) => option.value === dispute.outcome)?.label;
     return (
-      <Card className="border-yellow">
+      <Card className="border-warning">
         <CardHeader>
           <CardTitle>Se está ejecutando una decisión</CardTitle>
           <CardDescription>

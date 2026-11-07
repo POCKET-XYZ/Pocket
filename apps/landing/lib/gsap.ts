@@ -18,7 +18,7 @@ export const media = {
 };
 
 /** A brand color from globals.css, for tweens that need its value. */
-export const brand = (name: 'navy' | 'yellow' | 'off-white') =>
+export const brand = (name: 'navy' | 'mandarina' | 'off-white') =>
   getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();
 
 export { gsap, ScrollTrigger, useGSAP };

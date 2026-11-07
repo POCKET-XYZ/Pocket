@@ -81,7 +81,7 @@ export function ReceiveUsdcCard({
           </div>
         </div>
 
-        <div className="flex gap-2 rounded-lg border border-yellow bg-yellow/15 p-3 text-sm">
+        <div className="flex gap-2 rounded-lg border border-warning bg-warning/15 p-3 text-sm">
           <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
           <p>
             Envía a esta dirección solo <strong>USDC en la red Stellar</strong>. Si envías

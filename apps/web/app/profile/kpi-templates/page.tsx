@@ -142,7 +142,7 @@ function TemplateView({
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className="break-words font-heading text-lg font-semibold text-navy">
+          <h2 className="break-words font-heading text-lg font-bold text-navy">
             {template.name}
           </h2>
           <p className="text-sm text-muted-foreground">

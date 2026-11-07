@@ -50,7 +50,7 @@ function Contracts({ user }: { user: User }) {
                 className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 transition hover:border-celeste md:flex-row md:items-center md:justify-between"
               >
                 <div className="min-w-0">
-                  <p className="font-heading text-lg font-semibold text-navy">
+                  <p className="font-heading text-lg font-bold text-navy">
                     {contract.job.title}
                   </p>
                   <p className="text-sm text-muted-foreground">
@@ -60,7 +60,7 @@ function Contracts({ user }: { user: User }) {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   {step ? (
-                    <span className="rounded-full bg-yellow px-3 py-1 text-xs font-semibold text-navy">
+                    <span className="rounded-full bg-mandarina px-3 py-1 text-xs font-semibold text-navy">
                       {step}
                     </span>
                   ) : null}

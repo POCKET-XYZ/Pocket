@@ -126,11 +126,14 @@ function Verification({ user }: { user: User }) {
   const [submittedHere, setSubmittedHere] = useState(false);
   const profile = useMyProfile();
   const justActivated =
-    (returned || submittedHere) && user.verificationStatus === 'approved' && !profile.isLoading;
+    (returned || submittedHere) &&
+    user.verificationStatus === 'approved' &&
+    !profile.isLoading;
   const hasProfile = Boolean(profile.data);
   useEffect(() => {
     if (!justActivated) return;
-    if (returned) toast.success('Tu identidad está verificada. Tu cuenta ya está activa.');
+    if (returned)
+      toast.success('Tu identidad está verificada. Tu cuenta ya está activa.');
     router.replace(hasProfile ? '/' : '/profile');
   }, [justActivated, returned, hasProfile, router]);
 

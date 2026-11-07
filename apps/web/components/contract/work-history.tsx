@@ -27,7 +27,7 @@ const LOOKS = {
   accepted: { icon: CheckIcon, tone: 'bg-celeste-light/70 text-navy' },
   protected: { icon: LockIcon, tone: 'bg-celeste-light/70 text-navy' },
   delivery: { icon: UploadIcon, tone: 'bg-celeste-light/70 text-navy' },
-  changes: { icon: MessageSquareIcon, tone: 'bg-yellow/40 text-navy' },
+  changes: { icon: MessageSquareIcon, tone: 'bg-warning/40 text-navy' },
   approved: { icon: ThumbsUpIcon, tone: 'bg-emerald-100 text-emerald-800' },
   money: { icon: BanknoteIcon, tone: 'bg-emerald-100 text-emerald-800' },
   dispute: { icon: ScaleIcon, tone: 'bg-red-100 text-red-800' },
@@ -157,7 +157,10 @@ function EventRow({ event, last }: { event: HistoryEvent; last: boolean }) {
   return (
     <li className="relative flex gap-3 pb-4 last:pb-0">
       {last ? null : (
-        <span className="absolute top-8 bottom-0 left-[0.9375rem] w-px bg-border" aria-hidden />
+        <span
+          className="absolute top-8 bottom-0 left-[0.9375rem] w-px bg-border"
+          aria-hidden
+        />
       )}
       <span
         className={cn(

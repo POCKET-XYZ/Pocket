@@ -5,7 +5,7 @@ import { Magnetic } from '@/components/pointer-motion';
 import { gsap, media, useGSAP } from '@/lib/gsap';
 import { links } from '@/lib/links';
 
-const headline = 'Tu equipo de growth, sin miedo a contratar.';
+const headline = 'Crece más rápido. Paga seguro.';
 
 export function Hero() {
   const root = useRef<HTMLElement>(null);
@@ -52,6 +52,7 @@ export function Hero() {
     <section ref={root} id="inicio" className="flex min-h-svh items-center pt-20">
       <div className="wrap grid items-center gap-10 py-16 md:grid-cols-[2fr_1fr]">
         <div className="flex flex-col gap-8">
+          <p className="eyebrow intro-fade text-celeste">Talento para startups latinas</p>
           {/* Each word rises out of its own mask; readers get the sentence whole. */}
           <h1 className="headline-xl" aria-label={headline}>
             {headline.split(' ').map((word, i) => (
@@ -71,8 +72,8 @@ export function Hero() {
             className="intro-fade max-w-xl text-lg text-muted md:text-xl"
             style={{ '--delay': '450ms' } as React.CSSProperties}
           >
-            Encuentra expertos en marketing, ventas y growth. Solo pagas cuando apruebas
-            el trabajo.
+            Encuentra expertos en marketing, ventas e influencers. Tu pago queda protegido
+            hasta que apruebas el trabajo, y el experto cobra seguro.
           </p>
           <div
             className="intro-fade flex flex-wrap items-center gap-4"
@@ -81,7 +82,7 @@ export function Hero() {
             <Magnetic>
               <a
                 href={links.startup}
-                className="press block rounded-full bg-yellow px-10 py-5 text-xl font-semibold text-navy shadow-[0_10px_30px_-10px_rgb(255_210_63_/_0.6)]"
+                className="press block rounded-full bg-mandarina px-10 py-5 text-xl font-semibold text-navy shadow-[0_10px_30px_-10px_rgb(255_159_69_/_0.5)]"
               >
                 Soy startup
               </a>
@@ -96,16 +97,17 @@ export function Hero() {
             </Magnetic>
           </div>
         </div>
-        <div data-parallax className="mx-auto w-2/3 max-w-[480px] md:w-full">
+        <div data-parallax className="mx-auto w-1/3 max-w-[220px] md:w-3/5">
           <div data-float>
+            {/* The P from the logo, in 3D: celeste on navy, as the brand kit asks. */}
             <img
               className="intro-pop w-full"
-              src="/renders/hero.webp"
-              srcSet="/renders/sm/hero.webp 320w, /renders/md/hero.webp 480w, /renders/hero.webp 640w"
-              sizes="(min-width: 768px) 480px, 66vw"
-              alt="Un bolsillo celeste con una moneda dorada adentro"
+              src="/brand/p-3d-celeste-640.png"
+              srcSet="/brand/p-3d-celeste-320.png 320w, /brand/p-3d-celeste-480.png 480w, /brand/p-3d-celeste-640.png 640w"
+              sizes="(min-width: 768px) 220px, 33vw"
+              alt="La P de Pocket con una moneda adentro"
               width={640}
-              height={640}
+              height={809}
             />
           </div>
         </div>

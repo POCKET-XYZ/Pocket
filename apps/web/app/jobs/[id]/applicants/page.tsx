@@ -56,7 +56,7 @@ function Applicants() {
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
                       href={`/specialists/${applicant.specialistId}`}
-                      className="font-heading text-lg font-semibold text-navy hover:underline"
+                      className="font-heading text-lg font-bold text-navy hover:underline"
                     >
                       {applicant.specialist?.displayName ?? 'Experto'}
                     </Link>

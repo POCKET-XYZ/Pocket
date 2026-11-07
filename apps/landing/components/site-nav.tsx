@@ -11,8 +11,14 @@ export function SiteNav() {
   return (
     <header className="fixed inset-x-0 top-0 z-40 bg-navy/85 backdrop-blur-md">
       <nav className="wrap flex h-20 items-center justify-between gap-6">
-        <a href="#inicio" className="font-heading text-3xl font-bold text-off-white">
-          Pocket
+        <a href="#inicio" aria-label="Pocket, inicio" className="shrink-0">
+          <img
+            src="/brand/logo-white.svg"
+            alt="Pocket"
+            width={132}
+            height={32}
+            className="h-8 w-auto"
+          />
         </a>
         <div className="flex items-center gap-10">
           <ul className="hidden items-center gap-8 text-base text-muted lg:flex">
@@ -26,7 +32,7 @@ export function SiteNav() {
           </ul>
           <a
             href={links.login}
-            className="press rounded-full bg-yellow px-7 py-3 text-base font-medium text-navy"
+            className="press rounded-full bg-mandarina px-7 py-3 text-base font-medium text-navy"
           >
             Entrar
           </a>

@@ -66,11 +66,15 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 bg-navy text-off-white shadow-sm print:hidden">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-6 px-4 md:px-6">
-        <Link
-          href="/"
-          className="font-heading text-2xl font-bold tracking-tight text-off-white"
-        >
-          Pocket<span className="text-yellow">.</span>
+        <Link href="/" aria-label="Pocket, inicio" className="shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/logo-white.svg"
+            alt="Pocket"
+            width={116}
+            height={28}
+            className="h-7 w-auto"
+          />
         </Link>
 
         <nav className="hidden flex-1 items-center gap-1 lg:flex">
@@ -150,7 +154,7 @@ export function SiteHeader() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : status === 'signed-out' ? (
-            <Button asChild className="bg-yellow text-navy hover:bg-yellow/85">
+            <Button asChild className="bg-mandarina text-navy hover:bg-mandarina/85">
               <Link href="/login">Entrar</Link>
             </Button>
           ) : null}

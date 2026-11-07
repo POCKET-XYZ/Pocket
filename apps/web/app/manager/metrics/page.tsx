@@ -73,8 +73,8 @@ function Metrics() {
         >
           <Dashboard data={metrics.data} inPeriod={inPeriod} />
           <p className="text-xs text-muted-foreground">
-            Actualizado el {dateTime(metrics.data.generatedAt)}. Las semanas empiezan el lunes
-            (UTC).
+            Actualizado el {dateTime(metrics.data.generatedAt)}. Las semanas empiezan el
+            lunes (UTC).
           </p>
         </div>
       ) : null}
@@ -197,7 +197,9 @@ function Dashboard({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string 
         />
         <StatTile
           label="Contrato promedio"
-          value={money.averageContract === null ? '-' : <Usdc amount={money.averageContract} />}
+          value={
+            money.averageContract === null ? '-' : <Usdc amount={money.averageContract} />
+          }
           unit={money.averageContract === null ? undefined : 'USDC'}
           hint={`De los contratos que recibieron su depósito ${inPeriod}`}
         />
@@ -424,7 +426,7 @@ function WeeklyLine({
     <figure className="min-w-0 rounded-2xl border border-border bg-card p-4">
       <figcaption>
         <h3 className="font-sans text-sm font-medium text-muted-foreground">{title}</h3>
-        <p className="mt-1 font-heading text-2xl leading-tight font-semibold text-navy wrap-anywhere">
+        <p className="mt-1 font-heading text-2xl leading-tight font-bold text-navy wrap-anywhere">
           {headline}
           {unit ? (
             <span className="ml-1 font-sans text-sm font-normal text-muted-foreground">
@@ -546,21 +548,20 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-/** One headline number: label, value, and what it counts. */
+/** A count with thousands separators. */
 function count(value: number): string {
   return value.toLocaleString('en-US');
 }
 
-/**
- * A USDC amount exactly as the API sent it, with thousands separators. Never
- * through a float, so no decimal is lost or invented.
- */
 /** An amount rounded to cents, to read at a glance. */
 function shortUsdc(amount: string): string {
   const value = Number(amount);
   return value > 0 && value < 0.01
     ? '<0.01'
-    : value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    : value.toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      });
 }
 
 /** An amount rounded to cents; the exact one on hover. */
@@ -568,6 +569,10 @@ function Usdc({ amount }: { amount: string }) {
   return <span title={`${exactUsdc(amount)} USDC`}>{shortUsdc(amount)}</span>;
 }
 
+/**
+ * A USDC amount exactly as the API sent it, with thousands separators. Never
+ * through a float, so no decimal is lost or invented.
+ */
 function exactUsdc(amount: string): string {
   const [whole, fraction] = amount.split('.');
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');

@@ -51,7 +51,7 @@ function Disputes() {
               className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-5 transition hover:border-celeste md:flex-row md:items-center md:justify-between"
             >
               <div className="min-w-0">
-                <p className="font-heading text-lg font-semibold text-navy">
+                <p className="font-heading text-lg font-bold text-navy">
                   {dispute.milestone.title}
                 </p>
                 <p className="text-sm text-muted-foreground">

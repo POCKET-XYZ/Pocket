@@ -31,7 +31,11 @@ export function startupFigures(contracts: ContractSummary[], jobs: JobListing[])
     (job) => job.status === 'open' && (job.submittedApplications ?? 0) > 0,
   );
   return {
-    toConfirm: withLink(milestonesIn(contracts, ['delivered']), contractLink, '/contracts'),
+    toConfirm: withLink(
+      milestonesIn(contracts, ['delivered']),
+      contractLink,
+      '/contracts',
+    ),
     applications: {
       count: reviewable.reduce((sum, job) => sum + (job.submittedApplications ?? 0), 0),
       href:

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Fredoka, Inter } from 'next/font/google';
+import { Figtree, Inter } from 'next/font/google';
 import { AuthProvider } from '@/components/auth-provider';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 import { PollarSessionProvider } from '@/components/pollar-session';
@@ -10,10 +10,10 @@ import { WalletProvider } from '@/components/tw-blocks/providers/WalletProvider'
 import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
 
-const fredoka = Fredoka({
-  variable: '--font-fredoka',
+// Brand type: Figtree for titles, Inter for the rest.
+const figtree = Figtree({
+  variable: '--font-figtree',
   subsets: ['latin'],
-  weight: ['500', '600', '700'],
 });
 
 const inter = Inter({
@@ -31,7 +31,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html
       lang="es"
-      className={`${fredoka.variable} ${inter.variable} h-full antialiased`}
+      className={`${figtree.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <ReactQueryClientProvider>

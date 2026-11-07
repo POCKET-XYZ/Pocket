@@ -95,7 +95,7 @@ function Profile({ user }: { user: User }) {
         <Card className="mt-6">
           <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-heading text-lg font-semibold text-navy">
+              <h2 className="font-heading text-lg font-bold text-navy">
                 Plantillas de KPI
               </h2>
               <p className="text-sm text-muted-foreground">

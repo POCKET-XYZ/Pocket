@@ -29,15 +29,19 @@ export function WeeklyBars<Week extends { weekStart: string }>({
   const shown = weeks[selected] ?? weeks[latest];
 
   return (
-    <div className={cn('min-w-0 rounded-2xl border border-border bg-card p-4', className)}>
+    <div
+      className={cn('min-w-0 rounded-2xl border border-border bg-card p-4', className)}
+    >
       <h3 className="font-sans text-sm font-medium text-muted-foreground">{title}</h3>
       {shown ? (
         <p className="mt-1 text-sm" aria-live="polite">
-          <span className="font-heading text-lg font-semibold text-navy">
+          <span className="font-heading text-lg font-bold text-navy">
             {format(values[selected] ?? 0)}
           </span>{' '}
           <span className="text-muted-foreground">
-            {selected === latest ? 'esta semana' : `semana del ${weekLabel(shown.weekStart)}`}
+            {selected === latest
+              ? 'esta semana'
+              : `semana del ${weekLabel(shown.weekStart)}`}
           </span>
         </p>
       ) : null}

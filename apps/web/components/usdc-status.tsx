@@ -96,7 +96,7 @@ export function UsdcStatus({
 
   if (throughPollar && status.data.usdc === 'no_trustline') {
     return (
-      <Alert className="border-yellow bg-yellow/15">
+      <Alert className="border-warning bg-warning/15">
         <AlertTitle>Estamos preparando tu wallet para recibir USDC</AlertTitle>
         <AlertDescription>
           {enable.isError ? (
@@ -201,7 +201,7 @@ export function UsdcStatus({
     // completes its details, so there is nothing for the user to do but wait.
     if (throughPollar) {
       return (
-        <Alert className="border-yellow bg-yellow/15">
+        <Alert className="border-warning bg-warning/15">
           <AlertTitle>Tu wallet se está activando</AlertTitle>
           <AlertDescription>
             Pocket activa tu wallet cuando completas los datos de tu cuenta. Toma unos
@@ -239,7 +239,7 @@ export function UsdcStatus({
   }
 
   return (
-    <Alert className="border-yellow bg-yellow/15">
+    <Alert className="border-warning bg-warning/15">
       <AlertTitle>Habilita USDC en tu wallet</AlertTitle>
       <AlertDescription>
         <p>

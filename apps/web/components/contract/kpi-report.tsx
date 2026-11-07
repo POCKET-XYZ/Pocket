@@ -92,7 +92,7 @@ export function KpiOutcomeBadge({
   if (outcome === 'tracked') return null;
   const styles: Record<Exclude<KpiOutcome, 'tracked'>, string> = {
     met: 'bg-emerald-100 text-emerald-800',
-    not_met: 'bg-yellow/40 text-navy',
+    not_met: 'bg-warning/40 text-navy',
     not_measured: 'bg-muted text-muted-foreground',
   };
   const labels: Record<Exclude<KpiOutcome, 'tracked'>, string> = {
