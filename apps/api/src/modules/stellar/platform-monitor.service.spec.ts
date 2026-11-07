@@ -52,8 +52,9 @@ describe('PlatformMonitorService', () => {
   let prisma: { chainOperation: { findUnique: jest.Mock } };
   let alerts: jest.SpyInstance;
 
-  function monitor(horizon: object) {
-    const config = { getOrThrow: () => 'https://horizon', get: () => 20 };
+  function monitor(horizon: object, settings: Record<string, unknown> = {}) {
+    const values: Record<string, unknown> = { 'stellar.platformMinXlm': 20, ...settings };
+    const config = { getOrThrow: () => 'https://horizon', get: (key: string) => values[key] };
     const service = new PlatformMonitorService(
       config as unknown as ConfigService,
       prisma as unknown as PrismaService,
@@ -125,5 +126,33 @@ describe('PlatformMonitorService', () => {
       expect.objectContaining({ account: PLATFORM, issuer: USDC_ISSUER }),
       'alert',
     );
+  });
+
+  describe('the Pollar funding wallet', () => {
+    const FUNDING = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
+    const SETTINGS = { 'pollar.fundingAddress': FUNDING, 'pollar.fundingMinXlm': 10 };
+
+    it('is not checked when its address is not set', async () => {
+      const horizon = fakeHorizon([], '1');
+      await expect(monitor(horizon).checkFundingWallet()).resolves.toBeNull();
+      expect(horizon.loadAccount).not.toHaveBeenCalled();
+    });
+
+    it('alerts once when it runs low, with how many new accounts it still covers', async () => {
+      const service = monitor(fakeHorizon([], '7.4'), SETTINGS);
+      await expect(service.checkFundingWallet()).resolves.toBe(7.4);
+      await service.checkFundingWallet();
+      expect(alerts).toHaveBeenCalledTimes(1);
+      expect(alerts).toHaveBeenCalledWith(
+        'funding_wallet_low',
+        { account: FUNDING, xlm: 7.4, threshold: 10, newAccountsLeft: 3 },
+        'alert',
+      );
+    });
+
+    it('stays quiet while it has enough', async () => {
+      await monitor(fakeHorizon([], '40'), SETTINGS).checkFundingWallet();
+      expect(alerts).not.toHaveBeenCalled();
+    });
   });
 });

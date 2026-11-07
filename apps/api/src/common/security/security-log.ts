@@ -10,6 +10,7 @@ export type SecurityEventName =
   | 'platform_refused'
   | 'unrecorded_platform_operation'
   | 'platform_balance_low'
+  | 'funding_wallet_low'
   | 'pollar_wallet_needs_xlm'
   | 'platform_usdc_trustline_missing'
   | 'migrated_account_claimed'

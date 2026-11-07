@@ -39,7 +39,18 @@ export interface AppConfig {
     escrowWasmHash: string;
   };
   /** Wallets and logins for users without a Stellar wallet of their own. */
-  pollar: { serverUrl: string; secretKey: string };
+  pollar: {
+    serverUrl: string;
+    secretKey: string;
+    /**
+     * The app's funding wallet, which pays every new Pollar wallet's first XLM.
+     * Pollar does not warn when it runs low, so the platform monitor does.
+     * Optional: without it that check is off.
+     */
+    fundingAddress: string;
+    /** Below this much XLM the funding wallet raises an alert. */
+    fundingMinXlm: number;
+  };
   /** Transactional emails through Resend. Off when the API key is empty. */
   email: {
     resendApiKey: string;
@@ -128,6 +139,10 @@ export function validateEnv(env: Record<string, unknown>): Record<string, unknow
   const jwtSecret = String(env.JWT_SECRET);
   if (jwtSecret.length < 32 || jwtSecret === 'change-me') {
     throw new Error('JWT_SECRET must be a random value of at least 32 characters');
+  }
+  const funding = env.POLLAR_FUNDING_ADDRESS;
+  if (typeof funding === 'string' && funding && !/^G[A-Z2-7]{55}$/.test(funding)) {
+    throw new Error('POLLAR_FUNDING_ADDRESS must be a Stellar account (G...)');
   }
   const network = env.STELLAR_NETWORK ?? 'testnet';
   if (network !== 'testnet' && network !== 'mainnet') {
@@ -236,6 +251,8 @@ export default (): AppConfig => {
       ),
       // Optional: without it Pocket only accepts wallet sign-ins.
       secretKey: process.env.POLLAR_SECRET_KEY ?? '',
+      fundingAddress: process.env.POLLAR_FUNDING_ADDRESS ?? '',
+      fundingMinXlm: Number(process.env.POLLAR_FUNDING_MIN_XLM ?? 10),
     },
     email: {
       // Optional: without it no email is sent (local runs, tests).

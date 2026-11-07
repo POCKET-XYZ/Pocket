@@ -1,6 +1,6 @@
 'use client';
 
-import { DownloadIcon, Trash2Icon } from 'lucide-react';
+import { DownloadIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -9,6 +9,7 @@ import { useAuth } from '@/components/auth-provider';
 import { PRIVACY_EMAIL } from '@/components/legal-page';
 import { PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
+import { useUsdcStatus } from '@/components/usdc-status';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -28,6 +29,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api';
+import { usdc } from '@/lib/format';
 
 export default function AccountPage() {
   return (
@@ -118,6 +120,9 @@ function DeleteCard() {
   const router = useRouter();
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
+  const wallet = useUsdcStatus(user?.role !== 'manager');
+  const leftInWallet =
+    Number(wallet.data?.usdcSpendable ?? 0) > 0 ? wallet.data?.usdcSpendable : null;
 
   if (user?.role === 'manager') return null;
 
@@ -169,6 +174,7 @@ function DeleteCard() {
             Una wallet de Pollar se queda con Pollar.
           </li>
         </ul>
+        {leftInWallet ? <UsdcLeft amount={leftInWallet} /> : null}
         <Dialog>
           <DialogTrigger asChild>
             <Button variant="destructive">
@@ -183,6 +189,7 @@ function DeleteCard() {
                 Escribe ELIMINAR para confirmar. No se puede deshacer.
               </DialogDescription>
             </DialogHeader>
+            {leftInWallet ? <UsdcLeft amount={leftInWallet} /> : null}
             <Input
               value={confirm}
               onChange={(event) => setConfirm(event.target.value)}
@@ -202,5 +209,25 @@ function DeleteCard() {
         </Dialog>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * USDC still in the wallet: once the account is gone, the wallet is no longer
+ * reachable from Pocket, so the money should go somewhere else first.
+ */
+function UsdcLeft({ amount }: { amount: string }) {
+  return (
+    <div className="flex gap-3 rounded-xl border border-warning bg-warning/15 p-3 text-sm text-navy">
+      <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <p>
+        Tienes <strong>{usdc(amount)}</strong> en tu wallet. Después de eliminar la cuenta
+        ya no podrás moverlos desde Pocket: envíalos antes a otra wallet desde{' '}
+        <Link href="/wallet" className="font-medium underline">
+          Wallet y USDC
+        </Link>
+        .
+      </p>
+    </div>
   );
 }
