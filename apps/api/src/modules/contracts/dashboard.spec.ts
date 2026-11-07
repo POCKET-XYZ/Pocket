@@ -5,7 +5,7 @@ import {
   startupDashboard,
   type DashboardSource,
 } from './dashboard';
-import { trackRecordOf, type TrackRecordSource } from './track-record';
+import { trackRecordOf } from './track-record';
 
 const D = (value: number | string) => new Prisma.Decimal(value);
 // A Wednesday: its week starts on Monday, Nov 23.
@@ -369,7 +369,7 @@ describe('trackRecordOf', () => {
         }),
       ],
       ...overrides,
-    }) as unknown as TrackRecordSource;
+    });
 
   it('shows the sector and never an amount or a company name', () => {
     const record = trackRecordOf([finished()], NOW);
