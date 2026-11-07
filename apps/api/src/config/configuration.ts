@@ -17,6 +17,11 @@ export interface AppConfig {
     platformSecret: string;
     /** Below this much XLM for fees the platform account raises an alert. */
     platformMinXlm: number;
+    /**
+     * Pocket's platform accounts before a change of key. The escrows created
+     * then still name them, so they count as Pocket's in the traction numbers.
+     */
+    formerPlatformAddresses: string[];
     /** Soroban RPC node escrows and transactions are read from. */
     sorobanRpcUrl: string;
   };
@@ -84,7 +89,11 @@ export const USDC_ISSUERS: Record<StellarNetwork, string> = {
   mainnet: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
 };
 /** The variables that turn identity checks on; all or none. */
-const KYC_VARIABLES = ['DIDIT_API_KEY', 'DIDIT_WORKFLOW_ID', 'DIDIT_WEBHOOK_SECRET'] as const;
+const KYC_VARIABLES = [
+  'DIDIT_API_KEY',
+  'DIDIT_WORKFLOW_ID',
+  'DIDIT_WEBHOOK_SECRET',
+] as const;
 
 /** Didit's verification API. */
 const DEFAULT_DIDIT_API = 'https://verification.didit.me';
@@ -101,6 +110,14 @@ const DEFAULT_HORIZON: Record<StellarNetwork, string> = {
 };
 
 /** Fail fast at boot when a required variable is missing. */
+/** A comma-separated list of Stellar accounts, without blanks. */
+function addressList(value: string | undefined): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((address) => address.trim())
+    .filter(Boolean);
+}
+
 export function validateEnv(env: Record<string, unknown>): Record<string, unknown> {
   const missing = REQUIRED.filter((key) => !env[key]);
   if (missing.length > 0) {
@@ -135,7 +152,16 @@ export function validateEnv(env: Record<string, unknown>): Record<string, unknow
     throw new Error(
       `USDC_ISSUER is the ${otherNetwork} issuer, but STELLAR_NETWORK is ${network}`,
     );
-  }  if (!/^[0-9a-f]{64}$/.test(String(env.TRUSTLESS_WORK_ESCROW_WASM_HASH))) {
+  }
+  const notAnAccount = addressList(
+    env.STELLAR_FORMER_PLATFORM_ADDRESSES as string,
+  ).filter((address) => !/^G[A-Z2-7]{55}$/.test(address));
+  if (notAnAccount.length > 0) {
+    throw new Error(
+      `STELLAR_FORMER_PLATFORM_ADDRESSES has something that is not a Stellar account: ${notAnAccount.join(', ')}`,
+    );
+  }
+  if (!/^[0-9a-f]{64}$/.test(String(env.TRUSTLESS_WORK_ESCROW_WASM_HASH))) {
     throw new Error('TRUSTLESS_WORK_ESCROW_WASM_HASH must be 64 hex characters');
   }
   // Emails are optional, but once turned on they need a sender and somewhere
@@ -193,6 +219,7 @@ export default (): AppConfig => {
       usdcIssuer: process.env.USDC_ISSUER as string,
       platformSecret: process.env.STELLAR_PLATFORM_SECRET as string,
       platformMinXlm: Number(process.env.PLATFORM_MIN_XLM ?? 20),
+      formerPlatformAddresses: addressList(process.env.STELLAR_FORMER_PLATFORM_ADDRESSES),
       sorobanRpcUrl: process.env.SOROBAN_RPC_URL || DEFAULT_SOROBAN_RPC,
     },
     trustlessWork: {

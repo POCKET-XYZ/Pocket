@@ -1008,6 +1008,53 @@ export interface ReportPayment {
   breakdown: PayoutBreakdown | null;
 }
 
+/**
+ * GET /stats: Pocket's traction, read from Stellar, for anyone. Every number
+ * comes from the escrows on chain and the platform account's history, so it
+ * can be checked on a block explorer. Refreshed every few minutes.
+ */
+export interface PublicStats {
+  network: 'testnet' | 'mainnet';
+  /** Pocket's account: every escrow names it, and Pocket's fee is paid to it. */
+  platformAddress: string;
+  /** Escrows Pocket created, found on chain. */
+  escrows: number;
+  /** USDC, as decimal strings: what came into the escrows. */
+  funded: string;
+  /** What left them: milestones paid and disputes resolved, fees included. */
+  released: string;
+  /** What they hold now. */
+  inEscrows: string;
+  /** Pocket's fee, as the platform account received it. */
+  feesCollected: string;
+  /** Wallets that funded an escrow, and wallets hired in one. */
+  wallets: { startups: number; specialists: number };
+  /** Escrows funded by a startup that had funded one before. */
+  repeatHires: number;
+  /** Milestones whose money left the escrow, paid or resolved. */
+  milestonesReleased: number;
+  updatedAt: IsoDate;
+}
+
+/** Money of Pocket's escrows, in USDC, as one source has it. */
+export interface ChainTotals {
+  funded: string;
+  released: string;
+  inEscrows: string;
+  pocketFee: string;
+}
+
+/**
+ * GET /manager/chain-check: the database against Stellar, escrow by escrow.
+ * A difference is either a step still landing or something to look into.
+ */
+export interface ChainCheck {
+  checkedAt: IsoDate;
+  escrows: number;
+  totals: { database: ChainTotals; chain: ChainTotals };
+  differences: { contractId: string; escrowId: string; jobTitle: string; what: string }[];
+}
+
 /** A payment of a period report, with the contract it belongs to. */
 export interface PeriodPayment extends ReportPayment {
   contractId: string;

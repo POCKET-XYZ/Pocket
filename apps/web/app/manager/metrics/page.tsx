@@ -9,6 +9,7 @@ import {
 } from '@pocket/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { ChainCheckSection } from '@/components/manager/chain-check';
 import { ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -76,6 +77,7 @@ function Metrics() {
             Actualizado el {dateTime(metrics.data.generatedAt)}. Las semanas empiezan el
             lunes (UTC).
           </p>
+          <ChainCheckSection />
         </div>
       ) : null}
     </div>
