@@ -123,6 +123,10 @@ export function validateEnv(env: Record<string, unknown>): Record<string, unknow
   if (jwtSecret.length < 32 || jwtSecret === 'change-me') {
     throw new Error('JWT_SECRET must be a random value of at least 32 characters');
   }
+  const funding = env.POLLAR_FUNDING_ADDRESS;
+  if (typeof funding === 'string' && funding && !/^G[A-Z2-7]{55}$/.test(funding)) {
+    throw new Error('POLLAR_FUNDING_ADDRESS must be a Stellar account (G...)');
+  }
   const network = env.STELLAR_NETWORK ?? 'testnet';
   if (network !== 'testnet' && network !== 'mainnet') {
     throw new Error('STELLAR_NETWORK must be "testnet" or "mainnet"');
@@ -146,12 +150,7 @@ export function validateEnv(env: Record<string, unknown>): Record<string, unknow
     throw new Error(
       `USDC_ISSUER is the ${otherNetwork} issuer, but STELLAR_NETWORK is ${network}`,
     );
-  }
-  const funding = env.POLLAR_FUNDING_ADDRESS;
-  if (typeof funding === 'string' && funding && !/^G[A-Z2-7]{55}$/.test(funding)) {
-    throw new Error('POLLAR_FUNDING_ADDRESS must be a Stellar account (G...)');
-  }
-  if (!/^[0-9a-f]{64}$/.test(String(env.TRUSTLESS_WORK_ESCROW_WASM_HASH))) {
+  }  if (!/^[0-9a-f]{64}$/.test(String(env.TRUSTLESS_WORK_ESCROW_WASM_HASH))) {
     throw new Error('TRUSTLESS_WORK_ESCROW_WASM_HASH must be 64 hex characters');
   }
   // Emails are optional, but once turned on they need a sender and somewhere
