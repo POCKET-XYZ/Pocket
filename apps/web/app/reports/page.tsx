@@ -284,7 +284,7 @@ function ReportBody({ data, user }: { data: PeriodReport; user: User }) {
           />
           <Money label="Liberado de los contratos" value={data.money.released} />
           <Money
-            label={startup ? 'Pagado a expertos' : 'Recibiste'}
+            label={startup ? 'Recibieron los expertos' : 'Recibiste'}
             value={data.money.toSpecialist}
           />
           <Money label="Comisión de Pocket" value={data.money.pocketFee} />
