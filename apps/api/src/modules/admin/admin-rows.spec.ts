@@ -163,7 +163,7 @@ describe('contractRow', () => {
 });
 
 describe('attentionOf', () => {
-  it('lists each thing to look at in words, the oldest first', () => {
+  it('lists each thing to look at in words, the most urgent first', () => {
     const items = attentionOf(
       [
         contract({
@@ -188,8 +188,8 @@ describe('attentionOf', () => {
     expect(
       items.map((item) => `${item.contractId} ${item.flag}: ${item.detail}`),
     ).toEqual([
-      'c2 awaiting_funding: El experto aceptó y falta el depósito de la startup',
       'c1 overdue: El hito 1 venció el 20 nov sin entrega',
+      'c2 awaiting_funding: El experto aceptó y falta el depósito de la startup',
       'c1 to_review: El hito 2 está entregado y espera a la startup',
     ]);
   });

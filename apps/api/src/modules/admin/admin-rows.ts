@@ -254,13 +254,39 @@ export function attentionOf(
       items.push({
         ...base,
         flag: 'failed_step',
-        detail: `Falló un paso en la red (${operation.kind}) y no se volvió a hacer`,
+        detail: `Falló ${STEP_TEXT[operation.kind] ?? 'un paso en la red'} y no se volvió a hacer`,
         since: operation.createdAt.toISOString(),
       });
     }
   }
-  return items.sort((a, b) => a.since.localeCompare(b.since));
+  return items.sort(
+    (a, b) =>
+      SEVERITY.indexOf(a.flag) - SEVERITY.indexOf(b.flag) ||
+      a.since.localeCompare(b.since),
+  );
 }
+
+/** The most urgent first: money held by a dispute or a step that broke. */
+const SEVERITY: AdminFlag[] = [
+  'dispute',
+  'failed_step',
+  'overdue',
+  'awaiting_funding',
+  'to_review',
+  'unread_payment',
+];
+
+/** A step sent to the network, in the words the admin reads. */
+const STEP_TEXT: Record<string, string> = {
+  trustline: 'la activación de USDC',
+  deploy: 'la creación del escrow',
+  fund: 'el depósito',
+  approve: 'una aprobación',
+  release: 'un pago',
+  dispute: 'la apertura de una disputa',
+  resolve: 'la resolución de una disputa',
+  payment: 'un envío de USDC',
+};
 
 /** USDC a payment's transaction moved out of the escrow, to whom. */
 export interface PaymentOnChain {
