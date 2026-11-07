@@ -1008,6 +1008,56 @@ export interface ReportPayment {
   breakdown: PayoutBreakdown | null;
 }
 
+/** A payment of a period report, with the contract it belongs to. */
+export interface PeriodPayment extends ReportPayment {
+  contractId: string;
+  jobTitle: string;
+}
+
+/**
+ * GET /reports/period?from=YYYY-MM-DD&to=YYYY-MM-DD: what a startup or a
+ * specialist did in a period, across their contracts. Both days are included,
+ * in UTC; without dates it covers the month so far. GET /reports/period/csv
+ * has the payments.
+ */
+export interface PeriodReport {
+  generatedAt: IsoDate;
+  from: string;
+  to: string;
+  party: { id: string; role: 'startup' | 'specialist'; name: string | null };
+  /** USDC. */
+  money: {
+    /** What the contracts funded in the period deposited. */
+    deposited: string;
+    /** What the milestones paid in the period held: the rest is the split. */
+    released: string;
+    toSpecialist: string;
+    toStartup: string;
+    pocketFee: string;
+    trustlessWorkFee: string;
+    /** False while the split of some payment could not be read from Stellar. */
+    verified: boolean;
+  };
+  /** Targets of the results the startup approved in the period. */
+  kpis: { withTarget: number; met: number };
+  /** Milestones first delivered in the period. */
+  milestones: { delivered: number; onTime: number; late: number };
+  delivery: DeliveryTimes;
+  /** Contracts with something in the period: a deposit, a delivery, an approval or a payment. */
+  contracts: {
+    contractId: string;
+    jobTitle: string;
+    status: ContractStatus;
+    /** The specialist for a startup, the startup for a specialist. */
+    counterpart: string | null;
+    kpis: { withTarget: number; met: number };
+    milestonesDelivered: number;
+    /** USDC that left its escrow in the period. */
+    released: string;
+  }[];
+  payments: PeriodPayment[];
+}
+
 /**
  * GET /contracts/:id/report, for the parties and managers. What the contract
  * achieved: each KPI against its target, each milestone against its date, and

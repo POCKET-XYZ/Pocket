@@ -295,7 +295,7 @@ describe('delivery times and contracts on the startup dashboard', () => {
   const underWay = contract({
     id: 'c2',
     createdAt: new Date('2026-09-01'),
-    job: { id: 'j2', title: 'Ads', category: 'paid_media', kpis: [] },
+    job: { id: 'j2', title: 'Ads', category: 'marketing', kpis: [] },
     milestones: [milestone({ id: 'm3' })],
   });
 

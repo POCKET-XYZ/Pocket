@@ -131,9 +131,14 @@ function StartupHome({ user }: { user: User }) {
         description="Lo que tienes pendiente hoy y cómo van tus contrataciones."
         actions={
           ready && !nothingYet ? (
-            <Button asChild>
-              <Link href="/jobs/new">Publicar trabajo</Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <Link href="/reports">Reporte del periodo</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/jobs/new">Publicar trabajo</Link>
+              </Button>
+            </>
           ) : null
         }
       />
@@ -330,9 +335,14 @@ function SpecialistHome({ user }: { user: User }) {
         description="Lo que tienes pendiente hoy y cómo va tu trabajo."
         actions={
           ready && !nothingYet ? (
-            <Button asChild>
-              <Link href="/jobs">Ver trabajos</Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <Link href="/reports">Reporte del periodo</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/jobs">Ver trabajos</Link>
+              </Button>
+            </>
           ) : null
         }
       />
