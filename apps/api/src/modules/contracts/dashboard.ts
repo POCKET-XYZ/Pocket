@@ -218,7 +218,7 @@ export function startupDashboard(all: DashboardSource[], now: Date): StartupDash
 
   const specialists = new Map<string, StartupDashboard['specialists'][number]>();
   sources.forEach((source, index) => {
-    const kpis = judgedKpis(reports[index] as ContractReport);
+    const kpis = judgedKpis(reports[index]);
     const seen = specialists.get(source.specialist.id);
     specialists.set(source.specialist.id, {
       id: source.specialist.id,
@@ -241,7 +241,7 @@ export function startupDashboard(all: DashboardSource[], now: Date): StartupDash
         b.source.createdAt.getTime() - a.source.createdAt.getTime(),
     );
   const byContract: DashboardContract[] = order.map(({ source, index }) => {
-    const report = reports[index] as ContractReport;
+    const report = reports[index];
     return {
       contractId: source.id,
       jobTitle: source.job.title,
