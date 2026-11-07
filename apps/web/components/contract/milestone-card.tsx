@@ -124,7 +124,7 @@ export function MilestoneCard({
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Hito {milestone.position + 1} · fecha de entrega: {date(milestone.dueDate)}
             </p>
-            <h3 className="mt-1 font-heading text-lg font-semibold text-navy">
+            <h3 className="mt-1 font-heading text-lg font-bold text-navy">
               {milestone.title}
             </h3>
             <p className="mt-1 whitespace-pre-line text-sm text-foreground/80">
@@ -151,7 +151,7 @@ export function MilestoneCard({
 
         {/* What the startup asked for comes first: it is what has to happen next. */}
         {changesAsked && latest ? (
-          <div className="space-y-2 rounded-xl border border-yellow bg-yellow/15 p-3 text-sm">
+          <div className="space-y-2 rounded-xl border border-warning bg-warning/15 p-3 text-sm">
             <p className="font-semibold text-navy">
               La startup pidió cambios
               {latest.feedbackAt ? (
@@ -235,7 +235,7 @@ export function MilestoneCard({
         ) : null}
 
         {approvalStuck && (isStartup || isManager) ? (
-          <p className="rounded-lg bg-yellow/15 px-3 py-2 text-sm text-navy">
+          <p className="rounded-lg bg-warning/15 px-3 py-2 text-sm text-navy">
             La aprobación que enviaste no terminó de confirmarse. Revisa de nuevo: si la
             red ya la tiene, el pago se libera; si no, puedes aprobar otra vez sin pagar
             dos veces.

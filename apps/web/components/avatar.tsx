@@ -30,7 +30,7 @@ export function Avatar({
   }
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-full bg-navy font-heading font-semibold text-yellow"
+      className="flex shrink-0 items-center justify-center rounded-full bg-navy font-heading font-bold text-mandarina"
       style={{ width: size, height: size }}
     >
       {name.slice(0, 1).toUpperCase()}

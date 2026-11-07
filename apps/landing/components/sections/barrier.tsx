@@ -10,7 +10,7 @@ export function Barrier() {
     () => {
       const mm = gsap.matchMedia();
       mm.add(media.pin, () => {
-        // The section holds still while the page turns from off-white to yellow,
+        // The section holds still while the page turns from off-white to mandarina,
         // then the two fears come in from opposite sides and face each other.
         // They start fully hidden, unlike the page's 40% reveals: seeing them
         // before they arrive would spoil the face-off. The pinned title keeps
@@ -28,7 +28,7 @@ export function Barrier() {
           .fromTo(
             root.current,
             { backgroundColor: brand('off-white'), color: brand('navy') },
-            { backgroundColor: brand('yellow'), color: brand('navy'), duration: 1 },
+            { backgroundColor: brand('mandarina'), color: brand('navy'), duration: 1 },
           )
           .from('[data-fear="startup"]', { x: -80, autoAlpha: 0, duration: 1 }, 0.8)
           .from('[data-fear="specialist"]', { x: 80, autoAlpha: 0, duration: 1 }, 0.8)
@@ -43,7 +43,7 @@ export function Barrier() {
   return (
     <section
       ref={root}
-      className="flex min-h-svh items-start bg-yellow pb-16 pt-12 text-navy md:pt-28"
+      className="flex min-h-svh items-start bg-mandarina pb-16 pt-12 text-navy md:pt-28"
     >
       <div className="wrap">
         <h2 className="headline-xl max-w-4xl">Contratar da miedo. De los dos lados.</h2>

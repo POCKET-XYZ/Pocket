@@ -319,7 +319,7 @@ function NewJob() {
 
             <section className="space-y-3 rounded-2xl border border-border p-4">
               <div>
-                <h2 className="font-heading text-lg font-semibold text-navy">
+                <h2 className="font-heading text-lg font-bold text-navy">
                   Plan de pagos
                 </h2>
                 <p className="text-sm text-muted-foreground">
@@ -435,7 +435,7 @@ function NewJob() {
 
             <section className="space-y-3 rounded-2xl border border-border p-4">
               <div>
-                <h2 className="font-heading text-lg font-semibold text-navy">
+                <h2 className="font-heading text-lg font-bold text-navy">
                   Cómo lo vas a medir{' '}
                   <span className="text-sm font-normal text-muted-foreground">
                     (opcional)
@@ -453,7 +453,7 @@ function NewJob() {
 
             <section className="space-y-3 rounded-2xl border border-border p-4">
               <div>
-                <h2 className="font-heading text-lg font-semibold text-navy">
+                <h2 className="font-heading text-lg font-bold text-navy">
                   Plantilla de reporte{' '}
                   <span className="text-sm font-normal text-muted-foreground">
                     (opcional)

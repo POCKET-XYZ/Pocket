@@ -251,7 +251,7 @@ export function SendUsdcCard({ user }: { user: User }) {
             <dl className="space-y-3 text-sm">
               <div>
                 <dt className="text-muted-foreground">Monto</dt>
-                <dd className="font-heading text-2xl font-semibold text-navy">
+                <dd className="font-heading text-2xl font-bold text-navy">
                   {review.draft.amount} USDC
                 </dd>
               </div>

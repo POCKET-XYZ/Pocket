@@ -34,7 +34,7 @@ export default function HomePage() {
 
       <section className="relative overflow-hidden rounded-3xl bg-navy px-6 py-16 text-off-white md:px-14 md:py-20">
         <div className="absolute -right-24 -top-24 size-72 rounded-full bg-celeste/20 blur-3xl" />
-        <div className="absolute -bottom-32 right-24 size-80 rounded-full bg-yellow/10 blur-3xl" />
+        <div className="absolute -bottom-32 right-24 size-80 rounded-full bg-mandarina/15 blur-3xl" />
         <p className="relative text-xs font-semibold uppercase tracking-[0.2em] text-celeste">
           Talento de growth, pagos protegidos
         </p>
@@ -49,7 +49,7 @@ export default function HomePage() {
           <Button
             asChild
             size="lg"
-            className="h-11 bg-yellow px-5 text-navy hover:bg-yellow/85"
+            className="h-11 bg-mandarina px-5 text-navy hover:bg-mandarina/85"
           >
             <Link href="/login">Empezar</Link>
           </Button>
