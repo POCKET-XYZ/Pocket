@@ -5,7 +5,7 @@ import {
   startupDashboard,
   type DashboardSource,
 } from './dashboard';
-import { trackRecordOf } from './track-record';
+import { trackRecordOf, type TrackRecordSource } from './track-record';
 
 const D = (value: number | string) => new Prisma.Decimal(value);
 // A Wednesday: its week starts on Monday, Nov 23.
@@ -356,8 +356,9 @@ describe('specialistDashboard', () => {
 });
 
 describe('trackRecordOf', () => {
-  const finished = (overrides: Record<string, unknown> = {}) =>
-    contract({
+  // A track record reads the startup's sector, which a dashboard does not.
+  const finished = (overrides: Record<string, unknown> = {}): TrackRecordSource => {
+    const source: unknown = contract({
       status: 'completed',
       completedAt: new Date('2026-11-20'),
       milestones: [
@@ -370,6 +371,8 @@ describe('trackRecordOf', () => {
       ],
       ...overrides,
     });
+    return source as TrackRecordSource;
+  };
 
   it('shows the sector and never an amount or a company name', () => {
     const record = trackRecordOf([finished()], NOW);
