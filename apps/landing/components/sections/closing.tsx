@@ -53,6 +53,9 @@ export function Closing() {
             Talento de growth con pago protegido
           </p>
           <nav className="flex flex-wrap gap-x-6 gap-y-2">
+            <a href={links.stats} className="hover:text-off-white">
+              Pocket en números
+            </a>
             <a href={links.terms} className="hover:text-off-white">
               Términos
             </a>

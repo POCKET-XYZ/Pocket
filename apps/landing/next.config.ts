@@ -23,6 +23,7 @@ const APP_PAGES = [
   'profile',
   'specialists',
   'startups',
+  'stats',
   'terms',
   'verification',
   'wallet',

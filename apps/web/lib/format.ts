@@ -88,6 +88,13 @@ export function explorerTx(hash: string): string {
   return `https://stellar.expert/explorer/${network}/tx/${hash}`;
 }
 
+/** Link to an account on the Stellar explorer of the configured network. */
+export function explorerAccount(address: string): string {
+  const network =
+    process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'mainnet' ? 'public' : 'testnet';
+  return `https://stellar.expert/explorer/${network}/account/${address}`;
+}
+
 export function explorerContract(contractId: string): string {
   const network =
     process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'mainnet' ? 'public' : 'testnet';
