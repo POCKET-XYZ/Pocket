@@ -8,6 +8,7 @@ import { RateLimiter } from './common/rate-limit/rate-limiter';
 import { RolesGuard } from './common/guards/roles.guard';
 import { VerifiedGuard } from './common/guards/verified.guard';
 import { HealthController } from './health.controller';
+import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { ContractsModule } from './modules/contracts/contracts.module';
@@ -40,6 +41,7 @@ import configuration, { validateEnv } from './config/configuration';
     ContractsModule,
     ChatModule,
     StatsModule,
+    AdminModule,
   ],
   controllers: [HealthController],
   providers: [

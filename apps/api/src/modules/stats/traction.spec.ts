@@ -190,8 +190,8 @@ describe('chainCheckOf', () => {
     );
     expect(check.differences.map((d) => `${d.contractId}: ${d.what}`)).toEqual([
       'k2: Recibió 7 USDC y el contrato dice 8',
-      'k2: Hito 1: "approved" en el contrato, pagado en la red',
-      'k2: Hito 2: "paid" en el contrato, sin mover en la red',
+      'k2: Hito 1: aprobado en Pocket, pagado en la red',
+      'k2: Hito 2: pagado en Pocket, sin mover en la red',
       'k5: El escrow no nombra a Pocket como plataforma',
       'k6: El escrow no está en la red',
       'k4: Tiene 5 USDC y el contrato no figura como depositado',
