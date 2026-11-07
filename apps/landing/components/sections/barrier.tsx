@@ -2,7 +2,6 @@
 
 import { useRef } from 'react';
 import { brand, gsap, media, useGSAP } from '@/lib/gsap';
-import { settle } from '@/lib/settle';
 
 export function Barrier() {
   const root = useRef<HTMLElement>(null);
@@ -24,7 +23,6 @@ export function Barrier() {
               end: '+=120%',
               pin: true,
               scrub: true,
-              onLeave: settle,
             },
           })
           .fromTo(

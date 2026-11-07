@@ -3,7 +3,7 @@ import { Anton, Figtree, Inter } from 'next/font/google';
 import { SmoothScroll } from '@/components/smooth-scroll';
 import './globals.css';
 
-// Brand type (brand/BRAND-KIT.md): Figtree for titles, Anton for big data,
+// Brand type: Figtree for titles, Anton for big data,
 // Inter for everything else.
 const figtree = Figtree({
   variable: '--font-figtree',

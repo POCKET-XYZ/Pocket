@@ -61,6 +61,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 bg-navy text-off-white shadow-sm print:hidden">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-6 px-4 md:px-6">
         <Link href="/" aria-label="Pocket, inicio" className="shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/brand/logo-white.svg"
             alt="Pocket"

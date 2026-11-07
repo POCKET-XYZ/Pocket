@@ -125,6 +125,7 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-xl text-center">
       {/* The menu is hidden here, so the page carries the logo itself. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/brand/logo-navy.svg"
         alt="Pocket"

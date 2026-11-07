@@ -10,7 +10,7 @@ import { WalletProvider } from '@/components/tw-blocks/providers/WalletProvider'
 import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
 
-// Brand type (brand/BRAND-KIT.md): Figtree for titles, Inter for the rest.
+// Brand type: Figtree for titles, Inter for the rest.
 const figtree = Figtree({
   variable: '--font-figtree',
   subsets: ['latin'],

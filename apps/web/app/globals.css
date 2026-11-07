@@ -54,7 +54,7 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Pocket brand (brand/tokens.css), shared with the landing page. */
+/* Pocket brand (November 2026), the same tokens as apps/landing/app/globals.css. */
 :root {
   --navy: #0f2e52;
   --celeste: #86d4e6;

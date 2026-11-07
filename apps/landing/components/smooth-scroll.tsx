@@ -12,16 +12,6 @@ export function scrollToY(y: number) {
   else window.scrollTo({ top: y });
 }
 
-/** Moves the page by `dy` at once, with no glide, so nothing on screen jumps. */
-export function jumpBy(dy: number) {
-  if (active) {
-    active.resize();
-    active.scrollTo(active.scroll + dy, { immediate: true, force: true });
-  } else {
-    window.scrollTo({ top: window.scrollY + dy, behavior: 'instant' });
-  }
-}
-
 /**
  * The page's one scroll engine. Lenis runs on GSAP's ticker so ScrollTrigger
  * reads the same position Lenis paints; with reduced motion it never starts

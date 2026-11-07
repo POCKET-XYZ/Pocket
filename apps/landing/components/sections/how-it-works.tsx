@@ -4,7 +4,6 @@ import { useRef } from 'react';
 import { Reveal } from '@/components/reveal';
 import { scrollToY } from '@/components/smooth-scroll';
 import { gsap, media, useGSAP } from '@/lib/gsap';
-import { settle } from '@/lib/settle';
 
 const steps = [
   {
@@ -347,7 +346,6 @@ export function HowItWorks() {
                     pin: true,
                     scrub: 0.5,
                     invalidateOnRefresh: true,
-                    onLeave: settle,
                   },
                 }
               : {
@@ -474,10 +472,8 @@ export function HowItWorks() {
 
           goTo.current = (i: number) => {
             const at = tl.labels[`step${i}`] + (i === 0 ? 0 : 0.5);
-            const st = tl.scrollTrigger;
-            // Once settled (lib/settle.ts) the section has no scroll of its own,
-            // so a click plays from that step in place, as on phones.
-            if (st && ctx.conditions!.desktop) {
+            const st = tl.scrollTrigger!;
+            if (ctx.conditions!.desktop) {
               scrollToY(st.start + (st.end - st.start) * (at / tl.duration()));
             } else {
               tl.seek(at).play();

@@ -13,7 +13,7 @@
   --color-muted: var(--muted);
 }
 
-/* Pocket brand (brand/tokens.css), the same tokens as apps/web/app/globals.css. */
+/* Pocket brand (November 2026), the same tokens as apps/web/app/globals.css. */
 :root {
   --navy: #0f2e52;
   --celeste: #86d4e6;
