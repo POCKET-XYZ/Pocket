@@ -108,10 +108,16 @@ export class JobsService {
   async mine(user: AuthUser) {
     const jobs = await this.prisma.job.findMany({
       where: { startupId: user.sub },
-      include: LISTING_INCLUDE,
+      include: {
+        ...LISTING_INCLUDE,
+        applications: { where: { status: 'submitted' }, select: { id: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
-    return jobs.map(toListing);
+    return jobs.map(({ applications, ...job }) => ({
+      ...toListing(job),
+      submittedApplications: applications.length,
+    }));
   }
 
   /** Public detail of a job. */

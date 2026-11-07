@@ -4,6 +4,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { StellarModule } from '../stellar/stellar.module';
 import { ContractsController } from './contracts.controller';
 import { ContractsService } from './contracts.service';
+import { DashboardController } from './dashboard.controller';
+import { DashboardService } from './dashboard.service';
 import { DeliverablesController } from './deliverables.controller';
 import { DeliverablesService } from './deliverables.service';
 import { DisputesController, ManagerDisputesController } from './disputes.controller';
@@ -22,6 +24,7 @@ import { ReportService } from './report.service';
     DeliverablesController,
     DisputesController,
     ManagerDisputesController,
+    DashboardController,
   ],
   providers: [
     ContractsService,
@@ -31,6 +34,7 @@ import { ReportService } from './report.service';
     DisputesService,
     PayoutsService,
     ReportService,
+    DashboardService,
   ],
 })
 export class ContractsModule {}

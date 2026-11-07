@@ -244,7 +244,7 @@ function sum(amounts: Prisma.Decimal[]): Prisma.Decimal {
   return amounts.reduce((total, amount) => total.plus(amount), ZERO);
 }
 
-const PAYMENT_KIND: Record<ReportPayment['kind'], string> = {
+export const PAYMENT_KIND: Record<ReportPayment['kind'], string> = {
   release: 'Pago del hito',
   resolve: 'Resolución de disputa',
 };
@@ -291,7 +291,7 @@ export function reportCsv(
  * One CSV cell: quoted when it holds a comma, a quote or a line break, and
  * never read as a formula, since titles are typed by users.
  */
-function csvCell(value: string): string {
+export function csvCell(value: string): string {
   const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
   return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }

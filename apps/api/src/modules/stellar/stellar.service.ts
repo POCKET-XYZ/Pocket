@@ -47,6 +47,9 @@ const SIGNING_WINDOW_SECONDS = 300;
  * payments. Horizon's maximum page; older ones are left to the explorer.
  */
 const PAYMENT_RECORDS_SCANNED = 200;
+/** Records per page, and pages at most, when reading an account's whole history. */
+const HISTORY_PAGE = 200;
+const MAX_HISTORY_PAGES = 100;
 
 /** Network access shared by every on-chain operation. */
 @Injectable()
@@ -269,9 +272,48 @@ export class StellarService implements OnApplicationBootstrap {
         .order('desc')
         .limit(PAYMENT_RECORDS_SCANNED)
         .call();
-      return usdcPaymentsOf(page.records, address, this.usdc.getCode(), this.usdcIssuer).slice(
-        0,
-        limit,
+      return usdcPaymentsOf(
+        page.records,
+        address,
+        this.usdc.getCode(),
+        this.usdcIssuer,
+      ).slice(0, limit);
+    } catch (error) {
+      if (error instanceof NotFoundError) return [];
+      throw error;
+    }
+  }
+
+  /**
+   * Every USDC payment that reached the account, oldest first, from its whole
+   * history: what an escrow paid it included. Empty when the account is not on
+   * the network.
+   */
+  async usdcReceived(address: string): Promise<UsdcPaymentRecord[]> {
+    const received: UsdcPaymentRecord[] = [];
+    let cursor = '';
+    try {
+      for (let page = 0; page < MAX_HISTORY_PAGES; page++) {
+        const records = await this.horizon
+          .payments()
+          .forAccount(address)
+          .order('asc')
+          .cursor(cursor)
+          .limit(HISTORY_PAGE)
+          .call();
+        received.push(
+          ...usdcPaymentsOf(
+            records.records,
+            address,
+            this.usdc.getCode(),
+            this.usdcIssuer,
+          ).filter((payment) => payment.direction === 'in'),
+        );
+        if (records.records.length < HISTORY_PAGE) return received;
+        cursor = records.records.at(-1)?.paging_token ?? cursor;
+      }
+      throw new Error(
+        `The history of ${address} is longer than ${MAX_HISTORY_PAGES} pages`,
       );
     } catch (error) {
       if (error instanceof NotFoundError) return [];
@@ -286,7 +328,11 @@ export class StellarService implements OnApplicationBootstrap {
    */
   async usdcTransfersFrom(txHash: string, from: string): Promise<UsdcTransfer[]> {
     try {
-      const page = await this.horizon.operations().forTransaction(txHash).limit(200).call();
+      const page = await this.horizon
+        .operations()
+        .forTransaction(txHash)
+        .limit(200)
+        .call();
       return usdcTransfersOf(page.records, from, this.usdc.getCode(), this.usdcIssuer);
     } catch (error) {
       if (error instanceof NotFoundError) return [];

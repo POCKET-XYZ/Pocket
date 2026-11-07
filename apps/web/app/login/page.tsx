@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { errorMessage } from '@/lib/api';
 import { isWalletDismissed } from '@/lib/wallet';
 import { cn } from '@/lib/utils';
-import { homeFor } from '@/lib/home';
+import { LANDING_URL } from '@/lib/home';
 
 const ROLES: {
   value: SignUpRole;
@@ -59,7 +59,7 @@ export default function LoginPage() {
   const [consent, setConsent] = useState<Consent>(NO_CONSENT);
 
   useEffect(() => {
-    if (status === 'signed-in' && user) router.replace(homeFor(user));
+    if (status === 'signed-in' && user) router.replace('/');
   }, [status, user, router]);
 
   // Pollar signs the user in through its own modal, so a failure on the way
@@ -187,6 +187,13 @@ export default function LoginPage() {
           {busy ? 'Esperando tu wallet...' : 'Conectar wallet'}
         </Button>
       )}
+
+      <p className="mt-8 text-sm text-muted-foreground">
+        ¿Nuevo en Pocket?{' '}
+        <a href={LANDING_URL} className="underline hover:text-navy">
+          Conoce cómo funciona
+        </a>
+      </p>
     </div>
   );
 }

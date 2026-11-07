@@ -13,6 +13,7 @@ import { ContractsModule } from './modules/contracts/contracts.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { ManagerModule } from './modules/manager/manager.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
+import { StatsModule } from './modules/stats/stats.module';
 import { StellarModule } from './modules/stellar/stellar.module';
 import { VerificationModule } from './modules/verification/verification.module';
 import { UsersModule } from './modules/users/users.module';
@@ -36,6 +37,7 @@ import configuration, { validateEnv } from './config/configuration';
     JobsModule,
     StellarModule,
     ContractsModule,
+    StatsModule,
   ],
   controllers: [HealthController],
   providers: [
