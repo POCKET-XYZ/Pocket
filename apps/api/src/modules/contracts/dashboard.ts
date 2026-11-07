@@ -1,15 +1,17 @@
 import {
   afterFees,
   type ContractReport,
+  type DashboardContract,
   type DashboardUpcoming,
   type DashboardWeek,
+  type DeliveryTimes,
   type ServiceCategory,
   type SpecialistDashboard,
   type StartupDashboard,
 } from '@pocket/shared';
 import { Prisma } from '@prisma/client';
 import { weeksEndingAt } from '../manager/metrics.service';
-import { buildReport, REPORT_INCLUDE } from './report';
+import { buildReport, endOfDayAnywhere, REPORT_INCLUDE } from './report';
 
 /** What a dashboard is built from: each contract's report, and who it was with. */
 export const DASHBOARD_INCLUDE = {
@@ -34,7 +36,8 @@ export type DashboardSource = Prisma.ContractGetPayload<{
 }>;
 
 const ZERO = new Prisma.Decimal(0);
-const WEEK_MS = 7 * 86_400_000;
+const DAY_MS = 86_400_000;
+const WEEK_MS = 7 * DAY_MS;
 /** How many upcoming deliveries a dashboard lists. */
 const UPCOMING = 5;
 
@@ -58,9 +61,7 @@ interface Payment {
  */
 function paymentsOf(source: DashboardSource): Payment[] {
   return source.chainOperations.flatMap((operation) => {
-    const milestone = source.milestones.find(
-      (each) => each.id === operation.milestoneId,
-    );
+    const milestone = source.milestones.find((each) => each.id === operation.milestoneId);
     if (!milestone || !operation.confirmedAt) return [];
     if (operation.payoutsReadAt) {
       const to = (matches: (recipient: string) => boolean) =>
@@ -144,6 +145,33 @@ export function judgedKpis(report: ContractReport): { withTarget: number; met: n
   };
 }
 
+/**
+ * Days a delivery came in before its date. On time, it is the time left in the
+ * day committed to, in UTC, so a delivery made on the day is 0 and never
+ * reads as late; late, it is the time past the end of that day everywhere, the
+ * same deadline that makes it late.
+ */
+export function daysEarly(dueDate: Date, deliveredAt: Date): number {
+  const late = deliveredAt.getTime() - endOfDayAnywhere(dueDate).getTime();
+  if (late > 0) return -Math.ceil(late / DAY_MS);
+  const endOfDay = dueDate.getTime() + DAY_MS;
+  return Math.max(0, Math.floor((endOfDay - deliveredAt.getTime()) / DAY_MS));
+}
+
+/** Delivery times over the milestones delivered in these reports. */
+export function deliveryOf(reports: ContractReport[]): DeliveryTimes {
+  const days = reports.flatMap((report) =>
+    report.milestones.flatMap((milestone) =>
+      milestone.firstDeliveredAt
+        ? [daysEarly(new Date(milestone.dueDate), new Date(milestone.firstDeliveredAt))]
+        : [],
+    ),
+  );
+  if (days.length === 0) return { measured: 0, averageDaysEarly: null };
+  const average = days.reduce((total, value) => total + value, 0) / days.length;
+  return { measured: days.length, averageDaysEarly: Math.round(average * 10) / 10 || 0 };
+}
+
 function totals(reports: ContractReport[]) {
   return {
     contracts: {
@@ -168,13 +196,11 @@ function totals(reports: ContractReport[]) {
       }),
       { total: 0, done: 0, onTime: 0, late: 0 },
     ),
+    delivery: deliveryOf(reports),
   };
 }
 
-export function startupDashboard(
-  all: DashboardSource[],
-  now: Date,
-): StartupDashboard {
+export function startupDashboard(all: DashboardSource[], now: Date): StartupDashboard {
   const sources = all.filter((source) => source.status !== 'cancelled');
   const reports = sources.map((source) => buildReport(source, now));
   const payments = sources.map((source) => ({ source, payments: paymentsOf(source) }));
@@ -206,6 +232,33 @@ export function startupDashboard(
     });
   });
 
+  const order = sources
+    .map((source, index) => ({ source, index }))
+    .sort(
+      (a, b) =>
+        Number(IN_PROGRESS.includes(b.source.status)) -
+          Number(IN_PROGRESS.includes(a.source.status)) ||
+        b.source.createdAt.getTime() - a.source.createdAt.getTime(),
+    );
+  const byContract: DashboardContract[] = order.map(({ source, index }) => {
+    const report = reports[index] as ContractReport;
+    return {
+      contractId: source.id,
+      jobTitle: source.job.title,
+      status: source.status,
+      specialist: {
+        id: source.specialist.id,
+        displayName: source.specialist.specialistProfile?.displayName ?? null,
+      },
+      kpis: judgedKpis(report),
+      milestones: report.summary.milestones,
+      delivery: deliveryOf([report]),
+      spent: sum(
+        (payments[index]?.payments ?? []).map((payment) => payment.spent),
+      ).toString(),
+    };
+  });
+
   return {
     spent: sum(
       payments.flatMap(({ payments: paid }) => paid.map((payment) => payment.spent)),
@@ -224,6 +277,7 @@ export function startupDashboard(
       .sort(([, a], [, b]) => b.comparedTo(a))
       .map(([category, spent]) => ({ category, spent: spent.toString() })),
     specialists: [...specialists.values()],
+    byContract,
     upcoming: upcomingOf(sources),
   };
 }

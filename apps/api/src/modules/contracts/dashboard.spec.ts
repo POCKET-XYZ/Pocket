@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import {
+  daysEarly,
   specialistDashboard,
   startupDashboard,
   type DashboardSource,
@@ -243,6 +244,94 @@ describe('startupDashboard', () => {
       NOW,
     );
     expect(upcoming.map((each) => each.milestoneTitle)).toEqual(['Soon', 'Late']);
+  });
+});
+
+describe('daysEarly', () => {
+  const due = new Date('2026-11-20');
+  it('reads a delivery on the day as 0, in any time zone that is still on it', () => {
+    expect(daysEarly(due, new Date('2026-11-20T00:01:00Z'))).toBe(0);
+    expect(daysEarly(due, new Date('2026-11-20T23:59:00Z'))).toBe(0);
+    // Still Nov 20 in Bogotá: on time, so never late.
+    expect(daysEarly(due, new Date('2026-11-21T04:00:00Z'))).toBe(0);
+  });
+
+  it('counts whole days before, and days after the day was over everywhere', () => {
+    expect(daysEarly(due, new Date('2026-11-19T12:00:00Z'))).toBe(1);
+    expect(daysEarly(due, new Date('2026-11-17T08:00:00Z'))).toBe(3);
+    expect(daysEarly(due, new Date('2026-11-21T13:00:00Z'))).toBe(-1);
+    expect(daysEarly(due, new Date('2026-11-22T13:00:00Z'))).toBe(-2);
+    expect(daysEarly(due, new Date('2026-11-25T00:00:00Z'))).toBe(-4);
+  });
+});
+
+describe('delivery times and contracts on the startup dashboard', () => {
+  const twoDeliveries = contract({
+    id: 'c1',
+    createdAt: new Date('2026-10-01'),
+    status: 'completed',
+    job: { id: 'j1', title: 'Leads', category: 'growth', kpis: [kpi('k1', 100)] },
+    milestones: [
+      milestone({
+        id: 'm1',
+        dueDate: new Date('2026-11-10'),
+        status: 'paid',
+        approvedAt: new Date('2026-11-09'),
+        deliverables: [
+          delivered('2026-11-08T10:00:00Z', [
+            { kpiId: 'k1', value: '120', numericValue: D(120), comment: null },
+          ]),
+        ],
+      }),
+      milestone({
+        id: 'm2',
+        dueDate: new Date('2026-11-12'),
+        status: 'paid',
+        deliverables: [delivered('2026-11-13T13:00:00Z')],
+      }),
+    ],
+    chainOperations: [operation('m1', 'release', '2026-11-09T10:00:00Z', PAID)],
+  });
+  const underWay = contract({
+    id: 'c2',
+    createdAt: new Date('2026-09-01'),
+    job: { id: 'j2', title: 'Ads', category: 'paid_media', kpis: [] },
+    milestones: [milestone({ id: 'm3' })],
+  });
+
+  it('averages how early each first delivery came, late ones below zero', () => {
+    const dashboard = startupDashboard([twoDeliveries, underWay], NOW);
+    // Two days early and one day late.
+    expect(dashboard.delivery).toEqual({ measured: 2, averageDaysEarly: 0.5 });
+  });
+
+  it('has no average before anything is delivered', () => {
+    expect(startupDashboard([underWay], NOW).delivery).toEqual({
+      measured: 0,
+      averageDaysEarly: null,
+    });
+  });
+
+  it('lists each contract with its targets, dates and money, those under way first', () => {
+    const dashboard = startupDashboard([twoDeliveries, underWay], NOW);
+    expect(dashboard.byContract.map((row) => row.contractId)).toEqual(['c2', 'c1']);
+    expect(dashboard.byContract[1]).toEqual({
+      contractId: 'c1',
+      jobTitle: 'Leads',
+      status: 'completed',
+      specialist: { id: 'e1', displayName: 'Lucía' },
+      kpis: { withTarget: 1, met: 1 },
+      milestones: { total: 2, done: 2, onTime: 1, late: 1 },
+      delivery: { measured: 2, averageDaysEarly: 0.5 },
+      spent: '2',
+    });
+  });
+
+  it('gives the specialist the same delivery times', () => {
+    expect(specialistDashboard([twoDeliveries], NOW).delivery).toEqual({
+      measured: 2,
+      averageDaysEarly: 0.5,
+    });
   });
 });
 

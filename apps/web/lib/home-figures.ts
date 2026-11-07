@@ -1,5 +1,6 @@
 import type {
   ContractSummary,
+  DeliveryTimes,
   JobListing,
   MyApplication,
   ServiceCategory,
@@ -78,4 +79,20 @@ export function share(part: number, whole: number): number | null {
 
 export function percent(value: number | null): string {
   return value === null ? '-' : `${Math.round(value * 100)}%`;
+}
+
+/**
+ * How early deliveries come in, in a few words: "2 días antes", "1 día tarde"
+ * or "en la fecha". Null before anything is delivered.
+ */
+export function deliveryWords(delivery: DeliveryTimes): string | null {
+  const days = delivery.averageDaysEarly;
+  if (days === null) return null;
+  const size = Math.abs(days);
+  const amount = `${size.toLocaleString('en-US', { maximumFractionDigits: 1 })} ${
+    size === 1 ? 'día' : 'días'
+  }`;
+  if (days >= 0.5) return `${amount} antes`;
+  if (days <= -0.5) return `${amount} tarde`;
+  return 'en la fecha';
 }

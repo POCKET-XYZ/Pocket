@@ -3,6 +3,7 @@
 import {
   MetricsPeriod,
   type ContractSummary,
+  type DashboardContract,
   type DashboardUpcoming,
   type DisputeListItem,
   type JobBoard,
@@ -20,6 +21,7 @@ import {
   CalendarClockIcon,
   ChevronRightIcon,
   ClipboardCheckIcon,
+  FileTextIcon,
   FlagIcon,
   SearchIcon,
   ScaleIcon,
@@ -42,13 +44,20 @@ import { Onboarding } from '@/components/onboarding';
 import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
 import { StatTile } from '@/components/stat-tile';
+import { statusLabel } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { UsdcStatus } from '@/components/usdc-status';
 import { api } from '@/lib/api';
 import { nextStep } from '@/lib/contract-next-step';
 import { CATEGORY_LABELS, usdc } from '@/lib/format';
 import { SIGNED_OUT_HOME } from '@/lib/home';
-import { percent, share, specialistFigures, startupFigures } from '@/lib/home-figures';
+import {
+  deliveryWords,
+  percent,
+  share,
+  specialistFigures,
+  startupFigures,
+} from '@/lib/home-figures';
 import { useMyProfile } from '@/lib/use-my-profile';
 import { cn } from '@/lib/utils';
 
@@ -225,15 +234,12 @@ function StartupFigures({
         <StatTile
           label="Hitos a tiempo"
           value={percent(onTime)}
-          hint={
-            judged > 0
-              ? `${dashboard.milestones.onTime} de ${judged}`
-              : 'Sin entregas aún'
-          }
+          hint={timingHint(dashboard.milestones.onTime, judged, dashboard.delivery)}
           meter={onTime}
           icon={TimerIcon}
         />
       </div>
+      <ContractResults contracts={dashboard.byContract} />
       <div className="grid gap-4 lg:grid-cols-2">
         <UpcomingCard upcoming={dashboard.upcoming} />
         {dashboard.specialists.length > 0 ? (
@@ -380,11 +386,7 @@ function SpecialistHome({ user }: { user: User }) {
             <StatTile
               label="Entregas a tiempo"
               value={percent(onTime)}
-              hint={
-                judged > 0
-                  ? `${stats.milestones.onTime} de ${judged}`
-                  : 'Sin entregas aún'
-              }
+              hint={timingHint(stats.milestones.onTime, judged, stats.delivery)}
               meter={onTime}
               icon={TimerIcon}
             />
@@ -523,6 +525,132 @@ function contractsLine(contracts: { active: number; completed: number }): string
 
 function kpiHint(kpis: { withTarget: number; met: number }): string {
   return kpis.withTarget > 0 ? `${kpis.met} de ${kpis.withTarget}` : 'Sin resultados aún';
+}
+
+/** "4 de 5 · 1 día antes en promedio": how many came in on time, and by how much. */
+function timingHint(
+  onTime: number,
+  judged: number,
+  delivery: StartupDashboard['delivery'],
+): string {
+  if (judged === 0) return 'Sin entregas aún';
+  const words = deliveryWords(delivery);
+  return words
+    ? `${onTime} de ${judged} · ${words} en promedio`
+    : `${onTime} de ${judged}`;
+}
+
+/**
+ * Each contract against what it set out to do: targets met, milestones on
+ * time, how early it delivers and what it cost, each row opening its report.
+ */
+function ContractResults({ contracts }: { contracts: DashboardContract[] }) {
+  if (contracts.length === 0) return null;
+  const shown = contracts.slice(0, 6);
+  const columns = 'md:grid-cols-[minmax(0,1fr)_7rem_7rem_8rem_7rem]';
+  return (
+    <Panel title="Resultados por contrato" icon={FileTextIcon}>
+      <div
+        className={cn(
+          'hidden gap-3 border-b border-border pb-2 text-xs text-muted-foreground md:grid',
+          columns,
+        )}
+      >
+        <span>Contrato</span>
+        <span>Metas cumplidas</span>
+        <span>Hitos a tiempo</span>
+        <span>Entrega promedio</span>
+        <span className="text-right">Pagado</span>
+      </div>
+      <ul className="divide-y divide-border">
+        {shown.map((row) => {
+          const judged = row.milestones.onTime + row.milestones.late;
+          return (
+            <li key={row.contractId}>
+              <Link
+                href={`/contracts/${row.contractId}/report`}
+                className={cn('grid gap-x-3 gap-y-2 py-3 md:items-center', columns)}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium text-navy">
+                    {row.jobTitle}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {row.specialist.displayName ?? 'Experto'} · {statusLabel(row.status)}
+                  </span>
+                </span>
+                <span className="grid grid-cols-4 gap-2 text-xs md:contents md:text-sm">
+                  <Figure
+                    label="Metas"
+                    value={
+                      row.kpis.withTarget > 0
+                        ? `${row.kpis.met} de ${row.kpis.withTarget}`
+                        : '-'
+                    }
+                    meter={share(row.kpis.met, row.kpis.withTarget)}
+                  />
+                  <Figure
+                    label="A tiempo"
+                    value={judged > 0 ? `${row.milestones.onTime} de ${judged}` : '-'}
+                    meter={share(row.milestones.onTime, judged)}
+                  />
+                  <Figure
+                    label="Entrega"
+                    value={capitalize(deliveryWords(row.delivery) ?? '-')}
+                  />
+                  <Figure label="Pagado" value={usdc(row.spent)} alignEnd />
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      {contracts.length > shown.length ? (
+        <Link
+          href="/contracts"
+          className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-navy hover:underline"
+        >
+          Ver los {contracts.length} contratos
+          <ChevronRightIcon className="size-4" aria-hidden />
+        </Link>
+      ) : null}
+    </Panel>
+  );
+}
+
+/** One figure of a contract's row: labeled on a phone, under its column on a screen. */
+function Figure({
+  label,
+  value,
+  meter,
+  alignEnd = false,
+}: {
+  label: string;
+  value: string;
+  meter?: number | null;
+  alignEnd?: boolean;
+}) {
+  return (
+    <span className={cn('min-w-0', alignEnd && 'md:text-right')}>
+      <span className="block text-muted-foreground md:hidden">{label}</span>
+      <span className="block font-medium text-navy tabular-nums">{value}</span>
+      {meter !== undefined && meter !== null ? (
+        <span
+          className="mt-1 block h-1 overflow-hidden rounded-full bg-celeste-light/60"
+          aria-hidden
+        >
+          <span
+            className="block h-full rounded-full bg-navy"
+            style={{ width: `${Math.round(meter * 100)}%` }}
+          />
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /** The figure a panel leads with, and how much of the money has already moved. */

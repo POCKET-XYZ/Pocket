@@ -513,14 +513,40 @@ export interface DashboardUpcoming {
   amount: string;
 }
 
+/**
+ * How each milestone's first delivery compared with its date. A delivery made
+ * on the day counts as 0, one made the day before as 1, and one a day after the
+ * day was over everywhere as -1.
+ */
+export interface DeliveryTimes {
+  /** Milestones delivered so far: the ones this is worked out from. */
+  measured: number;
+  /** Average days before the date, to one decimal; negative when late. */
+  averageDaysEarly: number | null;
+}
+
 interface DashboardCounts {
   /** In progress means from the offer until the last payment. */
   contracts: { active: number; completed: number };
   /** Targets judged so far: those with a result the startup approved. */
   kpis: { withTarget: number; met: number };
   milestones: { total: number; done: number; onTime: number; late: number };
+  delivery: DeliveryTimes;
   weeks: DashboardWeek[];
   upcoming: DashboardUpcoming[];
+}
+
+/** One contract of a startup's dashboard: what it got done against what it set. */
+export interface DashboardContract {
+  contractId: string;
+  jobTitle: string;
+  status: ContractStatus;
+  specialist: { id: string; displayName: string | null };
+  kpis: { withTarget: number; met: number };
+  milestones: { total: number; done: number; onTime: number; late: number };
+  delivery: DeliveryTimes;
+  /** What left its escrow: paid to the specialist plus the fees. */
+  spent: string;
 }
 
 /** GET /dashboard/startup. Amounts are USDC, as Stellar recorded them. */
@@ -537,6 +563,8 @@ export interface StartupDashboard extends DashboardCounts {
     contracts: number;
     kpis: { withTarget: number; met: number };
   }[];
+  /** Every contract that was not cancelled, those under way first. */
+  byContract: DashboardContract[];
 }
 
 /** GET /dashboard/specialist. Amounts are USDC, after fees. */
