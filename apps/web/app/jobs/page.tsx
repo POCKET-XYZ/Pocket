@@ -85,9 +85,32 @@ export default function JobsPage() {
             </div>
           ) : null}
         </>
-      ) : (
+      ) : category || query ? (
         <EmptyState title="Ningún trabajo abierto coincide">
-          Prueba con otra categoría u otra búsqueda.
+          <p>Prueba con otra categoría u otra búsqueda.</p>
+          <Button
+            variant="outline"
+            className="mt-4"
+            onClick={() => {
+              setCategory(null);
+              setSearch('');
+            }}
+          >
+            Ver todos los trabajos
+          </Button>
+        </EmptyState>
+      ) : (
+        <EmptyState title="Todavía no hay trabajos abiertos">
+          {user?.role === 'startup' ? (
+            <>
+              <p>Publica el primero y elige entre los expertos que se postulen.</p>
+              <Button asChild className="mt-4">
+                <Link href="/jobs/new">Publicar un trabajo</Link>
+              </Button>
+            </>
+          ) : (
+            <p>Aquí aparecen los trabajos que publican las startups. Vuelve pronto.</p>
+          )}
         </EmptyState>
       )}
     </div>

@@ -16,6 +16,8 @@ const POLL_MS = 30_000;
 const BALANCE_EVERY = 20;
 /** A low balance is reported again after this long, not on every check. */
 const REALERT_MS = 6 * 60 * 60 * 1000;
+/** XLM the funding wallet spends per new account: 1 given and 1 locked as reserve. */
+const XLM_PER_NEW_WALLET = 2;
 const PAGE = 200;
 
 /**
@@ -34,6 +36,8 @@ export class PlatformMonitorService implements OnApplicationBootstrap, OnModuleD
   private polls = 0;
   private lastLowBalanceAlert = 0;
   private lastTrustlineAlert = 0;
+  private lastFundingAlert = 0;
+  private readonly funding: { address: string; minXlm: number } | null;
 
   constructor(
     config: ConfigService,
@@ -42,6 +46,10 @@ export class PlatformMonitorService implements OnApplicationBootstrap, OnModuleD
   ) {
     this.horizon = new Horizon.Server(config.getOrThrow<string>('stellar.horizonUrl'));
     this.minXlm = config.get<number>('stellar.platformMinXlm') ?? 20;
+    const fundingAddress = config.get<string>('pollar.fundingAddress');
+    this.funding = fundingAddress
+      ? { address: fundingAddress, minXlm: config.get<number>('pollar.fundingMinXlm') ?? 10 }
+      : null;
   }
 
   onApplicationBootstrap(): void {
@@ -58,7 +66,10 @@ export class PlatformMonitorService implements OnApplicationBootstrap, OnModuleD
   private async tick(): Promise<void> {
     try {
       await this.checkOperations();
-      if (this.polls++ % BALANCE_EVERY === 0) await this.checkBalance();
+      if (this.polls++ % BALANCE_EVERY === 0) {
+        await this.checkBalance();
+        await this.checkFundingWallet();
+      }
     } catch (error) {
       this.logger.warn(`Could not check the platform account: ${String(error)}`);
     }
@@ -147,6 +158,34 @@ export class PlatformMonitorService implements OnApplicationBootstrap, OnModuleD
       securityEvent(
         'platform_usdc_trustline_missing',
         { account: this.stellar.platformAddress, issuer: this.stellar.usdcIssuer },
+        'alert',
+      );
+    }
+    return xlm;
+  }
+
+  /**
+   * Alerts when the Pollar funding wallet is running out. Every new account
+   * gets its first XLM from it, so once it is empty new users get a wallet
+   * that cannot enable USDC, and nobody hears about it. Returns its XLM, or
+   * null when the check is off.
+   */
+  async checkFundingWallet(): Promise<number | null> {
+    if (!this.funding) return null;
+    const account = await this.horizon.loadAccount(this.funding.address);
+    const xlm = Number(
+      account.balances.find((balance) => balance.asset_type === 'native')?.balance ?? 0,
+    );
+    if (xlm < this.funding.minXlm && Date.now() - this.lastFundingAlert > REALERT_MS) {
+      this.lastFundingAlert = Date.now();
+      securityEvent(
+        'funding_wallet_low',
+        {
+          account: this.funding.address,
+          xlm,
+          threshold: this.funding.minXlm,
+          newAccountsLeft: Math.floor(xlm / XLM_PER_NEW_WALLET),
+        },
         'alert',
       );
     }
