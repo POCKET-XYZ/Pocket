@@ -259,6 +259,8 @@ describe('AuthService', () => {
       expect(result.isNewUser).toBe(true);
       // No challenge is signed on this path.
       expect(challenges.verify).not.toHaveBeenCalled();
+      // The wallet gets its XLM as soon as the person is in.
+      expect(wallets.activate).toHaveBeenCalledWith(result.user.id);
     });
 
     it('asks for a role the first time, like the wallet login does', async () => {
@@ -334,11 +336,14 @@ describe('AuthService', () => {
       expect(data.walletFundedAt).toBeUndefined();
     });
 
-    it('tries again to activate the wallet of an approved account', async () => {
+    it.each([
+      ['an approved account', { verificationStatus: 'approved' as const }],
+      ['an account still to be verified', { verificationStatus: 'not_submitted' as const }],
+    ])('activates the wallet of %s on sign-in', async (_, overrides) => {
       const user = makeUser({
         walletCustody: 'pollar',
         pollarUserId: 'usr_pollar_1',
-        verificationStatus: 'approved',
+        ...overrides,
       });
       prisma.user.findFirst.mockResolvedValue(user);
       prisma.user.update.mockResolvedValue(user);
@@ -348,14 +353,11 @@ describe('AuthService', () => {
       expect(wallets.activate).toHaveBeenCalledWith(user.id);
     });
 
-    it.each([
-      ['not approved', { verificationStatus: 'not_submitted' as const }],
-      ['already active', { verificationStatus: 'approved' as const, walletFundedAt: new Date() }],
-    ])('leaves the wallet alone when the account is %s', async (_, overrides) => {
+    it('leaves a wallet that is already active alone', async () => {
       const user = makeUser({
         walletCustody: 'pollar',
         pollarUserId: 'usr_pollar_1',
-        ...overrides,
+        walletFundedAt: new Date(),
       });
       prisma.user.findFirst.mockResolvedValue(user);
       prisma.user.update.mockResolvedValue(user);

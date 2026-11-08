@@ -94,8 +94,8 @@ describe('MigratedAccountsService', () => {
     expect(tx.verificationRequest.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ userId: NEW_USER_ID, status: 'pending' }) as object,
     });
-    // A testnet approval is not an identity check: no wallet paid for yet.
-    expect(wallets.activate).not.toHaveBeenCalled();
+    // Its identity check is still to come, but the wallet is paid on the way in.
+    expect(wallets.activate).toHaveBeenCalledWith(NEW_USER_ID);
   });
 
   it('matches the email in lowercase and creates an approved account on the new wallet', async () => {

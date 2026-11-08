@@ -3,10 +3,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { PollarClient } from './pollar.client';
 
 /**
- * Deferred funding. A Pollar wallet is created on-chain at login but without its
- * XLM reserve, and the reserve costs Pocket real XLM, so it is paid for when the
- * account becomes real to us: the moment it is approved, when its details are
- * completed.
+ * Deferred funding. A Pollar wallet is created at login without its XLM, and
+ * Pocket pays it (from Pollar's funding wallet) as soon as the person is in:
+ * on sign-up and on every sign-in until it is active, so the wallet is ready
+ * before any contract needs it. Approving an account, accepting a contract and
+ * funding one try again when Pollar could not fund it before.
  *
  * See https://docs.pollar.xyz/docs/guides/deferred-flow-guide.
  */

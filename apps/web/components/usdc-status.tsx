@@ -28,12 +28,22 @@ const LOW_FEE_XLM = 0.02;
  */
 const TRUSTLINE_XLM = 0.51;
 
+/** How many times a wallet not on the network yet is asked about again: two minutes. */
+const MAX_ACTIVATION_POLLS = 24;
+
 export function useUsdcStatus(enabled = true) {
   return useQuery({
     queryKey: ['wallet', 'usdc'],
     queryFn: () => api<WalletStatus>('/wallet/usdc'),
     enabled,
     staleTime: 10_000,
+    // Pocket activates a Pollar wallet on sign-in, in the background: ask
+    // again until it shows up, so the page moves on by itself.
+    refetchInterval: (query) =>
+      query.state.data?.usdc === 'no_account' &&
+      query.state.dataUpdateCount < MAX_ACTIVATION_POLLS
+        ? 5000
+        : false,
   });
 }
 
@@ -198,19 +208,7 @@ export function UsdcStatus({
 
   if (status.data.usdc === 'no_account') {
     // A wallet Pocket created through Pollar is activated, at Pocket's cost,
-    // once the account is approved: before that there is nothing to wait for.
-    if (throughPollar && user.verificationStatus !== 'approved') {
-      return (
-        <Alert>
-          <AlertTitle>Tu wallet se activa con tu verificación</AlertTitle>
-          <AlertDescription>
-            {user.role === 'specialist'
-              ? 'Pocket la activa sin costo cuando verificas tu identidad, antes de aceptar tu primer contrato.'
-              : 'Pocket la activa sin costo cuando activas tu cuenta.'}
-          </AlertDescription>
-        </Alert>
-      );
-    }
+    // as soon as the person signs in: there is nothing for them to do but wait.
     if (throughPollar) {
       return (
         <Alert className="border-warning bg-warning/15">
