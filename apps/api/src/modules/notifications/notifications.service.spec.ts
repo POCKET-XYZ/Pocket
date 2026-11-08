@@ -54,7 +54,10 @@ describe('NotificationsService', () => {
 
     expect(prisma.verificationRequest.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { userId: { in: ['specialist-1'] }, status: 'approved' },
+        where: {
+          userId: { in: ['specialist-1'] },
+          status: { in: ['approved', 'pending'] },
+        },
       }),
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);

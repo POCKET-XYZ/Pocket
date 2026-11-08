@@ -1,18 +1,24 @@
 'use client';
 
-import type {
-  ContractSummary,
-  JobListing,
-  MyApplication,
-  SpecialistProfile,
-  StartupProfile,
-  User,
+import {
+  isAccountActive,
+  type ContractSummary,
+  type JobListing,
+  type MyApplication,
+  type SpecialistProfile,
+  type StartupProfile,
+  type User,
 } from '@pocket/shared';
 import { useQuery } from '@tanstack/react-query';
 import { CheckIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { activationAction, activationHint, useKycEnabled } from '@/components/activation';
+import {
+  IDENTITY_FOR_CONTRACT,
+  activationAction,
+  activationHint,
+  useKycSettings,
+} from '@/components/activation';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,8 +41,10 @@ interface Step {
  * With `full`, on the home panel, it follows them through their first contract
  * and disappears when that is done. Every step is read from the real state.
  *
- * Activating the account takes the account details and, when Didit is set
- * up, an identity check: every step is in the user's hands.
+ * Activating the account takes the account details and, for a startup when
+ * Didit is set up, an identity check. A specialist's details activate their
+ * account, and the panel adds the identity check that accepting a contract
+ * needs: every step is in the user's hands.
  */
 export function Onboarding({
   className,
@@ -47,14 +55,16 @@ export function Onboarding({
 }) {
   const { user } = useAuth();
   const pathname = usePathname();
-  const approved = user?.verificationStatus === 'approved';
+  const active = user ? isAccountActive(user) : false;
   const isStartup = user?.role === 'startup';
-  const kyc = useKycEnabled(Boolean(user) && !approved);
+  // Asked even once approved: a specialist's panel keeps the identity step, done.
+  const kycSettings = useKycSettings(Boolean(user) && user?.role !== 'manager');
+  const kyc = kycSettings.data?.enabled === true;
 
   const profile = useQuery({
     queryKey: ['profile', 'me'],
     queryFn: () => api<StartupProfile | SpecialistProfile | null>('/profiles/me'),
-    enabled: Boolean(user) && approved,
+    enabled: Boolean(user) && active,
   });
 
   const contracts = useQuery({
@@ -75,13 +85,13 @@ export function Onboarding({
 
   if (!user || user.role === 'manager') return null;
   // Do not guess a step while what it depends on is still loading.
-  if (approved && profile.isLoading) return null;
+  if (kycSettings.isLoading || (active && profile.isLoading)) return null;
   if (full && (contracts.isLoading || jobs.isLoading || applications.isLoading)) {
     return null;
   }
 
   const hasProfile = Boolean(profile.data);
-  if (!full && approved && hasProfile) return null;
+  if (!full && active && hasProfile) return null;
 
   const steps = stepsFor(
     user,
@@ -179,7 +189,7 @@ function stepsFor(
   kyc: boolean,
   progress: Progress | null,
 ): Step[] {
-  const approved = user.verificationStatus === 'approved';
+  const active = isAccountActive(user);
   const isStartup = user.role === 'startup';
   const milestones = (progress?.contracts ?? []).flatMap(
     (contract) => contract.milestones,
@@ -196,17 +206,12 @@ function stepsFor(
 
   const steps: (Omit<Step, 'state'> & { done: boolean })[] = [
     {
-      title: kyc ? 'Activa tu cuenta' : 'Completa los datos de tu cuenta',
-      text: approved
-        ? 'Tu cuenta está activa.'
-        : activationHint(kyc, user.verificationStatus),
-      done: approved,
-      action: approved
+      title: kyc && isStartup ? 'Activa tu cuenta' : 'Completa los datos de tu cuenta',
+      text: active ? 'Tu cuenta está activa.' : activationHint(kyc, user),
+      done: active,
+      action: active
         ? undefined
-        : {
-            label: activationAction(kyc, user.verificationStatus),
-            href: '/verification',
-          },
+        : { label: activationAction(kyc, user), href: '/verification' },
     },
     {
       title: isStartup
@@ -252,6 +257,17 @@ function stepsFor(
             },
           ]
         : [
+            // Accepting a contract takes it, so it comes before the first delivery.
+            ...(kyc
+              ? [
+                  {
+                    title: 'Verifica tu identidad',
+                    text: IDENTITY_FOR_CONTRACT,
+                    done: user.verificationStatus === 'approved',
+                    action: { label: 'Verificar mi identidad', href: '/verification' },
+                  },
+                ]
+              : []),
             {
               title: 'Haz tu primera entrega',
               text: 'Cuando una startup te contrata y deposita el pago, entregas cada hito desde el contrato.',

@@ -1,6 +1,11 @@
 'use client';
 
-import type { JobListing, MyApplication, User } from '@pocket/shared';
+import {
+  isAccountActive,
+  type JobListing,
+  type MyApplication,
+  type User,
+} from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -127,8 +132,7 @@ export default function JobPage() {
                   {status === 'loading' ? null : user &&
                     (user.id === data.startupId ||
                       user.role === 'manager' ||
-                      (user.role === 'specialist' &&
-                        user.verificationStatus === 'approved')) ? (
+                      (user.role === 'specialist' && isAccountActive(user))) ? (
                     <ReportTemplateButton
                       jobId={data.id}
                       template={data.reportTemplate}
@@ -205,7 +209,8 @@ export default function JobPage() {
 }
 
 function ApplyCard({ job, user }: { job: JobListing; user: User }) {
-  const kyc = useKycEnabled(user.verificationStatus !== 'approved');
+  const active = isAccountActive(user);
+  const kyc = useKycEnabled(!active);
   const [price, setPrice] = useState(String(Number(job.budget)));
   const [days, setDays] = useState('');
   const queryClient = useQueryClient();
@@ -269,22 +274,20 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
     );
   }
 
-  if (user.verificationStatus !== 'approved') {
+  if (!active) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Activa tu cuenta para postularte</CardTitle>
           <CardDescription>
             {kyc
-              ? activationHint(kyc, user.verificationStatus)
+              ? activationHint(kyc, user)
               : 'Un formulario corto, sin documentos. Al enviarlo ya puedes postularte.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild className="w-full">
-            <Link href="/verification">
-              {activationAction(kyc, user.verificationStatus)}
-            </Link>
+            <Link href="/verification">{activationAction(kyc, user)}</Link>
           </Button>
         </CardContent>
       </Card>

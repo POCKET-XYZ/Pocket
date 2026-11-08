@@ -169,15 +169,37 @@ describe('ProfilesService', () => {
     await expect(service.mine(manager)).resolves.toBeNull();
   });
 
-  it('lists only approved specialists', async () => {
+  it('lists every active specialist, verified or not yet', async () => {
     await service.browseSpecialists({});
     expect(prisma.specialistProfile.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ user: { verificationStatus: 'approved' } }),
+        where: expect.objectContaining({
+          user: { verificationStatus: { in: ['approved', 'pending'] } },
+        }),
         take: 20,
         skip: 0,
       }),
     );
+  });
+
+  it('says which specialists passed the identity check', async () => {
+    const counted = (status: string, checks: number) => ({
+      verificationStatus: status,
+      _count: { verificationRequests: checks },
+    });
+    prisma.specialistProfile.findMany.mockResolvedValue([
+      { id: 'p-1', user: counted('approved', 1) },
+      { id: 'p-2', user: counted('pending', 0) },
+      // Approved where Didit is not set up: details only, no identity check.
+      { id: 'p-3', user: counted('approved', 0) },
+    ]);
+    prisma.specialistProfile.count.mockResolvedValue(3);
+    const directory = await service.browseSpecialists({});
+    expect(directory.items).toEqual([
+      { id: 'p-1', identityVerified: true },
+      { id: 'p-2', identityVerified: false },
+      { id: 'p-3', identityVerified: false },
+    ]);
   });
 
   it('filters the directory by category', async () => {
@@ -189,9 +211,10 @@ describe('ProfilesService', () => {
     );
   });
 
-  it('hides the profile of a user who is not approved', async () => {
+  it('hides the profile of a startup that is not approved', async () => {
     prisma.user.findUnique.mockResolvedValue({
       id: 'user-1',
+      role: 'startup',
       verificationStatus: 'pending',
       startupProfile: { id: 'p-1' },
       specialistProfile: null,
@@ -201,6 +224,37 @@ describe('ProfilesService', () => {
     );
   });
 
+  it('hides the profile of a specialist who never sent their details', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-2',
+      role: 'specialist',
+      verificationStatus: 'not_submitted',
+      startupProfile: null,
+      specialistProfile: { id: 'p-2' },
+    });
+    await expect(service.publicProfile('user-2')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('shows a specialist before their identity check, without the seal', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-2',
+      role: 'specialist',
+      stellarAddress: 'GSPECIALIST',
+      createdAt: new Date('2026-09-01'),
+      verificationStatus: 'pending',
+      _count: { verificationRequests: 0 },
+      startupProfile: null,
+      specialistProfile: { id: 'p-2' },
+    });
+    await expect(service.publicProfile('user-2')).resolves.toMatchObject({
+      userId: 'user-2',
+      identityVerified: false,
+      profile: { id: 'p-2' },
+    });
+  });
+
   it('returns the public profile of an approved user', async () => {
     prisma.user.findUnique.mockResolvedValue({
       id: 'user-1',
@@ -208,12 +262,14 @@ describe('ProfilesService', () => {
       stellarAddress: 'GABC',
       createdAt: new Date('2026-09-01'),
       verificationStatus: 'approved',
+      _count: { verificationRequests: 1 },
       startupProfile: { id: 'p-1' },
       specialistProfile: null,
     });
     await expect(service.publicProfile('user-1')).resolves.toMatchObject({
       userId: 'user-1',
       role: 'startup',
+      identityVerified: true,
       profile: { id: 'p-1' },
     });
   });
@@ -244,11 +300,14 @@ describe('ProfilesService', () => {
       expect(prisma.specialistCv.upsert).not.toHaveBeenCalled();
     });
 
-    it('only shows the CV of an approved specialist', async () => {
+    it('only shows the CV of an active specialist', async () => {
       prisma.specialistCv.findFirst.mockResolvedValue(null);
       await expect(service.cvOf('user-2')).rejects.toBeInstanceOf(NotFoundException);
       expect(prisma.specialistCv.findFirst).toHaveBeenCalledWith({
-        where: { userId: 'user-2', user: { verificationStatus: 'approved' } },
+        where: {
+          userId: 'user-2',
+          user: { verificationStatus: { in: ['approved', 'pending'] } },
+        },
       });
     });
   });

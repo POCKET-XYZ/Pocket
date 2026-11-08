@@ -9,6 +9,7 @@ import { Prisma, type Application } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TRACK_RECORD_INCLUDE, trackRecordSummaryOf } from '../contracts/track-record';
+import { IDENTITY_SELECT, identityVerified } from '../users/identity';
 import { ApplyDto } from './dto/apply.dto';
 import { JobsService } from './jobs.service';
 
@@ -70,6 +71,7 @@ export class ApplicationsService {
             specialistProfile: {
               select: { displayName: true, headline: true, avatarUrl: true },
             },
+            ...IDENTITY_SELECT,
           },
         },
         // The terms sent to this applicant, to go from the job to its contract.
@@ -88,6 +90,7 @@ export class ApplicationsService {
     return applications.map(({ specialist, ...application }) => ({
       ...application,
       specialist: specialist.specialistProfile,
+      identityVerified: identityVerified(specialist),
       trackRecord: trackRecordSummaryOf(
         finished.filter((each) => each.specialistId === application.specialistId),
         now,

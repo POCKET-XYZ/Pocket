@@ -5,6 +5,7 @@ import {
   NotFoundException,
   PayloadTooLargeException,
 } from '@nestjs/common';
+import { isAccountActive } from '@pocket/shared';
 import { Prisma, type SpecialistProfile, type StartupProfile } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import {
@@ -14,6 +15,7 @@ import {
   type UploadedBytes,
 } from '../../common/uploads/file-type';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ACTIVE_SPECIALIST, IDENTITY_SELECT, identityVerified } from '../users/identity';
 import { BrowseSpecialistsDto } from './dto/browse-specialists.dto';
 import { BrowseStartupsDto } from './dto/browse-startups.dto';
 import { SpecialistProfileDto } from './dto/specialist-profile.dto';
@@ -145,8 +147,8 @@ export class ProfilesService {
 
   /**
    * Public directory of startups, so a specialist can see who is hiring before
-   * applying. Only approved accounts, like the specialist directory, and each
-   * one with how many jobs it has open right now.
+   * applying. Only approved accounts (a startup verifies its identity first),
+   * each one with how many jobs it has open right now.
    */
   async browseStartups(query: BrowseStartupsDto) {
     const limit = query.limit ?? 20;
@@ -189,8 +191,9 @@ export class ProfilesService {
   }
 
   /**
-   * Public directory of specialists. Only approved accounts are listed, so the
-   * marketplace never shows anyone a manager has not reviewed.
+   * Public directory of specialists: every active one, so whoever applies can
+   * be looked up. Each says whether they passed the identity check, which they
+   * need to accept a contract.
    */
   async browseSpecialists(query: BrowseSpecialistsDto) {
     const limit = query.limit ?? 20;
@@ -198,7 +201,7 @@ export class ProfilesService {
     const search = query.search?.trim();
 
     const where: Prisma.SpecialistProfileWhereInput = {
-      user: { verificationStatus: 'approved' },
+      user: { verificationStatus: { in: ACTIVE_SPECIALIST } },
       ...(query.category ? { categories: { has: query.category } } : {}),
       ...(search
         ? {
@@ -211,16 +214,21 @@ export class ProfilesService {
         : {}),
     };
 
-    const [items, total] = await this.prisma.$transaction([
+    const [profiles, total] = await this.prisma.$transaction([
       this.prisma.specialistProfile.findMany({
         where,
         orderBy: { updatedAt: 'desc' },
         take: limit,
         skip: offset,
+        include: { user: { select: IDENTITY_SELECT } },
       }),
       this.prisma.specialistProfile.count({ where }),
     ]);
 
+    const items = profiles.map(({ user, ...profile }) => ({
+      ...profile,
+      identityVerified: identityVerified(user),
+    }));
     return { items, total, limit, offset };
   }
 
@@ -247,10 +255,10 @@ export class ProfilesService {
     return { cvUrl };
   }
 
-  /** The CV of an approved specialist, for anyone who can see their profile. */
+  /** The CV of an active specialist, for anyone who can see their profile. */
   async cvOf(userId: string): Promise<Buffer> {
     const cv = await this.prisma.specialistCv.findFirst({
-      where: { userId, user: { verificationStatus: 'approved' } },
+      where: { userId, user: { verificationStatus: { in: ACTIVE_SPECIALIST } } },
     });
     if (!cv) throw new NotFoundException('No encontramos el CV');
     return Buffer.from(cv.data);
@@ -312,13 +320,21 @@ export class ProfilesService {
     return { data: Buffer.from(logo.data), contentType };
   }
 
-  /** Public profile of an approved user. Unverified accounts stay hidden. */
+  /**
+   * Public profile of an active user: an approved startup, or a specialist who
+   * sent their account details. Everyone else stays hidden.
+   */
   async publicProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { startupProfile: true, specialistProfile: true },
+      include: {
+        startupProfile: true,
+        specialistProfile: true,
+        // The other half of IDENTITY_SELECT: the status comes with the user.
+        _count: IDENTITY_SELECT._count,
+      },
     });
-    if (!user || user.verificationStatus !== 'approved') {
+    if (!user || !isAccountActive(user)) {
       throw new NotFoundException('No encontramos el perfil');
     }
 
@@ -332,6 +348,7 @@ export class ProfilesService {
       // anyone can read the balance and payments of.
       wallet: `${user.stellarAddress.slice(0, 4)}...${user.stellarAddress.slice(-4)}`,
       memberSince: user.createdAt,
+      identityVerified: identityVerified(user),
       profile,
     };
   }

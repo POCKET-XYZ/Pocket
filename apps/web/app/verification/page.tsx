@@ -1,12 +1,22 @@
 'use client';
 
-import type { KycSession, User, VerificationRequest } from '@pocket/shared';
+import {
+  isAccountActive,
+  type KycSession,
+  type User,
+  type VerificationRequest,
+} from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { useKycSettings } from '@/components/activation';
+import {
+  IDENTITY_FOR_CONTRACT,
+  accountBadgeStatus,
+  activationHint,
+  useKycSettings,
+} from '@/components/activation';
 import { useAuth } from '@/components/auth-provider';
 import { Field, compact, formValues } from '@/components/form';
 import { Loading, PageHeader } from '@/components/page';
@@ -40,6 +50,35 @@ const KYC_UNDECIDED: (string | null | undefined)[] = [
 /** How many times the page asks for the result after coming back from Didit: two minutes. */
 const MAX_POLLS = 24;
 
+/** Where to go once the identity is verified, kept across the trip to Didit. */
+const AFTER_IDENTITY_KEY = 'pocket.afterIdentity';
+
+/**
+ * The page that sent the person here to verify their identity (a contract
+ * they are about to accept), from the link or from before Didit. Only a
+ * contract of this site is accepted.
+ */
+function readNext(): string | null {
+  if (typeof window === 'undefined') return null;
+  const valid = (path: string | null) =>
+    path && /^\/contracts\/[0-9a-f-]{36}$/i.test(path) ? path : null;
+  const fromLink = valid(new URLSearchParams(window.location.search).get('next'));
+  try {
+    if (fromLink) sessionStorage.setItem(AFTER_IDENTITY_KEY, fromLink);
+    return fromLink ?? valid(sessionStorage.getItem(AFTER_IDENTITY_KEY));
+  } catch {
+    return fromLink;
+  }
+}
+
+function forgetNext(): void {
+  try {
+    sessionStorage.removeItem(AFTER_IDENTITY_KEY);
+  } catch {
+    // Storage blocked: there is nothing to forget.
+  }
+}
+
 export default function VerificationPage() {
   return (
     <RequireAuth roles={['startup', 'specialist']}>
@@ -61,6 +100,9 @@ function Verification({ user }: { user: User }) {
       typeof window !== 'undefined' &&
       new URLSearchParams(window.location.search).has('verificationSessionId'),
   );
+  const [next] = useState(readNext);
+  const isSpecialist = user.role === 'specialist';
+  const active = isAccountActive(user);
   const latest = useQuery({
     // Keyed on the status: when a decision arrives, the request (and the
     // reason it was turned down) is loaded again.
@@ -110,8 +152,10 @@ function Verification({ user }: { user: User }) {
     mutationFn: (body: Record<string, unknown>) =>
       api('/verification', { method: 'POST', body }),
     onSuccess: async () => {
-      // With the identity check on, its step shows up in place of the form.
-      if (!kyc) {
+      // With the identity check on, a startup's step shows up in place of the
+      // form. A specialist's account is active already: they verify their
+      // identity when they accept a contract, unless they came here for that.
+      if (!kyc || isSpecialist) {
         toast.success('Listo. Tu cuenta ya está activa.');
         setSubmittedHere(true);
       }
@@ -125,17 +169,27 @@ function Verification({ user }: { user: User }) {
   // the status stays on screen with a way back.
   const [submittedHere, setSubmittedHere] = useState(false);
   const profile = useMyProfile();
+  // A specialist who came to verify their identity for a contract stays for it.
+  const staysForIdentity = Boolean(next) && user.verificationStatus === 'pending';
   const justActivated =
-    (returned || submittedHere) &&
-    user.verificationStatus === 'approved' &&
-    !profile.isLoading;
+    !profile.isLoading &&
+    ((returned && user.verificationStatus === 'approved') ||
+      (submittedHere && active && !staysForIdentity));
   const hasProfile = Boolean(profile.data);
   useEffect(() => {
     if (!justActivated) return;
-    if (returned)
-      toast.success('Tu identidad está verificada. Tu cuenta ya está activa.');
-    router.replace(hasProfile ? '/' : '/profile');
-  }, [justActivated, returned, hasProfile, router]);
+    if (returned) {
+      toast.success(
+        isSpecialist
+          ? 'Tu identidad está verificada.'
+          : 'Tu identidad está verificada. Tu cuenta ya está activa.',
+      );
+    }
+    // Back to the contract that asked for the check, when one did.
+    const to = returned && next ? next : hasProfile ? '/' : '/profile';
+    forgetNext();
+    router.replace(to);
+  }, [justActivated, returned, next, isSpecialist, hasProfile, router]);
 
   const canSubmit =
     user.verificationStatus === 'not_submitted' ||
@@ -168,23 +222,22 @@ function Verification({ user }: { user: User }) {
   return (
     <div className="mx-auto max-w-2xl">
       <Onboarding className="mb-6" />
-      <PageHeader
-        title={kyc ? 'Activa tu cuenta' : 'Datos de tu cuenta'}
-        description={
-          kyc
-            ? 'Completa tus datos y verifica tu identidad con tu documento y una selfie. Toma unos minutos, y después puedes usar todo el marketplace.'
-            : 'Un formulario corto, sin documentos. Al enviarlo tu cuenta queda activa y puedes usar todo el marketplace.'
-        }
-      />
+      <PageHeader title={pageTitle()} description={pageDescription()} />
 
       <Card className="mb-6">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Estado</CardTitle>
-          <StatusBadge feminine status={user.verificationStatus} />
+          <StatusBadge feminine status={accountBadgeStatus(user)} />
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
           <p>{statusText()}</p>
-          {user.verificationStatus === 'approved' ? (
+          {user.verificationStatus === 'approved' && next ? (
+            <Button asChild className="mt-4">
+              <Link href={next} onClick={forgetNext}>
+                Volver al contrato
+              </Link>
+            </Button>
+          ) : active && !staysForIdentity ? (
             <Button asChild className="mt-4">
               <Link href={hasProfile ? '/' : '/profile'}>
                 {hasProfile ? 'Ir a mi inicio' : 'Crear mi perfil'}
@@ -204,6 +257,7 @@ function Verification({ user }: { user: User }) {
       {pendingCheck && !inReview && !waitingForResult ? (
         <IdentityCheck
           started={kycStatus === 'In Progress'}
+          forContract={isSpecialist}
           busy={startKyc.isPending}
           onStart={() => startKyc.mutate()}
         />
@@ -323,6 +377,25 @@ function Verification({ user }: { user: User }) {
     </div>
   );
 
+  function pageTitle(): string {
+    if (isSpecialist && kyc && user.verificationStatus === 'pending') {
+      return 'Verifica tu identidad';
+    }
+    return kyc && !isSpecialist ? 'Activa tu cuenta' : 'Datos de tu cuenta';
+  }
+
+  function pageDescription(): string {
+    if (isSpecialist && kyc) {
+      return user.verificationStatus === 'pending' ||
+        user.verificationStatus === 'approved'
+        ? IDENTITY_FOR_CONTRACT
+        : activationHint(kyc, user);
+    }
+    return kyc
+      ? 'Completa tus datos y verifica tu identidad con tu documento y una selfie. Toma unos minutos, y después puedes usar todo el marketplace.'
+      : 'Un formulario corto, sin documentos. Al enviarlo tu cuenta queda activa y puedes usar todo el marketplace.';
+  }
+
   function statusText(): string {
     switch (user.verificationStatus) {
       case 'approved':
@@ -339,17 +412,21 @@ function Verification({ user }: { user: User }) {
         if (waitingForResult) {
           return 'Estamos recibiendo el resultado de tu verificación. Toma unos segundos.';
         }
-        return 'Tus datos están listos. Falta verificar tu identidad.';
+        return isSpecialist
+          ? 'Tu cuenta está activa: ya puedes armar tu perfil y postularte. Para aceptar un contrato falta verificar tu identidad.'
+          : 'Tus datos están listos. Falta verificar tu identidad.';
       default:
-        return kyc
+        return kyc && !isSpecialist
           ? 'Paso 1 de 2: completa tus datos abajo. Después verificas tu identidad.'
           : 'Completa el formulario de abajo para activar tu cuenta.';
     }
   }
 
   function submitLabel(): string {
-    if (submit.isPending) return kyc ? 'Enviando...' : 'Activando...';
-    return kyc ? 'Continuar' : 'Activar mi cuenta';
+    // A startup goes on to its identity check; a specialist is done here.
+    const identityNext = kyc && !isSpecialist;
+    if (submit.isPending) return identityNext ? 'Enviando...' : 'Activando...';
+    return identityNext ? 'Continuar' : 'Activar mi cuenta';
   }
 }
 
@@ -359,10 +436,13 @@ function Verification({ user }: { user: User }) {
  */
 function IdentityCheck({
   started,
+  forContract,
   busy,
   onStart,
 }: {
   started: boolean;
+  /** A specialist's check, which accepting a contract needs, rather than step 2 of 2. */
+  forContract: boolean;
   busy: boolean;
   onStart: () => void;
 }) {
@@ -376,7 +456,9 @@ function IdentityCheck({
         <CardDescription>
           {started
             ? 'Empezaste la verificación pero no la terminaste. Puedes continuar donde la dejaste.'
-            : 'Paso 2 de 2. Lo hace Didit, un servicio de verificación de identidad, en unos minutos.'}
+            : forContract
+              ? 'Lo necesitas para aceptar un contrato. Lo hace Didit, un servicio de verificación de identidad, en unos minutos.'
+              : 'Paso 2 de 2. Lo hace Didit, un servicio de verificación de identidad, en unos minutos.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">

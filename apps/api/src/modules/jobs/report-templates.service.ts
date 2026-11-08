@@ -13,6 +13,7 @@ import {
 } from '../../common/uploads/file-type';
 import type { PrivateFile } from '../../common/uploads/send-file';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ACTIVE_SPECIALIST } from '../users/identity';
 import { REPORT_TEMPLATE_INFO } from './report-template-info';
 
 /** The largest report template a job can carry, the same as a delivery's file. */
@@ -98,9 +99,10 @@ export class ReportTemplatesService {
         where: { id: user.sub },
         select: { verificationStatus: true },
       });
-      if (specialist?.verificationStatus === 'approved') return;
+      // Read before applying, so an active specialist needs no identity check.
+      if (specialist && ACTIVE_SPECIALIST.includes(specialist.verificationStatus)) return;
       throw new ForbiddenException(
-        'Verifica tu cuenta para descargar la plantilla de reporte de un trabajo',
+        'Completa los datos de tu cuenta para descargar la plantilla de reporte de un trabajo',
       );
     }
     throw new ForbiddenException('Esta plantilla de reporte es de otra startup');

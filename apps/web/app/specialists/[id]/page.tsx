@@ -16,6 +16,7 @@ import {
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Avatar } from '@/components/avatar';
+import { IdentitySeal } from '@/components/identity-seal';
 import { Detail, ErrorAlert, Loading } from '@/components/page';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -50,7 +51,7 @@ export default function SpecialistProfilePage() {
   const specialist = profile.data.profile as SpecialistProfile;
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <Header specialist={specialist} />
+      <Header specialist={specialist} identityVerified={profile.data.identityVerified} />
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="space-y-6 md:col-span-2">
@@ -92,14 +93,23 @@ export default function SpecialistProfilePage() {
 }
 
 /** Name, role, specialties, and the three ways to check them, up front. */
-function Header({ specialist }: { specialist: SpecialistProfile }) {
+function Header({
+  specialist,
+  identityVerified,
+}: {
+  specialist: SpecialistProfile;
+  identityVerified: boolean;
+}) {
   return (
     <Card>
       <CardContent className="flex flex-col gap-5 pt-6 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <Avatar name={specialist.displayName} size={80} />
           <div>
-            <h1 className="text-3xl font-bold text-navy">{specialist.displayName}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-3xl font-bold text-navy">{specialist.displayName}</h1>
+              {identityVerified ? <IdentitySeal /> : null}
+            </div>
             <p className="text-muted-foreground">{specialist.headline}</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {specialist.categories.map((category) => (
@@ -177,9 +187,7 @@ function PastWork({ caseStudies }: { caseStudies: CaseStudy[] }) {
           >
             <TrendingUpIcon className="mt-0.5 size-5 shrink-0 text-navy" />
             <div className="min-w-0">
-              <p className="font-medium text-navy">
-                {study.result || 'Ver el trabajo'}
-              </p>
+              <p className="font-medium text-navy">{study.result || 'Ver el trabajo'}</p>
               <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground group-hover:underline">
                 {study.url} <ExternalLinkIcon className="size-3 shrink-0" />
               </p>

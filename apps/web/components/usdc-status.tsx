@@ -197,15 +197,26 @@ export function UsdcStatus({
   }
 
   if (status.data.usdc === 'no_account') {
-    // A wallet Pocket created through Pollar is activated when the account
-    // completes its details, so there is nothing for the user to do but wait.
+    // A wallet Pocket created through Pollar is activated, at Pocket's cost,
+    // once the account is approved: before that there is nothing to wait for.
+    if (throughPollar && user.verificationStatus !== 'approved') {
+      return (
+        <Alert>
+          <AlertTitle>Tu wallet se activa con tu verificación</AlertTitle>
+          <AlertDescription>
+            {user.role === 'specialist'
+              ? 'Pocket la activa sin costo cuando verificas tu identidad, antes de aceptar tu primer contrato.'
+              : 'Pocket la activa sin costo cuando activas tu cuenta.'}
+          </AlertDescription>
+        </Alert>
+      );
+    }
     if (throughPollar) {
       return (
         <Alert className="border-warning bg-warning/15">
           <AlertTitle>Tu wallet se está activando</AlertTitle>
           <AlertDescription>
-            Pocket activa tu wallet cuando completas los datos de tu cuenta. Toma unos
-            segundos y no tienes que pagar nada.
+            Pocket ya la está activando. Toma unos segundos y no tienes que pagar nada.
           </AlertDescription>
         </Alert>
       );

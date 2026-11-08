@@ -17,7 +17,7 @@ import type { Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { Verified } from '../../common/decorators/verified.decorator';
+import { ActiveAccount, Verified } from '../../common/decorators/verified.decorator';
 import type { AuthUser } from '../../common/types/auth';
 import type { UploadedBytes } from '../../common/uploads/file-type';
 import { sendPrivateFile } from '../../common/uploads/send-file';
@@ -126,7 +126,7 @@ export class JobsController {
 
   @ApiBearerAuth()
   @Roles('specialist')
-  @Verified()
+  @ActiveAccount()
   @Post(':id/applications')
   apply(
     @CurrentUser() user: AuthUser,

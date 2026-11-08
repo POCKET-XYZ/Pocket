@@ -1,6 +1,6 @@
 'use client';
 
-import type { User, UserRole } from '@pocket/shared';
+import { isAccountActive, type User, type UserRole } from '@pocket/shared';
 import Link from 'next/link';
 import { activationAction, activationHint, useKycEnabled } from '@/components/activation';
 import { useAuth } from '@/components/auth-provider';
@@ -16,8 +16,8 @@ const ROLE_NAMES: Record<UserRole, string> = {
 
 /**
  * Renders its children only for a signed-in user with one of the given roles,
- * and, when `verified` is set, only once they completed their account details.
- * Otherwise it says what is missing and links to the fix.
+ * and, when `verified` is set, only once their account is active (see
+ * `isAccountActive`). Otherwise it says what is missing and links to the fix.
  */
 export function RequireAuth({
   roles,
@@ -67,7 +67,7 @@ export function RequireAuth({
     );
   }
 
-  if (verified && user.role !== 'manager' && user.verificationStatus !== 'approved') {
+  if (verified && user.role !== 'manager' && !isAccountActive(user)) {
     return <NotActiveYet user={user} />;
   }
 
@@ -79,9 +79,9 @@ function NotActiveYet({ user }: { user: User }) {
   const kyc = useKycEnabled();
   return (
     <EmptyState title="Tu cuenta todavía no está activa">
-      <p>{activationHint(kyc, user.verificationStatus)}</p>
+      <p>{activationHint(kyc, user)}</p>
       <Button asChild className="mt-4">
-        <Link href="/verification">{activationAction(kyc, user.verificationStatus)}</Link>
+        <Link href="/verification">{activationAction(kyc, user)}</Link>
       </Button>
     </EmptyState>
   );

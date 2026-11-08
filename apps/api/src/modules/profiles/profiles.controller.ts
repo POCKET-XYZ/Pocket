@@ -19,7 +19,7 @@ import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
-import { Verified } from '../../common/decorators/verified.decorator';
+import { ActiveAccount, Verified } from '../../common/decorators/verified.decorator';
 import type { AuthUser } from '../../common/types/auth';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { BrowseSpecialistsDto } from './dto/browse-specialists.dto';
@@ -59,7 +59,7 @@ export class ProfilesController {
 
   @ApiBearerAuth()
   @Roles('specialist')
-  @Verified()
+  @ActiveAccount()
   @Put('me/specialist')
   saveSpecialist(@CurrentUser() user: AuthUser, @Body() dto: SpecialistProfileDto) {
     return this.profiles.saveSpecialist(user, dto);
@@ -69,7 +69,7 @@ export class ProfilesController {
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @Roles('specialist')
-  @Verified()
+  @ActiveAccount()
   @Post('me/cv')
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: MAX_CV_BYTES, files: 1, fields: 0 } }),

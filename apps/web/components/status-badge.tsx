@@ -35,7 +35,8 @@ const STATUSES: Record<string, { label: string; feminine?: string; tone: Tone }>
   // Contracts
   awaiting_specialist: { label: 'Esperando al experto', tone: 'warning' },
   awaiting_funding: { label: 'Esperando el depósito', tone: 'warning' },
-  active: { label: 'Activo', tone: 'info' },
+  // Also an account: a specialist active before their identity check.
+  active: { label: 'Activo', feminine: 'Activa', tone: 'info' },
   cancelled: { label: 'Cancelado', feminine: 'Cancelada', tone: 'neutral' },
   // Milestones
   delivered: { label: 'Entregado', tone: 'info' },

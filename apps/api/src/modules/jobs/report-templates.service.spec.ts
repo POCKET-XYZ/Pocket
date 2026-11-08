@@ -28,10 +28,16 @@ const specialist: AuthUser = {
   role: 'specialist',
   stellarAddress: 'GP',
 };
-const unverified: AuthUser = {
+// Account details sent, identity check still to come.
+const pendingSpecialist: AuthUser = {
   sub: 'specialist-2',
   role: 'specialist',
   stellarAddress: 'GU',
+};
+const unverified: AuthUser = {
+  sub: 'specialist-3',
+  role: 'specialist',
+  stellarAddress: 'GN',
 };
 const manager: AuthUser = { sub: 'manager-1', role: 'manager', stellarAddress: 'GM' };
 
@@ -72,7 +78,12 @@ describe('ReportTemplatesService', () => {
       user: {
         findUnique: jest.fn(({ where }: { where: { id: string } }) =>
           Promise.resolve({
-            verificationStatus: where.id === 'specialist-1' ? 'approved' : 'pending',
+            verificationStatus:
+              where.id === 'specialist-1'
+                ? 'approved'
+                : where.id === 'specialist-2'
+                  ? 'pending'
+                  : 'not_submitted',
           }),
         ),
       },
@@ -185,6 +196,12 @@ describe('ReportTemplatesService', () => {
       });
     });
 
+    it('serves it to a specialist before their identity check, to apply', async () => {
+      await expect(service.fileOf(pendingSpecialist, 'job-1')).resolves.toMatchObject({
+        contentType: XLSX_TYPE,
+      });
+    });
+
     it('still serves it once someone is hired, for the deliveries', async () => {
       job('in_progress');
       await expect(service.fileOf(specialist, 'job-1')).resolves.toMatchObject({
@@ -194,7 +211,7 @@ describe('ReportTemplatesService', () => {
 
     it.each([
       ['another startup', otherStartup],
-      ['a specialist not verified yet', unverified],
+      ['a specialist who never sent their details', unverified],
     ])('refuses %s', async (_label, user) => {
       await expect(service.fileOf(user, 'job-1')).rejects.toBeInstanceOf(
         ForbiddenException,

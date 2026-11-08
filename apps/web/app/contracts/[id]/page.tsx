@@ -6,6 +6,7 @@ import { ExternalLinkIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { IDENTITY_FOR_CONTRACT } from '@/components/activation';
 import { ContractSteps } from '@/components/contract/contract-steps';
 import { FeeBreakdown } from '@/components/contract/fee-breakdown';
 import { MilestoneCard } from '@/components/contract/milestone-card';
@@ -264,6 +265,7 @@ function NextStep({
       );
     }
     const preparing = accept.isPending || deploying;
+    const identityChecked = user.verificationStatus === 'approved';
     return (
       <Card className="border-warning">
         <CardHeader>
@@ -284,19 +286,33 @@ function NextStep({
             totalLabel="Monto del contrato"
             netLabel="Recibes en total"
           />
+          {/* Accepting takes the identity check: the one step a specialist's details skip. */}
+          {!deploying && !identityChecked ? (
+            <p className="text-sm text-muted-foreground">{IDENTITY_FOR_CONTRACT}</p>
+          ) : null}
           {deploying ? (
             <p className="text-sm text-muted-foreground">
               Esta página se actualiza sola cuando el contrato esté listo.
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              <Button disabled={accept.isPending} onClick={() => accept.mutate()}>
-                {accept.isPending
-                  ? 'Preparando tu contrato...'
-                  : accept.isError
-                    ? 'Reintentar'
-                    : 'Aceptar términos'}
-              </Button>
+              {identityChecked ? (
+                <Button disabled={accept.isPending} onClick={() => accept.mutate()}>
+                  {accept.isPending
+                    ? 'Preparando tu contrato...'
+                    : accept.isError
+                      ? 'Reintentar'
+                      : 'Aceptar términos'}
+                </Button>
+              ) : (
+                <Button asChild>
+                  <Link
+                    href={`/verification?next=${encodeURIComponent(`/contracts/${contract.id}`)}`}
+                  >
+                    Verificar mi identidad
+                  </Link>
+                </Button>
+              )}
               <Button
                 variant="outline"
                 disabled={decline.isPending || accept.isPending}

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { SpecialistDashboard, StartupDashboard, TrackRecord } from '@pocket/shared';
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ACTIVE_SPECIALIST } from '../users/identity';
 import { DASHBOARD_INCLUDE, specialistDashboard, startupDashboard } from './dashboard';
 import { TRACK_RECORD_INCLUDE, trackRecordOf } from './track-record';
 
@@ -26,13 +27,13 @@ export class DashboardService {
     return specialistDashboard(contracts, new Date());
   }
 
-  /** Public, like the profile it is shown on: only for an approved specialist. */
+  /** Public, like the profile it is shown on: only for an active specialist. */
   async trackRecord(userId: string): Promise<TrackRecord> {
     const specialist = await this.prisma.user.findFirst({
       where: {
         id: userId,
         role: 'specialist',
-        verificationStatus: 'approved',
+        verificationStatus: { in: ACTIVE_SPECIALIST },
         deletedAt: null,
       },
       select: { id: true },

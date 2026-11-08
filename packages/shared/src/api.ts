@@ -251,6 +251,8 @@ export interface PublicProfile {
    */
   wallet: string;
   memberSince: IsoDate;
+  /** Whether the account passed Pocket's identity check through Didit. */
+  identityVerified: boolean;
   profile: StartupProfile | SpecialistProfile;
 }
 
@@ -268,9 +270,15 @@ export interface StartupDirectory {
   offset: number;
 }
 
+/** A specialist as the directory lists them. */
+export interface SpecialistListing extends SpecialistProfile {
+  /** Whether they passed Pocket's identity check, which accepting a contract needs. */
+  identityVerified: boolean;
+}
+
 /** GET /profiles/specialists */
 export interface SpecialistDirectory {
-  items: SpecialistProfile[];
+  items: SpecialistListing[];
   total: number;
   limit: number;
   offset: number;
@@ -473,6 +481,8 @@ export interface Application {
 /** GET /jobs/:id/applications: what the startup sees about each applicant. */
 export interface Applicant extends Application {
   specialist: Pick<SpecialistProfile, 'displayName' | 'headline' | 'avatarUrl'> | null;
+  /** Whether they passed the identity check. Without it, they pass it to accept an offer. */
+  identityVerified: boolean;
   trackRecord: TrackRecordSummary;
 }
 

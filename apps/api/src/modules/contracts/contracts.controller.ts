@@ -3,14 +3,17 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { Verified } from '../../common/decorators/verified.decorator';
+import { ActiveAccount, Verified } from '../../common/decorators/verified.decorator';
 import type { AuthUser } from '../../common/types/auth';
 import { sendPrivateFile } from '../../common/uploads/send-file';
 import { ContractsService } from './contracts.service';
 import { ReportService } from './report.service';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { SignedTransactionDto } from '../stellar/dto/signed-transaction.dto';
-import { ESCROW_RATE_LIMIT, RateLimit } from '../../common/rate-limit/rate-limit.decorator';
+import {
+  ESCROW_RATE_LIMIT,
+  RateLimit,
+} from '../../common/rate-limit/rate-limit.decorator';
 
 @ApiTags('contracts')
 @ApiBearerAuth()
@@ -57,7 +60,10 @@ export class ContractsController {
     sendPrivateFile(res, await this.reports.csv(user, id));
   }
 
-  /** The specialist accepts the terms and the escrow is deployed. */
+  /**
+   * The specialist accepts the terms and the escrow is deployed. This is where
+   * a specialist's identity check is required, before any money is involved.
+   */
   @Roles('specialist')
   @Verified()
   @RateLimit(ESCROW_RATE_LIMIT)
@@ -66,8 +72,9 @@ export class ContractsController {
     return this.contracts.accept(user, id);
   }
 
+  // Turning an offer down takes no identity check: only accepting one does.
   @Roles('specialist')
-  @Verified()
+  @ActiveAccount()
   @Post(':id/decline')
   decline(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.contracts.decline(user, id);

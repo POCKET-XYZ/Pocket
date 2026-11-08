@@ -12,10 +12,11 @@ export const UserRole = {
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 /**
- * Account verification lifecycle. Nobody operates on the marketplace until the
- * account is approved, which happens when its details are completed.
- * `pending` is unused for now; `rejected` marks accounts turned down before and
- * managers removed from the team. Either can complete their details again.
+ * Account verification lifecycle. `pending` means the account details are in
+ * and the identity check through Didit is still to come; `approved`, that the
+ * account passed it (or sent its details, where Didit is not set up).
+ * `rejected` marks accounts the identity check turned down and managers removed
+ * from the team. Either can complete their details again.
  */
 export const VerificationStatus = {
   NotSubmitted: 'not_submitted',
@@ -25,6 +26,22 @@ export const VerificationStatus = {
 } as const;
 export type VerificationStatus =
   (typeof VerificationStatus)[keyof typeof VerificationStatus];
+
+/**
+ * Whether an account can use the marketplace. A startup verifies its identity
+ * before anything else. A specialist only needs their account details to build
+ * a profile and apply, and verifies their identity to accept a contract.
+ */
+export function isAccountActive(account: {
+  role: UserRole;
+  verificationStatus: VerificationStatus;
+}): boolean {
+  if (account.verificationStatus === VerificationStatus.Approved) return true;
+  return (
+    account.role === UserRole.Specialist &&
+    account.verificationStatus === VerificationStatus.Pending
+  );
+}
 
 /**
  * Who holds the key of the wallet, which decides what it can sign. A wallet the
