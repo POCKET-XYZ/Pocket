@@ -302,8 +302,10 @@ function SpecialistHome({ user }: { user: User }) {
     queryKey: ['applications', 'mine'],
     queryFn: () => api<MyApplication[]>('/applications/mine'),
   });
+  // Its own key: the job board caches pages of an infinite query under
+  // ['jobs', 'board', ...], and a plain page under that key breaks it.
   const board = useQuery({
-    queryKey: ['jobs', 'board', null, ''],
+    queryKey: ['jobs', 'first-page'],
     queryFn: () => api<JobBoard>('/jobs?limit=50&offset=0'),
     select: (page) => page.items,
   });
