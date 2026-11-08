@@ -29,7 +29,7 @@ const LOW_FEE_XLM = 0.02;
 const TRUSTLINE_XLM = 0.51;
 
 /** How many times a wallet not on the network yet is asked about again: two minutes. */
-const MAX_ACTIVATION_POLLS = 24;
+const MAX_ACTIVATION_POLLS = 12;
 
 export function useUsdcStatus(enabled = true) {
   return useQuery({
@@ -38,11 +38,12 @@ export function useUsdcStatus(enabled = true) {
     enabled,
     staleTime: 10_000,
     // Pocket activates a Pollar wallet on sign-in, in the background: ask
-    // again until it shows up, so the page moves on by itself.
+    // again until it shows up, so the page moves on by itself. Its own rate
+    // limit on the API, so this never blocks accepting or funding.
     refetchInterval: (query) =>
       query.state.data?.usdc === 'no_account' &&
       query.state.dataUpdateCount < MAX_ACTIVATION_POLLS
-        ? 5000
+        ? 10_000
         : false,
   });
 }
