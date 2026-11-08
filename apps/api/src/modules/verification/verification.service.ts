@@ -297,8 +297,8 @@ export class VerificationService {
 
   /**
    * Approve or turn down a pending request on the identity check's word.
-   * Approving is what activates a Pollar wallet, so Pollar only spends XLM on
-   * people whose identity was verified.
+   * Approving also tries again to activate a Pollar wallet that sign-in could
+   * not.
    */
   private async decide(
     requestId: string,
@@ -335,7 +335,7 @@ export class VerificationService {
     return decided;
   }
 
-  /** What every approval does: say so, and put the wallet on the network. */
+  /** What every approval does: say so, and make sure the wallet is on the network. */
   private async afterApproval(request: VerificationRequest): Promise<void> {
     this.notifications.notifyEmail(request.contactEmail, { type: 'verification_approved' });
     await this.wallets.activate(request.userId);

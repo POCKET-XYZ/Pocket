@@ -10,6 +10,7 @@ import type { PrismaService } from '../../prisma/prisma.service';
 import type { StellarService } from '../stellar/stellar.service';
 import { JobsService } from '../jobs/jobs.service';
 import type { NotificationsService } from '../notifications/notifications.service';
+import type { PollarWalletsService } from '../pollar/pollar-wallets.service';
 import { ContractsService } from './contracts.service';
 import type { CreateContractDto } from './dto/create-contract.dto';
 import type { EscrowService } from './escrow.service';
@@ -61,8 +62,10 @@ describe('ContractsService', () => {
     };
     verificationRequest: { findMany: jest.Mock };
     chainOperation: { findUnique: jest.Mock };
+    user: { findUnique: jest.Mock };
     $transaction: jest.Mock;
   };
+  let wallets: { activate: jest.Mock };
   let escrow: { deploy: jest.Mock; isFunded: jest.Mock; prepareFund: jest.Mock };
   let stellar: { usdcReadiness: jest.Mock; spendableUsdc: jest.Mock };
   let notifications: { notifyUsers: jest.Mock };
@@ -105,6 +108,7 @@ describe('ContractsService', () => {
         deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       chainOperation: { findUnique: jest.fn().mockResolvedValue(null) },
+      user: { findUnique: jest.fn().mockResolvedValue({ walletCustody: 'pollar' }) },
       verificationRequest: {
         // Two different people: each account verified with its own email.
         findMany: jest.fn().mockResolvedValue([
@@ -129,6 +133,7 @@ describe('ContractsService', () => {
       spendableUsdc: jest.fn(),
     };
     notifications = { notifyUsers: jest.fn() };
+    wallets = { activate: jest.fn().mockResolvedValue(false) };
     const client = prisma as unknown as PrismaService;
     service = new ContractsService(
       client,
@@ -136,6 +141,7 @@ describe('ContractsService', () => {
       escrow as unknown as EscrowService,
       stellar as unknown as StellarService,
       notifications as unknown as NotificationsService,
+      wallets as unknown as PollarWalletsService,
     );
   });
 
@@ -412,6 +418,35 @@ describe('ContractsService', () => {
         response: { code: 'USDC_TRUSTLINE_REQUIRED' },
       });
       expect(escrow.deploy).not.toHaveBeenCalled();
+    });
+
+    it('activates a Pollar wallet Pocket could not before, then accepts', async () => {
+      stellar.usdcReadiness
+        .mockResolvedValueOnce('no_account')
+        .mockResolvedValue('ready');
+      wallets.activate.mockResolvedValue(true);
+      await service.accept(specialist, 'contract-1');
+      expect(wallets.activate).toHaveBeenCalledWith(specialist.sub);
+      expect(escrow.deploy).toHaveBeenCalled();
+    });
+
+    it('tells a Pollar user the wallet is on its way, never to add XLM', async () => {
+      stellar.usdcReadiness.mockResolvedValue('no_account');
+      await expect(service.accept(specialist, 'contract-1')).rejects.toMatchObject({
+        response: {
+          code: 'STELLAR_ACCOUNT_NOT_FOUND',
+          message: 'Estamos activando tu wallet. Intenta de nuevo en un minuto',
+        },
+      });
+      expect(escrow.deploy).not.toHaveBeenCalled();
+    });
+
+    it('tells the owner of their own wallet to add XLM', async () => {
+      stellar.usdcReadiness.mockResolvedValue('no_account');
+      prisma.user.findUnique.mockResolvedValue({ walletCustody: 'external' });
+      await expect(service.accept(specialist, 'contract-1')).rejects.toMatchObject({
+        response: { message: expect.stringContaining('agrégale algo de XLM') as string },
+      });
     });
 
     it('does not deploy twice when two accepts race', async () => {

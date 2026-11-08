@@ -14,6 +14,7 @@ import { StellarService } from '../stellar/stellar.service';
 import { JobsService } from '../jobs/jobs.service';
 import { REPORT_TEMPLATE_INFO } from '../jobs/report-template-info';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PollarWalletsService } from '../pollar/pollar-wallets.service';
 import { contactEmails } from '../users/contact-emails';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { DELIVERABLE_REPORT } from './deliverable-report';
@@ -79,6 +80,7 @@ export class ContractsService {
     private readonly escrow: EscrowService,
     private readonly stellar: StellarService,
     private readonly notifications: NotificationsService,
+    private readonly wallets: PollarWalletsService,
   ) {}
 
   /**
@@ -280,7 +282,7 @@ export class ContractsService {
         'Solo puedes aceptar términos que todavía esperan tu respuesta',
       );
     }
-    await this.requireUsdcReady(user.stellarAddress);
+    await this.requireUsdcReady(user);
 
     // Claim the contract so a double click cannot deploy two escrows.
     const claimed = await this.prisma.contract.updateMany({
@@ -365,7 +367,7 @@ export class ContractsService {
         'La red todavía está confirmando tu depósito. Revisa de nuevo en un minuto',
       );
     }
-    await this.requireUsdcReady(user.stellarAddress);
+    await this.requireUsdcReady(user);
     await this.requireUsdcFor(user.stellarAddress, contract.amount);
     return this.escrow.prepareFund(contract, user.sub, user.stellarAddress);
   }
@@ -440,13 +442,27 @@ export class ContractsService {
     return contract;
   }
 
-  private async requireUsdcReady(address: string): Promise<void> {
-    const readiness = await this.stellar.usdcReadiness(address);
+  /**
+   * The wallet must exist on the network and trust USDC. A Pollar wallet that
+   * Pocket could not activate before (Pollar timed out) gets another try here,
+   * and its owner never reads about XLM: activating it is Pocket's job.
+   */
+  private async requireUsdcReady(user: AuthUser): Promise<void> {
+    let readiness = await this.stellar.usdcReadiness(user.stellarAddress);
+    if (readiness === 'no_account' && (await this.wallets.activate(user.sub))) {
+      readiness = await this.stellar.usdcReadiness(user.stellarAddress);
+    }
     if (readiness === 'no_account') {
+      const account = await this.prisma.user.findUnique({
+        where: { id: user.sub },
+        select: { walletCustody: true },
+      });
       throw new BadRequestException({
         code: ApiErrorCode.StellarAccountNotFound,
         message:
-          'Tu wallet todavía no está activa en Stellar. Primero agrégale algo de XLM',
+          account?.walletCustody === 'pollar'
+            ? 'Estamos activando tu wallet. Intenta de nuevo en un minuto'
+            : 'Tu wallet todavía no está activa en Stellar. Primero agrégale algo de XLM',
       });
     }
     if (readiness === 'no_trustline') {

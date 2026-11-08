@@ -129,9 +129,8 @@ export class MigratedAccountsService {
     if (!user) return null;
 
     securityEvent('migrated_account_claimed', { userId: user.id, role: user.role });
-    // Approved accounts get their wallet's reserve, as any approval does; one
-    // waiting for its identity check gets it once Didit approves it.
-    if (!needsKyc) await this.wallets.activate(user.id);
+    // Like any account coming in through Pollar, its wallet gets its XLM now.
+    void this.wallets.activate(user.id);
     this.logger.log(`Migrated ${user.role} account claimed by ${user.id}`);
     return user;
   }

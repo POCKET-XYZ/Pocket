@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JobsModule } from '../jobs/jobs.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PollarModule } from '../pollar/pollar.module';
 import { StellarModule } from '../stellar/stellar.module';
 import { ContractsController } from './contracts.controller';
 import { ContractsService } from './contracts.service';
@@ -17,7 +18,7 @@ import { PayoutsService } from './payouts.service';
 import { ReportService } from './report.service';
 
 @Module({
-  imports: [JobsModule, StellarModule, NotificationsModule],
+  imports: [JobsModule, StellarModule, NotificationsModule, PollarModule],
   controllers: [
     ContractsController,
     MilestonesController,

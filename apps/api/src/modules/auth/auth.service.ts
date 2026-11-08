@@ -151,6 +151,9 @@ export class AuthService {
           ...termsAccepted(ip),
         },
       });
+      // Pocket pays the wallet's XLM as soon as the person is in, so the
+      // wallet is ready long before a contract needs it.
+      void this.wallets.activate(created.id);
       securityEvent('login', { method: 'pollar', userId: created.id, isNewUser: true });
       return { accessToken: await this.sign(created), user: created, isNewUser: true };
     }
@@ -159,14 +162,12 @@ export class AuthService {
       where: { id: existing.id },
       data: pollarFields(session, existing),
     });
-    // The wallet of an approved account that could not be activated then (Pollar
-    // down, funding wallet empty) gets another try on each sign-in.
-    if (
-      user.verificationStatus === 'approved' &&
-      user.walletCustody === 'pollar' &&
-      !user.walletFundedAt
-    ) {
-      await this.wallets.activate(user.id);
+    // A wallet that is not active yet (an account from before Pocket paid on
+    // sign-in, or Pollar down, or the funding wallet empty) gets another try
+    // on each sign-in. In the background: Pollar can take seconds to answer,
+    // and the page keeps asking for the wallet until it is ready.
+    if (user.walletCustody === 'pollar' && !user.walletFundedAt) {
+      void this.wallets.activate(user.id);
     }
     securityEvent('login', { method: 'pollar', userId: user.id, isNewUser: false });
     return { accessToken: await this.sign(user), user, isNewUser: false };
