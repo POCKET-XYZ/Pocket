@@ -1,9 +1,10 @@
 'use client';
 
-import type { UserRole } from '@pocket/shared';
+import { isAccountActive, type UserRole } from '@pocket/shared';
 import { ChevronDownIcon, MenuIcon, WalletIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { accountBadgeStatus } from '@/components/activation';
 import { useAuth } from '@/components/auth-provider';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -126,7 +127,7 @@ export function SiteHeader() {
                 <DropdownMenuLabel className="flex items-center justify-between gap-2">
                   <span>{ROLE_LABELS[user.role]}</span>
                   {user.role !== 'manager' ? (
-                    <StatusBadge feminine status={user.verificationStatus} />
+                    <StatusBadge feminine status={accountBadgeStatus(user)} />
                   ) : null}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -138,7 +139,11 @@ export function SiteHeader() {
                     {/* Only while there is something to do there: the badge above says the rest. */}
                     {user.verificationStatus !== 'approved' ? (
                       <DropdownMenuItem asChild>
-                        <Link href="/verification">Activar mi cuenta</Link>
+                        <Link href="/verification">
+                          {isAccountActive(user)
+                            ? 'Verificar mi identidad'
+                            : 'Activar mi cuenta'}
+                        </Link>
                       </DropdownMenuItem>
                     ) : null}
                     <DropdownMenuItem asChild>

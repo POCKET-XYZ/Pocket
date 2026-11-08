@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { HireDialog } from '@/components/hire-dialog';
+import { IdentitySeal } from '@/components/identity-seal';
 import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
 import { StatusBadge } from '@/components/status-badge';
@@ -61,6 +62,7 @@ function Applicants() {
                       {applicant.specialist?.displayName ?? 'Experto'}
                     </Link>
                     <StatusBadge feminine status={applicant.status} />
+                    {applicant.identityVerified ? <IdentitySeal /> : null}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {applicant.specialist?.headline}

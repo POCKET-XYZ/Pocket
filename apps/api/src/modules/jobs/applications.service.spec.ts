@@ -123,6 +123,8 @@ describe('ApplicationsService', () => {
               headline: 'Growth',
               avatarUrl: null,
             },
+            verificationStatus: 'approved',
+            _count: { verificationRequests: 1 },
           },
         },
       ]);
@@ -134,6 +136,7 @@ describe('ApplicationsService', () => {
           id: 'app-1',
           price: '450',
           specialist: { displayName: 'Ana', headline: 'Growth', avatarUrl: null },
+          identityVerified: true,
           trackRecord: {
             completed: 0,
             milestones: { total: 0, onTime: 0 },

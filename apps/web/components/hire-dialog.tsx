@@ -12,6 +12,7 @@ import { PlusIcon, Trash2Icon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useKycEnabled } from '@/components/activation';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -84,6 +85,7 @@ export function HireDialog({
   job?: JobListing;
 }) {
   const router = useRouter();
+  const kyc = useKycEnabled();
   const [open, setOpen] = useState(false);
   const [milestones, setMilestones] = useState<MilestoneDraft[]>(() =>
     planFrom(job, applicant.price),
@@ -152,8 +154,11 @@ export function HireDialog({
             Contratar a {applicant.specialist?.displayName ?? 'este experto'}
           </DialogTitle>
           <DialogDescription>
-            Divide los {usdc(applicant.price)} acordados en hitos. Cada uno se paga
-            cuando apruebas su entrega.
+            Divide los {usdc(applicant.price)} acordados en hitos. Cada uno se paga cuando
+            apruebas su entrega.
+            {kyc && !applicant.identityVerified
+              ? ' Antes de aceptar, el experto verifica su identidad con Pocket.'
+              : ''}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
@@ -258,9 +263,9 @@ export function HireDialog({
 
           {remaining === BigInt(0) ? (
             <p className="rounded-lg bg-celeste-light/40 px-3 py-2 text-sm text-muted-foreground">
-              Tú depositas el total de {usdc(applicant.price)}. Trustless Work, que opera el
-              contrato, se queda con el {TRUSTLESS_WORK_FEE_PERCENT}% de cada pago y Pocket
-              con el {POCKET_FEE_PERCENT}%, así que{' '}
+              Tú depositas el total de {usdc(applicant.price)}. Trustless Work, que opera
+              el contrato, se queda con el {TRUSTLESS_WORK_FEE_PERCENT}% de cada pago y
+              Pocket con el {POCKET_FEE_PERCENT}%, así que{' '}
               {applicant.specialist?.displayName ?? 'el experto'} recibe{' '}
               {usdc(
                 totalAfterFees(

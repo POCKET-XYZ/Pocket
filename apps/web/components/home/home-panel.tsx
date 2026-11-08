@@ -2,6 +2,7 @@
 
 import {
   MetricsPeriod,
+  isAccountActive,
   type ContractSummary,
   type DashboardContract,
   type DashboardUpcoming,
@@ -107,7 +108,7 @@ const greeting = (name?: string | null) => (name ? `Hola, ${name}` : 'Hola');
  * first steps say what is missing, and a button here would lead to a dead end.
  */
 const canStart = (user: User, profile: unknown) =>
-  user.verificationStatus === 'approved' && Boolean(profile);
+  isAccountActive(user) && Boolean(profile);
 
 function StartupHome({ user }: { user: User }) {
   const profile = useMyProfile();

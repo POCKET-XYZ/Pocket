@@ -5,13 +5,14 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { isAccountActive } from '@pocket/shared';
 import { PrismaService } from '../../prisma/prisma.service';
-import { VERIFIED_KEY } from '../decorators/verified.decorator';
+import { VERIFIED_KEY, type VerifiedLevel } from '../decorators/verified.decorator';
 import type { AuthUser } from '../types/auth';
 
 const MESSAGES = {
   not_submitted: 'Primero completa los datos de tu cuenta',
-  pending: 'Primero completa los datos de tu cuenta',
+  pending: 'Primero verifica tu identidad',
   rejected: 'Completa de nuevo los datos de tu cuenta',
 } as const;
 
@@ -23,10 +24,10 @@ export class VerifiedGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const required = this.reflector.getAllAndOverride<boolean>(VERIFIED_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const required = this.reflector.getAllAndOverride<VerifiedLevel | undefined>(
+      VERIFIED_KEY,
+      [context.getHandler(), context.getClass()],
+    );
     if (!required) return true;
 
     const authUser = context.switchToHttp().getRequest<{ user?: AuthUser }>().user;
@@ -34,12 +35,11 @@ export class VerifiedGuard implements CanActivate {
 
     const user = await this.prisma.user.findUnique({
       where: { id: authUser.sub },
-      select: { verificationStatus: true },
+      select: { role: true, verificationStatus: true },
     });
     if (!user) throw new ForbiddenException('No encontramos al usuario');
-    if (user.verificationStatus !== 'approved') {
-      throw new ForbiddenException(MESSAGES[user.verificationStatus]);
-    }
-    return true;
+    if (user.verificationStatus === 'approved') return true;
+    if (required === 'active' && isAccountActive(user)) return true;
+    throw new ForbiddenException(MESSAGES[user.verificationStatus]);
   }
 }
