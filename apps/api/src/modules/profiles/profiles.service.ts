@@ -63,6 +63,19 @@ const SPECIALIST_OPTIONAL = {
   audienceCountries: [],
 };
 
+/**
+ * A specialist profile as anyone can see it. The rate is not shown on Pocket
+ * any more, so it does not leave the API either, older profiles included.
+ */
+export function publicSpecialist<T extends object>(
+  profile: T,
+): Omit<T, 'hourlyRate' | 'minProjectBudget'> {
+  const rest: Record<string, unknown> = { ...(profile as Record<string, unknown>) };
+  delete rest.hourlyRate;
+  delete rest.minProjectBudget;
+  return rest as Omit<T, 'hourlyRate' | 'minProjectBudget'>;
+}
+
 /** A creator's account as stored: the declared figures and when they last changed. */
 interface StoredAccount {
   platform: string;
@@ -325,7 +338,7 @@ export class ProfilesService {
     ]);
 
     const items = profiles.map(({ user, ...profile }) => ({
-      ...profile,
+      ...publicSpecialist(profile),
       identityVerified: identityVerified(user),
     }));
     // Then the specialists still to claim their account from the test network.
@@ -334,7 +347,11 @@ export class ProfilesService {
       .filter((profile) =>
         matchesWaiting('specialist', profile, { category: query.category, search }),
       )
-      .map((profile) => ({ ...profile, identityVerified: false, waiting: true }));
+      .map((profile) => ({
+        ...publicSpecialist(profile),
+        identityVerified: false,
+        waiting: true,
+      }));
     const page = pageWithWaiting(items, total, waiting, offset, limit);
     return { items: page.items, total: page.total, limit, offset };
   }
@@ -472,7 +489,7 @@ export class ProfilesService {
       wallet: `${user.stellarAddress.slice(0, 4)}...${user.stellarAddress.slice(-4)}`,
       memberSince: user.createdAt,
       identityVerified: identityVerified(user),
-      profile,
+      profile: user.specialistProfile ? publicSpecialist(profile) : profile,
     };
   }
 
@@ -494,7 +511,10 @@ export class ProfilesService {
       memberSince: row.createdAt,
       identityVerified: false,
       waiting: true,
-      profile: waitingProfile(row, this.apiBase),
+      profile:
+        row.role === 'specialist'
+          ? publicSpecialist(waitingProfile(row, this.apiBase))
+          : waitingProfile(row, this.apiBase),
     };
   }
 }
