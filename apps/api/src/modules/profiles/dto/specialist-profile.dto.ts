@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { SocialPlatform } from '@pocket/shared';
 import { ServiceCategory } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
@@ -6,6 +7,7 @@ import {
   ArrayNotEmpty,
   IsArray,
   IsEnum,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -17,6 +19,33 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { IsHttpsUrl } from '../../../common/decorators/is-https-url.decorator';
+
+/** A creator's account. The figures are what the creator declares, unverified. */
+export class SocialAccountDto {
+  @ApiProperty({ enum: Object.values(SocialPlatform), example: 'tiktok' })
+  @IsIn(Object.values(SocialPlatform))
+  platform: SocialPlatform;
+
+  @ApiProperty({ example: 'https://www.tiktok.com/@example' })
+  @IsHttpsUrl()
+  url: string;
+
+  @ApiPropertyOptional({ example: 12000 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(10_000_000_000)
+  followers?: number;
+
+  @ApiPropertyOptional({ description: 'Average views per post', example: 3500 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(10_000_000_000)
+  avgViews?: number;
+}
 
 /** A piece of past work: where to see it and what it achieved. */
 export class CaseStudyDto {
@@ -159,4 +188,31 @@ export class SpecialistProfileDto {
   @IsString()
   @Length(2, 120)
   location?: string;
+
+  @ApiPropertyOptional({
+    type: [SocialAccountDto],
+    description: "A creator's accounts: two platforms at least when they offer content",
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(8)
+  @ValidateNested({ each: true })
+  @Type(() => SocialAccountDto)
+  socialAccounts?: SocialAccountDto[];
+
+  @ApiPropertyOptional({ type: [String], example: ['fintech', 'gaming'] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  niches?: string[];
+
+  @ApiPropertyOptional({ type: [String], example: ['México', 'Bolivia'] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(3)
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  audienceCountries?: string[];
 }

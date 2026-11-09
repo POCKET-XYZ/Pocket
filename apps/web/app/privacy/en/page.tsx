@@ -74,7 +74,9 @@ export default function PrivacyPageEn() {
           <strong>Specialist profile:</strong> name, headline, bio, categories, skills,
           tools, years of experience, languages, time zone, weekly availability, hourly
           rate, smallest project, location, past work with its links and results, and
-          links to your portfolio, LinkedIn and CV, or the CV you upload as a PDF.
+          links to your portfolio, LinkedIn and CV, or the CV you upload as a PDF. If you
+          create content, also your social accounts with their links, the followers and
+          views you declare, your niches and the countries of your audience.
         </li>
         <li>
           <strong>Startup profile:</strong> company name, legal name, one-line
@@ -86,6 +88,12 @@ export default function PrivacyPageEn() {
           measured on, your applications, offers, contracts, milestones, deliveries with
           their links, files and reported results, feedback, disputes, evidence and
           comments.
+        </li>
+        <li>
+          <strong>Messages:</strong> what you write in each contract&apos;s chat, with its
+          date. The other party to the contract reads it and, during a dispute, so does
+          the Pocket team resolving it, which may also write to you in a private chat.
+          Messages are not edited or deleted, so they stand as a record of the contract.
         </li>
       </ul>
       <h3>What we collect automatically</h3>

@@ -9,7 +9,7 @@ import type { AuthUser } from '../../common/types/auth';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { SpecialistProfileDto } from './dto/specialist-profile.dto';
 import type { StartupProfileDto } from './dto/startup-profile.dto';
-import { ProfilesService } from './profiles.service';
+import { ProfilesService, withStatsDates } from './profiles.service';
 
 const STARTUP: AuthUser = { sub: 'user-1', role: 'startup', stellarAddress: 'G...' };
 const SPECIALIST: AuthUser = {
@@ -147,6 +147,90 @@ describe('ProfilesService', () => {
     delete onlyCv.linkedinUrl;
     await service.saveSpecialist(SPECIALIST, onlyCv as SpecialistProfileDto);
     expect(prisma.specialistProfile.upsert).toHaveBeenCalled();
+  });
+
+  describe('content creators', () => {
+    const creator = (accounts: { platform: string; url: string; followers?: number }[]) =>
+      ({
+        ...SPECIALIST_DTO,
+        categories: ['content'],
+        linkedinUrl: undefined,
+        socialAccounts: accounts,
+        niches: ['fintech'],
+        audienceCountries: ['México'],
+      }) as unknown as SpecialistProfileDto;
+
+    it('asks a creator for two accounts on different platforms, not a CV', async () => {
+      await expect(
+        service.saveSpecialist(
+          SPECIALIST,
+          creator([{ platform: 'tiktok', url: 'https://www.tiktok.com/@ana' }]),
+        ),
+      ).rejects.toThrow('Agrega al menos 2 redes de plataformas distintas');
+      await expect(
+        service.saveSpecialist(
+          SPECIALIST,
+          creator([
+            { platform: 'tiktok', url: 'https://www.tiktok.com/@ana' },
+            { platform: 'tiktok', url: 'https://www.tiktok.com/@ana2' },
+          ]),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.specialistProfile.upsert).not.toHaveBeenCalled();
+    });
+
+    it('saves a creator with their accounts, niches and audience', async () => {
+      await service.saveSpecialist(
+        SPECIALIST,
+        creator([
+          { platform: 'tiktok', url: 'https://www.tiktok.com/@ana', followers: 12000 },
+          { platform: 'instagram', url: 'https://www.instagram.com/ana' },
+        ]),
+      );
+      const { create } = prisma.specialistProfile.upsert.mock.calls[0][0];
+      expect(create).toMatchObject({
+        categories: ['content'],
+        niches: ['fintech'],
+        audienceCountries: ['México'],
+        socialAccounts: [
+          {
+            platform: 'tiktok',
+            url: 'https://www.tiktok.com/@ana',
+            followers: 12000,
+            statsUpdatedAt: expect.any(String) as string,
+          },
+          { platform: 'instagram', url: 'https://www.instagram.com/ana' },
+        ],
+      });
+    });
+
+    it('dates each figure: a changed one is new, an unchanged one keeps its date', () => {
+      const now = new Date('2026-11-09T12:00:00Z');
+      const before = [
+        {
+          platform: 'tiktok',
+          url: 'https://t/ana',
+          followers: 100,
+          statsUpdatedAt: '2026-10-01T00:00:00.000Z',
+        },
+        {
+          platform: 'youtube',
+          url: 'https://y/ana',
+          followers: 50,
+          statsUpdatedAt: '2026-10-01T00:00:00.000Z',
+        },
+      ];
+      const stored = withStatsDates(
+        [
+          { platform: 'tiktok', url: 'https://t/ana', followers: 100 },
+          { platform: 'youtube', url: 'https://y/ana', followers: 80 },
+        ],
+        before,
+        now,
+      );
+      expect(stored[0].statsUpdatedAt).toBe('2026-10-01T00:00:00.000Z');
+      expect(stored[1].statsUpdatedAt).toBe(now.toISOString());
+    });
   });
 
   it('lists only approved startups, with how many jobs each has open', async () => {

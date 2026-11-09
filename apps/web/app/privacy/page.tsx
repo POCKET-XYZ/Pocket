@@ -74,11 +74,13 @@ export default function PrivacyPage() {
           tu consentimiento y, si no se aprobó, el motivo.
         </li>
         <li>
-          <strong>Perfil de experto:</strong> nombre, titular, biografía, categorías,
-          habilidades, herramientas, años de experiencia, idiomas, zona horaria,
-          disponibilidad semanal, tarifa por hora, proyecto mínimo, ubicación, trabajos
-          anteriores con sus enlaces y resultados, y enlaces a tu portafolio, LinkedIn y
-          CV, o el CV que subas en PDF.
+          <strong>Perfil de experto:</strong> nombre, a qué te dedicas, biografía,
+          categorías, habilidades, herramientas, años de experiencia, idiomas, zona
+          horaria, disponibilidad semanal, tarifa por hora, proyecto mínimo, ubicación,
+          trabajos anteriores con sus enlaces y resultados, y enlaces a tu portafolio,
+          LinkedIn y CV, o el CV que subas en PDF. Si creas contenido, también tus redes
+          con sus enlaces, los seguidores y vistas que declares, tus nichos y los países
+          de tu audiencia.
         </li>
         <li>
           <strong>Perfil de startup:</strong> nombre de la empresa, razón social,
@@ -90,6 +92,12 @@ export default function PrivacyPage() {
           KPIs con que se miden, tus postulaciones, ofertas, contratos, hitos, entregas
           con sus enlaces, archivos y resultados reportados, comentarios de cambios,
           disputas, pruebas y comentarios.
+        </li>
+        <li>
+          <strong>Mensajes:</strong> lo que escribes en el chat de cada contrato, con su
+          fecha. Lo leen la otra parte del contrato y, si hay una disputa, el equipo de
+          Pocket que la resuelve, que también puede escribirte en un chat privado. Los
+          mensajes no se editan ni se borran, para que sirvan de registro del contrato.
         </li>
       </ul>
       <h3>Lo que recopilamos de forma automática</h3>

@@ -1,15 +1,21 @@
 'use client';
 
-import type { CaseStudy, PublicProfile, SpecialistProfile } from '@pocket/shared';
+import {
+  ServiceCategory,
+  type CaseStudy,
+  type PublicProfile,
+  type SocialAccount,
+  type SpecialistProfile,
+} from '@pocket/shared';
 import { useQuery } from '@tanstack/react-query';
 import {
-  BriefcaseIcon,
   ClockIcon,
   ExternalLinkIcon,
   FileTextIcon,
   GlobeIcon,
   LanguagesIcon,
   MapPinIcon,
+  MegaphoneIcon,
   TrendingUpIcon,
   UserRoundIcon,
 } from 'lucide-react';
@@ -22,7 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import { CATEGORY_LABELS, date, usdc } from '@/lib/format';
+import { CATEGORY_LABELS, PLATFORM_LABELS, date } from '@/lib/format';
 import { linkHost, safeHref } from '@/lib/links';
 
 /**
@@ -65,6 +71,10 @@ export default function SpecialistProfilePage() {
               </p>
             </CardContent>
           </Card>
+
+          {specialist.categories.includes(ServiceCategory.Content) ? (
+            <Audience specialist={specialist} />
+          ) : null}
 
           <PastWork caseStudies={specialist.caseStudies} />
 
@@ -126,6 +136,21 @@ function Header({
           </div>
         </div>
         <div className="flex flex-wrap gap-2 md:flex-col md:items-stretch">
+          {specialist.categories.includes(ServiceCategory.Content)
+            ? specialist.socialAccounts?.map((account) => (
+                <Button key={account.url} asChild variant="outline">
+                  <a
+                    href={safeHref(account.url)}
+                    title={linkHost(account.url)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <MegaphoneIcon className="size-4" />{' '}
+                    {PLATFORM_LABELS[account.platform]}
+                  </a>
+                </Button>
+              ))
+            : null}
           {specialist.cvUrl ? (
             <Button asChild>
               <a
@@ -168,6 +193,78 @@ function Header({
   );
 }
 
+/**
+ * A creator's accounts and who they reach. Pocket checks none of these figures,
+ * so each one says so, says how old it is and links to the account to compare.
+ */
+function Audience({ specialist }: { specialist: SpecialistProfile }) {
+  const socialAccounts = specialist.socialAccounts ?? [];
+  const niches = specialist.niches ?? [];
+  const audienceCountries = specialist.audienceCountries ?? [];
+  if (
+    socialAccounts.length === 0 &&
+    niches.length === 0 &&
+    audienceCountries.length === 0
+  )
+    return null;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Audiencia</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {socialAccounts.map((account) => (
+          <SocialAccountRow key={account.url} account={account} />
+        ))}
+        <Tags title="Nichos" values={niches} />
+        <Tags title="Países de la audiencia" values={audienceCountries} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function SocialAccountRow({ account }: { account: SocialAccount }) {
+  const figures = [
+    account.followers != null
+      ? `${account.followers.toLocaleString('es')} seguidores`
+      : null,
+    account.avgViews != null
+      ? `${account.avgViews.toLocaleString('es')} vistas promedio`
+      : null,
+  ].filter(Boolean);
+  return (
+    <a
+      href={safeHref(account.url)}
+      title={linkHost(account.url)}
+      target="_blank"
+      rel="noreferrer"
+      className="group block rounded-xl border border-border p-4 transition hover:border-celeste"
+    >
+      <p className="flex items-center gap-1 font-medium text-navy group-hover:underline">
+        {PLATFORM_LABELS[account.platform]}{' '}
+        <ExternalLinkIcon className="size-3 shrink-0" />
+      </p>
+      {figures.length > 0 ? (
+        <>
+          <p className="mt-1 text-sm">{figures.join(' · ')}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Declarado por el creador, sin verificar por Pocket
+            {account.statsUpdatedAt ? ` · ${month(account.statsUpdatedAt)}` : ''}
+          </p>
+        </>
+      ) : null}
+    </a>
+  );
+}
+
+function month(value: string): string {
+  return new Date(value).toLocaleDateString('es', {
+    year: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  });
+}
+
 /** Past work with what it achieved: the best signal a growth specialist can give. */
 function PastWork({ caseStudies }: { caseStudies: CaseStudy[] }) {
   if (caseStudies.length === 0) return null;
@@ -200,8 +297,15 @@ function PastWork({ caseStudies }: { caseStudies: CaseStudy[] }) {
   );
 }
 
-/** What a startup needs to know before hiring: experience, time, place, price. */
+/** What a startup needs to know before hiring: language, place and time. */
 function WorkingTogether({ specialist }: { specialist: SpecialistProfile }) {
+  if (
+    specialist.languages.length === 0 &&
+    !specialist.location &&
+    !specialist.timezone &&
+    !specialist.weeklyHours
+  )
+    return null;
   return (
     <Card className="h-fit">
       <CardHeader>
@@ -209,15 +313,6 @@ function WorkingTogether({ specialist }: { specialist: SpecialistProfile }) {
       </CardHeader>
       <CardContent>
         <dl className="space-y-4">
-          {specialist.yearsExperience != null ? (
-            <Detail label="Experiencia">
-              <span className="inline-flex items-center gap-1.5">
-                <BriefcaseIcon className="size-3.5" />
-                {specialist.yearsExperience}{' '}
-                {specialist.yearsExperience === 1 ? 'año' : 'años'}
-              </span>
-            </Detail>
-          ) : null}
           {specialist.languages.length > 0 ? (
             <Detail label="Idiomas">
               <span className="inline-flex items-center gap-1.5">
@@ -242,12 +337,6 @@ function WorkingTogether({ specialist }: { specialist: SpecialistProfile }) {
                 {specialist.weeklyHours === 1 ? 'hora por semana' : 'horas por semana'}
               </span>
             </Detail>
-          ) : null}
-          {specialist.hourlyRate ? (
-            <Detail label="Tarifa por hora">{usdc(specialist.hourlyRate)}</Detail>
-          ) : null}
-          {specialist.minProjectBudget ? (
-            <Detail label="Proyecto mínimo">{usdc(specialist.minProjectBudget)}</Detail>
           ) : null}
         </dl>
       </CardContent>
