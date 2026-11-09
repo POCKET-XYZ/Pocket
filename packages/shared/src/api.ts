@@ -1,6 +1,7 @@
 import type {
   ApplicationStatus,
   ChainOperationKind,
+  ChatChannel,
   ContractStatus,
   DisputeOutcome,
   DisputeStatus,
@@ -1167,4 +1168,45 @@ export interface ContractReport {
   kpis: ReportKpi[];
   milestones: ReportMilestone[];
   payments: ReportPayment[];
+}
+
+// ---------------------------------------------------------------------------
+// Chat: one per contract, plus a manager's private chats during a dispute
+// ---------------------------------------------------------------------------
+
+/** A message as the chat shows it. Never edited or deleted. */
+export interface ChatMessage {
+  id: string;
+  channel: ChatChannel;
+  body: string;
+  createdAt: IsoDate;
+  author: {
+    id: string;
+    role: UserRole;
+    /** The startup's company or the specialist's name; null for a manager. */
+    name: string | null;
+  };
+}
+
+/** One chat the user can see, with its messages, oldest first. */
+export interface ChatThread {
+  channel: ChatChannel;
+  /** Messages after the user last read this chat. */
+  unread: number;
+  /** Whether the user can write here now. */
+  canWrite: boolean;
+  messages: ChatMessage[];
+}
+
+/** GET /contracts/:id/chat */
+export interface ContractChat {
+  /** Managers take part only while the contract has a dispute. */
+  hasDispute: boolean;
+  threads: ChatThread[];
+}
+
+/** GET /chat/unread: messages waiting for the user, per contract. */
+export interface ChatUnread {
+  total: number;
+  byContract: Record<string, number>;
 }

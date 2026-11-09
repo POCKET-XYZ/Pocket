@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ContractChatCard } from '@/components/contract/contract-chat';
 import { Field, compact, formValues } from '@/components/form';
 import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { KpiReport } from '@/components/contract/kpi-report';
@@ -178,6 +179,9 @@ function DisputeView({ user }: { user: User }) {
             {data.status === 'open' ? <EvidenceForm disputeId={data.id} /> : null}
           </CardContent>
         </Card>
+
+        {/* The manager talks with both sides here, and with each one in private. */}
+        <ContractChatCard contractId={data.milestone.contract.id} user={user} />
       </div>
 
       <aside>

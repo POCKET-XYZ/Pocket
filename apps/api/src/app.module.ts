@@ -9,6 +9,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { VerifiedGuard } from './common/guards/verified.guard';
 import { HealthController } from './health.controller';
 import { AuthModule } from './modules/auth/auth.module';
+import { ChatModule } from './modules/chat/chat.module';
 import { ContractsModule } from './modules/contracts/contracts.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { ManagerModule } from './modules/manager/manager.module';
@@ -37,6 +38,7 @@ import configuration, { validateEnv } from './config/configuration';
     JobsModule,
     StellarModule,
     ContractsModule,
+    ChatModule,
     StatsModule,
   ],
   controllers: [HealthController],

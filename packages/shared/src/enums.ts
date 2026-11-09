@@ -161,3 +161,15 @@ export const ChainOperationKind = {
 } as const;
 export type ChainOperationKind =
   (typeof ChainOperationKind)[keyof typeof ChainOperationKind];
+
+/**
+ * Which chat of a contract a message belongs to: the contract chat between the
+ * startup and the specialist, which managers join during a dispute, or a
+ * manager's private chat with one side of a dispute.
+ */
+export const ChatChannel = {
+  Contract: 'contract',
+  ManagerStartup: 'manager_startup',
+  ManagerSpecialist: 'manager_specialist',
+} as const;
+export type ChatChannel = (typeof ChatChannel)[keyof typeof ChatChannel];

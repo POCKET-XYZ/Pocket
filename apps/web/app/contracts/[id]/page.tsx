@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { IDENTITY_FOR_CONTRACT } from '@/components/activation';
+import { ContractChatCard } from '@/components/contract/contract-chat';
 import { ContractSteps } from '@/components/contract/contract-steps';
 import { FeeBreakdown } from '@/components/contract/fee-breakdown';
 import { MilestoneCard } from '@/components/contract/milestone-card';
@@ -121,6 +122,13 @@ function Contract({ user }: { user: User }) {
       </Card>
 
       <NextStep contract={data} user={user} specialistName={specialistName} />
+
+      <ContractChatCard
+        contractId={data.id}
+        user={user}
+        startupName={startupName}
+        specialistName={specialistName}
+      />
 
       {data.status === 'active' || data.status === 'completed' ? (
         <ResultsCard contractId={data.id} />

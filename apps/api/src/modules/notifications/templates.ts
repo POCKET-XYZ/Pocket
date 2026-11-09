@@ -29,7 +29,13 @@ export type NotificationEvent =
       specialistAmount: string;
       startupAmount: string;
     }
-  | { type: 'report_ready'; contractId: string; jobTitle: string };
+  | { type: 'report_ready'; contractId: string; jobTitle: string }
+  | {
+      type: 'chat_message';
+      contractId: string;
+      jobTitle: string;
+      from: 'startup' | 'specialist' | 'manager';
+    };
 
 export type NotificationType = NotificationEvent['type'];
 
@@ -46,6 +52,13 @@ interface Content {
   paragraphs: string[];
   button: { label: string; path: string };
 }
+
+/** Who wrote, as a chat email names them. */
+const CHAT_AUTHORS = {
+  startup: 'La startup',
+  specialist: 'El experto',
+  manager: 'Un manager de Pocket',
+} as const;
 
 function content(event: NotificationEvent): Content {
   switch (event.type) {
@@ -154,6 +167,14 @@ function content(event: NotificationEvent): Content {
           `El experto recibe ${event.specialistAmount} USDC y la startup recibe ${event.startupAmount} USDC.`,
         ],
         button: { label: 'Ver la decisión', path: `/disputes/${event.disputeId}` },
+      };
+    case 'chat_message':
+      return {
+        subject: `Tienes mensajes nuevos: ${event.jobTitle}`,
+        paragraphs: [
+          `${CHAT_AUTHORS[event.from]} te escribió en el chat de "${event.jobTitle}".`,
+        ],
+        button: { label: 'Abrir el chat', path: `/contracts/${event.contractId}#chat` },
       };
     case 'report_ready':
       return {
