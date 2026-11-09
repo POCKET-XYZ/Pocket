@@ -22,12 +22,26 @@ export function date(value: string | null | undefined): string {
   });
 }
 
+/** The month of a date, like `mar 2026`. */
+export function month(value: string): string {
+  return new Date(value).toLocaleDateString('es', {
+    year: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
+}
+
 export function dateTime(value: string | null | undefined): string {
   if (!value) return '-';
   return new Date(value).toLocaleString('es', {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
+}
+
+/** A share as a whole percent, like the dashboard writes it, or `-` when there is nothing to count. */
+export function percent(part: number, total: number): string {
+  return total > 0 ? `${Math.round((part / total) * 100)}%` : '-';
 }
 
 /** Today in UTC as YYYY-MM-DD, the minimum for date inputs. */
