@@ -85,8 +85,9 @@ export default function SpecialistProfilePage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Miembro de Pocket desde el {date(profile.data.memberSince)}. Wallet{' '}
-        {profile.data.wallet}.
+        {profile.data.waiting
+          ? 'Se registró en la red de pruebas de Pocket y todavía no activa su cuenta aquí.'
+          : `Miembro de Pocket desde el ${date(profile.data.memberSince)}. Wallet ${profile.data.wallet}.`}
       </p>
     </div>
   );

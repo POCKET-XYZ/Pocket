@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import type { PrismaService } from '../../prisma/prisma.service';
+import type { NotificationsService } from '../notifications/notifications.service';
 import { ApplicationsService } from './applications.service';
 import type { ApplyDto } from './dto/apply.dto';
 import { JobsService } from './jobs.service';
@@ -38,12 +39,15 @@ describe('ApplicationsService', () => {
     specialistProfile: { findUnique: jest.Mock };
   };
   let service: ApplicationsService;
+  let notifications: { notifyUsers: jest.Mock };
 
   beforeEach(() => {
     prisma = {
       contract: { findMany: jest.fn().mockResolvedValue([]) },
       job: {
-        findUnique: jest.fn().mockResolvedValue({ status: 'open' }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ status: 'open', title: 'Growth plan', startupId: 'startup-1' }),
       },
       application: {
         create: jest.fn(),
@@ -57,14 +61,24 @@ describe('ApplicationsService', () => {
       },
     };
     const client = prisma as unknown as PrismaService;
-    service = new ApplicationsService(client, new JobsService(client));
+    notifications = { notifyUsers: jest.fn() };
+    service = new ApplicationsService(
+      client,
+      new JobsService(client),
+      notifications as unknown as NotificationsService,
+    );
   });
 
   describe('apply', () => {
-    it('applies to an open job', async () => {
+    it('applies to an open job, and the startup hears about it', async () => {
       await service.apply(specialist, 'job-1', dto);
       expect(prisma.application.create).toHaveBeenCalledWith({
         data: { ...dto, jobId: 'job-1', specialistId: 'specialist-1' },
+      });
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(['startup-1'], {
+        type: 'application_received',
+        jobId: 'job-1',
+        jobTitle: 'Growth plan',
       });
     });
 

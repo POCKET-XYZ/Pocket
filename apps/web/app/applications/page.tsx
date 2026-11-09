@@ -3,6 +3,7 @@
 import type { MyApplication, User } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { Onboarding } from '@/components/onboarding';
@@ -33,6 +34,7 @@ export default function ApplicationsPage() {
 function Applications({ user }: { user: User }) {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
+  const router = useRouter();
   const applications = useQuery({
     queryKey: ['applications', 'mine'],
     queryFn: () => api<MyApplication[]>('/applications/mine'),
@@ -78,10 +80,24 @@ function Applications({ user }: { user: User }) {
             </TableHeader>
             <TableBody>
               {applications.data.map((application) => (
-                <TableRow key={application.id}>
+                <TableRow
+                  key={application.id}
+                  // With a contract, the whole row leads to it: that is where
+                  // the work goes on, not the job post.
+                  className={application.contract ? 'cursor-pointer' : undefined}
+                  onClick={
+                    application.contract
+                      ? () => router.push(`/contracts/${application.contract?.id}`)
+                      : undefined
+                  }
+                >
                   <TableCell>
                     <Link
-                      href={`/jobs/${application.job.id}`}
+                      href={
+                        application.contract
+                          ? `/contracts/${application.contract.id}`
+                          : `/jobs/${application.job.id}`
+                      }
                       className="font-medium text-navy hover:underline"
                     >
                       {application.job.title}
@@ -90,7 +106,11 @@ function Applications({ user }: { user: User }) {
                   <TableCell>{usdc(application.price)}</TableCell>
                   <TableCell>{dateTime(application.createdAt)}</TableCell>
                   <TableCell>
-                    <StatusBadge feminine status={application.status} />
+                    {application.contract ? (
+                      <StatusBadge status={application.contract.status} />
+                    ) : (
+                      <StatusBadge feminine status={application.status} />
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     {application.status === 'submitted' ? (
@@ -112,9 +132,7 @@ function Applications({ user }: { user: User }) {
                     ) : application.contract ? (
                       <Button asChild size="sm" variant="ghost">
                         <Link href={`/contracts/${application.contract.id}`}>
-                          {application.contract.status === 'awaiting_specialist'
-                            ? 'Revisar las condiciones'
-                            : 'Ver contrato'}
+                          Ver contrato
                         </Link>
                       </Button>
                     ) : null}

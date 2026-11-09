@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useDeferredValue, useState } from 'react';
 import { Avatar } from '@/components/avatar';
+import { WaitingBadge } from '@/components/identity-seal';
 import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -60,6 +61,7 @@ export default function StartupsPage() {
                   <p className="truncate text-sm text-muted-foreground">
                     {startup.oneLiner}
                   </p>
+                  {startup.waiting ? <WaitingBadge className="mt-1.5" /> : null}
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-1.5">

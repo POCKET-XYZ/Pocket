@@ -8,6 +8,7 @@ import {
 import { Prisma, type Application } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { TRACK_RECORD_INCLUDE, trackRecordSummaryOf } from '../contracts/track-record';
 import { IDENTITY_SELECT, identityVerified } from '../users/identity';
 import { ApplyDto } from './dto/apply.dto';
@@ -18,6 +19,7 @@ export class ApplicationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jobs: JobsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -30,7 +32,7 @@ export class ApplicationsService {
     }
     const job = await this.prisma.job.findUnique({
       where: { id: jobId },
-      select: { status: true },
+      select: { status: true, title: true, startupId: true },
     });
     if (!job) throw new NotFoundException('No encontramos el trabajo');
     if (job.status !== 'open') {
@@ -45,9 +47,15 @@ export class ApplicationsService {
     }
 
     try {
-      return await this.prisma.application.create({
+      const application = await this.prisma.application.create({
         data: { ...dto, jobId, specialistId: user.sub },
       });
+      this.notifications.notifyUsers([job.startupId], {
+        type: 'application_received',
+        jobId,
+        jobTitle: job.title,
+      });
+      return application;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

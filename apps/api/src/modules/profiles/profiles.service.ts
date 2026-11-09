@@ -5,6 +5,7 @@ import {
   NotFoundException,
   PayloadTooLargeException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { isAccountActive } from '@pocket/shared';
 import { Prisma, type SpecialistProfile, type StartupProfile } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
@@ -16,6 +17,12 @@ import {
 } from '../../common/uploads/file-type';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ACTIVE_SPECIALIST, IDENTITY_SELECT, identityVerified } from '../users/identity';
+import {
+  matchesWaiting,
+  pageWithWaiting,
+  waitingProfile,
+  type WaitingRow,
+} from './waiting-profiles';
 import { BrowseSpecialistsDto } from './dto/browse-specialists.dto';
 import { BrowseStartupsDto } from './dto/browse-startups.dto';
 import { SpecialistProfileDto } from './dto/specialist-profile.dto';
@@ -84,7 +91,23 @@ function isUploadedLogo(url: string | undefined, userId: string): boolean {
 
 @Injectable()
 export class ProfilesService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly apiBase: string;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    config: ConfigService,
+  ) {
+    this.apiBase = config.get<string>('apiPublicUrl') ?? '';
+  }
+
+  /** Accounts moved from the test network and not claimed yet, oldest first. */
+  private waitingRows(role: 'startup' | 'specialist'): Promise<WaitingRow[]> {
+    return this.prisma.migratedAccount.findMany({
+      where: { role, claimedById: null },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, role: true, profile: true, createdAt: true },
+    });
+  }
 
   /** Create or replace the startup profile of the signed-in user. */
   async saveStartup(user: AuthUser, dto: StartupProfileDto): Promise<StartupProfile> {
@@ -187,7 +210,13 @@ export class ProfilesService {
       ...profile,
       openJobs: user._count.jobs,
     }));
-    return { items, total, limit, offset };
+    // Then the startups still to claim their account from the test network.
+    const waiting = (await this.waitingRows('startup'))
+      .map((row) => waitingProfile(row, this.apiBase))
+      .filter((profile) => matchesWaiting('startup', profile, { search }))
+      .map((profile) => ({ ...profile, openJobs: 0, waiting: true }));
+    const page = pageWithWaiting(items, total, waiting, offset, limit);
+    return { items: page.items, total: page.total, limit, offset };
   }
 
   /**
@@ -229,7 +258,15 @@ export class ProfilesService {
       ...profile,
       identityVerified: identityVerified(user),
     }));
-    return { items, total, limit, offset };
+    // Then the specialists still to claim their account from the test network.
+    const waiting = (await this.waitingRows('specialist'))
+      .map((row) => waitingProfile(row, this.apiBase))
+      .filter((profile) =>
+        matchesWaiting('specialist', profile, { category: query.category, search }),
+      )
+      .map((profile) => ({ ...profile, identityVerified: false, waiting: true }));
+    const page = pageWithWaiting(items, total, waiting, offset, limit);
+    return { items: page.items, total: page.total, limit, offset };
   }
 
   /**
@@ -260,8 +297,14 @@ export class ProfilesService {
     const cv = await this.prisma.specialistCv.findFirst({
       where: { userId, user: { verificationStatus: { in: ACTIVE_SPECIALIST } } },
     });
-    if (!cv) throw new NotFoundException('No encontramos el CV');
-    return Buffer.from(cv.data);
+    if (cv) return Buffer.from(cv.data);
+    // The CV of a specialist still to claim their account from the test network.
+    const waiting = await this.prisma.migratedAccount.findFirst({
+      where: { id: userId, role: 'specialist', claimedById: null },
+      select: { cv: true },
+    });
+    if (!waiting?.cv) throw new NotFoundException('No encontramos el CV');
+    return Buffer.from(waiting.cv);
   }
 
   /**
@@ -314,10 +357,19 @@ export class ProfilesService {
     const logo = await this.prisma.startupLogo.findFirst({
       where: { userId, user: { verificationStatus: 'approved' } },
     });
+    // The logo of a startup still to claim its account from the test network.
+    const data = logo
+      ? Buffer.from(logo.data)
+      : await this.prisma.migratedAccount
+          .findFirst({
+            where: { id: userId, role: 'startup', claimedById: null },
+            select: { logo: true },
+          })
+          .then((waiting) => (waiting?.logo ? Buffer.from(waiting.logo) : null));
     // Checked again on the way out: only an image type is ever served.
-    const contentType = logo ? sniffImage(Buffer.from(logo.data)) : null;
-    if (!logo || !contentType) throw new NotFoundException('No encontramos el logo');
-    return { data: Buffer.from(logo.data), contentType };
+    const contentType = data ? sniffImage(data) : null;
+    if (!data || !contentType) throw new NotFoundException('No encontramos el logo');
+    return { data, contentType };
   }
 
   /**
@@ -334,7 +386,8 @@ export class ProfilesService {
         _count: IDENTITY_SELECT._count,
       },
     });
-    if (!user || !isAccountActive(user)) {
+    if (!user) return this.waitingPublicProfile(userId);
+    if (!isAccountActive(user)) {
       throw new NotFoundException('No encontramos el perfil');
     }
 
@@ -350,6 +403,28 @@ export class ProfilesService {
       memberSince: user.createdAt,
       identityVerified: identityVerified(user),
       profile,
+    };
+  }
+
+  /**
+   * The profile of an account moved from the test network and not claimed
+   * yet: shown, but with no wallet, since it has none here until its owner
+   * signs in.
+   */
+  private async waitingPublicProfile(id: string) {
+    const row = await this.prisma.migratedAccount.findFirst({
+      where: { id, claimedById: null },
+      select: { id: true, role: true, profile: true, createdAt: true },
+    });
+    if (!row) throw new NotFoundException('No encontramos el perfil');
+    return {
+      userId: row.id,
+      role: row.role,
+      wallet: '',
+      memberSince: row.createdAt,
+      identityVerified: false,
+      waiting: true,
+      profile: waitingProfile(row, this.apiBase),
     };
   }
 }

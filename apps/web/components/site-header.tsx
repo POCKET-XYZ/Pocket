@@ -147,7 +147,7 @@ export function SiteHeader() {
                       </DropdownMenuItem>
                     ) : null}
                     <DropdownMenuItem asChild>
-                      <Link href="/wallet">Wallet y USDC</Link>
+                      <Link href="/wallet">Billetera</Link>
                     </DropdownMenuItem>
                   </>
                 ) : null}

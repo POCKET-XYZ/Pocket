@@ -72,6 +72,7 @@ export function MilestoneCard({
   const isSpecialist = user.id === contract.specialistId;
   const isManager = user.role === 'manager';
   const roundsLeft = milestone.revisionsUsed < contract.job.revisionRounds;
+  const [changesOpen, setChangesOpen] = useState(false);
   const active = contract.status === 'active';
   const lastDispute: Dispute | undefined = milestone.disputes.at(-1);
   const latest: Deliverable | undefined = milestone.deliverables.at(-1);
@@ -297,6 +298,8 @@ export function MilestoneCard({
                   contractId={contract.id}
                   milestoneId={milestone.id}
                   disabled={approve.isPending}
+                  open={changesOpen}
+                  onOpenChange={setChangesOpen}
                 />
               ) : (
                 <p className="self-center text-sm text-muted-foreground">
@@ -344,6 +347,14 @@ export function MilestoneCard({
               escrowId={contract.escrowId}
               milestoneId={milestone.id}
               disabled={approvalBusy}
+              // A startup with change rounds left is offered one first: it is
+              // faster and does not freeze the payment.
+              changesLeft={
+                isStartup && milestone.status === 'delivered' && roundsLeft
+                  ? contract.job.revisionRounds - milestone.revisionsUsed
+                  : 0
+              }
+              onRequestChanges={() => setChangesOpen(true)}
             />
           ) : null}
 
@@ -660,13 +671,17 @@ function RequestChangesDialog({
   contractId,
   milestoneId,
   disabled = false,
+  open,
+  onOpenChange: setOpen,
 }: {
   contractId: string;
   milestoneId: string;
   /** While the payment is being approved. */
   disabled?: boolean;
+  /** Held by the card, so the dispute modal can open it too. */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const request = useContractAction(
     contractId,
     (feedback: string) =>
@@ -722,14 +737,21 @@ function OpenDisputeDialog({
   escrowId,
   milestoneId,
   disabled = false,
+  changesLeft,
+  onRequestChanges,
 }: {
   contractId: string;
   escrowId: string | null;
   milestoneId: string;
   /** While the payment is being approved. */
   disabled?: boolean;
+  /** Change rounds the startup could still use instead: above 0, they are offered first. */
+  changesLeft: number;
+  onRequestChanges: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  // With change rounds left, the dialog opens on that suggestion, then the form.
+  const [suggesting, setSuggesting] = useState(false);
   const signer = useSigner();
   const money = useMoneyStep();
   // The reason travels with the signed transaction, so this does not use prepareSignSubmit.
@@ -767,43 +789,78 @@ function OpenDisputeDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setSuggesting(changesLeft > 0);
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="destructive" disabled={disabled}>
           Abrir una disputa
         </Button>
       </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Abrir una disputa</DialogTitle>
-          <DialogDescription>
-            El dinero de este hito queda congelado en el contrato hasta que un manager de
-            Pocket decida: pagarle al experto, devolvérselo a la startup o repartirlo.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-3">
-          <Textarea
-            name="reason"
-            required
-            minLength={10}
-            maxLength={2000}
-            placeholder="Qué salió mal"
-            rows={4}
-          />
-          <DialogFooter>
-            <Button type="submit" variant="destructive" disabled={dispute.isPending}>
-              {money.stage
-                ? stageLabel(money.stage, 'Abriendo la disputa...')
-                : 'Firmar y abrir la disputa'}
+      {suggesting ? (
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Pedir un cambio antes?</DialogTitle>
+            <DialogDescription>
+              Todavía te{' '}
+              {changesLeft === 1 ? 'queda 1 ronda' : `quedan ${changesLeft} rondas`} de
+              cambios. Pedir un cambio es más rápido: el experto ve tu nota y entrega una
+              nueva versión, y el pago no se congela. Una disputa la decide un manager de
+              Pocket.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setSuggesting(false)}>
+              Abrir la disputa de todos modos
+            </Button>
+            <Button
+              onClick={() => {
+                setOpen(false);
+                onRequestChanges();
+              }}
+            >
+              Pedir cambios
             </Button>
           </DialogFooter>
-          <MoneyStepStatus
-            stage={money.stage}
-            slow={money.slow}
-            sending="Pocket registra la disputa en el contrato."
-          />
-        </form>
-      </DialogContent>
+        </DialogContent>
+      ) : (
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Abrir una disputa</DialogTitle>
+            <DialogDescription>
+              El dinero de este hito queda congelado en el contrato hasta que un manager
+              de Pocket decida: pagarle al experto, devolvérselo a la startup o
+              repartirlo.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={onSubmit} className="space-y-3">
+            <Textarea
+              name="reason"
+              required
+              minLength={10}
+              maxLength={2000}
+              placeholder="Qué salió mal"
+              rows={4}
+            />
+            <DialogFooter>
+              <Button type="submit" variant="destructive" disabled={dispute.isPending}>
+                {money.stage
+                  ? stageLabel(money.stage, 'Abriendo la disputa...')
+                  : 'Firmar y abrir la disputa'}
+              </Button>
+            </DialogFooter>
+            <MoneyStepStatus
+              stage={money.stage}
+              slow={money.slow}
+              sending="Pocket registra la disputa en el contrato."
+            />
+          </form>
+        </DialogContent>
+      )}
     </Dialog>
   );
 }

@@ -4,6 +4,7 @@ import { Prisma, type User } from '@prisma/client';
 import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PollarWalletsService } from '../pollar/pollar-wallets.service';
+import { pointsToAnUploadedFile } from '../profiles/waiting-profiles';
 import { isKycEnabled } from '../verification/didit.client';
 
 /** What a new Pocket account takes from the Pollar session that claims it. */
@@ -133,15 +134,5 @@ export class MigratedAccountsService {
     void this.wallets.activate(user.id);
     this.logger.log(`Migrated ${user.role} account claimed by ${user.id}`);
     return user;
-  }
-}
-
-/** A link to a CV or logo stored by a Pocket API, as opposed to an outside link. */
-function pointsToAnUploadedFile(url: unknown): boolean {
-  if (typeof url !== 'string') return false;
-  try {
-    return /\/profiles\/[0-9a-f-]{36}\/(cv|logo)$/.test(new URL(url).pathname);
-  } catch {
-    return false;
   }
 }

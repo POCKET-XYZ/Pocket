@@ -167,7 +167,7 @@ function WalletView({ user }: { user: User }) {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader
-        title="Wallet y USDC"
+        title="Billetera"
         description="Pocket nunca guarda tus fondos ni tus claves. Los pagos se mueven entre tu wallet y el contrato."
       />
 

@@ -4,6 +4,7 @@ import {
   NotFoundException,
   PayloadTooLargeException,
 } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
 import type { AuthUser } from '../../common/types/auth';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { SpecialistProfileDto } from './dto/specialist-profile.dto';
@@ -52,6 +53,7 @@ describe('ProfilesService', () => {
     user: { findUnique: jest.Mock };
     specialistCv: { upsert: jest.Mock; findFirst: jest.Mock };
     startupLogo: { upsert: jest.Mock; findFirst: jest.Mock; deleteMany: jest.Mock };
+    migratedAccount: { findMany: jest.Mock; findFirst: jest.Mock };
     $transaction: jest.Mock;
   };
   let service: ProfilesService;
@@ -75,9 +77,17 @@ describe('ProfilesService', () => {
       user: { findUnique: jest.fn() },
       specialistCv: { upsert: jest.fn(), findFirst: jest.fn() },
       startupLogo: { upsert: jest.fn(), findFirst: jest.fn(), deleteMany: jest.fn() },
+      migratedAccount: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
       $transaction: jest.fn(async (ops: unknown[]) => Promise.all(ops)),
     };
-    service = new ProfilesService(prisma as unknown as PrismaService);
+    const config = { get: () => 'https://api.example/api' };
+    service = new ProfilesService(
+      prisma as unknown as PrismaService,
+      config as unknown as ConfigService,
+    );
   });
 
   it('saves the startup profile of a startup', async () => {
@@ -200,6 +210,75 @@ describe('ProfilesService', () => {
       { id: 'p-2', identityVerified: false },
       { id: 'p-3', identityVerified: false },
     ]);
+  });
+
+  describe('accounts still to come from the test network', () => {
+    const TESTNET_CV = `https://testnet.example/api/profiles/${'a'.repeat(8)}-aaaa-aaaa-aaaa-${'a'.repeat(12)}/cv`;
+    const waitingSpecialist = {
+      id: 'mig-1',
+      role: 'specialist',
+      createdAt: new Date('2026-11-01'),
+      profile: {
+        displayName: 'Adriana',
+        headline: 'Content for fintech',
+        bio: 'Short videos',
+        categories: ['marketing'],
+        skills: ['TikTok'],
+        cvUrl: TESTNET_CV,
+      },
+    };
+
+    it('lists them after the active specialists, with their CV served here', async () => {
+      prisma.specialistProfile.findMany.mockResolvedValue([
+        {
+          id: 'p-1',
+          user: { verificationStatus: 'approved', _count: { verificationRequests: 1 } },
+        },
+      ]);
+      prisma.specialistProfile.count.mockResolvedValue(1);
+      prisma.migratedAccount.findMany.mockResolvedValue([waitingSpecialist]);
+      const directory = await service.browseSpecialists({});
+      expect(directory.total).toBe(2);
+      expect(directory.items[1]).toMatchObject({
+        id: 'mig-1',
+        userId: 'mig-1',
+        displayName: 'Adriana',
+        identityVerified: false,
+        waiting: true,
+        cvUrl: 'https://api.example/api/profiles/mig-1/cv',
+      });
+      expect(prisma.migratedAccount.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { role: 'specialist', claimedById: null } }),
+      );
+    });
+
+    it('leaves out the ones the category or the search does not match', async () => {
+      prisma.migratedAccount.findMany.mockResolvedValue([waitingSpecialist]);
+      expect((await service.browseSpecialists({ category: 'sales' })).items).toEqual([]);
+      expect((await service.browseSpecialists({ search: 'seo' })).items).toEqual([]);
+      expect((await service.browseSpecialists({ search: 'tiktok' })).items).toHaveLength(
+        1,
+      );
+    });
+
+    it('opens their profile, marked as waiting and without a wallet', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.migratedAccount.findFirst.mockResolvedValue(waitingSpecialist);
+      await expect(service.publicProfile('mig-1')).resolves.toMatchObject({
+        userId: 'mig-1',
+        role: 'specialist',
+        wallet: '',
+        waiting: true,
+        identityVerified: false,
+        profile: { displayName: 'Adriana' },
+      });
+    });
+
+    it('serves the CV they brought along', async () => {
+      prisma.specialistCv.findFirst.mockResolvedValue(null);
+      prisma.migratedAccount.findFirst.mockResolvedValue({ cv: Buffer.from('%PDF-1.7') });
+      await expect(service.cvOf('mig-1')).resolves.toEqual(Buffer.from('%PDF-1.7'));
+    });
   });
 
   it('filters the directory by category', async () => {
