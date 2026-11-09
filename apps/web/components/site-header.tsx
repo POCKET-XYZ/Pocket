@@ -1,6 +1,7 @@
 'use client';
 
-import { isAccountActive, type UserRole } from '@pocket/shared';
+import { isAccountActive, type ChatUnread, type UserRole } from '@pocket/shared';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronDownIcon, MenuIcon, WalletIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -16,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { api } from '@/lib/api';
 import { shortAddress } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -53,9 +55,23 @@ function isCurrent(pathname: string, href: string): boolean {
   return href === '/' ? pathname === '/' : pathname.startsWith(href);
 }
 
+/** Where each role finds the chats with messages waiting. */
+const CHAT_LINK: Record<UserRole, string> = {
+  startup: '/contracts',
+  specialist: '/contracts',
+  manager: '/manager/disputes',
+};
+
 export function SiteHeader() {
   const { status, user, signOut } = useAuth();
   const pathname = usePathname();
+  const unread = useQuery({
+    queryKey: ['chat', 'unread'],
+    queryFn: () => api<ChatUnread>('/chat/unread'),
+    enabled: Boolean(user),
+    refetchInterval: 30_000,
+  });
+  const waiting = unread.data?.total ?? 0;
   const links = user
     ? [{ href: '/', label: 'Inicio' }, ...PUBLIC_LINKS, ...ROLE_LINKS[user.role]]
     : PUBLIC_LINKS;
@@ -89,6 +105,14 @@ export function SiteHeader() {
               )}
             >
               {link.label}
+              {user && link.href === CHAT_LINK[user.role] && waiting > 0 ? (
+                <span
+                  className="ml-1.5 rounded-full bg-mandarina px-1.5 text-xs font-semibold text-white"
+                  aria-label={`${waiting} mensajes sin leer`}
+                >
+                  {waiting}
+                </span>
+              ) : null}
             </Link>
           ))}
         </nav>

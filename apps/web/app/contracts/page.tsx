@@ -1,6 +1,6 @@
 'use client';
 
-import type { ContractSummary, User } from '@pocket/shared';
+import type { ChatUnread, ContractSummary, User } from '@pocket/shared';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
@@ -23,6 +23,12 @@ function Contracts({ user }: { user: User }) {
   const contracts = useQuery({
     queryKey: ['contracts', 'mine'],
     queryFn: () => api<ContractSummary[]>('/contracts/mine'),
+  });
+  // Shared with the menu badge, so both count the same messages.
+  const unread = useQuery({
+    queryKey: ['chat', 'unread'],
+    queryFn: () => api<ChatUnread>('/chat/unread'),
+    refetchInterval: 30_000,
   });
 
   return (
@@ -52,6 +58,13 @@ function Contracts({ user }: { user: User }) {
                 <div className="min-w-0">
                   <p className="font-heading text-lg font-bold text-navy">
                     {contract.job.title}
+                    {unread.data?.byContract[contract.id] ? (
+                      <span className="ml-2 rounded-full bg-mandarina px-2 py-0.5 align-middle text-xs font-semibold text-white">
+                        {unread.data.byContract[contract.id] === 1
+                          ? '1 mensaje nuevo'
+                          : `${unread.data.byContract[contract.id]} mensajes nuevos`}
+                      </span>
+                    ) : null}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {CATEGORY_LABELS[contract.job.category]} · {usdc(contract.amount)} ·

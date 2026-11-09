@@ -62,12 +62,12 @@ model User {
   tokenVersion       Int                @default(0) @map("token_version")
   // Proof of consent: which version of the Terms and Privacy Policy the user
   // accepted, when, and from which IP.
-  termsVersion    String?   @map("terms_version")
-  termsAcceptedAt DateTime? @map("terms_accepted_at")
-  termsAcceptedIp String?   @map("terms_accepted_ip")
+  termsVersion       String?            @map("terms_version")
+  termsAcceptedAt    DateTime?          @map("terms_accepted_at")
+  termsAcceptedIp    String?            @map("terms_accepted_ip")
   // Set when the user deleted the account. The row stays, emptied of personal
   // data, because contracts and disputes of the other party point to it.
-  deletedAt       DateTime? @map("deleted_at")
+  deletedAt          DateTime?          @map("deleted_at")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
@@ -85,6 +85,8 @@ model User {
   disputesOpened        Dispute[]             @relation("DisputeOpenedBy")
   disputesResolved      Dispute[]             @relation("DisputeResolvedBy")
   disputeEvidence       DisputeEvidence[]
+  contractMessages      ContractMessage[]
+  chatReadStates        ChatReadState[]
   chainOperations       ChainOperation[]
 
   @@map("users")
@@ -487,12 +489,14 @@ model Contract {
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
-  job             Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  application     Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  startup         User             @relation("ContractStartup", fields: [startupId], references: [id], onDelete: Cascade)
-  specialist      User             @relation("ContractSpecialist", fields: [specialistId], references: [id], onDelete: Cascade)
+  job             Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  application     Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  startup         User              @relation("ContractStartup", fields: [startupId], references: [id], onDelete: Cascade)
+  specialist      User              @relation("ContractSpecialist", fields: [specialistId], references: [id], onDelete: Cascade)
   milestones      Milestone[]
   chainOperations ChainOperation[]
+  messages        ContractMessage[]
+  chatReadStates  ChatReadState[]
 
   @@index([jobId])
   @@index([startupId])
@@ -531,15 +535,15 @@ model Milestone {
 
 // One submission of a milestone's work. Every version is kept.
 model Deliverable {
-  id          String   @id @default(uuid()) @db.Uuid
-  milestoneId String   @map("milestone_id") @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  milestoneId String    @map("milestone_id") @db.Uuid
   version     Int
   url         String
   note        String?
   // Set when the startup asks for changes on this version, with when.
   feedback    String?
   feedbackAt  DateTime? @map("feedback_at")
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   milestone  Milestone              @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
   kpiResults DeliverableKpiResult[]
@@ -760,4 +764,48 @@ model MigratedAccount {
   createdAt       DateTime  @default(now()) @map("created_at")
 
   @@map("migrated_accounts")
+}
+
+// Which chat of a contract a message belongs to: the contract chat between the
+// startup and the specialist, which managers join during a dispute, or a
+// manager's private chat with one side of a dispute.
+enum ChatChannel {
+  contract
+  manager_startup
+  manager_specialist
+}
+
+// A message in one of a contract's chats. Plain text, never edited or deleted,
+// so a dispute can rely on what was said.
+model ContractMessage {
+  id         String      @id @default(uuid()) @db.Uuid
+  contractId String      @map("contract_id") @db.Uuid
+  channel    ChatChannel @default(contract)
+  authorId   String      @map("author_id") @db.Uuid
+  body       String
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  author   User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([contractId, channel, createdAt])
+  @@index([authorId])
+  @@map("contract_messages")
+}
+
+// How far each person read each chat, and when they were last emailed about
+// it: unread messages are counted from it, and emails are grouped by it.
+model ChatReadState {
+  userId        String      @map("user_id") @db.Uuid
+  contractId    String      @map("contract_id") @db.Uuid
+  channel       ChatChannel
+  lastReadAt    DateTime?   @map("last_read_at")
+  lastEmailedAt DateTime?   @map("last_emailed_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@id([userId, contractId, channel])
+  @@index([contractId])
+  @@map("chat_read_states")
 }

@@ -57,6 +57,8 @@ export class UsersService {
         contractsAsSpecialist: { include: { milestones: { include: { deliverables: true } } } },
         disputesOpened: true,
         disputeEvidence: true,
+        // What the person wrote in contract chats: theirs to take along.
+        contractMessages: true,
       },
     });
     if (!user) throw new NotFoundException('No encontramos al usuario');

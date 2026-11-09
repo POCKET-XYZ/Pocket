@@ -7,6 +7,11 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { IDENTITY_FOR_CONTRACT } from '@/components/activation';
+import {
+  ContractChat,
+  ContractChatButton,
+  useContractChat,
+} from '@/components/contract/contract-chat';
 import { ContractSteps } from '@/components/contract/contract-steps';
 import { FeeBreakdown } from '@/components/contract/fee-breakdown';
 import { MilestoneCard } from '@/components/contract/milestone-card';
@@ -36,6 +41,7 @@ import { useContractAction } from '@/lib/use-contract-action';
 import { useMoneyStep } from '@/lib/use-money-step';
 import { useNow } from '@/lib/use-now';
 import { useSigner } from '@/components/use-signer';
+import { cn } from '@/lib/utils';
 import { prepareSignSubmit } from '@/lib/wallet';
 
 export default function ContractPage() {
@@ -56,6 +62,10 @@ function Contract({ user }: { user: User }) {
     refetchInterval: (query) => (waitsForOtherParty(query.state.data) ? 15_000 : false),
   });
 
+  // A manager sees the chat only during a dispute: otherwise no side column.
+  const chat = useContractChat(id);
+  const hasChat = !(chat.error instanceof ApiError && chat.error.status === 403);
+
   if (contract.isLoading) return <Loading />;
   if (contract.error || !contract.data)
     return <ErrorAlert error={contract.error} title="No se encontró el contrato" />;
@@ -68,94 +78,118 @@ function Contract({ user }: { user: User }) {
       ? 'Se comparte cuando se aceptan los términos'
       : 'No indicado';
 
+  const names = { startupName, specialistName };
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={data.job.title}
-        description={
-          <>
-            <Link href={`/startups/${data.startupId}`} className="underline">
-              {startupName}
-            </Link>{' '}
-            contrató a{' '}
-            <Link href={`/specialists/${data.specialistId}`} className="underline">
-              {specialistName}
-            </Link>
-          </>
-        }
-        actions={
-          <StatusBadge status={headerStatus(data, now)} className="px-3 py-1 text-sm" />
-        }
-      />
+    <div
+      className={cn(
+        hasChat &&
+          'lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6 xl:grid-cols-[minmax(0,1fr)_25rem]',
+      )}
+    >
+      <div className="min-w-0 space-y-6">
+        <PageHeader
+          title={data.job.title}
+          description={
+            <>
+              <Link href={`/startups/${data.startupId}`} className="underline">
+                {startupName}
+              </Link>{' '}
+              contrató a{' '}
+              <Link href={`/specialists/${data.specialistId}`} className="underline">
+                {specialistName}
+              </Link>
+            </>
+          }
+          actions={
+            <StatusBadge status={headerStatus(data, now)} className="px-3 py-1 text-sm" />
+          }
+        />
 
-      <ContractSteps contract={data} user={user} />
+        <ContractSteps contract={data} user={user} />
 
-      {isParty && data.status !== 'completed' && data.status !== 'cancelled' ? (
-        <UsdcStatus user={user} />
-      ) : null}
-
-      <Card>
-        <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-4">
-          <Detail label="Total">{usdc(data.amount)}</Detail>
-          <Detail label="Pago protegido">
-            {protectionText(data, now)}
-            {data.escrowId ? (
-              <a
-                href={explorerContract(data.escrowId)}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-1 flex w-fit items-center gap-1 text-xs text-muted-foreground underline"
-              >
-                Ver comprobante <ExternalLinkIcon className="size-3" />
-              </a>
-            ) : null}
-          </Detail>
-          {/* Contacts are shared once the specialist accepts the terms. */}
-          <Detail label={`Contacto de ${startupName}`}>
-            {data.contacts.startup ?? contactPending}
-          </Detail>
-          <Detail label={`Contacto de ${specialistName}`}>
-            {data.contacts.specialist ?? contactPending}
-          </Detail>
-        </CardContent>
-      </Card>
-
-      <NextStep contract={data} user={user} specialistName={specialistName} />
-
-      {data.status === 'active' || data.status === 'completed' ? (
-        <ResultsCard contractId={data.id} />
-      ) : null}
-
-      <section className="space-y-3">
-        <h2 className="text-xl font-bold text-navy">Hitos</h2>
-        {data.job.reportTemplate ? (
-          <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              {user.id === data.specialistId
-                ? 'Completa la plantilla de reporte de la startup y adjúntala a cada entrega.'
-                : 'El experto completa esta plantilla de reporte y la adjunta a cada entrega.'}
-            </p>
-            <ReportTemplateButton
-              jobId={data.job.id}
-              template={data.job.reportTemplate}
-            />
-          </div>
+        {isParty && data.status !== 'completed' && data.status !== 'cancelled' ? (
+          <UsdcStatus user={user} />
         ) : null}
-        {data.milestones.map((milestone) => (
-          <MilestoneCard
-            key={milestone.id}
-            contract={data}
-            milestone={milestone}
-            user={user}
-          />
-        ))}
-      </section>
 
-      <WorkHistory
-        contract={data}
-        startupName={startupName}
-        specialistName={specialistName}
-      />
+        <Card>
+          <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-4">
+            <Detail label="Total">{usdc(data.amount)}</Detail>
+            <Detail label="Pago protegido">
+              {protectionText(data, now)}
+              {data.escrowId ? (
+                <a
+                  href={explorerContract(data.escrowId)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 flex w-fit items-center gap-1 text-xs text-muted-foreground underline"
+                >
+                  Ver comprobante <ExternalLinkIcon className="size-3" />
+                </a>
+              ) : null}
+            </Detail>
+            {/* Contacts are shared once the specialist accepts the terms. */}
+            <Detail label={`Contacto de ${startupName}`}>
+              {data.contacts.startup ?? contactPending}
+            </Detail>
+            <Detail label={`Contacto de ${specialistName}`}>
+              {data.contacts.specialist ?? contactPending}
+            </Detail>
+          </CardContent>
+        </Card>
+
+        <NextStep contract={data} user={user} specialistName={specialistName} />
+
+        {data.status === 'active' || data.status === 'completed' ? (
+          <ResultsCard contractId={data.id} />
+        ) : null}
+
+        <section className="space-y-3">
+          <h2 className="text-xl font-bold text-navy">Hitos</h2>
+          {data.job.reportTemplate ? (
+            <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                {user.id === data.specialistId
+                  ? 'Completa la plantilla de reporte de la startup y adjúntala a cada entrega.'
+                  : 'El experto completa esta plantilla de reporte y la adjunta a cada entrega.'}
+              </p>
+              <ReportTemplateButton
+                jobId={data.job.id}
+                template={data.job.reportTemplate}
+              />
+            </div>
+          ) : null}
+          {data.milestones.map((milestone) => (
+            <MilestoneCard
+              key={milestone.id}
+              contract={data}
+              milestone={milestone}
+              user={user}
+            />
+          ))}
+        </section>
+
+        <WorkHistory
+          contract={data}
+          startupName={startupName}
+          specialistName={specialistName}
+        />
+      </div>
+
+      {/* The chat stays in view beside the contract; on a phone, behind a button. */}
+      {hasChat ? (
+        <>
+          <aside className="hidden lg:sticky lg:top-24 lg:block">
+            <ContractChat
+              contractId={data.id}
+              user={user}
+              variant="panel"
+              className="h-[calc(100vh-8rem)] min-h-[28rem]"
+              {...names}
+            />
+          </aside>
+          <ContractChatButton contractId={data.id} user={user} {...names} />
+        </>
+      ) : null}
     </div>
   );
 }
