@@ -374,6 +374,75 @@ describe('trackRecordOf', () => {
     return source as TrackRecordSource;
   };
 
+  describe("a creator's best result", () => {
+    const contentJob = (
+      id: string,
+      kpis: { id: string; target: number; result: number }[],
+    ) => {
+      const source: unknown = contract({
+        id,
+        status: 'completed',
+        completedAt: new Date('2026-11-20'),
+        job: {
+          id: `j-${id}`,
+          title: 'Videos',
+          category: 'content',
+          kpis: kpis.map((each) => ({
+            ...kpi(each.id, each.target),
+            name: `Vistas ${each.id}`,
+            unit: 'vistas',
+          })),
+        },
+        milestones: [
+          milestone({
+            id: `m-${id}`,
+            status: 'paid',
+            approvedAt: new Date('2026-11-12'),
+            dueDate: new Date('2026-11-15'),
+            deliverables: [
+              delivered(
+                '2026-11-10T10:00:00Z',
+                kpis.map((each) => ({
+                  kpiId: each.id,
+                  value: String(each.result),
+                  numericValue: D(each.result),
+                  comment: null,
+                })),
+              ),
+            ],
+          }),
+        ],
+      });
+      return source as TrackRecordSource;
+    };
+
+    it('is the met target beaten by the widest margin, with its sector and date', () => {
+      const record = trackRecordOf(
+        [
+          contentJob('c1', [
+            { id: 'a', target: 1000, result: 1500 },
+            { id: 'b', target: 100, result: 400 },
+          ]),
+          contentJob('c2', [{ id: 'c', target: 10000, result: 12400 }]),
+        ],
+        NOW,
+      );
+      expect(record.bestResult).toEqual({
+        result: 'Vistas b: 400 vistas',
+        sector: 'Café',
+        reportedAt: '2026-11-12T00:00:00.000Z',
+      });
+    });
+
+    it('is left out when no target was met, or for work that is not content', () => {
+      expect(
+        trackRecordOf([contentJob('c1', [{ id: 'a', target: 1000, result: 500 }])], NOW)
+          .bestResult,
+      ).toBeUndefined();
+      expect(trackRecordOf([finished()], NOW).bestResult).toBeUndefined();
+    });
+  });
+
   it('shows the sector and never an amount or a company name', () => {
     const record = trackRecordOf([finished()], NOW);
     expect(record.completed).toBe(1);
