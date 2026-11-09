@@ -60,7 +60,7 @@ function KpiTemplates() {
       {templates.isLoading ? (
         <Loading />
       ) : templates.error ? (
-        <ErrorAlert error={templates.error} />
+        <ErrorAlert error={templates.error} onRetry={() => templates.refetch()} />
       ) : (
         <div className="space-y-4">
           {creating ? (

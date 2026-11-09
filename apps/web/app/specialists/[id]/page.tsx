@@ -53,7 +53,13 @@ export default function SpecialistProfilePage() {
 
   if (profile.isLoading || isStartup) return <Loading />;
   if (profile.error || !profile.data)
-    return <ErrorAlert error={profile.error} title="No se encontró el perfil" />;
+    return (
+      <ErrorAlert
+        error={profile.error}
+        onRetry={() => profile.refetch()}
+        title="No se encontró el perfil"
+      />
+    );
 
   const specialist = profile.data.profile as SpecialistProfile;
   return (

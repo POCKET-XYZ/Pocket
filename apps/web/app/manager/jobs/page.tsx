@@ -59,7 +59,9 @@ function Jobs() {
         title="Publicaciones"
         description="Cada trabajo publicado: quién lo publicó, cuántos se postularon y en qué quedó."
       />
-      {jobs.error ? <ErrorAlert error={jobs.error} /> : null}
+      {jobs.error ? (
+        <ErrorAlert error={jobs.error} onRetry={() => jobs.refetch()} />
+      ) : null}
       {!jobs.data && !jobs.error ? <Loading /> : null}
       {jobs.data ? (
         <>

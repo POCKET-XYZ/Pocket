@@ -35,6 +35,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api';
 import { useMyProfile } from '@/lib/use-my-profile';
+import { UrlInput } from '@/components/url-input';
 
 /** Didit statuses after which the result is still on its way, or never came. */
 const KYC_UNDECIDED: (string | null | undefined)[] = [
@@ -343,12 +344,9 @@ function Verification({ user }: { user: User }) {
                 label={isStartup ? 'LinkedIn de la empresa' : 'LinkedIn'}
                 htmlFor="linkedinUrl"
               >
-                <Input
+                <UrlInput
                   id="linkedinUrl"
                   name="linkedinUrl"
-                  type="url"
-                  pattern="https://.+"
-                  title="Un enlace que empiece con https://"
                   placeholder="https://"
                   defaultValue={previous?.linkedinUrl}
                 />
@@ -357,12 +355,9 @@ function Verification({ user }: { user: User }) {
                 label={isStartup ? 'Sitio web de la empresa' : 'Portafolio'}
                 htmlFor="websiteUrl"
               >
-                <Input
+                <UrlInput
                   id="websiteUrl"
                   name="websiteUrl"
-                  type="url"
-                  pattern="https://.+"
-                  title="Un enlace que empiece con https://"
                   placeholder="https://"
                   defaultValue={previous?.websiteUrl}
                 />

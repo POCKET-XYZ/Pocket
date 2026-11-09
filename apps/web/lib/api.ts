@@ -1,9 +1,30 @@
+import { readableMessages } from './validation-messages';
+
 /** Base URL of the Pocket API, including the `/api` prefix. */
 export const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api'
 ).replace(/\/+$/, '');
 
 const TOKEN_KEY = 'pocket.token';
+
+/** What people read when the API cannot be reached, whatever the reason. */
+export const NETWORK_ERROR =
+  'No podemos conectar con Pocket en este momento. Revisa tu conexión e inténtalo de nuevo.';
+
+/**
+ * The browser only says "Failed to fetch": the connection dropped, the API is
+ * down, the URL is wrong, or CORS does not allow this origin. People get one
+ * plain sentence; the address stays in the console for whoever debugs it.
+ */
+function unreachable(url: string): ApiError {
+  console.error(`Pocket API unreachable: ${url}`);
+  return new ApiError(0, NETWORK_ERROR);
+}
+
+/** The API's message as people read it: form errors get labels, one per line. */
+function messageOf(message: string | string[] | undefined): string | undefined {
+  return Array.isArray(message) ? readableMessages(message) : message;
+}
 
 /** An error answered by the API, with its status and optional machine-readable code. */
 export class ApiError extends Error {
@@ -62,12 +83,7 @@ export async function api<T>(
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
     });
   } catch {
-    // The browser only says "Failed to fetch": the API is down, the URL is
-    // wrong, or CORS does not allow this origin.
-    throw new ApiError(
-      0,
-      `No se pudo conectar con la API de Pocket en ${API_URL}. Revisa que esté funcionando y que permita este sitio.`,
-    );
+    throw unreachable(`${API_URL}${path}`);
   }
 
   signOutIfRejected(response.status, path, token);
@@ -80,8 +96,11 @@ export async function api<T>(
   }
   if (!response.ok) {
     const body = (payload ?? {}) as { message?: string | string[]; code?: string };
-    const message = Array.isArray(body.message) ? body.message.join('. ') : body.message;
-    throw new ApiError(response.status, message ?? response.statusText, body.code);
+    throw new ApiError(
+      response.status,
+      messageOf(body.message) ?? response.statusText,
+      body.code,
+    );
   }
   return payload as T;
 }
@@ -117,21 +136,18 @@ export async function upload<T>(
     headers: token ? { authorization: `Bearer ${token}` } : {},
     body: form,
   }).catch(() => {
-    throw new ApiError(0, `No se pudo conectar con la API de Pocket en ${API_URL}.`);
+    throw unreachable(`${API_URL}${path}`);
   });
   signOutIfRejected(response.status, path, token);
   const payload = (await response.json().catch(() => null)) as
     | { message?: string | string[]; code?: string }
     | null;
   if (!response.ok) {
-    const message = Array.isArray(payload?.message)
-      ? payload.message.join('. ')
-      : payload?.message;
     throw new ApiError(
       response.status,
       response.status === 413
         ? `El archivo es demasiado grande. El límite es de ${limit}`
-        : (message ?? response.statusText),
+        : (messageOf(payload?.message) ?? response.statusText),
       payload?.code,
     );
   }
@@ -148,7 +164,7 @@ export async function download(path: string): Promise<Blob> {
   const response = await fetch(`${API_URL}${path}`, {
     headers: token ? { authorization: `Bearer ${token}` } : {},
   }).catch(() => {
-    throw new ApiError(0, `No se pudo conectar con la API de Pocket en ${API_URL}.`);
+    throw unreachable(`${API_URL}${path}`);
   });
   signOutIfRejected(response.status, path, token);
   if (!response.ok) {

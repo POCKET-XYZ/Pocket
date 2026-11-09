@@ -50,6 +50,7 @@ import { useNow } from '@/lib/use-now';
 import { useSigner } from '@/components/use-signer';
 import { prepareSignSubmit, type PreparedTransaction } from '@/lib/wallet';
 import { linkHost, safeHref } from '@/lib/links';
+import { UrlInput } from '@/components/url-input';
 
 type MilestoneWithHistory = ContractDetail['milestones'][number];
 
@@ -601,11 +602,8 @@ function DeliverDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-3">
-          <Input
+          <UrlInput
             name="url"
-            type="url"
-            pattern="https://.+"
-            title="Un enlace que empiece con https://"
             required
             placeholder="https://"
             aria-label="Enlace al trabajo"

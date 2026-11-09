@@ -68,7 +68,13 @@ function Contract({ user }: { user: User }) {
 
   if (contract.isLoading) return <Loading />;
   if (contract.error || !contract.data)
-    return <ErrorAlert error={contract.error} title="No se encontró el contrato" />;
+    return (
+      <ErrorAlert
+        error={contract.error}
+        onRetry={() => contract.refetch()}
+        title="No se encontró el contrato"
+      />
+    );
   const data = contract.data;
   const isParty = user.id === data.startupId || user.id === data.specialistId;
   const startupName = data.startup.startupProfile?.companyName ?? 'Startup';

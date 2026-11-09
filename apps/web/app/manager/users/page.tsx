@@ -93,7 +93,9 @@ function Users() {
         title="Usuarios"
         description="Cada cuenta de Pocket: quién es, cómo entra, si ya pasó la verificación y qué ha hecho."
       />
-      {users.error ? <ErrorAlert error={users.error} /> : null}
+      {users.error ? (
+        <ErrorAlert error={users.error} onRetry={() => users.refetch()} />
+      ) : null}
       {!users.data && !users.error ? <Loading /> : null}
       {users.data ? (
         <>

@@ -41,7 +41,7 @@ function Contracts({ user }: { user: User }) {
       {contracts.isLoading ? (
         <Loading />
       ) : contracts.error ? (
-        <ErrorAlert error={contracts.error} />
+        <ErrorAlert error={contracts.error} onRetry={() => contracts.refetch()} />
       ) : contracts.data && contracts.data.length > 0 ? (
         <div className="space-y-3">
           {contracts.data.map((contract) => {

@@ -71,7 +71,9 @@ function Contracts() {
         title="Contratos"
         description="Todos los contratos de Pocket. Abre uno para ver su dinero, sus hitos y cada paso comprobado contra Stellar."
       />
-      {contracts.error ? <ErrorAlert error={contracts.error} /> : null}
+      {contracts.error ? (
+        <ErrorAlert error={contracts.error} onRetry={() => contracts.refetch()} />
+      ) : null}
       {!contracts.data && !contracts.error ? <Loading /> : null}
       {contracts.data ? (
         <>

@@ -146,7 +146,11 @@ function PeriodReportView({ user }: { user: User }) {
       </div>
 
       {report.error ? (
-        <ErrorAlert error={report.error} title="No se pudo armar el reporte" />
+        <ErrorAlert
+          error={report.error}
+          onRetry={() => report.refetch()}
+          title="No se pudo armar el reporte"
+        />
       ) : !report.data ? (
         <Loading />
       ) : (

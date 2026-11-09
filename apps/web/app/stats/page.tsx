@@ -62,7 +62,11 @@ export default function StatsPage() {
       </header>
 
       {stats.error ? (
-        <ErrorAlert error={stats.error} title="No pudimos leer los números" />
+        <ErrorAlert
+          error={stats.error}
+          onRetry={() => stats.refetch()}
+          title="No pudimos leer los números"
+        />
       ) : !stats.data ? (
         <Loading label="Leyendo la red" />
       ) : (

@@ -60,7 +60,8 @@ export default function NewJobPage() {
 function ProfileFirst() {
   const profile = useMyProfile();
   if (profile.isLoading) return <Loading />;
-  if (profile.error) return <ErrorAlert error={profile.error} />;
+  if (profile.error)
+    return <ErrorAlert error={profile.error} onRetry={() => profile.refetch()} />;
   if (!profile.data) {
     return (
       <EmptyState title="Primero completa el perfil de tu startup">

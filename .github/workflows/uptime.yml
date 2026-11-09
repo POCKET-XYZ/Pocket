@@ -1,11 +1,12 @@
 name: Uptime
 
-# Checks that the API and the web answer, and posts to Discord when one does
-# not. No account anywhere else: GitHub runs it on a schedule.
+# Checks that the API, the web and the landing answer, and posts to Discord
+# when one does not. No account anywhere else: GitHub runs it on a schedule.
 #
 # Set in the repository settings (Settings > Secrets and variables > Actions):
 # - Variable UPTIME_API_URL: the API health check, e.g. https://api.example.com/api/health
 # - Variable UPTIME_WEB_URL: the web login page, e.g. https://app.example.com/login
+# - Variable UPTIME_LANDING_URL: the landing page, e.g. https://example.com
 # - Secret UPTIME_DISCORD_WEBHOOK: a Discord incoming webhook for the alerts
 # Each one left unset is skipped.
 #
@@ -29,10 +30,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check the API and the web
+      - name: Check the API, the web and the landing
         env:
           API_URL: ${{ vars.UPTIME_API_URL }}
           WEB_URL: ${{ vars.UPTIME_WEB_URL }}
+          LANDING_URL: ${{ vars.UPTIME_LANDING_URL }}
           DISCORD_WEBHOOK: ${{ secrets.UPTIME_DISCORD_WEBHOOK }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -48,7 +50,7 @@ jobs:
           }
 
           failures=""
-          for pair in "API|$API_URL" "Web|$WEB_URL"; do
+          for pair in "API|$API_URL" "Web|$WEB_URL" "Landing|$LANDING_URL"; do
             name="${pair%%|*}"
             url="${pair#*|}"
             if [ -z "$url" ]; then
