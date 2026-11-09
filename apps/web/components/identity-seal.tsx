@@ -19,3 +19,21 @@ export function IdentitySeal({ className }: { className?: string }) {
     </span>
   );
 }
+
+/**
+ * An account that registered on Pocket's test network and has not activated
+ * its account here yet: its profile shows, but it cannot be hired or hire.
+ */
+export function WaitingBadge({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground',
+        className,
+      )}
+      title="Se registró en la red de pruebas de Pocket y todavía no activa su cuenta aquí."
+    >
+      Por activar
+    </span>
+  );
+}

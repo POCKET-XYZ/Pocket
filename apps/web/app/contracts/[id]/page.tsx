@@ -18,7 +18,7 @@ import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { ReportTemplateButton } from '@/components/report-template';
 import { RequireAuth } from '@/components/require-auth';
 import { StatusBadge } from '@/components/status-badge';
-import { UsdcStatus } from '@/components/usdc-status';
+import { UsdcStatus, useEnsureUsdc } from '@/components/usdc-status';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -205,12 +205,15 @@ function NextStep({
   const confirm = useConfirm();
   const accepting = useMoneyStep();
   const funding = useMoneyStep();
+  const ensureUsdc = useEnsureUsdc();
   const now = useNow(30_000);
   const amounts = contract.milestones.map((milestone) => milestone.amount);
 
   const accept = useContractAction(
     contract.id,
     async () => {
+      // The payments land in this wallet: it must take USDC first.
+      await ensureUsdc();
       // Pocket creates the contract on the network now: guard the page meanwhile.
       accepting.onStage('sending');
       try {
@@ -228,15 +231,17 @@ function NextStep({
   );
   const fund = useContractAction(
     contract.id,
-    () =>
-      prepareSignSubmit(
+    async () => {
+      await ensureUsdc();
+      return prepareSignSubmit(
         signer.sign,
         { kind: 'fund', escrowId: contract.escrowId, amount: contract.amount },
         `/contracts/${contract.id}/fund/prepare`,
         `/contracts/${contract.id}/fund/submit`,
         {},
         funding.onStage,
-      ).finally(funding.done),
+      ).finally(funding.done);
+    },
     'Pago depositado. El experto ya puede empezar.',
   );
   const sync = useContractAction(

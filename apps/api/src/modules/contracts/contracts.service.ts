@@ -218,7 +218,7 @@ export class ContractsService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const declined = await this.prisma.$transaction(async (tx) => {
       // Not while an accept is deploying the escrow: that would reopen the
       // job under a contract about to hold money.
       const claimed = await tx.contract.updateMany({
@@ -237,6 +237,12 @@ export class ContractsService {
       await tx.job.update({ where: { id: contract.jobId }, data: { status: 'open' } });
       return tx.contract.findUniqueOrThrow({ where: { id: contractId } });
     });
+    this.notifications.notifyUsers([contract.startupId], {
+      type: 'offer_declined',
+      contractId,
+      jobTitle: await this.jobTitle(contract.jobId),
+    });
+    return declined;
   }
 
   /**
@@ -252,7 +258,7 @@ export class ContractsService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const withdrawn = await this.prisma.$transaction(async (tx) => {
       // Not while an accept is deploying the escrow.
       const removed = await tx.contract.deleteMany({
         where: { id: contractId, status: 'awaiting_specialist', acceptedAt: null },
@@ -269,6 +275,19 @@ export class ContractsService {
       await tx.job.update({ where: { id: contract.jobId }, data: { status: 'open' } });
       return { jobId: contract.jobId };
     });
+    this.notifications.notifyUsers([contract.specialistId], {
+      type: 'offer_withdrawn',
+      jobTitle: await this.jobTitle(contract.jobId),
+    });
+    return withdrawn;
+  }
+
+  private async jobTitle(jobId: string): Promise<string> {
+    const job = await this.prisma.job.findUnique({
+      where: { id: jobId },
+      select: { title: true },
+    });
+    return job?.title ?? 'tu trabajo';
   }
 
   /**
@@ -320,6 +339,11 @@ export class ContractsService {
       throw error;
     }
 
+    // Read before they are turned down below, to tell them.
+    const onHold = await this.prisma.application.findMany({
+      where: { jobId: contract.jobId, status: 'submitted' },
+      select: { specialistId: true },
+    });
     const [, accepted] = await this.prisma.$transaction([
       this.prisma.contract.updateMany({
         where: { id: contractId, status: 'awaiting_specialist' },
@@ -342,6 +366,12 @@ export class ContractsService {
       contractId,
       jobTitle: full.job.title,
     });
+    if (onHold.length > 0) {
+      this.notifications.notifyUsers(
+        onHold.map((application) => application.specialistId),
+        { type: 'application_not_selected', jobTitle: full.job.title },
+      );
+    }
     return accepted;
   }
 
@@ -452,25 +482,28 @@ export class ContractsService {
     if (readiness === 'no_account' && (await this.wallets.activate(user.sub))) {
       readiness = await this.stellar.usdcReadiness(user.stellarAddress);
     }
+    if (readiness === 'ready') return;
+    const account = await this.prisma.user.findUnique({
+      where: { id: user.sub },
+      select: { walletCustody: true },
+    });
+    const throughPollar = account?.walletCustody === 'pollar';
     if (readiness === 'no_account') {
-      const account = await this.prisma.user.findUnique({
-        where: { id: user.sub },
-        select: { walletCustody: true },
-      });
       throw new BadRequestException({
         code: ApiErrorCode.StellarAccountNotFound,
-        message:
-          account?.walletCustody === 'pollar'
-            ? 'Estamos activando tu wallet. Intenta de nuevo en un minuto'
-            : 'Tu wallet todavía no está activa en Stellar. Primero agrégale algo de XLM',
+        message: throughPollar
+          ? 'Estamos activando tu billetera. Intenta de nuevo en un minuto'
+          : 'Tu wallet todavía no está activa en Stellar. Primero agrégale algo de XLM',
       });
     }
-    if (readiness === 'no_trustline') {
-      throw new BadRequestException({
-        code: ApiErrorCode.UsdcTrustlineRequired,
-        message: 'Primero habilita USDC en tu wallet',
-      });
-    }
+    throw new BadRequestException({
+      code: ApiErrorCode.UsdcTrustlineRequired,
+      // The page enables it for a Pollar wallet in the same click; this is
+      // what is left when it could not.
+      message: throughPollar
+        ? 'Estamos preparando tu billetera para recibir USDC. Intenta de nuevo en unos segundos'
+        : 'Primero habilita USDC en tu wallet',
+    });
   }
 
   /**

@@ -50,7 +50,12 @@ const dto: CreateContractDto = {
 
 describe('ContractsService', () => {
   let prisma: {
-    application: { findUnique: jest.Mock; update: jest.Mock; updateMany: jest.Mock };
+    application: {
+      findUnique: jest.Mock;
+      update: jest.Mock;
+      updateMany: jest.Mock;
+      findMany: jest.Mock;
+    };
     job: { findUnique: jest.Mock; update: jest.Mock; updateMany: jest.Mock };
     contract: {
       create: jest.Mock;
@@ -83,6 +88,7 @@ describe('ContractsService', () => {
         }),
         update: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findMany: jest.fn().mockResolvedValue([{ specialistId: 'specialist-2' }]),
       },
       job: {
         findUnique: jest.fn().mockResolvedValue({
@@ -410,6 +416,11 @@ describe('ContractsService', () => {
         contractId: 'contract-1',
         jobTitle: 'A job',
       });
+      // The applicants on hold hear that someone else was chosen.
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(['specialist-2'], {
+        type: 'application_not_selected',
+        jobTitle: 'A job',
+      });
     });
 
     it('asks for a USDC trustline first, with a code the client can act on', async () => {
@@ -435,7 +446,7 @@ describe('ContractsService', () => {
       await expect(service.accept(specialist, 'contract-1')).rejects.toMatchObject({
         response: {
           code: 'STELLAR_ACCOUNT_NOT_FOUND',
-          message: 'Estamos activando tu wallet. Intenta de nuevo en un minuto',
+          message: 'Estamos activando tu billetera. Intenta de nuevo en un minuto',
         },
       });
       expect(escrow.deploy).not.toHaveBeenCalled();

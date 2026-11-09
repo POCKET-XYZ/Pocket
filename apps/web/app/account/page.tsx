@@ -224,7 +224,7 @@ function UsdcLeft({ amount }: { amount: string }) {
         Tienes <strong>{usdc(amount)}</strong> en tu wallet. Después de eliminar la cuenta
         ya no podrás moverlos desde Pocket: envíalos antes a otra wallet desde{' '}
         <Link href="/wallet" className="font-medium underline">
-          Wallet y USDC
+          Billetera
         </Link>
         .
       </p>

@@ -9,13 +9,19 @@ describe('PollarWalletsService', () => {
     walletCustody: 'pollar',
     walletFundedAt: null,
   };
-  let prisma: { user: { findUnique: jest.Mock; update: jest.Mock } };
+  let prisma: {
+    user: { findUnique: jest.Mock; updateMany: jest.Mock; findMany: jest.Mock };
+  };
   let pollar: { enabled: boolean; fundWallet: jest.Mock };
   let service: PollarWalletsService;
 
   beforeEach(() => {
     prisma = {
-      user: { findUnique: jest.fn().mockResolvedValue(USER), update: jest.fn() },
+      user: {
+        findUnique: jest.fn().mockResolvedValue(USER),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     };
     pollar = {
       enabled: true,
@@ -27,13 +33,14 @@ describe('PollarWalletsService', () => {
       prisma as unknown as PrismaService,
       pollar as unknown as PollarClient,
     );
+    service.retryDelaysMs = [0, 0];
   });
 
   it('funds an unfunded Pollar wallet and records it', async () => {
     await expect(service.activate('user-1')).resolves.toBe(true);
     expect(pollar.fundWallet).toHaveBeenCalledWith('GPOLLARWALLET');
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: 'user-1' },
+    expect(prisma.user.updateMany).toHaveBeenCalledWith({
+      where: { stellarAddress: 'GPOLLARWALLET', walletCustody: 'pollar', walletFundedAt: null },
       data: { walletFundedAt: expect.any(Date) as Date },
     });
   });
@@ -47,11 +54,48 @@ describe('PollarWalletsService', () => {
     expect(pollar.fundWallet).toHaveBeenCalledTimes(1);
   });
 
-  it('can try again once an activation ended', async () => {
-    pollar.fundWallet.mockRejectedValueOnce(new Error('Pollar is down'));
-    await expect(service.activate('user-1')).resolves.toBe(false);
+  it('tries again at once when Pollar fails, as it did with a 504', async () => {
+    pollar.fundWallet
+      .mockRejectedValueOnce(new Error('Pollar could not fund the wallet: 504'))
+      .mockRejectedValueOnce(new Error('Pollar could not fund the wallet: 504'));
     await expect(service.activate('user-1')).resolves.toBe(true);
-    expect(pollar.fundWallet).toHaveBeenCalledTimes(2);
+    expect(pollar.fundWallet).toHaveBeenCalledTimes(3);
+  });
+
+  it('gives up after three attempts, and a later one starts over', async () => {
+    pollar.fundWallet.mockRejectedValue(new Error('Pollar is down'));
+    await expect(service.activate('user-1')).resolves.toBe(false);
+    expect(pollar.fundWallet).toHaveBeenCalledTimes(3);
+    pollar.fundWallet.mockResolvedValue({ alreadyFunded: false, startingBalance: '1' });
+    await expect(service.activate('user-1')).resolves.toBe(true);
+  });
+
+  it('activates a wallet before its Pocket account exists, by its address', async () => {
+    await expect(service.activateAddress('GNEWPOLLAR')).resolves.toBe(true);
+    expect(pollar.fundWallet).toHaveBeenCalledWith('GNEWPOLLAR');
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('counts a wallet Pollar already funded as active', async () => {
+    pollar.fundWallet.mockResolvedValue({ alreadyFunded: true });
+    await expect(service.activate('user-1')).resolves.toBe(true);
+    expect(prisma.user.updateMany).toHaveBeenCalled();
+  });
+
+  it('sweeps the Pollar wallets still waiting, whether or not their owner comes back', async () => {
+    prisma.user.findMany.mockResolvedValue([
+      { stellarAddress: 'GWAITING1' },
+      { stellarAddress: 'GWAITING2' },
+    ]);
+    pollar.fundWallet
+      .mockResolvedValueOnce({ alreadyFunded: false, startingBalance: '1' })
+      .mockRejectedValue(new Error('Pollar is down'));
+    await expect(service.sweep()).resolves.toBe(1);
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { walletCustody: 'pollar', walletFundedAt: null, deletedAt: null },
+      }),
+    );
   });
 
   it('leaves alone a wallet the user holds, or one funded already', async () => {

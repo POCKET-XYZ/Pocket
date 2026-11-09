@@ -11,6 +11,7 @@ import {
 } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Field, compact, formValues } from '@/components/form';
@@ -51,12 +52,26 @@ function Profile({ user }: { user: User }) {
   });
   const known = verification.data ?? null;
 
+  const router = useRouter();
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       api(`/profiles/me/${user.role}`, { method: 'PUT', body }),
     onSuccess: async () => {
-      toast.success('Perfil guardado');
+      // The first profile is a step of the first steps: on to the next one.
+      // Editing it later stays on the page.
+      const firstTime = !profile.data;
       await queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      if (!firstTime) {
+        toast.success('Perfil guardado');
+        return;
+      }
+      const isStartup = user.role === 'startup';
+      toast.success(
+        isStartup
+          ? 'Perfil guardado. Ahora publica tu primer trabajo.'
+          : 'Perfil guardado. Ahora elige un trabajo y postúlate.',
+      );
+      router.push(isStartup ? '/jobs/new' : '/jobs');
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

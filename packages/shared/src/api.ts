@@ -253,6 +253,12 @@ export interface PublicProfile {
   memberSince: IsoDate;
   /** Whether the account passed Pocket's identity check through Didit. */
   identityVerified: boolean;
+  /**
+   * Registered on Pocket's test network and not active on this one yet: the
+   * profile shows, but nobody can hire it or be hired until its owner signs
+   * in. Its wallet is then empty.
+   */
+  waiting?: boolean;
   profile: StartupProfile | SpecialistProfile;
 }
 
@@ -260,6 +266,8 @@ export interface PublicProfile {
 export interface StartupListing extends StartupProfile {
   /** Jobs it has open right now. */
   openJobs: number;
+  /** Registered on the test network and not active here yet (see PublicProfile). */
+  waiting?: boolean;
 }
 
 /** GET /profiles/startups */
@@ -274,6 +282,8 @@ export interface StartupDirectory {
 export interface SpecialistListing extends SpecialistProfile {
   /** Whether they passed Pocket's identity check, which accepting a contract needs. */
   identityVerified: boolean;
+  /** Registered on the test network and not active here yet (see PublicProfile). */
+  waiting?: boolean;
 }
 
 /** GET /profiles/specialists */

@@ -6,7 +6,11 @@
 
 export type NotificationEvent =
   | { type: 'verification_approved' }
+  | { type: 'application_received'; jobId: string; jobTitle: string }
+  | { type: 'application_not_selected'; jobTitle: string }
   | { type: 'offer_received'; contractId: string; jobTitle: string }
+  | { type: 'offer_declined'; contractId: string; jobTitle: string }
+  | { type: 'offer_withdrawn'; jobTitle: string }
   | { type: 'terms_accepted'; contractId: string; jobTitle: string }
   | { type: 'escrow_funded'; contractId: string }
   | { type: 'milestone_delivered'; contractId: string; milestoneTitle: string }
@@ -47,11 +51,27 @@ function content(event: NotificationEvent): Content {
   switch (event.type) {
     case 'verification_approved':
       return {
-        subject: 'Tu cuenta de Pocket está lista',
+        subject: 'Tu identidad está verificada',
         paragraphs: [
-          'Ya completaste tus datos. Puedes usar el marketplace y te avisaremos a este correo de cada novedad.',
+          'Verificamos tu identidad. Ya puedes usar todo Pocket, y te avisaremos a este correo de cada novedad.',
         ],
-        button: { label: 'Abrir Pocket', path: '/dashboard' },
+        button: { label: 'Abrir Pocket', path: '/' },
+      };
+    case 'application_received':
+      return {
+        subject: `Nueva postulación: ${event.jobTitle}`,
+        paragraphs: [
+          `Un experto se postuló a "${event.jobTitle}" con su propuesta y su precio. Revísala y, si te convence, contrátalo.`,
+        ],
+        button: { label: 'Ver postulantes', path: `/jobs/${event.jobId}/applicants` },
+      };
+    case 'application_not_selected':
+      return {
+        subject: `Tu postulación a "${event.jobTitle}"`,
+        paragraphs: [
+          `La startup eligió a otra persona para "${event.jobTitle}". Gracias por postularte: hay más trabajos abiertos esperando tu propuesta.`,
+        ],
+        button: { label: 'Ver trabajos', path: '/jobs' },
       };
     case 'offer_received':
       return {
@@ -60,6 +80,22 @@ function content(event: NotificationEvent): Content {
           `Una startup quiere contratarte para "${event.jobTitle}". Revisa los hitos y acepta o rechaza los términos.`,
         ],
         button: { label: 'Revisar la oferta', path: `/contracts/${event.contractId}` },
+      };
+    case 'offer_declined':
+      return {
+        subject: `El experto rechazó tu oferta: ${event.jobTitle}`,
+        paragraphs: [
+          `El experto no aceptó los términos para "${event.jobTitle}". Tu trabajo sigue abierto: puedes elegir a otro postulante.`,
+        ],
+        button: { label: 'Elegir a otro postulante', path: `/contracts/${event.contractId}` },
+      };
+    case 'offer_withdrawn':
+      return {
+        subject: `La startup retiró su oferta: ${event.jobTitle}`,
+        paragraphs: [
+          `La startup retiró los términos que te envió para "${event.jobTitle}". Tu postulación sigue en pie, y si te manda nuevos términos te avisamos.`,
+        ],
+        button: { label: 'Ver mis postulaciones', path: '/applications' },
       };
     case 'terms_accepted':
       return {

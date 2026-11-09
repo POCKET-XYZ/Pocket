@@ -3,7 +3,7 @@
 import type { User, WalletStatus } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2Icon } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,7 @@ const LOW_FEE_XLM = 0.02;
 const TRUSTLINE_XLM = 0.51;
 
 /** How many times a wallet not on the network yet is asked about again: two minutes. */
-const MAX_ACTIVATION_POLLS = 24;
+const MAX_ACTIVATION_POLLS = 12;
 
 export function useUsdcStatus(enabled = true) {
   return useQuery({
@@ -38,13 +38,47 @@ export function useUsdcStatus(enabled = true) {
     enabled,
     staleTime: 10_000,
     // Pocket activates a Pollar wallet on sign-in, in the background: ask
-    // again until it shows up, so the page moves on by itself.
+    // again until it shows up, so the page moves on by itself. Its own rate
+    // limit on the API, so this never blocks accepting or funding.
     refetchInterval: (query) =>
       query.state.data?.usdc === 'no_account' &&
       query.state.dataUpdateCount < MAX_ACTIVATION_POLLS
-        ? 5000
+        ? 10_000
         : false,
   });
+}
+
+/**
+ * Make sure a Pollar wallet takes USDC before a step that needs it (accepting
+ * a contract, depositing): USDC is enabled right there, in the same click,
+ * instead of the step being refused. A wallet the user holds is left as it
+ * is, and the API says what it is missing.
+ */
+export function useEnsureUsdc(): () => Promise<void> {
+  const signer = useSigner();
+  const queryClient = useQueryClient();
+  return useCallback(async () => {
+    if (signer.kind !== 'pollar' || !signer.ready) return;
+    const read = () =>
+      queryClient.fetchQuery({
+        queryKey: ['wallet', 'usdc'],
+        queryFn: () => api<WalletStatus>('/wallet/usdc'),
+        staleTime: 0,
+      });
+    if ((await read()).usdc !== 'no_trustline') return;
+    try {
+      await prepareSignSubmit(
+        signer.sign,
+        { kind: 'usdc-trustline' },
+        '/wallet/usdc-trustline/prepare',
+        '/wallet/usdc-trustline/submit',
+      );
+    } catch (error) {
+      // The notice on the page may have enabled it a moment before.
+      if ((await read()).usdc !== 'ready') throw error;
+    }
+    await queryClient.invalidateQueries({ queryKey: ['wallet', 'usdc'] });
+  }, [signer, queryClient]);
 }
 
 /**

@@ -21,5 +21,12 @@ export const RateLimit = (rule: RateLimitRule) => SetMetadata(RATE_LIMIT_KEY, ru
 /** Every route that reaches Trustless Work, whose 50 requests a minute everyone shares. */
 export const ESCROW_RATE_LIMIT: RateLimitRule = { bucket: 'escrow', limit: 12, windowSeconds: 60 };
 
+/**
+ * Wallet routes that only reach Stellar: reading the wallet and preparing or
+ * sending its own transactions. Apart from the escrow budget, so a page that
+ * keeps asking whether a wallet is ready never blocks accepting or funding.
+ */
+export const WALLET_RATE_LIMIT: RateLimitRule = { bucket: 'wallet', limit: 30, windowSeconds: 60 };
+
 /** Sign-in routes: each call writes a challenge or asks Pollar to check a session. */
 export const AUTH_RATE_LIMIT: RateLimitRule = { bucket: 'auth', limit: 20, windowSeconds: 60 };

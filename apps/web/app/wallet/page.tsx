@@ -7,11 +7,8 @@ import { PageHeader } from '@/components/page';
 import { usePollarSession, type PollarSession } from '@/components/pollar-session';
 import { RequireAuth } from '@/components/require-auth';
 import { UsdcStatus } from '@/components/usdc-status';
-import {
-  ReceiveUsdcCard,
-  USDC_STATUS_ANCHOR,
-} from '@/components/wallet/receive-usdc-card';
-import { SendUsdcCard } from '@/components/wallet/send-usdc-card';
+import { USDC_STATUS_ANCHOR } from '@/components/wallet/receive-usdc-card';
+import { UsdcCard } from '@/components/wallet/usdc-card';
 import { UsdcHistoryCard } from '@/components/wallet/usdc-history-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -167,7 +164,7 @@ function WalletView({ user }: { user: User }) {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader
-        title="Wallet y USDC"
+        title="Billetera"
         description="Pocket nunca guarda tus fondos ni tus claves. Los pagos se mueven entre tu wallet y el contrato."
       />
 
@@ -197,12 +194,7 @@ function WalletView({ user }: { user: User }) {
         <UsdcStatus user={user} showReady />
       </div>
 
-      <ReceiveUsdcCard
-        address={user.stellarAddress}
-        throughPollar={user.walletCustody === 'pollar'}
-      />
-
-      <SendUsdcCard user={user} />
+      <UsdcCard user={user} />
 
       {/* No conversion to or from local currency: users bring their own USDC. */}
       <UsdcHistoryCard />
