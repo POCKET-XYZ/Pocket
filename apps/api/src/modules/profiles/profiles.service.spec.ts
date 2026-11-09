@@ -233,6 +233,31 @@ describe('ProfilesService', () => {
     });
   });
 
+  it('keeps the rate out of the public profile and the directory', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-2',
+      role: 'specialist',
+      stellarAddress: 'GSPECIALIST',
+      createdAt: new Date('2026-09-01'),
+      verificationStatus: 'approved',
+      _count: { verificationRequests: 1 },
+      startupProfile: null,
+      specialistProfile: { id: 'p-2', hourlyRate: '40', minProjectBudget: '500' },
+    });
+    const shown = await service.publicProfile('user-2');
+    expect(shown.profile).toEqual({ id: 'p-2' });
+    prisma.specialistProfile.findMany.mockResolvedValue([
+      {
+        id: 'p-1',
+        hourlyRate: '40',
+        user: { verificationStatus: 'approved', _count: { verificationRequests: 1 } },
+      },
+    ]);
+    prisma.specialistProfile.count.mockResolvedValue(1);
+    const directory = await service.browseSpecialists({});
+    expect(directory.items[0]).not.toHaveProperty('hourlyRate');
+  });
+
   it('lists only approved startups, with how many jobs each has open', async () => {
     prisma.startupProfile.findMany.mockResolvedValue([
       { id: 'p-1', companyName: 'North Loop', user: { _count: { jobs: 2 } } },

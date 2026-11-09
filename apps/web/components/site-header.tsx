@@ -39,6 +39,9 @@ const ROLE_LINKS: Record<UserRole, { href: string; label: string }[]> = {
     { href: '/profile', label: 'Perfil' },
   ],
   manager: [
+    { href: '/manager/contracts', label: 'Contratos' },
+    { href: '/manager/users', label: 'Usuarios' },
+    { href: '/manager/jobs', label: 'Publicaciones' },
     { href: '/manager/disputes', label: 'Disputas' },
     { href: '/manager/metrics', label: 'Métricas' },
   ],
@@ -72,8 +75,13 @@ export function SiteHeader() {
     refetchInterval: 30_000,
   });
   const waiting = unread.data?.total ?? 0;
+  // The team's menu is its own: the public pages stay a click away from each record.
   const links = user
-    ? [{ href: '/', label: 'Inicio' }, ...PUBLIC_LINKS, ...ROLE_LINKS[user.role]]
+    ? [
+        { href: '/', label: 'Inicio' },
+        ...(user.role === 'manager' ? [] : PUBLIC_LINKS),
+        ...ROLE_LINKS[user.role],
+      ]
     : PUBLIC_LINKS;
 
   // The sign-in page stands alone: the menu and its Sign in button next to

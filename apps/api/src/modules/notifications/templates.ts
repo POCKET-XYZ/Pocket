@@ -5,7 +5,8 @@
  */
 
 export type NotificationEvent =
-  | { type: 'verification_approved' }
+  /** identityChecked: Didit verified the person; otherwise only their details were sent. */
+  | { type: 'verification_approved'; identityChecked?: boolean }
   | { type: 'application_received'; jobId: string; jobTitle: string }
   | { type: 'application_not_selected'; jobTitle: string }
   | { type: 'offer_received'; contractId: string; jobTitle: string }
@@ -63,13 +64,21 @@ const CHAT_AUTHORS = {
 function content(event: NotificationEvent): Content {
   switch (event.type) {
     case 'verification_approved':
-      return {
-        subject: 'Tu identidad está verificada',
-        paragraphs: [
-          'Verificamos tu identidad. Ya puedes usar todo Pocket, y te avisaremos a este correo de cada novedad.',
-        ],
-        button: { label: 'Abrir Pocket', path: '/' },
-      };
+      return event.identityChecked
+        ? {
+            subject: 'Tu identidad está verificada',
+            paragraphs: [
+              'Verificamos tu identidad. Ya puedes usar todo Pocket, y te avisaremos a este correo de cada novedad.',
+            ],
+            button: { label: 'Abrir Pocket', path: '/' },
+          }
+        : {
+            subject: 'Tu cuenta de Pocket está activa',
+            paragraphs: [
+              'Ya completaste tus datos. Puedes usar Pocket, y te avisaremos a este correo de cada novedad.',
+            ],
+            button: { label: 'Abrir Pocket', path: '/' },
+          };
     case 'application_received':
       return {
         subject: `Nueva postulación: ${event.jobTitle}`,

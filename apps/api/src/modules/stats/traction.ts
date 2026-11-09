@@ -200,7 +200,7 @@ export function chainCheckOf(
       const moved = onChain.flags.released || onChain.flags.resolved;
       if (expected ? !expected(onChain.flags) : moved) {
         note(
-          `${label}: "${milestone.status}" en el contrato, ${flagsText(onChain.flags)} en la red`,
+          `${label}: ${STATUS_TEXT[milestone.status] ?? milestone.status} en Pocket, ${flagsText(onChain.flags)} en la red`,
         );
       }
     }
@@ -224,6 +224,17 @@ export function chainCheckOf(
     differences,
   };
 }
+
+/** A milestone's state in Pocket, in the words the admin reads. */
+const STATUS_TEXT: Record<string, string> = {
+  pending: 'por entregar',
+  delivered: 'entregado',
+  changes_requested: 'con cambios pedidos',
+  approved: 'aprobado',
+  paid: 'pagado',
+  disputed: 'en disputa',
+  resolved: 'resuelto',
+};
 
 function flagsText(flags: ChainEscrow['milestones'][number]['flags']): string {
   if (flags.resolved) return 'resuelto';

@@ -3,10 +3,11 @@
 import {
   MetricsPeriod,
   isAccountActive,
+  type AdminAccount,
+  type AdminOverview,
   type ContractSummary,
   type DashboardContract,
   type DashboardUpcoming,
-  type DisputeListItem,
   type JobBoard,
   type JobListing,
   type ManagerMetrics,
@@ -33,6 +34,7 @@ import {
   UsersIcon,
   BriefcaseBusinessIcon,
   UploadIcon,
+  WalletIcon,
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -41,6 +43,7 @@ import { useEffect } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { WeeklyBars, weekLabel } from '@/components/charts/weekly-bars';
 import { JobCard } from '@/components/job-card';
+import { FLAGS } from '@/components/manager/admin-ui';
 import { Onboarding } from '@/components/onboarding';
 import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
@@ -50,7 +53,7 @@ import { Button } from '@/components/ui/button';
 import { UsdcStatus } from '@/components/usdc-status';
 import { api } from '@/lib/api';
 import { nextStep } from '@/lib/contract-next-step';
-import { CATEGORY_LABELS, usdc } from '@/lib/format';
+import { CATEGORY_LABELS, explorerAccount, usdc } from '@/lib/format';
 import { SIGNED_OUT_HOME } from '@/lib/home';
 import {
   deliveryWords,
@@ -431,36 +434,44 @@ function SpecialistHome({ user }: { user: User }) {
 }
 
 function ManagerHome() {
-  const disputes = useQuery({
-    queryKey: ['disputes', 'list', 'open'],
-    queryFn: () => api<DisputeListItem[]>('/manager/disputes?status=open'),
+  const overview = useQuery({
+    queryKey: ['manager', 'overview'],
+    queryFn: () => api<AdminOverview>('/manager/overview'),
   });
   const metrics = useQuery({
     queryKey: ['manager', 'metrics', MetricsPeriod.Month],
     queryFn: () => api<ManagerMetrics>(`/manager/metrics?period=${MetricsPeriod.Month}`),
   });
-  const error = disputes.error ?? metrics.error;
-  const open = disputes.data ?? [];
+  const error = overview.error ?? metrics.error;
   const data = metrics.data;
+  const now = overview.data;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Hola"
-        description="Lo que tienes pendiente hoy y cómo va Pocket."
+        description="Lo que necesita atención y cómo está Pocket."
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/manager/contracts">Todos los contratos</Link>
+          </Button>
+        }
       />
       {error ? <ErrorAlert error={error} /> : null}
-      {!disputes.data || !data ? (
+      {!now || !data ? (
         error ? null : (
           <Loading />
         )
       ) : (
         <>
           <TodoList
-            items={open.map((dispute) => ({
-              href: `/disputes/${dispute.id}`,
-              title: dispute.milestone.contract.job.title,
-              step: `Resuelve la disputa de ${usdc(dispute.milestone.amount)}`,
+            items={now.attention.map((item) => ({
+              href:
+                item.flag === 'dispute'
+                  ? '/manager/disputes'
+                  : `/manager/contracts/${item.contractId}`,
+              title: `${item.jobTitle}: ${item.detail}`,
+              step: FLAGS[item.flag].label,
             }))}
           />
           <div className="grid gap-4 lg:grid-cols-5">
@@ -471,7 +482,7 @@ function ManagerHome() {
               otherLabel="pagados a expertos en 30 días"
               other={data.money.released}
               footer={`Comisión de Pocket en 30 días: ${usdc(data.money.pocketFee)}`}
-              href="/manager/metrics"
+              href="/manager/contracts"
             />
             <WeeklyBars
               className="lg:col-span-3"
@@ -483,42 +494,134 @@ function ManagerHome() {
           </div>
           <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
             <StatTile
+              label="Contratos en curso"
+              value={now.counts.contracts.active}
+              hint={`${
+                now.counts.contracts.awaiting_specialist +
+                now.counts.contracts.awaiting_funding
+              } por empezar · ${now.counts.contracts.completed} completados`}
+              href="/manager/contracts"
+              icon={BriefcaseBusinessIcon}
+            />
+            <StatTile
               label="Disputas abiertas"
-              value={open.length}
-              attention={open.length > 0}
+              value={data.health.openDisputes}
+              attention={data.health.openDisputes > 0}
               href="/manager/disputes"
               icon={ScaleIcon}
             />
             <StatTile
-              label="Hitos atrasados"
-              value={data.health.overdueMilestones}
-              attention={data.health.overdueMilestones > 0}
-              href="/manager/metrics"
-              icon={TriangleAlertIcon}
+              label="Cuentas sin verificar"
+              value={now.counts.users.notApproved}
+              hint={`${now.counts.users.startups} startups · ${now.counts.users.specialists} expertos`}
+              href="/manager/users"
+              icon={UserPlusIcon}
             />
             <StatTile
               label="Trabajos abiertos"
-              value={data.marketplace.openJobs}
-              href="/manager/metrics"
-              icon={BriefcaseBusinessIcon}
-            />
-            <StatTile
-              label="Cuentas nuevas"
-              value={data.users.startups.newInPeriod + data.users.specialists.newInPeriod}
-              hint="Últimos 30 días"
-              href="/manager/metrics"
-              icon={UserPlusIcon}
+              value={now.counts.jobs.open}
+              hint={`${now.counts.jobs.total} publicados en total`}
+              href="/manager/jobs"
+              icon={SearchIcon}
             />
           </div>
-          <WeeklyBars
-            title="Cuentas nuevas por semana"
-            weeks={data.weekly}
-            pick={(week) => week.newUsers}
-            format={(value) => String(value)}
-          />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <PocketAccounts accounts={now.accounts} />
+            <WeeklyBars
+              title="Cuentas nuevas por semana"
+              weeks={data.weekly}
+              pick={(week) => week.newUsers}
+              format={(value) => String(value)}
+            />
+          </div>
         </>
       )}
     </div>
+  );
+}
+
+const ACCOUNT_TEXT: Record<AdminAccount['role'], { title: string; does: string }> = {
+  platform: {
+    title: 'Cuenta de Pocket',
+    does: 'Crea los contratos, libera los pagos y recibe la comisión.',
+  },
+  funding: {
+    title: 'Wallet de fondeo de Pollar',
+    does: 'Paga el XLM de cada cuenta nueva, unos 2 XLM por cuenta.',
+  },
+};
+
+/**
+ * Pocket's own accounts on chain: whether each has the XLM it needs, so a
+ * hire or a new account never fails for lack of it.
+ */
+function PocketAccounts({ accounts }: { accounts: AdminAccount[] }) {
+  return (
+    <Panel title="Cuentas de Pocket en la red" icon={WalletIcon}>
+      <ul className="divide-y divide-border">
+        {accounts.map((account) => {
+          const xlm = account.xlm === null ? null : Number(account.xlm);
+          const low = xlm !== null && xlm < account.minXlm;
+          const noUsdc = account.trustsUsdc === false;
+          return (
+            <li key={account.role} className="space-y-1 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-navy">
+                    {ACCOUNT_TEXT[account.role].title}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {ACCOUNT_TEXT[account.role].does}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span
+                    className={cn(
+                      'block font-heading text-lg font-bold tabular-nums',
+                      low ? 'text-destructive' : 'text-navy',
+                    )}
+                  >
+                    {xlm === null
+                      ? '-'
+                      : `${xlm.toLocaleString('en-US', { maximumFractionDigits: 2 })} XLM`}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    Alerta bajo {account.minXlm} XLM
+                  </span>
+                </span>
+              </div>
+              {account.address ? (
+                <a
+                  href={explorerAccount(account.address)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-mono text-xs text-navy underline-offset-2 hover:underline"
+                >
+                  {account.address.slice(0, 6)}...{account.address.slice(-6)}
+                </a>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Sin dirección configurada: la alerta está apagada.
+                </p>
+              )}
+              {low || noUsdc ? (
+                <p className="flex items-center gap-1 text-xs font-medium text-navy">
+                  <TriangleAlertIcon
+                    className="size-3.5 shrink-0 text-destructive"
+                    aria-hidden
+                  />
+                  {noUsdc
+                    ? 'No puede recibir la comisión en USDC: falta habilitar USDC.'
+                    : account.role === 'funding'
+                      ? `Alcanza para unas ${Math.floor((xlm ?? 0) / 2)} cuentas nuevas. Hay que cargarle XLM.`
+                      : 'Hay que cargarle XLM para las comisiones de red.'}
+                </p>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </Panel>
   );
 }
 

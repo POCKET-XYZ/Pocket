@@ -152,6 +152,7 @@ describe('VerificationService', () => {
       expect(wallets.activate).toHaveBeenCalledWith('user-1');
       expect(notifications.notifyEmail).toHaveBeenCalledWith(SUBMISSION.contactEmail, {
         type: 'verification_approved',
+        identityChecked: false,
       });
     });
 
@@ -377,6 +378,7 @@ describe('VerificationService', () => {
         expect(wallets.activate).toHaveBeenCalledWith('user-1');
         expect(notifications.notifyEmail).toHaveBeenCalledWith('ana@example.com', {
           type: 'verification_approved',
+          identityChecked: true,
         });
       });
 

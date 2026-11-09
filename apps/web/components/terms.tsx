@@ -163,6 +163,9 @@ export function SiteFooter() {
             : 'Pocket. Funciona en la red de pruebas de Stellar: el USDC no tiene valor.'}
         </span>
         <nav className="flex flex-wrap gap-4">
+          <Link href="/stats" className="hover:text-navy">
+            Pocket en números
+          </Link>
           <Link href="/terms" className="hover:text-navy">
             Términos de Servicio
           </Link>

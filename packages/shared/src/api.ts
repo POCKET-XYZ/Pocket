@@ -1226,3 +1226,175 @@ export interface ChatUnread {
   total: number;
   byContract: Record<string, number>;
 }
+
+// --- The admin's view: every contract, user and job, and the system's health ---
+
+/** Why a contract needs a look, as the admin's lists show it. */
+export type AdminFlag =
+  | 'dispute'
+  | 'overdue'
+  | 'to_review'
+  | 'awaiting_funding'
+  | 'unread_payment'
+  | 'failed_step';
+
+/** GET /manager/contracts: one row per contract, newest first. Amounts in USDC. */
+export interface AdminContractRow {
+  id: string;
+  jobTitle: string;
+  category: ServiceCategory;
+  status: ContractStatus;
+  startup: { id: string; name: string | null };
+  specialist: { id: string; name: string | null };
+  escrowId: string | null;
+  amount: string;
+  deposited: string;
+  /** What left the escrow: milestones paid or resolved. */
+  released: string;
+  inEscrow: string;
+  milestones: {
+    total: number;
+    done: number;
+    delivered: number;
+    overdue: number;
+    disputed: number;
+  };
+  /** The next date a milestone is due, among those still to deliver. */
+  nextDue: IsoDate | null;
+  createdAt: IsoDate;
+  lastActivityAt: IsoDate;
+  flags: AdminFlag[];
+}
+
+/** A milestone's flags as its escrow stores them on chain. */
+export interface AdminChainMilestone {
+  amount: string;
+  approved: boolean;
+  released: boolean;
+  disputed: boolean;
+  resolved: boolean;
+}
+
+/**
+ * GET /manager/contracts/:id/check: one contract against its escrow on chain,
+ * milestone by milestone, and each payment against its transaction.
+ */
+export interface AdminContractCheck {
+  checkedAt: IsoDate;
+  contractId: string;
+  jobTitle: string;
+  status: ContractStatus;
+  startup: { id: string; name: string | null; address: string };
+  specialist: { id: string; name: string | null; address: string };
+  escrow: {
+    id: string;
+    /** False when there is no such contract on chain. */
+    found: boolean;
+    /** Whether it names one of Pocket's accounts as its platform. */
+    ours: boolean;
+    /** USDC it holds now. */
+    balance: string;
+    approver: string | null;
+    serviceProvider: string | null;
+  } | null;
+  money: { amount: string; deposited: string; released: string; inEscrow: string };
+  milestones: {
+    position: number;
+    title: string;
+    amount: string;
+    status: MilestoneStatus;
+    dueDate: IsoDate;
+    firstDeliveredAt: IsoDate | null;
+    chain: AdminChainMilestone | null;
+    matches: boolean;
+  }[];
+  payments: {
+    milestonePosition: number;
+    kind: 'release' | 'resolve';
+    txHash: string;
+    confirmedAt: IsoDate | null;
+    /** What the milestone held. */
+    amount: string;
+    /** What the transaction moved out of the escrow, read from Horizon. Null when it could not be read. */
+    onChain: string | null;
+    matches: boolean;
+  }[];
+  /** Every step sent to the network for this contract, oldest first. */
+  operations: {
+    id: string;
+    kind: ChainOperationKind;
+    status: 'prepared' | 'confirmed' | 'failed';
+    txHash: string;
+    milestonePosition: number | null;
+    signer: 'startup' | 'specialist' | 'pocket';
+    createdAt: IsoDate;
+    confirmedAt: IsoDate | null;
+    error: string | null;
+  }[];
+  /** Each difference in words. Empty when the database and the chain agree. */
+  differences: string[];
+}
+
+/** GET /manager/users: every account, newest first. */
+export interface AdminUserRow {
+  id: string;
+  role: UserRole;
+  name: string | null;
+  email: string | null;
+  verificationStatus: VerificationStatus;
+  /** The identity check's status as Didit names it, when there was one. */
+  kycStatus: string | null;
+  walletCustody: WalletCustody;
+  walletProvider: string | null;
+  stellarAddress: string;
+  createdAt: IsoDate;
+  deletedAt: IsoDate | null;
+  counts: { jobs: number; applications: number; contracts: number };
+}
+
+/** GET /manager/jobs: every job, newest first. */
+export interface AdminJobRow {
+  id: string;
+  title: string;
+  category: ServiceCategory;
+  status: JobStatus;
+  startup: { id: string; name: string | null };
+  budget: string;
+  /** Applications still waiting for an answer, and all of them. */
+  applications: { waiting: number; total: number };
+  contract: { id: string; status: ContractStatus } | null;
+  createdAt: IsoDate;
+}
+
+/** One of Pocket's own accounts on chain, and whether it has what it needs. */
+export interface AdminAccount {
+  role: 'platform' | 'funding';
+  address: string | null;
+  /** XLM it holds; null when the address is not set or could not be read. */
+  xlm: string | null;
+  /** Under this much XLM the monitor raises an alert. */
+  minXlm: number;
+  /** For the platform account: whether it can receive Pocket's fee in USDC. */
+  trustsUsdc: boolean | null;
+}
+
+/** GET /manager/overview: the system's health and what needs a look now. */
+export interface AdminOverview {
+  generatedAt: IsoDate;
+  network: 'testnet' | 'mainnet';
+  accounts: AdminAccount[];
+  attention: {
+    flag: AdminFlag;
+    contractId: string;
+    jobTitle: string;
+    /** What exactly, in a few words. */
+    detail: string;
+    /** Since when, to sort by. */
+    since: IsoDate;
+  }[];
+  counts: {
+    contracts: Record<ContractStatus, number>;
+    users: { startups: number; specialists: number; managers: number; notApproved: number };
+    jobs: { open: number; total: number };
+  };
+}
