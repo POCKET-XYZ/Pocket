@@ -58,7 +58,54 @@ const SPECIALIST_OPTIONAL = {
   cvUrl: null,
   avatarUrl: null,
   location: null,
+  socialAccounts: [],
+  niches: [],
+  audienceCountries: [],
 };
+
+/** A creator's account as stored: the declared figures and when they last changed. */
+interface StoredAccount {
+  platform: string;
+  url: string;
+  followers?: number;
+  avgViews?: number;
+  statsUpdatedAt?: string;
+}
+
+/**
+ * The accounts to store. A figure the creator changed, or a new account,
+ * gets today's date; an unchanged one keeps the date it had, so a startup
+ * can tell how fresh each number is.
+ */
+export function withStatsDates(
+  sent: { platform: string; url: string; followers?: number; avgViews?: number }[],
+  before: unknown,
+  now: Date,
+): StoredAccount[] {
+  const previous = Array.isArray(before) ? (before as StoredAccount[]) : [];
+  return sent.map((account) => {
+    const old = previous.find(
+      (each) => each.platform === account.platform && each.url === account.url,
+    );
+    const same =
+      old !== undefined &&
+      old.followers === account.followers &&
+      old.avgViews === account.avgViews;
+    const hasFigures = account.followers !== undefined || account.avgViews !== undefined;
+    return {
+      platform: account.platform,
+      url: account.url,
+      ...(account.followers !== undefined ? { followers: account.followers } : {}),
+      ...(account.avgViews !== undefined ? { avgViews: account.avgViews } : {}),
+      ...(hasFigures
+        ? {
+            statsUpdatedAt:
+              same && old.statsUpdatedAt ? old.statsUpdatedAt : now.toISOString(),
+          }
+        : {}),
+    };
+  });
+}
 
 /**
  * Only the fields actually sent. The validated DTO is a class instance whose
@@ -135,19 +182,41 @@ export class ProfilesService {
     if (user.role !== 'specialist') {
       throw new ForbiddenException('Solo los expertos tienen perfil de experto');
     }
-    if (!dto.linkedinUrl && !dto.portfolioUrl && !dto.cvUrl) {
-      // A profile nobody can check is worth nothing to a startup choosing.
+    // A profile nobody can check is worth nothing to a startup choosing: a
+    // creator shows their accounts, anyone else a link to their work.
+    const creator = dto.categories.includes('content');
+    if (creator) {
+      const platforms = new Set((dto.socialAccounts ?? []).map((each) => each.platform));
+      if (platforms.size < 2) {
+        throw new BadRequestException('Agrega al menos 2 redes de plataformas distintas');
+      }
+    } else if (!dto.linkedinUrl && !dto.portfolioUrl && !dto.cvUrl) {
       throw new BadRequestException(
         'Agrega al menos uno: tu LinkedIn, tu portafolio o tu CV',
       );
     }
 
-    // Case studies are stored as JSON: a link with the result it achieved.
-    const { caseStudies, ...rest } = dto;
+    // Case studies and accounts are stored as JSON.
+    const { caseStudies, socialAccounts, ...rest } = dto;
+    const before = socialAccounts
+      ? await this.prisma.specialistProfile.findUnique({
+          where: { userId: user.sub },
+          select: { socialAccounts: true },
+        })
+      : null;
     const data = {
       ...rest,
       ...(caseStudies
         ? { caseStudies: caseStudies as unknown as Prisma.InputJsonValue }
+        : {}),
+      ...(socialAccounts
+        ? {
+            socialAccounts: withStatsDates(
+              socialAccounts,
+              before?.socialAccounts,
+              new Date(),
+            ) as unknown as Prisma.InputJsonValue,
+          }
         : {}),
     };
     return await this.prisma.specialistProfile.upsert({
@@ -238,6 +307,7 @@ export class ProfilesService {
               { headline: { contains: search, mode: 'insensitive' } },
               { bio: { contains: search, mode: 'insensitive' } },
               { skills: { has: search } },
+              { niches: { has: search } },
             ],
           }
         : {}),

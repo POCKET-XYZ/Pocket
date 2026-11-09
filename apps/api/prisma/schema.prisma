@@ -173,6 +173,8 @@ enum ServiceCategory {
   sales
   marketing
   digital_marketing
+  // Content creators and influencers.
+  content
 }
 
 // Fixed template every startup fills in, so profiles stay comparable.
@@ -233,35 +235,42 @@ model SpecialistCv {
 
 // Fixed template every specialist fills in. Rates are in USDC.
 model SpecialistProfile {
-  id               String            @id @default(uuid()) @db.Uuid
-  userId           String            @unique @map("user_id") @db.Uuid
-  displayName      String            @map("display_name")
+  id                String            @id @default(uuid()) @db.Uuid
+  userId            String            @unique @map("user_id") @db.Uuid
+  displayName       String            @map("display_name")
   // Short professional headline, e.g. "B2B SaaS outbound specialist".
-  headline         String
-  bio              String
-  categories       ServiceCategory[]
-  skills           String[]          @default([])
+  headline          String
+  bio               String
+  categories        ServiceCategory[]
+  skills            String[]          @default([])
   // Past work the startup can check: [{ url, result }], where result is
   // the outcome in one line, e.g. "+40% followers in 2 months".
-  caseStudies      Json              @default("[]") @map("case_studies")
+  caseStudies       Json              @default("[]") @map("case_studies")
   // Tools they work with, e.g. Meta Ads, GA4, HubSpot.
-  tools            String[]          @default([])
-  yearsExperience  Int?              @map("years_experience")
+  tools             String[]          @default([])
+  yearsExperience   Int?              @map("years_experience")
   // Languages they work in, and where they are, for startups in other countries.
-  languages        String[]          @default([])
-  timezone         String?
+  languages         String[]          @default([])
+  timezone          String?
   // Hours a week they can take on.
-  weeklyHours      Int?              @map("weekly_hours")
-  hourlyRate       Decimal?          @map("hourly_rate") @db.Decimal(20, 7)
-  minProjectBudget Decimal?          @map("min_project_budget") @db.Decimal(20, 7)
-  portfolioUrl     String?           @map("portfolio_url")
-  linkedinUrl      String?           @map("linkedin_url")
+  weeklyHours       Int?              @map("weekly_hours")
+  hourlyRate        Decimal?          @map("hourly_rate") @db.Decimal(20, 7)
+  minProjectBudget  Decimal?          @map("min_project_budget") @db.Decimal(20, 7)
+  portfolioUrl      String?           @map("portfolio_url")
+  linkedinUrl       String?           @map("linkedin_url")
   // A link to their CV (Drive, Dropbox, Notion...). Pocket stores no files.
-  cvUrl            String?           @map("cv_url")
-  avatarUrl        String?           @map("avatar_url")
-  location         String?
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @updatedAt @map("updated_at")
+  cvUrl             String?           @map("cv_url")
+  avatarUrl         String?           @map("avatar_url")
+  location          String?
+  // A creator's accounts: [{ platform, url, followers, avgViews, statsUpdatedAt }].
+  // The figures are what the creator declares: Pocket does not check them.
+  socialAccounts    Json              @default("[]") @map("social_accounts")
+  // What a creator's content is about, e.g. fintech or gaming.
+  niches            String[]          @default([])
+  // Where most of a creator's audience is.
+  audienceCountries String[]          @default([]) @map("audience_countries")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
