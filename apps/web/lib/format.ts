@@ -39,9 +39,9 @@ export function dateTime(value: string | null | undefined): string {
   });
 }
 
-/** A share as a whole percent, or `-` when there is nothing to count. */
+/** A share as a whole percent, like the dashboard writes it, or `-` when there is nothing to count. */
 export function percent(part: number, total: number): string {
-  return total > 0 ? `${Math.round((part / total) * 100)} %` : '-';
+  return total > 0 ? `${Math.round((part / total) * 100)}%` : '-';
 }
 
 /** Today in UTC as YYYY-MM-DD, the minimum for date inputs. */

@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { month, percent } from '@/lib/format';
-import { applicantSummary, fetchTrackRecord } from '@/lib/track-record';
+import { fetchTrackRecord } from '@/lib/track-record';
 
 /**
  * What a specialist finished on Pocket, for their public profile. Nothing shows
@@ -31,16 +31,14 @@ export function TrackRecordSection({ userId }: { userId: string }) {
           {stats(data).map((stat) => (
             <div key={stat.label} className="flex flex-col-reverse justify-end gap-1">
               <dt className="text-xs text-muted-foreground">{stat.label}</dt>
-              <dd className="font-heading text-2xl font-semibold text-navy">
-                {stat.value}
-              </dd>
+              <dd className="font-heading text-2xl font-bold text-navy">{stat.value}</dd>
             </div>
           ))}
         </dl>
         {data.bestResult ? (
           <div className="rounded-xl bg-celeste-light p-4">
             <p className="text-xs text-muted-foreground">Mejor resultado</p>
-            <p className="mt-1 font-heading text-xl font-semibold text-navy">
+            <p className="mt-1 font-heading text-xl font-bold text-navy">
               {data.bestResult.result}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -77,7 +75,7 @@ export function TrackRecordSection({ userId }: { userId: string }) {
                   className={
                     job.onTime
                       ? 'border-0 bg-emerald-100 text-emerald-800'
-                      : 'border-0 bg-yellow/40 text-navy'
+                      : 'border-0 bg-warning/40 text-navy'
                   }
                 >
                   {job.onTime ? 'A tiempo' : 'Con retraso'}
@@ -98,29 +96,29 @@ function stats(record: TrackRecord): { label: string; value: string }[] {
       label: completed === 1 ? 'Trabajo completado' : 'Trabajos completados',
       value: String(completed),
     },
-    { label: 'Entregables a tiempo', value: percent(milestones.onTime, milestones.total) },
+    { label: 'Entregas a tiempo', value: percent(milestones.onTime, milestones.total) },
     { label: 'Metas cumplidas', value: percent(kpis.met, kpis.withTarget) },
   ];
 }
 
 /**
- * The one line a startup reads under each applicant while deciding. Shows nothing
- * until the API sends the counts: everyone would otherwise look new on Pocket.
+ * The one line a startup reads under each applicant while deciding. A part
+ * with nothing to count is left out: a job with no numeric target says
+ * nothing about targets.
  */
 export function TrackRecordLine({ applicant }: { applicant: Applicant }) {
-  const summary = applicantSummary(applicant.specialistId, applicant.trackRecord);
-  if (!summary) return null;
-  const { completed, milestones, kpis } = summary;
+  const { completed, milestones, kpis } = applicant.trackRecord;
+  const parts = [
+    `${completed} ${completed === 1 ? 'trabajo' : 'trabajos'}`,
+    ...(milestones.total > 0
+      ? [`${percent(milestones.onTime, milestones.total)} a tiempo`]
+      : []),
+    ...(kpis.withTarget > 0 ? [`${percent(kpis.met, kpis.withTarget)} metas`] : []),
+  ];
 
   return (
     <p className="mt-1 text-sm font-medium text-navy">
-      {completed === 0
-        ? 'Nuevo en Pocket'
-        : [
-            `${completed} ${completed === 1 ? 'trabajo' : 'trabajos'}`,
-            `${percent(milestones.onTime, milestones.total)} a tiempo`,
-            `${percent(kpis.met, kpis.withTarget)} metas`,
-          ].join(' · ')}
+      {completed === 0 ? 'Nuevo en Pocket' : parts.join(' · ')}
     </p>
   );
 }
