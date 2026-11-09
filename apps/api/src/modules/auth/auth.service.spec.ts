@@ -66,7 +66,7 @@ describe('AuthService', () => {
 
   let pollar: { enabled: boolean; verifyToken: jest.Mock };
   let migrated: { claim: jest.Mock };
-  let wallets: { activate: jest.Mock };
+  let wallets: { activate: jest.Mock; activateAddress: jest.Mock };
   let service: AuthService;
 
   beforeEach(() => {
@@ -84,7 +84,10 @@ describe('AuthService', () => {
     };
     pollar = { enabled: true, verifyToken: jest.fn().mockResolvedValue(makeSession()) };
     migrated = { claim: jest.fn().mockResolvedValue(null) };
-    wallets = { activate: jest.fn().mockResolvedValue(true) };
+    wallets = {
+      activate: jest.fn().mockResolvedValue(true),
+      activateAddress: jest.fn().mockResolvedValue(true),
+    };
     service = new AuthService(
       prisma as unknown as PrismaService,
       jwt,
@@ -265,10 +268,21 @@ describe('AuthService', () => {
 
     it('asks for a role the first time, like the wallet login does', async () => {
       prisma.user.findFirst.mockResolvedValue(null);
+      pollar.verifyToken.mockResolvedValue(makeSession({ funded: false }));
       await expect(
         service.loginWithPollar({ accessToken: 'pollar-token' }),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(prisma.user.create).not.toHaveBeenCalled();
+      // The wallet gets its XLM already, while the person picks a role.
+      expect(wallets.activateAddress).toHaveBeenCalledWith(ADDRESS);
+    });
+
+    it('leaves a wallet already on the network alone at the first login', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      await expect(
+        service.loginWithPollar({ accessToken: 'pollar-token' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(wallets.activateAddress).not.toHaveBeenCalled();
     });
 
     it('does not create a Pollar account without accepting the terms', async () => {

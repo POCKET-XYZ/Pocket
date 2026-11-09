@@ -124,6 +124,13 @@ export class AuthService {
       );
     }
 
+    if (!existing && !session.funded) {
+      // The wallet gets its XLM as soon as Pollar confirms who the person is,
+      // before they even pick startup or specialist: by the time anything
+      // needs it, it is there. In the background, so signing in stays fast.
+      void this.wallets.activateAddress(session.stellarAddress);
+    }
+
     if (!existing) {
       // An account approved on testnet waits for this email: it arrives with
       // its role, approval and profile, on the wallet Pollar gave on mainnet.
