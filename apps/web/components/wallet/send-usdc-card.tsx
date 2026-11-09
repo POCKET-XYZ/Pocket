@@ -2,13 +2,12 @@
 
 import type { User, UsdcPaymentResult } from '@pocket/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { SendIcon, TriangleAlertIcon } from 'lucide-react';
+import { TriangleAlertIcon } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Field } from '@/components/form';
 import { usePollarSession } from '@/components/pollar-session';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -67,7 +66,7 @@ async function preparePayment(draft: SendDraft): Promise<Review> {
  * transaction, the user confirms the exact payment, and only a transaction
  * that matches what they confirmed reaches their wallet for a signature.
  */
-export function SendUsdcCard({ user }: { user: User }) {
+export function SendUsdcPanel({ user }: { user: User }) {
   const queryClient = useQueryClient();
   const status = useUsdcStatus();
   const signer = useSigner();
@@ -146,92 +145,84 @@ export function SendUsdcCard({ user }: { user: User }) {
   const busy = prepare.isPending || send.isPending;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <SendIcon className="size-5 text-navy" />
-          Enviar USDC
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {!status.data ? (
-          <p className="text-sm text-muted-foreground">Revisando tu wallet...</p>
-        ) : !ready ? (
-          <p className="text-sm text-muted-foreground">
-            Habilita USDC en tu wallet antes de enviarlo.
-          </p>
-        ) : (
-          <form className="space-y-4" onSubmit={onSubmit} noValidate>
-            <Field label="Enviar a" htmlFor="send-destination" required>
+    <div>
+      {!status.data ? (
+        <p className="text-sm text-muted-foreground">Revisando tu wallet...</p>
+      ) : !ready ? (
+        <p className="text-sm text-muted-foreground">
+          Habilita USDC en tu wallet antes de enviarlo.
+        </p>
+      ) : (
+        <form className="space-y-4" onSubmit={onSubmit} noValidate>
+          <Field label="Enviar a" htmlFor="send-destination" required>
+            <Input
+              id="send-destination"
+              value={draft.destination}
+              onChange={(event) => update('destination', event.target.value)}
+              placeholder="G..."
+              autoComplete="off"
+              spellCheck={false}
+              className="font-mono"
+              aria-invalid={Boolean(problems.destination)}
+            />
+            <Problem text={problems.destination} />
+          </Field>
+
+          <Field label="Monto (USDC)" htmlFor="send-amount" required>
+            <div className="flex gap-2">
               <Input
-                id="send-destination"
-                value={draft.destination}
-                onChange={(event) => update('destination', event.target.value)}
-                placeholder="G..."
+                id="send-amount"
+                value={draft.amount}
+                onChange={(event) => update('amount', event.target.value)}
+                inputMode="decimal"
+                placeholder="0.00"
                 autoComplete="off"
-                spellCheck={false}
-                className="font-mono"
-                aria-invalid={Boolean(problems.destination)}
+                aria-invalid={Boolean(problems.amount)}
               />
-              <Problem text={problems.destination} />
-            </Field>
-
-            <Field label="Monto (USDC)" htmlFor="send-amount" required>
-              <div className="flex gap-2">
-                <Input
-                  id="send-amount"
-                  value={draft.amount}
-                  onChange={(event) => update('amount', event.target.value)}
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  autoComplete="off"
-                  aria-invalid={Boolean(problems.amount)}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!spendable || toUnits(spendable) <= BigInt(0)}
-                  onClick={() =>
-                    spendable && update('amount', fromUnits(toUnits(spendable)))
-                  }
-                >
-                  Máximo
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Disponible: {spendable ? fromUnits(toUnits(spendable)) : '0'} USDC
-              </p>
-              <Problem text={problems.amount} />
-            </Field>
-
-            <Field label="Memo (opcional)" htmlFor="send-memo">
-              <Input
-                id="send-memo"
-                value={draft.memo}
-                onChange={(event) => update('memo', event.target.value)}
-                autoComplete="off"
-                aria-invalid={Boolean(problems.memo)}
-              />
-              <p className="text-xs text-muted-foreground">
-                ¿Envías a un exchange? Suele pedir un memo para saber que el depósito es
-                tuyo. Cópialo exactamente como lo muestra el exchange. Hasta{' '}
-                {MAX_MEMO_BYTES} bytes ({memoSize}/{MAX_MEMO_BYTES}).
-              </p>
-              <Problem text={problems.memo} />
-            </Field>
-
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!spendable || toUnits(spendable) <= BigInt(0)}
+                onClick={() =>
+                  spendable && update('amount', fromUnits(toUnits(spendable)))
+                }
+              >
+                Máximo
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
-              {user.walletCustody === 'pollar'
-                ? 'No tienes que pagar la comisión de red.'
-                : 'Tu wallet paga una pequeña comisión de red en XLM.'}
+              Disponible: {spendable ? fromUnits(toUnits(spendable)) : '0'} USDC
             </p>
+            <Problem text={problems.amount} />
+          </Field>
 
-            <Button type="submit" disabled={busy}>
-              {prepare.isPending ? 'Revisando...' : 'Revisar pago'}
-            </Button>
-          </form>
-        )}
-      </CardContent>
+          <Field label="Memo (opcional)" htmlFor="send-memo">
+            <Input
+              id="send-memo"
+              value={draft.memo}
+              onChange={(event) => update('memo', event.target.value)}
+              autoComplete="off"
+              aria-invalid={Boolean(problems.memo)}
+            />
+            <p className="text-xs text-muted-foreground">
+              ¿Envías a un exchange? Suele pedir un memo para saber que el depósito es
+              tuyo. Cópialo exactamente como lo muestra el exchange. Hasta{' '}
+              {MAX_MEMO_BYTES} bytes ({memoSize}/{MAX_MEMO_BYTES}).
+            </p>
+            <Problem text={problems.memo} />
+          </Field>
+
+          <p className="text-xs text-muted-foreground">
+            {user.walletCustody === 'pollar'
+              ? 'No tienes que pagar la comisión de red.'
+              : 'Tu wallet paga una pequeña comisión de red en XLM.'}
+          </p>
+
+          <Button type="submit" disabled={busy}>
+            {prepare.isPending ? 'Revisando...' : 'Revisar pago'}
+          </Button>
+        </form>
+      )}
 
       <Dialog
         open={review !== null}
@@ -299,7 +290,7 @@ export function SendUsdcCard({ user }: { user: User }) {
           </DialogContent>
         ) : null}
       </Dialog>
-    </Card>
+    </div>
   );
 }
 
