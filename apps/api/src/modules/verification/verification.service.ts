@@ -118,7 +118,8 @@ export class VerificationService {
       });
     });
 
-    if (status === 'approved') await this.afterApproval(request);
+    // Without Didit, sending the details is all that approved the account.
+    if (status === 'approved') await this.afterApproval(request, false);
     return request;
   }
 
@@ -331,13 +332,19 @@ export class VerificationService {
       userId: decided.userId,
       decision: status,
     });
-    if (status === 'approved') await this.afterApproval(decided);
+    if (status === 'approved') await this.afterApproval(decided, true);
     return decided;
   }
 
   /** What every approval does: say so, and make sure the wallet is on the network. */
-  private async afterApproval(request: VerificationRequest): Promise<void> {
-    this.notifications.notifyEmail(request.contactEmail, { type: 'verification_approved' });
+  private async afterApproval(
+    request: VerificationRequest,
+    identityChecked: boolean,
+  ): Promise<void> {
+    this.notifications.notifyEmail(request.contactEmail, {
+      type: 'verification_approved',
+      identityChecked,
+    });
     await this.wallets.activate(request.userId);
   }
 
