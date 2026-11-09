@@ -41,7 +41,7 @@ function Dashboard({ user }: { user: User }) {
       {jobs.isLoading ? (
         <Loading />
       ) : jobs.error ? (
-        <ErrorAlert error={jobs.error} />
+        <ErrorAlert error={jobs.error} onRetry={() => jobs.refetch()} />
       ) : jobs.data && jobs.data.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2">
           {jobs.data.map((job) => (

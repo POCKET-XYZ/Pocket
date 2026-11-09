@@ -63,7 +63,11 @@ export function ChainCheckSection() {
       </div>
 
       {check.error ? (
-        <ErrorAlert error={check.error} title="No se pudo leer la red" />
+        <ErrorAlert
+          error={check.error}
+          onRetry={() => check.refetch()}
+          title="No se pudo leer la red"
+        />
       ) : null}
 
       {data ? (

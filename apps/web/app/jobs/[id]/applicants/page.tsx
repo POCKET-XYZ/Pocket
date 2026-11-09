@@ -32,7 +32,8 @@ function Applicants() {
   });
 
   if (job.isLoading || applicants.isLoading) return <Loading />;
-  if (applicants.error) return <ErrorAlert error={applicants.error} />;
+  if (applicants.error)
+    return <ErrorAlert error={applicants.error} onRetry={() => applicants.refetch()} />;
   const canHire = job.data?.status === 'open';
 
   return (

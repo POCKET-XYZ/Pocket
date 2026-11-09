@@ -125,6 +125,7 @@ function StartupHome({ user }: { user: User }) {
     queryFn: () => api<StartupDashboard>('/dashboard/startup'),
   });
   const error = contracts.error ?? jobs.error ?? dashboard.error;
+  const retry = () => [contracts, jobs, dashboard].forEach((query) => query.refetch());
   const ready = contracts.data && jobs.data && dashboard.data;
   const nothingYet = ready && jobs.data.length === 0 && contracts.data.length === 0;
 
@@ -147,7 +148,7 @@ function StartupHome({ user }: { user: User }) {
         }
       />
       <UsdcStatus user={user} />
-      {error ? <ErrorAlert error={error} /> : null}
+      {error ? <ErrorAlert error={error} onRetry={retry} /> : null}
       {!ready && !error ? <Loading /> : null}
       {ready && !nothingYet ? (
         <StartupFigures
@@ -318,6 +319,8 @@ function SpecialistHome({ user }: { user: User }) {
     queryFn: () => api<SpecialistDashboard>('/dashboard/specialist'),
   });
   const error = contracts.error ?? applications.error ?? board.error ?? dashboard.error;
+  const retry = () =>
+    [contracts, applications, board, dashboard].forEach((query) => query.refetch());
   const ready = contracts.data && applications.data && board.data && dashboard.data;
   const nothingYet =
     ready && applications.data.length === 0 && contracts.data.length === 0;
@@ -353,7 +356,7 @@ function SpecialistHome({ user }: { user: User }) {
         }
       />
       <UsdcStatus user={user} />
-      {error ? <ErrorAlert error={error} /> : null}
+      {error ? <ErrorAlert error={error} onRetry={retry} /> : null}
       {!ready && !error ? <Loading /> : null}
       {ready && stats && figures && !nothingYet ? (
         <>
@@ -443,6 +446,7 @@ function ManagerHome() {
     queryFn: () => api<ManagerMetrics>(`/manager/metrics?period=${MetricsPeriod.Month}`),
   });
   const error = overview.error ?? metrics.error;
+  const retry = () => [overview, metrics].forEach((query) => query.refetch());
   const data = metrics.data;
   const now = overview.data;
 
@@ -457,7 +461,7 @@ function ManagerHome() {
           </Button>
         }
       />
-      {error ? <ErrorAlert error={error} /> : null}
+      {error ? <ErrorAlert error={error} onRetry={retry} /> : null}
       {!now || !data ? (
         error ? null : (
           <Loading />

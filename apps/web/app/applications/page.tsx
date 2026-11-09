@@ -65,7 +65,7 @@ function Applications({ user }: { user: User }) {
       {applications.isLoading ? (
         <Loading />
       ) : applications.error ? (
-        <ErrorAlert error={applications.error} />
+        <ErrorAlert error={applications.error} onRetry={() => applications.refetch()} />
       ) : applications.data && applications.data.length > 0 ? (
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
           <Table>

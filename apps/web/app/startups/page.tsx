@@ -43,7 +43,7 @@ export default function StartupsPage() {
       {directory.isLoading ? (
         <Loading />
       ) : directory.error ? (
-        <ErrorAlert error={directory.error} />
+        <ErrorAlert error={directory.error} onRetry={() => directory.refetch()} />
       ) : directory.data && directory.data.items.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {directory.data.items.map((startup) => (

@@ -38,6 +38,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { api, errorMessage } from '@/lib/api';
 import { useMyProfile } from '@/lib/use-my-profile';
 import { CATEGORY_LABELS, date, isoInDays, usdc } from '@/lib/format';
+import { UrlInput } from '@/components/url-input';
 
 export default function JobPage() {
   const { id } = useParams<{ id: string }>();
@@ -49,7 +50,13 @@ export default function JobPage() {
 
   if (job.isLoading) return <Loading />;
   if (job.error || !job.data)
-    return <ErrorAlert error={job.error} title="No se encontró el trabajo" />;
+    return (
+      <ErrorAlert
+        error={job.error}
+        onRetry={() => job.refetch()}
+        title="No se encontró el trabajo"
+      />
+    );
   const data = job.data;
 
   return (
@@ -344,14 +351,7 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
             htmlFor="similarWorkUrl"
             hint="Un enlace a algo similar a este trabajo."
           >
-            <Input
-              id="similarWorkUrl"
-              name="similarWorkUrl"
-              type="url"
-              pattern="https://.+"
-              title="Un enlace que empiece con https://"
-              placeholder="https://"
-            />
+            <UrlInput id="similarWorkUrl" name="similarWorkUrl" placeholder="https://" />
           </Field>
           <Field
             label="¿Qué necesitas de la startup?"

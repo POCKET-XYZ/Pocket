@@ -35,6 +35,7 @@ import { dateTime, usdc } from '@/lib/format';
 import { fromUnits, toUnits } from '@/lib/usdc';
 import { cn } from '@/lib/utils';
 import { linkHost, safeHref } from '@/lib/links';
+import { UrlInput } from '@/components/url-input';
 
 const OUTCOMES: { value: DisputeOutcome; label: string }[] = [
   { value: DisputeOutcome.PaySpecialist, label: 'Pagar al experto' },
@@ -55,7 +56,13 @@ function DisputeView({ user }: { user: User }) {
 
   if (dispute.isLoading) return <Loading />;
   if (dispute.error || !dispute.data)
-    return <ErrorAlert error={dispute.error} title="No se encontró la disputa" />;
+    return (
+      <ErrorAlert
+        error={dispute.error}
+        onRetry={() => dispute.refetch()}
+        title="No se encontró la disputa"
+      />
+    );
   const data = dispute.data;
   const { contract } = data.milestone;
   const who = (authorId: string) =>
@@ -224,13 +231,7 @@ function EvidenceForm({ disputeId }: { disputeId: string }) {
         maxLength={2000}
         placeholder="Agrega un comentario"
       />
-      <Input
-        name="url"
-        type="url"
-        pattern="https://.+"
-        title="Un enlace que empiece con https://"
-        placeholder="Enlace (opcional)"
-      />
+      <UrlInput name="url" placeholder="Enlace (opcional)" />
       <Button type="submit" size="sm" disabled={add.isPending}>
         Agregar evidencia
       </Button>

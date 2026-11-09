@@ -41,7 +41,7 @@ function Disputes() {
       {disputes.isLoading ? (
         <Loading />
       ) : disputes.error ? (
-        <ErrorAlert error={disputes.error} />
+        <ErrorAlert error={disputes.error} onRetry={() => disputes.refetch()} />
       ) : disputes.data && disputes.data.length > 0 ? (
         <div className="space-y-3">
           {disputes.data.map((dispute) => (

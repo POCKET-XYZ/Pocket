@@ -88,7 +88,11 @@ function ContractControl() {
         Todos los contratos
       </Link>
       {check.error ? (
-        <ErrorAlert error={check.error} title="No se pudo leer el contrato en la red" />
+        <ErrorAlert
+          error={check.error}
+          onRetry={() => check.refetch()}
+          title="No se pudo leer el contrato en la red"
+        />
       ) : !check.data ? (
         <Loading label="Leyendo el contrato en Stellar" />
       ) : (

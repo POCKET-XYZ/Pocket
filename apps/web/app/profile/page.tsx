@@ -31,6 +31,7 @@ import { imageSrc } from '@/lib/links';
 import { TIME_ZONES, guessTimeZone } from '@/lib/timezones';
 import { CATEGORY_LABELS, PLATFORM_LABELS, STAGE_LABELS } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { UrlInput } from '@/components/url-input';
 
 export default function ProfilePage() {
   return (
@@ -213,12 +214,9 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
         />
       </Field>
       <Field label="Sitio web" htmlFor="websiteUrl">
-        <Input
+        <UrlInput
           id="websiteUrl"
           name="websiteUrl"
-          type="url"
-          pattern="https://.+"
-          title="Un enlace que empiece con https://"
           placeholder="https://"
           defaultValue={initial?.websiteUrl ?? known?.websiteUrl ?? ''}
         />
@@ -366,12 +364,9 @@ function LogoField({ initial }: { initial: string | null | undefined }) {
           )}
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <Input
+          <UrlInput
             id="logoUrl"
             name="logoUrl"
-            type="url"
-            pattern="https://.+"
-            title="Un enlace que empiece con https://"
             placeholder="https://"
             value={logoUrl}
             onChange={(event) => setLogoUrl(event.target.value)}
@@ -517,12 +512,9 @@ function SpecialistForm({
   // Controlled, so what was typed survives moving between the two places.
   const linkedinField = (
     <Field label="LinkedIn" htmlFor="linkedinUrl">
-      <Input
+      <UrlInput
         id="linkedinUrl"
         name="linkedinUrl"
-        type="url"
-        pattern="https://.+"
-        title="Un enlace que empiece con https://"
         placeholder="https://"
         value={linkedinUrl}
         onChange={(event) => setLinkedinUrl(event.target.value)}
@@ -537,12 +529,9 @@ function SpecialistForm({
       required={!isCreator}
     >
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Input
+        <UrlInput
           id="cvUrl"
           name="cvUrl"
-          type="url"
-          pattern="https://.+"
-          title="Un enlace que empiece con https://"
           placeholder="https://"
           value={cvUrl}
           onChange={(event) => setCvUrl(event.target.value)}
@@ -697,12 +686,9 @@ function SpecialistForm({
         />
       </Field>
       <Field label="Portafolio" htmlFor="portfolioUrl">
-        <Input
+        <UrlInput
           id="portfolioUrl"
           name="portfolioUrl"
-          type="url"
-          pattern="https://.+"
-          title="Un enlace que empiece con https://"
           placeholder="https://"
           defaultValue={initial?.portfolioUrl ?? known?.websiteUrl ?? ''}
         />
@@ -865,11 +851,8 @@ function SocialAccountsField({
                 </option>
               ))}
             </select>
-            <Input
+            <UrlInput
               aria-label={`Enlace de la red ${index + 1}`}
-              type="url"
-              pattern="https://.+"
-              title="Un enlace que empiece con https://"
               placeholder="https://"
               value={row.url}
               onChange={(event) => update(index, { url: event.target.value })}

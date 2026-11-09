@@ -1,6 +1,7 @@
-import { Loader2Icon } from 'lucide-react';
+import { Loader2Icon, RotateCwIcon } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { errorMessage } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { ApiError, errorMessage } from '@/lib/api';
 
 /** Title row at the top of every page, with optional actions on the right. */
 export function PageHeader({
@@ -36,17 +37,37 @@ export function Loading({ label = 'Cargando' }: { label?: string }) {
   );
 }
 
+/**
+ * An error in place of what a page could not load. With `onRetry`, a button
+ * asks for it again, for when the connection or the API comes back.
+ */
 export function ErrorAlert({
   error,
   title = 'Algo salió mal',
+  onRetry,
 }: {
   error: unknown;
   title?: string;
+  onRetry?: () => void;
 }) {
+  // Asking again only helps when the connection or the server failed: a
+  // missing contract or a refused page answers the same every time.
+  const retryable =
+    !(error instanceof ApiError) || error.status === 0 || error.status >= 500;
   return (
     <Alert variant="destructive">
       <AlertTitle>{title}</AlertTitle>
-      <AlertDescription>{errorMessage(error)}</AlertDescription>
+      <AlertDescription className="whitespace-pre-line">
+        {errorMessage(error)}
+      </AlertDescription>
+      {onRetry && retryable ? (
+        <div className="mt-2">
+          <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+            <RotateCwIcon />
+            Reintentar
+          </Button>
+        </div>
+      ) : null}
     </Alert>
   );
 }

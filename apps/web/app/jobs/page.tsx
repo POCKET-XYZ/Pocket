@@ -62,7 +62,7 @@ export default function JobsPage() {
       {board.isLoading ? (
         <Loading />
       ) : board.error ? (
-        <ErrorAlert error={board.error} />
+        <ErrorAlert error={board.error} onRetry={() => board.refetch()} />
       ) : jobs.length > 0 ? (
         <>
           <div className="grid gap-4 md:grid-cols-2">

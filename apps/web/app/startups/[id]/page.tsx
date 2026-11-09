@@ -39,7 +39,13 @@ export default function StartupProfilePage() {
 
   if (profile.isLoading || isSpecialist) return <Loading />;
   if (profile.error || !profile.data)
-    return <ErrorAlert error={profile.error} title="No se encontró la startup" />;
+    return (
+      <ErrorAlert
+        error={profile.error}
+        onRetry={() => profile.refetch()}
+        title="No se encontró la startup"
+      />
+    );
 
   const startup = profile.data.profile as StartupProfile;
   return (

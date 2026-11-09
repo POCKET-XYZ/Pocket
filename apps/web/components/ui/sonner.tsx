@@ -36,6 +36,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: 'cn-toast',
+          // Form errors arrive one per line.
+          title: 'whitespace-pre-line',
         },
         closeButtonAriaLabel: 'Cerrar notificación',
       }}

@@ -63,7 +63,11 @@ function Metrics() {
       {metrics.isLoading ? (
         <Loading label="Cargando métricas" />
       ) : metrics.error && !metrics.data ? (
-        <ErrorAlert error={metrics.error} title="No se pudieron cargar las métricas" />
+        <ErrorAlert
+          error={metrics.error}
+          onRetry={() => metrics.refetch()}
+          title="No se pudieron cargar las métricas"
+        />
       ) : metrics.data ? (
         <div
           className={cn(

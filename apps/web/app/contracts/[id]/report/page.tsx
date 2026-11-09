@@ -60,7 +60,13 @@ function Report({ user }: { user: User }) {
 
   if (report.isLoading) return <Loading />;
   if (report.error || !report.data)
-    return <ErrorAlert error={report.error} title="No se pudo armar el reporte" />;
+    return (
+      <ErrorAlert
+        error={report.error}
+        onRetry={() => report.refetch()}
+        title="No se pudo armar el reporte"
+      />
+    );
   const data = report.data;
   const completed = data.contract.status === 'completed';
   const specialist = data.specialist.displayName ?? 'El experto';
