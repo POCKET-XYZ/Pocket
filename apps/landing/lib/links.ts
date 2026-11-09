@@ -10,3 +10,8 @@ export const links = {
   terms: `${APP_URL}/terms`,
   privacy: `${APP_URL}/privacy`,
 };
+
+/** Where this landing lives; set NEXT_PUBLIC_SITE_URL per deploy. */
+export const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3002'
+).replace(/\/+$/, '');

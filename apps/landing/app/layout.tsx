@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Anton, Figtree, Inter } from 'next/font/google';
 import { SmoothScroll } from '@/components/smooth-scroll';
+import { SITE_URL } from '@/lib/links';
 import './globals.css';
 
 // Brand type: Figtree for titles, Anton for big data,
@@ -28,7 +29,7 @@ const description =
 
 export const metadata: Metadata = {
   // Shared links need absolute image URLs; set NEXT_PUBLIC_SITE_URL per deploy.
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3002'),
+  metadataBase: new URL(SITE_URL),
   title,
   description,
   openGraph: { title, description, type: 'website', locale: 'es_ES', siteName: 'Pocket' },
