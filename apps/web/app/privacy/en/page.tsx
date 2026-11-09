@@ -89,6 +89,12 @@ export default function PrivacyPageEn() {
           their links, files and reported results, feedback, disputes, evidence and
           comments.
         </li>
+        <li>
+          <strong>Messages:</strong> what you write in each contract&apos;s chat, with its
+          date. The other party to the contract reads it and, during a dispute, so does
+          the Pocket team resolving it, which may also write to you in a private chat.
+          Messages are not edited or deleted, so they stand as a record of the contract.
+        </li>
       </ul>
       <h3>What we collect automatically</h3>
       <ul>

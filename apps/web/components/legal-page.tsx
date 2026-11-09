@@ -9,8 +9,8 @@ export const ON_MAINNET = process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'mainnet';
 
 /** The day the version in force took effect, in each language. */
 const EFFECTIVE: Record<'es' | 'en', string> = {
-  es: 'Vigente desde el 2 de noviembre de 2026',
-  en: 'Effective November 2, 2026',
+  es: 'Vigente desde el 9 de noviembre de 2026',
+  en: 'Effective November 9, 2026',
 };
 
 const SEE_ALSO = {

@@ -93,6 +93,12 @@ export default function PrivacyPage() {
           con sus enlaces, archivos y resultados reportados, comentarios de cambios,
           disputas, pruebas y comentarios.
         </li>
+        <li>
+          <strong>Mensajes:</strong> lo que escribes en el chat de cada contrato, con su
+          fecha. Lo leen la otra parte del contrato y, si hay una disputa, el equipo de
+          Pocket que la resuelve, que también puede escribirte en un chat privado. Los
+          mensajes no se editan ni se borran, para que sirvan de registro del contrato.
+        </li>
       </ul>
       <h3>Lo que recopilamos de forma automática</h3>
       <ul>
