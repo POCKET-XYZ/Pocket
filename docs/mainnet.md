@@ -37,6 +37,20 @@ The mainnet values were read from the network: the deployer and code from a depl
    - `API_PUBLIC_URL` and `CORS_ORIGINS` for the mainnet URLs
    - a new `JWT_SECRET`, never testnet's
    - `SECURITY_ALERT_WEBHOOK_URL` and `SENTRY_DSN`, with `SENTRY_ENVIRONMENT=mainnet`
+
+   The service's build and deploy settings live on the Railway service itself, the same in both environments (Railway stops reading `railway.json` on 2026-12-01):
+
+   | Setting | Value |
+   | --- | --- |
+   | Builder | Railpack |
+   | Build command | `bun run --filter @pocket/shared build && cd apps/api && bun run db:generate && bun run build` |
+   | Start command | `cd apps/api && bun run db:deploy && bun run db:seed && bun run start` |
+   | Healthcheck | `/api/health`, 120 s |
+   | Restart policy | On failure, 5 retries |
+   | Replicas | 1 |
+   | Watch paths | `apps/api/**`, `packages/shared/**`, `/bun.lock`, `/package.json`, `/tsconfig.base.json` |
+
+   The start command runs the migrations and the seed before the API starts, so every deploy brings the database and the managers up to date.
 5. **Web environment** (Vercel). `NEXT_PUBLIC_STELLAR_NETWORK=mainnet`, `NEXT_PUBLIC_API_URL`, the `pub_mainnet_` Pollar key, and Sentry with `NEXT_PUBLIC_SENTRY_ENVIRONMENT=mainnet`.
 6. **Preflight.** With the API's mainnet environment:
 
@@ -55,7 +69,7 @@ Until launch, `pocketgrowth.xyz` serves the landing, `app.` the testnet web and 
 1. **Web.** In Vercel, move `app.pocketgrowth.xyz` from the testnet project (`pocket`) to the mainnet one (`pocket-mainnet`). Testnet can keep a name of its own, such as `testnet.pocketgrowth.xyz`.
 2. **API.** In Railway, add `api.pocketgrowth.xyz` to the `mainnet` environment and remove it from the testnet one.
 3. **DNS.** The CNAME and TXT records Vercel and Railway ask for.
-4. **Variables.** Mainnet API: `CORS_ORIGINS` with `https://app.pocketgrowth.xyz`, `API_PUBLIC_URL=https://api.pocketgrowth.xyz/api` (with the `/api` prefix: logo and CV links are built on it), and `WEB_PUBLIC_URL` when emails are on. Mainnet web: `NEXT_PUBLIC_API_URL=https://api.pocketgrowth.xyz/api`. Deploy both: the web with a Redeploy in Vercel (it builds again, since the value is fixed at build time), the API with `--skip-deploys` and a deploy from GitHub, never Railway's Redeploy, which skips `railway.json` and its start command.
+4. **Variables.** Mainnet API: `CORS_ORIGINS` with `https://app.pocketgrowth.xyz`, `API_PUBLIC_URL=https://api.pocketgrowth.xyz/api` (with the `/api` prefix: logo and CV links are built on it), and `WEB_PUBLIC_URL` when emails are on. Mainnet web: `NEXT_PUBLIC_API_URL=https://api.pocketgrowth.xyz/api`. Deploy both: the web with a Redeploy in Vercel (it builds again, since the value is fixed at build time), the API with `--skip-deploys` and a deploy from GitHub.
 5. **Pollar.** Add `app.pocketgrowth.xyz` to the mainnet app's allowed domains.
 6. **Landing.** `NEXT_PUBLIC_STELLAR_NETWORK=mainnet` in its Vercel project, and redeploy, so its answer about real money says yes.
 7. **Emails.** Off until `RESEND_API_KEY` and `EMAIL_FROM` are set, with the sending domain verified in Resend.
