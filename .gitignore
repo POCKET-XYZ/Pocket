@@ -29,3 +29,6 @@ Thumbs.db
 
 # Vercel CLI link (vercel link)
 .vercel
+
+# Brand kit zip: share it outside the repo, the files are in brand/
+brand/pocket-brand-kit.zip

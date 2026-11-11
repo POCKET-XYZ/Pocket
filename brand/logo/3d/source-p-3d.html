@@ -1,0 +1,264 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>html,body{margin:0;background:#000}canvas{display:block;width:1024px;height:1024px}</style><body>
+<script src="https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const SHAPE = q.get('shape') || 'u', BG = q.get('bg') || 'navy';
+const NAVY = '#0F2E52', YELLOW = '#FFD23F', CEL = '#86D4E6', CEL_L = '#B8E7F1', OFF = '#F4FBFD';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: q.get('alpha') === '1' });
+renderer.setPixelRatio(2);
+renderer.setSize(1024, 1024);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NoToneMapping;
+document.body.appendChild(renderer.domElement);
+
+// ---- backdrop: flat brand colour
+function backdrop() {
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const x = c.getContext('2d');
+  x.fillStyle = BG === 'navy' ? NAVY : OFF; x.fillRect(0, 0, 1024, 1024);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const scene = new THREE.Scene();
+if (q.get('alpha') === '1') renderer.setClearColor(0x000000, 0); else scene.background = backdrop();
+
+// ---- studio environment: dark room + soft boxes, this is what draws the glass highlights
+function studio() {
+  const s = new THREE.Scene();
+  s.add(new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16),
+    new THREE.MeshBasicMaterial({ color: BG === 'navy' ? 0x1b3f66 : 0xbfdce6, side: THREE.BackSide })));
+  const box = (w, h, x, y, z, i) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(i, i, i), side: THREE.DoubleSide }));
+    m.position.set(x, y, z); m.lookAt(0, 0, 0); s.add(m);
+  };
+  box(300, 140, -80, 260, 200, 9);   // large top key
+  box(70, 340, -300, 40, 120, 6);    // left strip
+  box(70, 300, 300, -20, 80, 4);     // right strip
+  box(320, 50, 0, -260, 160, 2.5);   // bottom bounce
+  const pm = new THREE.PMREMGenerator(renderer);
+  return pm.fromScene(s, 0.02).texture;
+}
+scene.environment = studio();
+const key = new THREE.DirectionalLight(0xffffff, 2.0); key.position.set(-60, 120, 160); scene.add(key);
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+
+// ---- helpers: symbols are authored on the same 120 grid as the flat logos (y down)
+const X = v => v - 60, Y = v => 62 - v;
+function roundedPoly(pts, radii) {
+  const s = new THREE.Shape(), n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const p = new THREE.Vector2(X(pts[i][0]), Y(pts[i][1]));
+    const a = new THREE.Vector2(X(pts[(i + n - 1) % n][0]), Y(pts[(i + n - 1) % n][1]));
+    const b = new THREE.Vector2(X(pts[(i + 1) % n][0]), Y(pts[(i + 1) % n][1]));
+    const r = radii[i];
+    const p1 = p.clone().add(a.clone().sub(p).normalize().multiplyScalar(r));
+    const p2 = p.clone().add(b.clone().sub(p).normalize().multiplyScalar(r));
+    i === 0 ? s.moveTo(p1.x, p1.y) : s.lineTo(p1.x, p1.y);
+    s.quadraticCurveTo(p.x, p.y, p2.x, p2.y);
+  }
+  s.closePath();
+  return s;
+}
+function uPocket() {
+  const s = new THREE.Shape();
+  s.moveTo(X(34), Y(48)); s.lineTo(X(86), Y(48));
+  s.quadraticCurveTo(X(99), Y(48), X(99), Y(61));
+  s.lineTo(X(97), Y(84));
+  s.bezierCurveTo(X(96), Y(102), X(80), Y(114), X(60), Y(114));
+  s.bezierCurveTo(X(40), Y(114), X(24), Y(102), X(23), Y(84));
+  s.lineTo(X(21), Y(61));
+  s.quadraticCurveTo(X(21), Y(48), X(34), Y(48));
+  return s;
+}
+function uStitch() {
+  const p = new THREE.Path();
+  p.moveTo(X(31), Y(62)); p.lineTo(X(32), Y(83));
+  p.bezierCurveTo(X(33), Y(97), X(45), Y(105), X(60), Y(105));
+  p.bezierCurveTo(X(75), Y(105), X(87), Y(97), X(88), Y(83));
+  p.lineTo(X(89), Y(62));
+  return p;
+}
+function jeanPocket() {
+  return roundedPoly([[20, 46], [100, 46], [100, 88], [60, 114], [20, 88]], [15, 15, 16, 12, 16]);
+}
+function jeanStitch() {
+  const p = new THREE.Path();
+  p.moveTo(X(30), Y(60)); p.lineTo(X(30), Y(83)); p.lineTo(X(60), Y(103));
+  p.lineTo(X(90), Y(83)); p.lineTo(X(90), Y(60));
+  return p;
+}
+function stem() {
+  const s = new THREE.Shape(), r = 15;
+  s.moveTo(X(24 + r), Y(10)); s.lineTo(X(54 - r), Y(10));
+  s.absarc(X(54 - r), Y(10 + r), r, Math.PI / 2, 0, true);
+  s.lineTo(X(54), Y(114 - r));
+  s.absarc(X(54 - r), Y(114 - r), r, 0, -Math.PI / 2, true);
+  s.lineTo(X(24 + r), Y(114));
+  s.absarc(X(24 + r), Y(114 - r), r, -Math.PI / 2, -Math.PI, true);
+  s.lineTo(X(24), Y(10 + r));
+  s.absarc(X(24 + r), Y(10 + r), r, Math.PI, Math.PI / 2, true);
+  return s;
+}
+
+const glass = new THREE.MeshPhysicalMaterial({
+  color: BG === 'navy' ? 0xffffff : 0xd0eff6, transmission: 1, roughness: 0.42, metalness: 0, ior: 1.18, thickness: 5,
+  attenuationColor: new THREE.Color(CEL), attenuationDistance: 60,
+  clearcoat: 1, clearcoatRoughness: 0.08, specularIntensity: 1, envMapIntensity: 0.9,
+});
+const gold = new THREE.MeshPhysicalMaterial({
+  color: 0xFFD23F, emissive: 0xFFB400, emissiveIntensity: 0.3, metalness: 0, roughness: 0.3,
+  clearcoat: 0.7, clearcoatRoughness: 0.2, envMapIntensity: 0.55,
+});
+const seam = new THREE.MeshPhysicalMaterial({ color: BG === 'navy' ? 0xffffff : 0x4FB4CC, roughness: 0.35, transparent: true, opacity: BG === 'navy' ? 0.55 : 0.8 });
+
+const shell = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.NormalBlending,
+  uniforms: { milk: { value: BG === 'navy' ? 0.20 : 0.14 } },
+  vertexShader: `varying vec3 vN; varying vec3 vV; varying vec3 vP;
+    void main(){ vec4 mv = modelViewMatrix * vec4(position,1.); vN = normalize(normalMatrix*normal); vV = normalize(-mv.xyz); vP = position;
+    gl_Position = projectionMatrix * mv; }`,
+  fragmentShader: `uniform float milk; varying vec3 vN; varying vec3 vV; varying vec3 vP;
+    void main(){ float f = pow(1. - clamp(dot(normalize(vN), normalize(vV)), 0., 1.), 2.2);
+      float sheen = smoothstep(-55., 60., vP.y - vP.x * .55) * .26;
+      float a = clamp(milk + sheen + f * .95, 0., .96);
+      gl_FragColor = vec4(mix(vec3(.66,.90,.97), vec3(1.), clamp(f*1.6+sheen,0.,1.)), a); }`,
+});
+
+function extrude(shape, mat, depth = 7, bevel = 9, frosted = true) {
+  const g = new THREE.ExtrudeGeometry(shape, {
+    depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelOffset: -bevel,
+    bevelSegments: 48, curveSegments: 96,
+  });
+  g.translate(0, 0, -depth / 2);
+  const o = new THREE.Group();
+  o.add(new THREE.Mesh(g, mat));
+  if (frosted) { const s = new THREE.Mesh(g, shell); s.renderOrder = 2; o.add(s); }
+  return o;
+}
+function coin(cx, cy, r, z) {
+  // lathe profile: raised rim + recessed face, like the coin in the 3D renders
+  const t = 6, pts = [];
+  const arc = (cx, cy, rr, a0, a1, n) => { for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; pts.push(new THREE.Vector2(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr)); } };
+  pts.push(new THREE.Vector2(0.001, t * .55));
+  for (let i = 0; i <= 24; i++) { const k = i / 24, e = k * k * (3 - 2 * k);
+    pts.push(new THREE.Vector2(r * .64 + (r * .8 - r * .64) * k, t * (.55 + .45 * e))); }
+  pts.push(new THREE.Vector2(r - t, t));
+  arc(r - t, 0, t, Math.PI / 2, -Math.PI / 2, 24);
+  pts.push(new THREE.Vector2(0.001, -t));
+  pts.reverse(); // outward-facing normals
+  const m = new THREE.Mesh(new THREE.LatheGeometry(pts, 128), gold);
+  m.rotation.x = Math.PI / 2;
+  m.position.set(X(cx), Y(cy), z);
+  return m;
+}
+function stitches(path, n, z, parent) {
+  const pts = path.getSpacedPoints(n * 2);
+  for (let i = 0; i < n * 2; i += 2) {
+    const a = pts[i], b = pts[i + 1], d = b.clone().sub(a);
+    const m = new THREE.Mesh(new THREE.CapsuleGeometry(1.15, Math.max(d.length() * 0.75, 1), 6, 12), seam);
+    m.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, z);
+    m.rotation.z = Math.atan2(d.y, d.x) - Math.PI / 2;
+    parent.add(m);
+  }
+}
+
+function solidMat(hex) {
+  return new THREE.MeshPhysicalMaterial({
+    color: hex, emissive: hex, emissiveIntensity: 0.12, metalness: 0, roughness: 0.3,
+    clearcoat: 0.8, clearcoatRoughness: 0.18, envMapIntensity: 0.6,
+  });
+}
+function letterP() {
+  // stem + round bowl as one outline; the coin sits on the bowl like the snap on the wallet render
+  const s = new THREE.Shape(), r = 13, cx = X(60), cy = Y(45), R = 33;
+  s.moveTo(X(22), Y(12 + r));
+  s.absarc(X(22 + r), Y(12 + r), r, Math.PI, Math.PI / 2, true);
+  s.lineTo(cx, Y(12));
+  s.absarc(cx, cy, R, Math.PI / 2, -Math.PI / 2, true);
+  s.lineTo(X(60), Y(78));
+  s.quadraticCurveTo(X(52), Y(78), X(52), Y(86));
+  s.lineTo(X(52), Y(110 - 15));
+  s.absarc(X(37), Y(110 - 15), 15, 0, -Math.PI, true);
+  s.lineTo(X(22), Y(12 + r));
+  return s;
+}
+function pOne() {
+  // model 1: bowl + stem, inset by the bevel; the half-coin window is a real hole with the coin behind it
+  const s = new THREE.Shape();
+  s.moveTo(X(36), Y(17)); s.lineTo(X(64), Y(17));
+  s.absarc(X(64), Y(48), 31, Math.PI / 2, -Math.PI / 2, true);
+  s.lineTo(X(51), Y(79));
+  s.quadraticCurveTo(X(45), Y(79), X(45), Y(85));
+  s.lineTo(X(45), Y(98));
+  s.absarc(X(36), Y(98), 9, 0, -Math.PI, true);
+  s.lineTo(X(27), Y(26));
+  s.absarc(X(36), Y(26), 9, Math.PI, Math.PI / 2, true);
+  const cx = X(61), cy = Y(62), R = 24, c = 6, h = new THREE.Path();
+  h.moveTo(cx - R + c, cy);
+  h.lineTo(cx + R - c, cy);
+  h.quadraticCurveTo(cx + R, cy, cx + R, cy + c);
+  h.absarc(cx, cy + c, R, 0, Math.PI, false);
+  h.quadraticCurveTo(cx - R, cy, cx - R + c, cy);
+  s.holes.push(h);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 10, bevelEnabled: true, bevelThickness: 5, bevelSize: 5, bevelSegments: 32, curveSegments: 96 });
+  g.translate(0, 0, -5);
+  return g;
+}
+
+function bar(x0, x1, top, bottom = 110) {
+  const s = new THREE.Shape(), r = (x1 - x0) / 2;
+  s.moveTo(X(x0), Y(top + r));
+  s.absarc(X(x0 + r), Y(top + r), r, Math.PI, 0, true);
+  s.lineTo(X(x1), Y(bottom - r));
+  s.absarc(X(x0 + r), Y(bottom - r), r, 0, -Math.PI, true);
+  s.lineTo(X(x0), Y(top + r));
+  return s;
+}
+
+const group = new THREE.Group();
+const BODY = BG === 'navy' ? 0x86D4E6 : 0x0F2E52;
+if (SHAPE === 'pone') {
+  group.add(new THREE.Mesh(pOne(), solidMat(BODY)));
+  group.add(coin(61, 57, 24, -1));
+  group.position.set(-1, 3, 0);
+} else if (SHAPE === 'psolid') {
+  group.add(extrude(letterP(), solidMat(BODY), 8, 8, false));
+  group.add(coin(60, 45, 20, 15));
+  group.position.set(-2, 2, 0);
+} else if (SHAPE === 'bars') {
+  group.add(extrude(bar(22, 46, 72), solidMat(BODY), 8, 8, false));
+  group.add(extrude(bar(49, 73, 46), solidMat(BODY), 8, 8, false));
+  group.add(extrude(bar(76, 100, 16), gold, 8, 8, false));
+  group.position.set(0, 2, 0);
+} else if (SHAPE === 'rise') {
+  // growth: coins get bigger as they leave the pocket, first one still blurred behind the glass
+  group.add(coin(45, 72, 13, -14));
+  group.add(coin(64, 42, 18, -14));
+  group.add(coin(90, 8, 25, -14));
+  group.add(extrude(uPocket(), glass));
+  stitches(uStitch(), 11, 13.2, group);
+  group.position.set(-9, -13, 0);
+} else if (SHAPE === 'u') {
+  group.add(coin(60, 40, 26, -14));
+  group.add(extrude(uPocket(), glass));
+  stitches(uStitch(), 11, 13.2, group);
+} else if (SHAPE === 'jean') {
+  group.add(coin(60, 40, 26, -14));
+  group.add(extrude(jeanPocket(), glass));
+  stitches(jeanStitch(), 11, 13.2, group);
+} else {
+  group.add(coin(67, 42, 32, -13));
+  group.add(extrude(stem(), glass));
+}
+group.rotation.set(0.08, -0.34, 0);
+scene.add(group);
+
+const cam = new THREE.PerspectiveCamera(22, 1, 1, 2000);
+cam.position.set(0, 0, 400);
+renderer.render(scene, cam);
+const out = document.createElement('img'); out.id = 'out'; out.src = renderer.domElement.toDataURL('image/png');
+document.body.replaceChildren(out);
+</script>

@@ -1,0 +1,19 @@
+/* Pocket brand tokens. Guía completa en brand/BRAND-KIT.md */
+:root {
+  /* Marca */
+  --pocket-navy: #0F2E52;      /* principal: fondos, texto y botones primarios */
+  --pocket-mandarina: #FF9F45; /* contraste: datos grandes, detalles y botones de acento con texto navy */
+  --pocket-coin: #FFD23F;      /* solo la moneda del logo */
+
+  /* Apoyo */
+  --pocket-jeans: #355C86;
+  --pocket-acero: #6C8295;     /* sin texto chico encima */
+  --pocket-celeste: #86D4E6;
+  --pocket-celeste-claro: #B8E7F1;
+  --pocket-off-white: #F4FBFD;
+
+  /* Tipografía */
+  --pocket-font-title: "Figtree", system-ui, sans-serif; /* 700 u 800 */
+  --pocket-font-data: "Anton", Impact, "Arial Narrow", sans-serif; /* 400 */
+  --pocket-font-text: "Inter", system-ui, sans-serif; /* 400 o 500 */
+}
