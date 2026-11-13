@@ -287,6 +287,8 @@ enum JobStatus {
   in_progress
   completed
   closed
+  // Saved but not posted: only its startup and managers see it.
+  draft
 }
 
 enum ApplicationStatus {
@@ -316,6 +318,8 @@ model Job {
   // What the startup hands over: script, brand, logo, access to the app.
   startupProvides String?         @map("startup_provides")
   status          JobStatus       @default(open)
+  // When it reached the board. Null while it is a draft.
+  publishedAt     DateTime?       @map("published_at")
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 

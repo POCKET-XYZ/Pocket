@@ -14,6 +14,7 @@ import {
 import type { PrivateFile } from '../../common/uploads/send-file';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ACTIVE_SPECIALIST } from '../users/identity';
+import { canSeeDraft } from './drafts';
 import { REPORT_TEMPLATE_INFO } from './report-template-info';
 
 /** The largest report template a job can carry, the same as a delivery's file. */
@@ -76,10 +77,14 @@ export class ReportTemplatesService {
       where: { id: jobId },
       select: {
         startupId: true,
+        status: true,
         reportTemplate: { select: { data: true, fileName: true } },
       },
     });
-    if (!job) throw new NotFoundException('No encontramos el trabajo');
+    // A draft does not exist for anyone but its startup and managers.
+    if (!job || (job.status === 'draft' && !canSeeDraft(user, job.startupId))) {
+      throw new NotFoundException('No encontramos el trabajo');
+    }
     // Who may read it is decided before saying whether there is a file at all.
     await this.assertCanRead(user, job.startupId);
 
@@ -117,7 +122,7 @@ export class ReportTemplatesService {
     if (job.startupId !== user.sub) {
       throw new ForbiddenException('Este trabajo es de otra startup');
     }
-    if (job.status !== 'open') {
+    if (job.status !== 'open' && job.status !== 'draft') {
       throw new BadRequestException(
         'La plantilla de reporte solo se puede cambiar mientras el trabajo está abierto',
       );

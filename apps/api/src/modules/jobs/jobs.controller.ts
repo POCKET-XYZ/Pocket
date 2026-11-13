@@ -6,6 +6,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
   Query,
   Res,
   UploadedFile,
@@ -15,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { OptionalUser } from '../../common/decorators/optional-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ActiveAccount, Verified } from '../../common/decorators/verified.decorator';
@@ -24,7 +26,7 @@ import { sendPrivateFile } from '../../common/uploads/send-file';
 import { ApplicationsService } from './applications.service';
 import { ApplyDto } from './dto/apply.dto';
 import { BrowseJobsDto } from './dto/browse-jobs.dto';
-import { CreateJobDto } from './dto/create-job.dto';
+import { CreateJobDto, UpdateJobDto } from './dto/create-job.dto';
 import { JobsService } from './jobs.service';
 import {
   MAX_REPORT_TEMPLATE_BYTES,
@@ -63,10 +65,44 @@ export class JobsController {
     return this.jobs.mine(user);
   }
 
-  @Public()
+  /** A posted job, for anyone. A draft only for its startup and managers. */
+  @OptionalUser()
   @Get(':id')
-  detail(@Param('id', ParseUUIDPipe) id: string) {
-    return this.jobs.detail(id);
+  detail(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser | undefined,
+  ) {
+    return this.jobs.detail(id, user);
+  }
+
+  /** Replace a draft. A posted job no longer changes. */
+  @ApiBearerAuth()
+  @Roles('startup')
+  @Verified()
+  @Put(':id')
+  update(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateJobDto,
+  ) {
+    return this.jobs.update(user, id, dto);
+  }
+
+  /** Post a draft to the board. */
+  @ApiBearerAuth()
+  @Roles('startup')
+  @Verified()
+  @Post(':id/publish')
+  publish(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.jobs.publish(user, id);
+  }
+
+  /** Delete a draft. A posted job is closed instead. */
+  @ApiBearerAuth()
+  @Roles('startup')
+  @Delete(':id')
+  remove(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.jobs.remove(user, id);
   }
 
   @ApiBearerAuth()

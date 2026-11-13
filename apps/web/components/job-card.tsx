@@ -37,10 +37,14 @@ export function JobCard({
         <span className="flex items-center gap-1">
           <CalendarIcon className="size-3.5" /> {date(job.deadline)}
         </span>
-        <span className="flex items-center gap-1">
-          <UsersIcon className="size-3.5" /> {job.applicationCount}{' '}
-          {job.applicationCount === 1 ? 'postulante' : 'postulantes'}
-        </span>
+        {job.status === 'draft' ? (
+          <span>Sin publicar: solo tú lo ves</span>
+        ) : (
+          <span className="flex items-center gap-1">
+            <UsersIcon className="size-3.5" /> {job.applicationCount}{' '}
+            {job.applicationCount === 1 ? 'postulante' : 'postulantes'}
+          </span>
+        )}
       </div>
     </Link>
   );

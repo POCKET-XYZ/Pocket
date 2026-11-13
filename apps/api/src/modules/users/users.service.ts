@@ -120,6 +120,8 @@ export class UsersService {
         }
       }
 
+      // A startup's drafts go, since nobody else ever saw them.
+      await tx.job.deleteMany({ where: { startupId: id, status: 'draft' } });
       // A startup's open jobs close; a specialist's pending applications end.
       const openJobs = await tx.job.findMany({
         where: { startupId: id, status: { in: ['open', 'in_progress'] } },

@@ -30,7 +30,7 @@ function Dashboard({ user }: { user: User }) {
       <Onboarding className="mb-6" />
       <PageHeader
         title="Mis publicaciones"
-        description="Los trabajos que publicaste y quién se postuló. Cuando contratas a alguien, el pago y las entregas siguen en Contratos."
+        description="Tus borradores, los trabajos que publicaste y quién se postuló. Cuando contratas a alguien, el pago y las entregas siguen en Contratos."
         actions={
           <Button asChild>
             <Link href="/jobs/new">Publicar un trabajo</Link>
@@ -49,8 +49,11 @@ function Dashboard({ user }: { user: User }) {
               key={job.id}
               job={job}
               showStatus
-              // The applicants page leads to the contract once someone is hired.
-              href={`/jobs/${job.id}/applicants`}
+              // A draft opens where it is published; a posted job, its applicants,
+              // which lead to the contract once someone is hired.
+              href={
+                job.status === 'draft' ? `/jobs/${job.id}` : `/jobs/${job.id}/applicants`
+              }
             />
           ))}
         </div>

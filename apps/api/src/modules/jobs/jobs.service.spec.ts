@@ -59,8 +59,11 @@ describe('JobsService', () => {
       count: jest.Mock;
       update: jest.Mock;
       updateMany: jest.Mock;
+      deleteMany: jest.Mock;
       findUniqueOrThrow: jest.Mock;
     };
+    jobMilestone: { deleteMany: jest.Mock; createMany: jest.Mock; findFirst: jest.Mock };
+    jobKpi: { deleteMany: jest.Mock; createMany: jest.Mock };
     application: { updateMany: jest.Mock };
     startupProfile: { findUnique: jest.Mock };
     $transaction: jest.Mock;
@@ -76,8 +79,15 @@ describe('JobsService', () => {
         count: jest.fn().mockReturnValue(0),
         update: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
         findUniqueOrThrow: jest.fn(),
       },
+      jobMilestone: {
+        deleteMany: jest.fn(),
+        createMany: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      jobKpi: { deleteMany: jest.fn(), createMany: jest.fn() },
       application: { updateMany: jest.fn() },
       startupProfile: { findUnique: jest.fn().mockResolvedValue({ id: 'profile-1' }) },
       // A batch runs its operations; an interactive one runs with the client.
@@ -243,8 +253,26 @@ describe('JobsService', () => {
           startupId: 'startup-1',
           title: dto.title,
           deadline: new Date(dto.deadline),
+          status: 'open',
+          publishedAt: expect.any(Date),
         }),
       });
+    });
+
+    it('saves a draft that is not on the board yet', async () => {
+      await service.create(startup, { ...dto, draft: true });
+      const { data } = prisma.job.create.mock.calls[0][0];
+      expect(data).toEqual(
+        expect.objectContaining({ status: 'draft', publishedAt: null, title: dto.title }),
+      );
+      expect(data).not.toHaveProperty('draft');
+    });
+
+    it('checks a draft like a job: the plan still has to add up', async () => {
+      await expect(
+        service.create(startup, { ...dto, budget: 600, draft: true }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.job.create).not.toHaveBeenCalled();
     });
 
     it('refuses a specialist', async () => {
@@ -313,12 +341,15 @@ describe('JobsService', () => {
   });
 
   describe('board', () => {
-    it('lists only open jobs, newest first', async () => {
+    it('lists only open jobs, latest posted first', async () => {
       await service.board({});
       expect(prisma.job.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { status: 'open' },
-          orderBy: { createdAt: 'desc' },
+          orderBy: [
+            { publishedAt: { sort: 'desc', nulls: 'last' } },
+            { createdAt: 'desc' },
+          ],
           take: 20,
           skip: 0,
         }),
@@ -411,6 +442,192 @@ describe('JobsService', () => {
       await expect(service.close(startup, 'missing')).rejects.toBeInstanceOf(
         NotFoundException,
       );
+    });
+  });
+
+  describe('a job only its startup sees', () => {
+    const draft = {
+      id: 'job-1',
+      startupId: 'startup-1',
+      status: 'draft',
+      deadline: new Date(futureDate(30)),
+      startup: { startupProfile: { companyName: 'Vaquita', logoUrl: null } },
+      _count: { applications: 0 },
+      milestones: [],
+      kpis: [],
+      reportTemplate: null,
+    };
+    const manager: AuthUser = { sub: 'manager-1', role: 'manager', stellarAddress: 'GM' };
+    const other: AuthUser = { sub: 'startup-2', role: 'startup', stellarAddress: 'GO' };
+
+    describe('detail', () => {
+      it('shows a draft to its startup and to managers', async () => {
+        prisma.job.findUnique.mockResolvedValue(draft);
+        await expect(service.detail('job-1', startup)).resolves.toMatchObject({
+          status: 'draft',
+        });
+        await expect(service.detail('job-1', manager)).resolves.toMatchObject({
+          status: 'draft',
+        });
+      });
+
+      it.each([
+        ['anyone signed out', undefined],
+        ['a specialist', specialist],
+        ['another startup', other],
+      ])('answers %s as if the draft did not exist', async (_who, user) => {
+        prisma.job.findUnique.mockResolvedValue(draft);
+        await expect(service.detail('job-1', user)).rejects.toBeInstanceOf(
+          NotFoundException,
+        );
+      });
+
+      it('shows a posted job to anyone', async () => {
+        prisma.job.findUnique.mockResolvedValue({ ...draft, status: 'open' });
+        await expect(service.detail('job-1')).resolves.toMatchObject({ status: 'open' });
+      });
+    });
+
+    describe('update', () => {
+      it('replaces the draft, its milestones and its KPIs', async () => {
+        prisma.job.findUnique.mockResolvedValue(draft);
+        await service.update(startup, 'job-1', {
+          ...dto,
+          kpis: [{ name: 'Views', targetValue: 1000, direction: 'more_is_better' }],
+        });
+        expect(prisma.job.updateMany).toHaveBeenCalledWith({
+          where: { id: 'job-1', status: 'draft' },
+          data: expect.objectContaining({
+            title: dto.title,
+            channel: null,
+            startupProvides: null,
+            revisionRounds: 1,
+          }),
+        });
+        expect(prisma.jobMilestone.deleteMany).toHaveBeenCalledWith({
+          where: { jobId: 'job-1' },
+        });
+        expect(prisma.jobMilestone.createMany).toHaveBeenCalledWith({
+          data: [
+            expect.objectContaining({ title: 'Lead list', position: 0, jobId: 'job-1' }),
+            expect.objectContaining({
+              title: 'Outreach sequences',
+              position: 1,
+              jobId: 'job-1',
+            }),
+          ],
+        });
+        expect(prisma.jobKpi.createMany).toHaveBeenCalledWith({
+          data: [expect.objectContaining({ name: 'Views', position: 0, jobId: 'job-1' })],
+        });
+      });
+
+      it('refuses a posted job: specialists applied to what they read', async () => {
+        prisma.job.findUnique.mockResolvedValue({ ...draft, status: 'open' });
+        await expect(service.update(startup, 'job-1', dto)).rejects.toBeInstanceOf(
+          BadRequestException,
+        );
+        expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      });
+
+      it('refuses a draft that was posted at the same moment', async () => {
+        prisma.job.findUnique.mockResolvedValue(draft);
+        prisma.job.updateMany.mockResolvedValue({ count: 0 });
+        await expect(service.update(startup, 'job-1', dto)).rejects.toBeInstanceOf(
+          BadRequestException,
+        );
+        expect(prisma.jobMilestone.deleteMany).not.toHaveBeenCalled();
+      });
+
+      it("refuses another startup's draft", async () => {
+        prisma.job.findUnique.mockResolvedValue({ ...draft, startupId: 'startup-2' });
+        await expect(service.update(startup, 'job-1', dto)).rejects.toBeInstanceOf(
+          ForbiddenException,
+        );
+      });
+
+      it('checks the new content like a job', async () => {
+        prisma.job.findUnique.mockResolvedValue(draft);
+        await expect(
+          service.update(startup, 'job-1', { ...dto, deadline: '2020-01-01' }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('publish', () => {
+      it('puts the draft on the board, dated now', async () => {
+        prisma.job.findUnique.mockResolvedValue(draft);
+        await service.publish(startup, 'job-1');
+        expect(prisma.job.updateMany).toHaveBeenCalledWith({
+          where: { id: 'job-1', status: 'draft' },
+          data: { status: 'open', publishedAt: expect.any(Date) },
+        });
+      });
+
+      it('asks for new dates when the deadline passed while it waited', async () => {
+        prisma.job.findUnique.mockResolvedValue({
+          ...draft,
+          deadline: new Date('2020-01-01'),
+        });
+        await expect(service.publish(startup, 'job-1')).rejects.toThrow(/ya pasó/);
+        expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      });
+
+      it('asks for new dates when a milestone is already due', async () => {
+        prisma.job.findUnique.mockResolvedValue(draft);
+        prisma.jobMilestone.findFirst.mockResolvedValue({ title: 'Video 1' });
+        await expect(service.publish(startup, 'job-1')).rejects.toThrow(/Video 1/);
+        expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      });
+
+      it('refuses a job that is already posted', async () => {
+        prisma.job.findUnique.mockResolvedValue({ ...draft, status: 'open' });
+        await expect(service.publish(startup, 'job-1')).rejects.toBeInstanceOf(
+          BadRequestException,
+        );
+      });
+
+      it('requires the startup profile, which the board shows', async () => {
+        prisma.job.findUnique.mockResolvedValue(draft);
+        prisma.startupProfile.findUnique.mockResolvedValue(null);
+        await expect(service.publish(startup, 'job-1')).rejects.toThrow(/perfil/);
+        expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      });
+
+      it("refuses another startup's draft", async () => {
+        prisma.job.findUnique.mockResolvedValue({ ...draft, startupId: 'startup-2' });
+        await expect(service.publish(startup, 'job-1')).rejects.toBeInstanceOf(
+          ForbiddenException,
+        );
+      });
+    });
+
+    describe('remove', () => {
+      it('deletes a draft', async () => {
+        prisma.job.findUnique.mockResolvedValue(draft);
+        await expect(service.remove(startup, 'job-1')).resolves.toEqual({
+          deleted: true,
+        });
+        expect(prisma.job.deleteMany).toHaveBeenCalledWith({
+          where: { id: 'job-1', status: 'draft' },
+        });
+      });
+
+      it('refuses a posted job, which is closed instead', async () => {
+        prisma.job.findUnique.mockResolvedValue({ ...draft, status: 'open' });
+        await expect(service.remove(startup, 'job-1')).rejects.toBeInstanceOf(
+          BadRequestException,
+        );
+        expect(prisma.job.deleteMany).not.toHaveBeenCalled();
+      });
+
+      it("refuses another startup's draft", async () => {
+        prisma.job.findUnique.mockResolvedValue({ ...draft, startupId: 'startup-2' });
+        await expect(service.remove(startup, 'job-1')).rejects.toBeInstanceOf(
+          ForbiddenException,
+        );
+      });
     });
   });
 });
