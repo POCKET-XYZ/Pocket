@@ -101,7 +101,7 @@ export function Onboarding({
       ? {
           contracts: contracts.data ?? [],
           hasStarted: isStartup
-            ? (jobs.data?.length ?? 0) > 0
+            ? (jobs.data ?? []).some((job) => job.status !== 'draft')
             : (applications.data?.length ?? 0) > 0,
         }
       : null,

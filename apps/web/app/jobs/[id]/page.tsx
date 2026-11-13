@@ -8,7 +8,7 @@ import {
 } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { activationAction, activationHint, useKycEnabled } from '@/components/activation';
@@ -82,6 +82,16 @@ export default function JobPage() {
             )
           }
         />
+        {data.status === 'draft' ? (
+          <Alert className="mb-4 border-warning bg-warning/20">
+            <AlertTitle>Borrador sin publicar</AlertTitle>
+            <AlertDescription>
+              {user?.id === data.startupId
+                ? 'Solo tú lo ves. Los expertos no lo encuentran ni pueden postularse hasta que lo publiques.'
+                : 'Solo la empresa y Pocket lo ven. Los expertos no lo encuentran hasta que la empresa lo publique.'}
+            </AlertDescription>
+          </Alert>
+        ) : null}
         <Card>
           <CardContent className="space-y-6 pt-6">
             <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -208,7 +218,11 @@ export default function JobPage() {
         ) : user.role === 'specialist' ? (
           <ApplyCard job={data} user={user} />
         ) : user.id === data.startupId ? (
-          <OwnerCard job={data} />
+          data.status === 'draft' ? (
+            <DraftCard job={data} />
+          ) : (
+            <OwnerCard job={data} />
+          )
         ) : null}
       </aside>
     </div>
@@ -448,6 +462,88 @@ function DeadlineNote({ days, deadline }: { days: string; deadline: string }) {
         postularte, pero explica por qué en tu propuesta.
       </AlertDescription>
     </Alert>
+  );
+}
+
+/** What the startup does with its draft: check it, change it, post it or drop it. */
+function DraftCard({ job }: { job: JobListing }) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
+  const publish = useMutation({
+    mutationFn: () => api(`/jobs/${job.id}/publish`, { method: 'POST' }),
+    onSuccess: async () => {
+      toast.success('Trabajo publicado. Los expertos ya pueden postularse.');
+      await queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    },
+    onError: (error) =>
+      toast.error(errorMessage(error), {
+        action: {
+          label: 'Editar',
+          onClick: () => router.push(`/jobs/${job.id}/edit`),
+        },
+      }),
+  });
+  const remove = useMutation({
+    mutationFn: () => api(`/jobs/${job.id}`, { method: 'DELETE' }),
+    onSuccess: async () => {
+      toast.success('Borrador eliminado');
+      router.push('/dashboard');
+      await queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+  const busy = publish.isPending || remove.isPending;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Tu borrador</CardTitle>
+        <CardDescription>
+          Revisa el alcance, el plan de pagos y las fechas. Cuando lo publiques, los
+          expertos lo verán en Trabajos y ya no se podrá editar.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <Button
+          className="w-full"
+          disabled={busy}
+          onClick={async () => {
+            const confirmed = await confirm({
+              title: '¿Publicar este trabajo?',
+              description:
+                'Los expertos lo verán en Trabajos y podrán postularse. Después ya no se puede editar.',
+              confirmText: 'Publicar',
+            });
+            if (confirmed) publish.mutate();
+          }}
+        >
+          {publish.isPending ? 'Publicando...' : 'Publicar trabajo'}
+        </Button>
+        <Button asChild variant="outline" className="w-full">
+          <Link href={`/jobs/${job.id}/edit`}>Editar borrador</Link>
+        </Button>
+        <div className="border-t border-border pt-3">
+          <ReportTemplateManager jobId={job.id} template={job.reportTemplate} />
+        </div>
+        <Button
+          variant="ghost"
+          className="w-full text-destructive hover:text-destructive"
+          disabled={busy}
+          onClick={async () => {
+            const confirmed = await confirm({
+              title: '¿Eliminar este borrador?',
+              description: 'Se borra para siempre. Nadie más lo vio.',
+              confirmText: 'Eliminar borrador',
+              destructive: true,
+            });
+            if (confirmed) remove.mutate();
+          }}
+        >
+          Eliminar borrador
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

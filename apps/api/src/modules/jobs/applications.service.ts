@@ -34,7 +34,10 @@ export class ApplicationsService {
       where: { id: jobId },
       select: { status: true, title: true, startupId: true },
     });
-    if (!job) throw new NotFoundException('No encontramos el trabajo');
+    // A draft does not exist for a specialist.
+    if (!job || job.status === 'draft') {
+      throw new NotFoundException('No encontramos el trabajo');
+    }
     if (job.status !== 'open') {
       throw new BadRequestException('Este trabajo ya no recibe postulaciones');
     }

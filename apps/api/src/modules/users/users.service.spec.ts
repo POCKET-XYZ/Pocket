@@ -10,7 +10,12 @@ describe('UsersService', () => {
     user: { update: jest.Mock; findUnique: jest.Mock };
     contract: { count: jest.Mock; findMany: jest.Mock; update: jest.Mock };
     application: { update: jest.Mock; updateMany: jest.Mock };
-    job: { findMany: jest.Mock; update: jest.Mock; updateMany: jest.Mock };
+    job: {
+      findMany: jest.Mock;
+      update: jest.Mock;
+      updateMany: jest.Mock;
+      deleteMany: jest.Mock;
+    };
     specialistCv: { deleteMany: jest.Mock };
     specialistProfile: { deleteMany: jest.Mock };
     startupProfile: { deleteMany: jest.Mock };
@@ -35,6 +40,7 @@ describe('UsersService', () => {
         findMany: jest.fn().mockResolvedValue([{ id: 'job-1' }]),
         update: jest.fn(),
         updateMany: jest.fn(),
+        deleteMany: jest.fn(),
       },
       specialistCv: { deleteMany: jest.fn() },
       specialistProfile: { deleteMany: jest.fn() },
@@ -97,6 +103,10 @@ describe('UsersService', () => {
 
     it('closes the open jobs of a startup and withdraws pending applications', async () => {
       await service.deleteAccount('user-1');
+      // Drafts nobody else ever saw are deleted, not closed.
+      expect(prisma.job.deleteMany).toHaveBeenCalledWith({
+        where: { startupId: 'user-1', status: 'draft' },
+      });
       expect(prisma.job.updateMany).toHaveBeenCalledWith({
         where: { id: { in: ['job-1'] } },
         data: { status: 'closed' },

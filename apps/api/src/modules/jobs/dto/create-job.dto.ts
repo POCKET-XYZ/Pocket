@@ -1,10 +1,11 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
 import { KpiDirection, ServiceCategory } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayNotEmpty,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -198,4 +199,16 @@ export class CreateJobDto {
   @ValidateNested({ each: true })
   @Type(() => JobKpiDto)
   kpis?: JobKpiDto[];
+
+  @ApiPropertyOptional({
+    description:
+      'Save it as a draft that only the startup sees, to post later with POST /jobs/:id/publish',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  draft?: boolean;
 }
+
+/** PUT /jobs/:id: everything a draft holds, replaced at once. */
+export class UpdateJobDto extends OmitType(CreateJobDto, ['draft'] as const) {}

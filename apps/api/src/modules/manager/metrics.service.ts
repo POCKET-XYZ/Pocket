@@ -131,12 +131,15 @@ export class MetricsService {
           FROM verification_requests`,
         this.prisma.$queryRaw<JobRow[]>`
           SELECT
-            COUNT(*) FILTER (WHERE created_at >= ${since}::timestamp)::int AS posted,
+            COUNT(*) FILTER (
+              WHERE status <> 'draft' AND COALESCE(published_at, created_at) >= ${since}::timestamp
+            )::int AS posted,
             COUNT(*) FILTER (WHERE status = 'open')::int AS open,
             (SELECT COUNT(*) FROM applications
               WHERE created_at >= ${since}::timestamp)::int AS applications,
             (SELECT COUNT(*) FROM applications a JOIN jobs j ON j.id = a.job_id
-              WHERE j.created_at >= ${since}::timestamp)::int AS applications_on_posted
+              WHERE j.status <> 'draft'
+                AND COALESCE(j.published_at, j.created_at) >= ${since}::timestamp)::int AS applications_on_posted
           FROM jobs`,
         this.prisma.$queryRaw<ContractRow[]>`
           SELECT
@@ -223,8 +226,9 @@ export class MetricsService {
           WHERE role <> 'manager' AND created_at >= ${seriesFrom}::timestamp
           GROUP BY 2
           UNION ALL
-          SELECT 'jobs', date_trunc('week', created_at), COUNT(*)::int, NULL
-          FROM jobs WHERE created_at >= ${seriesFrom}::timestamp
+          SELECT 'jobs', date_trunc('week', COALESCE(published_at, created_at)), COUNT(*)::int, NULL
+          FROM jobs
+          WHERE status <> 'draft' AND COALESCE(published_at, created_at) >= ${seriesFrom}::timestamp
           GROUP BY 2
           UNION ALL
           SELECT 'completed', date_trunc('week', completed_at), COUNT(*)::int, NULL

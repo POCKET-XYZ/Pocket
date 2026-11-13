@@ -24,6 +24,7 @@ const STATUSES: Record<string, { label: string; feminine?: string; tone: Tone }>
   approved: { label: 'Aprobado', feminine: 'Aprobada', tone: 'success' },
   rejected: { label: 'Rechazado', feminine: 'Rechazada', tone: 'danger' },
   // Jobs
+  draft: { label: 'Borrador', tone: 'warning' },
   open: { label: 'Abierto', feminine: 'Abierta', tone: 'info' },
   in_progress: { label: 'En curso', tone: 'warning' },
   completed: { label: 'Completado', feminine: 'Completada', tone: 'success' },

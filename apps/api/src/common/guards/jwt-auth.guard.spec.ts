@@ -2,6 +2,7 @@ import { UnauthorizedException, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import type { PrismaService } from '../../prisma/prisma.service';
+import { OPTIONAL_USER_KEY } from '../decorators/optional-user.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import type { AuthUser } from '../types/auth';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -15,12 +16,13 @@ const signer = new JwtService({
 });
 const USER = { role: 'specialist', stellarAddress: 'GUSER', tokenVersion: 3 };
 
-function context(authorization?: string, isPublic = false) {
+function context(authorization?: string, isPublic = false, optionalUser = false) {
   const request: { headers: Record<string, string>; user?: AuthUser } = {
     headers: authorization ? { authorization } : {},
   };
   const handler = () => undefined;
   if (isPublic) Reflect.defineMetadata(IS_PUBLIC_KEY, true, handler);
+  if (optionalUser) Reflect.defineMetadata(OPTIONAL_USER_KEY, true, handler);
   const ctx = {
     getHandler: () => handler,
     getClass: () => class {},
@@ -48,6 +50,46 @@ describe('JwtAuthGuard', () => {
 
   it('lets a public route through without a token', async () => {
     await expect(guard.canActivate(context(undefined, true).ctx)).resolves.toBe(true);
+  });
+
+  it('leaves a public route anonymous even with a token', async () => {
+    const { ctx, request } = context(`Bearer ${valid()}`, true);
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(request.user).toBeUndefined();
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  describe('a public route that wants to know who calls', () => {
+    it('attaches the user of a valid token', async () => {
+      const { ctx, request } = context(`Bearer ${valid()}`, true, true);
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      expect(request.user).toEqual({
+        sub: 'user-1',
+        role: 'specialist',
+        stellarAddress: 'GUSER',
+      });
+    });
+
+    it('stays anonymous without a token', async () => {
+      const { ctx, request } = context(undefined, true, true);
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      expect(request.user).toBeUndefined();
+    });
+
+    it('stays anonymous, without refusing, when the token is bad or revoked', async () => {
+      const forged = context(
+        `Bearer ${token({ sub: 'user-1', ver: 3 }, 'another-secret-that-is-long-enough')}`,
+        true,
+        true,
+      );
+      await expect(guard.canActivate(forged.ctx)).resolves.toBe(true);
+      expect(forged.request.user).toBeUndefined();
+
+      prisma.user.findUnique.mockResolvedValue({ ...USER, tokenVersion: 4 });
+      const revoked = context(`Bearer ${valid()}`, true, true);
+      await expect(guard.canActivate(revoked.ctx)).resolves.toBe(true);
+      expect(revoked.request.user).toBeUndefined();
+    });
   });
 
   it('attaches the user of a valid token', async () => {

@@ -96,6 +96,14 @@ describe('ApplicationsService', () => {
       expect(prisma.application.create).not.toHaveBeenCalled();
     });
 
+    it('answers a draft as if it did not exist', async () => {
+      prisma.job.findUnique.mockResolvedValue({ status: 'draft' });
+      await expect(service.apply(specialist, 'job-1', dto)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(prisma.application.create).not.toHaveBeenCalled();
+    });
+
     it('fails when the job does not exist', async () => {
       prisma.job.findUnique.mockResolvedValue(null);
       await expect(service.apply(specialist, 'missing', dto)).rejects.toBeInstanceOf(

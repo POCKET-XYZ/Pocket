@@ -96,10 +96,11 @@ export type VerificationDecision =
   (typeof VerificationDecision)[keyof typeof VerificationDecision];
 
 /**
- * Job lifecycle. A startup can close a job only while it is open, before
- * anyone is hired.
+ * Job lifecycle. A draft is saved but not posted, and only its startup sees
+ * it. A startup can close a job only while it is open, before anyone is hired.
  */
 export const JobStatus = {
+  Draft: 'draft',
   Open: 'open',
   InProgress: 'in_progress',
   Completed: 'completed',

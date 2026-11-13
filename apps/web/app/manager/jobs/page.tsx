@@ -29,7 +29,7 @@ export default function AdminJobsPage() {
   return <RequireAuth roles={['manager']}>{() => <Jobs />}</RequireAuth>;
 }
 
-type Filter = 'all' | 'open' | 'in_progress' | 'completed' | 'closed';
+type Filter = 'all' | 'draft' | 'open' | 'in_progress' | 'completed' | 'closed';
 
 const FILTERS: { value: Filter; label: string }[] = [
   { value: 'all', label: 'Todos' },
@@ -37,6 +37,7 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'in_progress', label: 'En curso' },
   { value: 'completed', label: 'Completados' },
   { value: 'closed', label: 'Cerrados' },
+  { value: 'draft', label: 'Borradores' },
 ];
 
 function Jobs() {

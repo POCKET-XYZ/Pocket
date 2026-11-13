@@ -340,6 +340,11 @@ export interface JobInput {
    * result for each one.
    */
   kpis?: JobKpiInput[];
+  /**
+   * POST /jobs only: save it as a draft that only the startup sees, to post
+   * later with POST /jobs/:id/publish. PUT /jobs/:id replaces a draft.
+   */
+  draft?: boolean;
 }
 
 /**
@@ -454,6 +459,8 @@ export interface Job {
   /** The report file the specialist fills in, if the startup attached one. */
   reportTemplate: JobReportTemplate | null;
   status: JobStatus;
+  /** When it reached the board. Null while it is a draft. */
+  publishedAt: IsoDate | null;
   createdAt: IsoDate;
   updatedAt: IsoDate;
 }

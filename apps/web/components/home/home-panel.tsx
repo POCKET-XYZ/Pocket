@@ -188,6 +188,13 @@ function StartupFigures({
   const onTime = share(dashboard.milestones.onTime, judged);
   const todos = [
     ...contractTodos(contracts, user),
+    ...jobs
+      .filter((job) => job.status === 'draft')
+      .map((job) => ({
+        href: `/jobs/${job.id}`,
+        title: job.title,
+        step: 'Revisa tu borrador y publícalo',
+      })),
     ...figures.reviewable.map((job) => ({
       href: `/jobs/${job.id}/applicants`,
       title: job.title,

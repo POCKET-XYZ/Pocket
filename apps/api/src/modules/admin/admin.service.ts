@@ -77,7 +77,8 @@ export class AdminService {
           },
         }),
         this.prisma.job.count({ where: { status: 'open' } }),
-        this.prisma.job.count(),
+        // Posted ones: a draft has not reached the board.
+        this.prisma.job.count({ where: { status: { not: 'draft' } } }),
         this.accounts(),
       ]);
     const byRole = (role: string) => users.find((u) => u.role === role)?._count._all ?? 0;

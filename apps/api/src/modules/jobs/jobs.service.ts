@@ -8,7 +8,8 @@ import { Prisma, type Job } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BrowseJobsDto } from './dto/browse-jobs.dto';
-import { CreateJobDto } from './dto/create-job.dto';
+import { CreateJobDto, UpdateJobDto } from './dto/create-job.dto';
+import { canSeeDraft } from './drafts';
 import { cleanKpis } from './kpis';
 import { REPORT_TEMPLATE_INFO } from './report-template-info';
 
@@ -29,45 +30,112 @@ type JobWithListing = Prisma.JobGetPayload<{ include: typeof LISTING_INCLUDE }>;
 export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Post a job. The startup needs a profile, since the board shows who is hiring. */
+  /**
+   * Post a job, or save it as a draft that only the startup sees. The startup
+   * needs a profile, since the board shows who is hiring.
+   */
   async create(user: AuthUser, dto: CreateJobDto): Promise<Job> {
     if (user.role !== 'startup') {
       throw new ForbiddenException('Solo las startups pueden publicar trabajos');
     }
-    if (dto.deadline < todayUtc()) {
-      throw new BadRequestException('La fecha límite no puede estar en el pasado');
-    }
-    assertMilestonesMatch(dto);
-    const kpis = cleanKpis(dto.kpis);
-    const profile = await this.prisma.startupProfile.findUnique({
-      where: { userId: user.sub },
-      select: { id: true },
+    assertJobFits(dto);
+    await this.assertHasProfile(user);
+
+    const { draft, ...content } = dto;
+    return await this.prisma.job.create({
+      data: {
+        ...contentData(content),
+        startupId: user.sub,
+        status: draft ? 'draft' : 'open',
+        publishedAt: draft ? null : new Date(),
+        milestones: { create: milestonesData(content) },
+        kpis: { create: kpisData(content) },
+      },
     });
-    if (!profile) {
+  }
+
+  /**
+   * Replace a draft with what the form sends now. Only drafts change: once a
+   * job is posted, specialists apply to what they read.
+   */
+  async update(user: AuthUser, jobId: string, dto: UpdateJobDto): Promise<Job> {
+    const job = await this.ownedJob(user, jobId);
+    if (job.status !== 'draft') {
+      throw new BadRequestException(NOT_A_DRAFT_EDIT);
+    }
+    assertJobFits(dto);
+
+    return this.prisma.$transaction(async (tx) => {
+      // Only while still a draft: not under a publish sent at the same moment.
+      const claimed = await tx.job.updateMany({
+        where: { id: jobId, status: 'draft' },
+        data: contentData(dto),
+      });
+      if (claimed.count !== 1) {
+        throw new BadRequestException(NOT_A_DRAFT_EDIT);
+      }
+      await tx.jobMilestone.deleteMany({ where: { jobId } });
+      await tx.jobKpi.deleteMany({ where: { jobId } });
+      await tx.jobMilestone.createMany({
+        data: milestonesData(dto).map((milestone) => ({ ...milestone, jobId })),
+      });
+      await tx.jobKpi.createMany({
+        data: kpisData(dto).map((kpi) => ({ ...kpi, jobId })),
+      });
+      return tx.job.findUniqueOrThrow({ where: { id: jobId } });
+    });
+  }
+
+  /**
+   * Post a draft to the board. Its dates are checked again, since a draft can
+   * wait for days: a date that has passed has to be changed first.
+   */
+  async publish(user: AuthUser, jobId: string): Promise<Job> {
+    const job = await this.ownedJob(user, jobId);
+    if (job.status !== 'draft') {
+      throw new BadRequestException(ALREADY_POSTED);
+    }
+    await this.assertHasProfile(user);
+    const today = todayUtc();
+    if (isoDate(job.deadline) < today) {
       throw new BadRequestException(
-        'Completa tu perfil de startup antes de publicar un trabajo',
+        'La fecha límite de este borrador ya pasó. Edítalo y elige fechas nuevas antes de publicarlo.',
+      );
+    }
+    const late = await this.prisma.jobMilestone.findFirst({
+      where: { jobId, dueDate: { lt: new Date(today) } },
+      orderBy: { position: 'asc' },
+      select: { title: true },
+    });
+    if (late) {
+      throw new BadRequestException(
+        `La fecha de entrega de "${late.title}" ya pasó. Edita el borrador y elige fechas nuevas antes de publicarlo.`,
       );
     }
 
-    const { milestones, ...job } = dto;
-    return await this.prisma.job.create({
-      data: {
-        ...job,
-        deadline: new Date(dto.deadline),
-        startupId: user.sub,
-        milestones: {
-          create: milestones.map((milestone, position) => ({
-            ...milestone,
-            position,
-            dueDate: new Date(milestone.dueDate),
-          })),
-        },
-        // Replaces the raw list from the form with the cleaned one.
-        kpis: {
-          create: kpis.map((kpi, position) => ({ ...kpi, position })),
-        },
-      },
+    const published = await this.prisma.job.updateMany({
+      where: { id: jobId, status: 'draft' },
+      data: { status: 'open', publishedAt: new Date() },
     });
+    if (published.count !== 1) {
+      throw new BadRequestException(ALREADY_POSTED);
+    }
+    return this.prisma.job.findUniqueOrThrow({ where: { id: jobId } });
+  }
+
+  /** Delete a draft. A posted job is closed instead, so its history stays. */
+  async remove(user: AuthUser, jobId: string): Promise<{ deleted: true }> {
+    const job = await this.ownedJob(user, jobId);
+    if (job.status !== 'draft') {
+      throw new BadRequestException(NOT_A_DRAFT_DELETE);
+    }
+    const deleted = await this.prisma.job.deleteMany({
+      where: { id: jobId, status: 'draft' },
+    });
+    if (deleted.count !== 1) {
+      throw new BadRequestException(NOT_A_DRAFT_DELETE);
+    }
+    return { deleted: true };
   }
 
   /** Public board of open jobs, newest first. */
@@ -94,7 +162,11 @@ export class JobsService {
       this.prisma.job.findMany({
         where,
         include: LISTING_INCLUDE,
-        orderBy: { createdAt: 'desc' },
+        // A job posted by a version from before drafts has no date: it goes last.
+        orderBy: [
+          { publishedAt: { sort: 'desc', nulls: 'last' } },
+          { createdAt: 'desc' },
+        ],
         take: limit,
         skip: offset,
       }),
@@ -120,13 +192,18 @@ export class JobsService {
     }));
   }
 
-  /** Public detail of a job. */
-  async detail(jobId: string) {
+  /**
+   * Public detail of a job. A draft exists only for its startup and managers:
+   * anyone else gets the same answer as for a job that does not exist.
+   */
+  async detail(jobId: string, user?: AuthUser) {
     const job = await this.prisma.job.findUnique({
       where: { id: jobId },
       include: LISTING_INCLUDE,
     });
-    if (!job) throw new NotFoundException('No encontramos el trabajo');
+    if (!job || (job.status === 'draft' && !canSeeDraft(user, job.startupId))) {
+      throw new NotFoundException('No encontramos el trabajo');
+    }
     return toListing(job);
   }
 
@@ -157,6 +234,18 @@ export class JobsService {
     });
   }
 
+  private async assertHasProfile(user: AuthUser): Promise<void> {
+    const profile = await this.prisma.startupProfile.findUnique({
+      where: { userId: user.sub },
+      select: { id: true },
+    });
+    if (!profile) {
+      throw new BadRequestException(
+        'Completa tu perfil de startup antes de publicar un trabajo',
+      );
+    }
+  }
+
   /** A job the signed-in startup owns, or an error. */
   async ownedJob(user: AuthUser, jobId: string): Promise<Job> {
     const job = await this.prisma.job.findUnique({ where: { id: jobId } });
@@ -176,16 +265,64 @@ function toListing({ startup, _count, ...job }: JobWithListing) {
   };
 }
 
+const NOT_A_DRAFT_EDIT =
+  'Solo se puede editar un borrador. Un trabajo publicado ya no cambia.';
+const NOT_A_DRAFT_DELETE =
+  'Solo se puede eliminar un borrador. Un trabajo publicado se cierra.';
+const ALREADY_POSTED = 'Este trabajo ya está publicado';
+
+/** The job's own fields as stored, with what the form left empty cleared. */
+function contentData(dto: UpdateJobDto) {
+  return {
+    title: dto.title,
+    description: dto.description,
+    category: dto.category,
+    deliverables: dto.deliverables,
+    budget: dto.budget,
+    deadline: new Date(dto.deadline),
+    revisionRounds: dto.revisionRounds ?? 1,
+    channel: dto.channel ?? null,
+    contentLanguage: dto.contentLanguage ?? null,
+    startupProvides: dto.startupProvides ?? null,
+  };
+}
+
+function milestonesData(dto: UpdateJobDto) {
+  return dto.milestones.map((milestone, position) => ({
+    ...milestone,
+    position,
+    dueDate: new Date(milestone.dueDate),
+  }));
+}
+
+/** The cleaned KPIs, in place of the raw list from the form. */
+function kpisData(dto: UpdateJobDto) {
+  return cleanKpis(dto.kpis).map((kpi, position) => ({ ...kpi, position }));
+}
+
 /** Today's date in UTC as YYYY-MM-DD, comparable with a deadline string. */
 function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function isoDate(value: Date): string {
+  return value.toISOString().slice(0, 10);
+}
+
+/** What a job has to meet to be saved, as a draft or posted. */
+function assertJobFits(dto: UpdateJobDto): void {
+  if (dto.deadline < todayUtc()) {
+    throw new BadRequestException('La fecha límite no puede estar en el pasado');
+  }
+  assertMilestonesMatch(dto);
+  cleanKpis(dto.kpis);
 }
 
 /**
  * The milestones are the payment plan: together they are the budget, and none
  * of them can be due after the job itself.
  */
-function assertMilestonesMatch(dto: CreateJobDto): void {
+function assertMilestonesMatch(dto: UpdateJobDto): void {
   const total = dto.milestones.reduce(
     (sum, milestone) => sum.plus(milestone.amount),
     new Prisma.Decimal(0),
