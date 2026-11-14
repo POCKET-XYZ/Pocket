@@ -11,7 +11,10 @@ const paid: NotificationEvent = {
   amount: '100.5',
 };
 
-type PrismaMock = { verificationRequest: { findMany: jest.Mock } };
+type PrismaMock = {
+  verificationRequest: { findMany: jest.Mock };
+  user: { findMany: jest.Mock };
+};
 
 function serviceWith(values: Record<string, string>, prisma: PrismaMock) {
   const config = { get: (key: string) => values[key] } as unknown as ConfigService;
@@ -45,6 +48,7 @@ describe('NotificationsService', () => {
             { userId: 'specialist-1', contactEmail: 'ana@example.com' },
           ]),
       },
+      user: { findMany: jest.fn().mockResolvedValue([]) },
     };
   });
 
@@ -87,7 +91,31 @@ describe('NotificationsService', () => {
     expect(JSON.stringify(log.mock.calls)).not.toContain('ana@example.com');
   });
 
-  it('sends nothing to a user without a verified contact email, and says so in the logs', async () => {
+  it('uses the contact email over the sign-in one, without looking the other up', async () => {
+    await serviceWith(ON, prisma).sendToUsers(['specialist-1'], paid);
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+  });
+
+  it('emails the address a user signed in with when they sent no details yet', async () => {
+    prisma.verificationRequest.findMany.mockResolvedValue([
+      { userId: 'startup-1', contactEmail: 'empresa@example.com' },
+    ]);
+    prisma.user.findMany.mockResolvedValue([
+      { id: 'specialist-2', email: 'luis@gmail.com' },
+    ]);
+    await serviceWith(ON, prisma).sendToUsers(['startup-1', 'specialist-2'], paid);
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: { id: { in: ['specialist-2'] }, email: { not: null }, deletedAt: null },
+      select: { id: true, email: true },
+    });
+    const recipients = fetchMock.mock.calls.map(
+      ([, init]) => (JSON.parse((init as RequestInit).body as string) as { to: string[] }).to[0],
+    );
+    expect(recipients.sort()).toEqual(['empresa@example.com', 'luis@gmail.com']);
+  });
+
+  it('sends nothing to a user with no email at all, and says so in the logs', async () => {
     prisma.verificationRequest.findMany.mockResolvedValue([]);
     await serviceWith(ON, prisma).sendToUsers(['startup-1'], paid);
     expect(fetchMock).not.toHaveBeenCalled();
