@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Figtree, Inter } from 'next/font/google';
 import { AuthProvider } from '@/components/auth-provider';
 import { ConfirmProvider } from '@/components/confirm-dialog';
+import { InvalidFieldHelp } from '@/components/invalid-field-help';
 import { PollarSessionProvider } from '@/components/pollar-session';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter, TermsGate } from '@/components/terms';
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
                   <SiteFooter />
                   <TermsGate />
                   <Toaster theme="light" richColors position="top-center" />
+                  <InvalidFieldHelp />
                 </ConfirmProvider>
               </AuthProvider>
             </PollarSessionProvider>
