@@ -46,6 +46,8 @@ describe('readBudget', () => {
     ['Our budget is $1,500 for the launch', 1500],
     ['Tenho 200 dólares', 200],
     ['US$ 250 en total', 250],
+    ['Un premio de 50 USD para el mejor. Presupuesto total 1000 USDC.', 1000],
+    ['1000 USDC en total, con un premio de 50 USDC', 1000],
   ])('takes "%s" as a total of %d', (text, amount) => {
     expect(readBudget(text)).toEqual({ kind: 'total', amount });
   });
@@ -65,6 +67,7 @@ describe('readBudget', () => {
     ['200-300 USD', 'range'],
     ['100 USDC por video, son 3', 'per_unit'],
     ['50 dólares por cada publicación', 'per_unit'],
+    ['Ponle 500 USDC a cada hito', 'per_unit'],
     ['300 Bs para todo', 'other_currency'],
     ['R$ 500 de orçamento', 'other_currency'],
     ['Tengo 300 USDC, o quizá 400 USDC', 'several'],

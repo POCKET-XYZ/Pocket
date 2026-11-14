@@ -162,7 +162,7 @@ export function checkKpis(raw: RawJobDraft['kpis'], templates: SavedTemplate[]):
 /** What Pocket says about the budget, in the company's language. */
 type BudgetNote = 'none' | Extract<BudgetReading, { kind: 'unclear' }>['reason'];
 
-const BUDGET_WARNINGS: Record<BudgetNote, Record<Language, string>> = {
+export const BUDGET_WARNINGS: Record<BudgetNote, Record<Language, string>> = {
   none: {
     es: 'No dijiste tu presupuesto: pon tú los montos de cada hito.',
     pt: 'Você não disse seu orçamento: coloque você os valores de cada etapa.',
@@ -190,7 +190,7 @@ const BUDGET_WARNINGS: Record<BudgetNote, Record<Language, string>> = {
   },
 };
 
-const DATES_WARNING: Record<Language, string> = {
+export const DATES_WARNING: Record<Language, string> = {
   es: 'Pon tú las fechas de entrega de cada hito.',
   pt: 'Coloque você as datas de entrega de cada etapa.',
   en: 'Set the due date of each milestone yourself.',

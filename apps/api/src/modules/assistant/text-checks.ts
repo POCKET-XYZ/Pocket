@@ -26,8 +26,10 @@ const DATE_PATTERNS: RegExp[] = [
   /\b(?:el|del|al|dia|día|on the)\s+\d{1,2}(?:st|nd|rd|th)?\s+(?:de\b)?/i,
   /\b(?:mañana|pasado mañana|hoy|esta semana|la próxima semana|la semana que viene|fin de mes|amanhã|hoje|próxima semana|tomorrow|today|next week|this week|end of the month)\b/i,
   /\b(?:navidad|carnaval|semana santa|año nuevo|natal|christmas|easter|black friday|cyber monday)\b/i,
-  // When it is due: "en 2 semanas", "dentro de 10 días", "within 3 days".
-  /\b(?:en|dentro de|em|within|in)\s+\d+\s+(?:días|dias|semanas|meses|days|weeks|months)\b/i,
+  // When it is due: "dentro de 10 días", "en un plazo de 2 semanas", "within 3
+  // days", "listo en 5 días". Not a window to measure in: "vistas en 7 días".
+  /\b(?:dentro de|en un plazo de|plazo de|within|em até|no prazo de)\s+\d+\s+(?:días|dias|semanas|meses|days|weeks|months)\b/i,
+  /\b(?:entrega|entregar|entregado|entregados|lista|listo|listos|listas|terminar|terminado|ready|delivered)\s+(?:en|in|em)\s+\d+\s+(?:días|dias|semanas|meses|days|weeks|months)\b/i,
 ];
 
 const PROMISE =

@@ -80,12 +80,19 @@ describe('finishDraft', () => {
     ['a date of the calendar', 'Entrega el 15 de diciembre'],
     ['money', 'Video 1 por 100 USDC'],
     ['a promised result', 'Video que garantiza 10 mil seguidores'],
+    ['a deadline in days', 'Video listo en 5 días'],
+    ['a deadline within weeks', 'Entrega dentro de 2 semanas'],
   ])('keeps out a milestone with %s', (_case, title) => {
     const raw = { ...RAW, milestones: [milestone('Guion', 1), milestone(title, 1)] };
     const draft = finishDraft(raw, null, 'Tengo 200 USDC', TEMPLATES);
     expect(draft.milestones.map((m) => m.title)).toEqual(['Guion']);
     // The budget goes to what is left, still adding up.
     expect(draft.milestones[0].amount).toBe(200);
+  });
+
+  it('keeps a measuring window, which is not a due date', () => {
+    const raw = { ...RAW, milestones: [milestone('Reporte de vistas en 7 días', 1)] };
+    expect(finishDraft(raw, null, 'x', TEMPLATES).milestones).toHaveLength(1);
   });
 
   it('takes a failed part from the second answer when it passes there', () => {

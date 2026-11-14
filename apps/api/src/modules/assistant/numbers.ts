@@ -93,7 +93,12 @@ const RANGE_END_BEFORE = /\d\s*(?:-|–|a|y|to|and|ou|o)\s*(?:us\$|\$|usdc|usd)?
 const RANGE_AFTER = /^\s*(?:usdc|usd|dólares|dolares|dollars|\$)?\s*(?:-|–|a|y|to|and|ou|o)\s*(?:us\$|\$|usdc|usd)?\s*\d/i;
 // A price per piece, per month or per person is not the total either.
 const PER_UNIT_AFTER =
-  /^\s*(?:usdc|usd|dólares|dolares|dollars|\$)?\s*(?:por\s+(?:cada\s+)?|cada\s+|c\/u|each|per\s+|a\s+la\s+|al\s+|\/\s*|mensual|semanal|diario|por mes|ao mês|por mês)/i;
+  /^\s*(?:usdc|usd|dólares|dolares|dollars|\$)?\s*(?:por\s+(?:cada\s+)?|(?:a|para|en)\s+cada\s+|cada\s+|c\/u|each|per\s+|a\s+la\s+|al\s+|\/\s*|mensual|semanal|diario|por mes|ao mês|por mês)/i;
+
+// "Presupuesto total 1000", "total: 1000", "1000 USDC en total".
+const TOTAL_WORD_BEFORE = /(?:total|en total|in total|no total)\s*(?:de|of|:)?\s*(?:us\$|\$|usdc|usd)?\s*$/i;
+const TOTAL_WORD_AFTER =
+  /^\s*(?:usdc|usd|dólares|dolares|dollars)?\s*(?:en total|in total|no total|de presupuesto total|total)\b/i;
 
 export type BudgetReading =
   | { kind: 'total'; amount: number }
@@ -109,6 +114,8 @@ export type BudgetReading =
  */
 export function readBudget(text: string): BudgetReading {
   const totals = new Set<number>();
+  // Amounts said to be the total: "presupuesto total 1000", "1000 USDC en total".
+  const labeled = new Set<number>();
   let unclear: 'range' | 'per_unit' | 'other_currency' | undefined;
   for (const found of findNumbers(text)) {
     const before = text.slice(Math.max(0, found.start - 40), found.start);
@@ -131,8 +138,16 @@ export function readBudget(text: string): BudgetReading {
     }
     if (found.value <= 0) continue;
     totals.add(found.value);
+    if (budgetWord || TOTAL_WORD_BEFORE.test(before) || TOTAL_WORD_AFTER.test(after)) {
+      labeled.add(found.value);
+    }
   }
   if (unclear === 'other_currency') return { kind: 'unclear', reason: 'other_currency' };
+  // Several amounts, one of them said to be the total: that one. A prize or a
+  // part of it written beside the total does not make it unclear.
+  if (totals.size > 1 && labeled.size === 1 && unclear !== 'range') {
+    return { kind: 'total', amount: [...labeled][0] };
+  }
   if (totals.size > 1) return { kind: 'unclear', reason: 'several' };
   if (totals.size === 1 && !unclear) return { kind: 'total', amount: [...totals][0] };
   if (unclear) return { kind: 'unclear', reason: unclear };
