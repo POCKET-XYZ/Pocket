@@ -380,6 +380,14 @@ export default function TermsPage() {
           otra. Cada una puede usar los datos de la otra solo para ese Contrato, y es
           responsable de tratarlos conforme a la ley.
         </li>
+        <li>
+          El Asistente de Pocket solo te sugiere textos, como el borrador de un trabajo o
+          el reporte de una entrega, y tú decides qué usar. Lo que publicas o entregas, lo
+          hayas escrito tú o lo hayas tomado de una sugerencia, es tu contenido y
+          respondes por él. Revisa cada sugerencia antes de usarla: puede tener errores u
+          omisiones y no reemplaza tu criterio. El asistente no publica, no entrega, no
+          aprueba nada y no mueve dinero.
+        </li>
       </ul>
 
       <h2>11. El resultado del trabajo</h2>

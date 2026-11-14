@@ -371,6 +371,14 @@ export default function TermsPageEn() {
           shared with each other. Each party may use the other&apos;s data only for that
           Engagement, and is responsible for handling it lawfully.
         </li>
+        <li>
+          The Pocket assistant only suggests text, such as the draft of a job or the
+          report of a delivery, and you decide what to use. What you post or deliver,
+          whether you wrote it or took it from a suggestion, is your content and you are
+          responsible for it. Review every suggestion before using it: it may contain
+          mistakes or leave things out, and it does not replace your judgement. The
+          assistant does not post, deliver or approve anything, and does not move money.
+        </li>
       </ul>
 
       <h2>11. Work product</h2>
