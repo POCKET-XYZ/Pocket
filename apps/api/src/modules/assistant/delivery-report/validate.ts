@@ -50,8 +50,35 @@ const CLAIMS_AGREED =
 const ADDED_COURTESY =
   /a (?:su|tu|vuestra) disposici[oó]n|a disposici[oó]n|cualquier (?:consulta|duda)|no dud(?:e|es) en|feel free|don't hesitate|let me know if|fico [àa] disposi[cç][aã]o|qualquer d[uú]vida|gracias por la confianza|thank you for/i;
 
+// A point marked another way: "- ", "* ", "· ".
+const POINT_MARK = /^[ \t]*[-*–·•][ \t]+/gm;
+
+// Where one sentence ends and the next starts: "vistas. El", not "9.500" or "aprox. 3200".
+const SENTENCE_END = /(?<=[.!?])\s+(?=[\p{Lu}¿¡])/u;
+
+/**
+ * The note in the one format the company reads: points that start with
+ * "• ", one under the other, and no markdown. Every line is a point; when
+ * the model left the marks out, so is every sentence. A line that only opens
+ * the list ("Estos son los resultados:") goes. A single point is a sentence.
+ */
+export function tidyNote(note: string): string {
+  const lines = note
+    .replace(/\*\*/g, '')
+    .replace(POINT_MARK, '• ')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const marked = lines.some((line) => line.startsWith('• '));
+  const parts = marked ? lines : lines.flatMap((line) => line.split(SENTENCE_END));
+  const points = parts
+    .filter((line, i) => !(line.endsWith(':') && !line.startsWith('• ') && i < parts.length - 1))
+    .map((line) => (line.startsWith('• ') ? line : `• ${line}`));
+  return points.length === 1 ? points[0].slice(2) : points.join('\n');
+}
+
 export function checkNote(note: string, notes: string): string | null {
-  const fitted = fitLength(note, ...NOTE_LIMITS);
+  const fitted = fitLength(tidyNote(note), ...NOTE_LIMITS);
   if (fitted === null) return null;
   if (textProblem(fitted) === 'promise') return null;
   if (CLAIMS_AGREED.test(fitted) && !CLAIMS_AGREED.test(notes)) return null;

@@ -416,7 +416,10 @@ function Version({
       </div>
       {deliverable.note ? (
         <p className="mt-1 whitespace-pre-line text-foreground/80">
-          <span className="font-medium text-navy">Nota del experto: </span>
+          {/* A note in points starts under the label. */}
+          <span className="font-medium text-navy">
+            {deliverable.note.includes('\n') ? 'Nota del experto:\n' : 'Nota del experto: '}
+          </span>
           {deliverable.note}
         </p>
       ) : null}

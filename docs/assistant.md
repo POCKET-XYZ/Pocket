@@ -57,14 +57,19 @@ the note for the company and every KPI's result out, streamed the same way
 (`part` `note`, then `report`). A value counts only when the notes give that
 number on its own (`numbers.ts textGivesNumber`): not computed, not one end
 of a range, not a percentage unless the KPI is one. A KPI without it stays
-empty with a note. A note that says a number the notes do not, or promises a
-result, is asked once more and otherwise left out. The milestone's criteria
-are context, never facts of the delivery.
+empty with a note. The note comes in points, one per line starting with
+`• `, and as a sentence when the notes say a single thing. `tidyNote` holds
+that format whatever the model wrote: other marks become `• `, every line
+(and, without marks, every sentence) is a point, and a line that only opens
+the list goes. A note that says a
+number the notes do not, or promises a result, is asked once more and
+otherwise left out. The model gets only the notes and the KPIs' names, never
+the milestone's criteria, so the note cannot pass them off as done.
 
 ## Records
 
 `assistant_suggestions`: one row per request, with the instructions version
-(`job_draft@2`, `delivery_report@2`), real tokens, cost, time, calls, and, once the job is posted,
+(`job_draft@2`, `delivery_report@4`), real tokens, cost, time, calls, and, once the job is posted,
 each part's outcome (`POST /api/assistant/suggestions/:id/outcome`), compared
 in the API against what was shown. Deleting an account clears its texts and
 keeps the numbers.
