@@ -18,6 +18,8 @@ const BALANCE_EVERY = 20;
 const REALERT_MS = 6 * 60 * 60 * 1000;
 /** XLM the funding wallet spends per new account: 1 given and 1 locked as reserve. */
 const XLM_PER_NEW_WALLET = 2;
+/** What the network locks per entry of an account: Stellar's base reserve. */
+const BASE_RESERVE_XLM = 0.5;
 const PAGE = 200;
 
 /**
@@ -136,9 +138,7 @@ export class PlatformMonitorService implements OnApplicationBootstrap, OnModuleD
    */
   async checkBalance(): Promise<number> {
     const account = await this.horizon.loadAccount(this.stellar.platformAddress);
-    const xlm = Number(
-      account.balances.find((balance) => balance.asset_type === 'native')?.balance ?? 0,
-    );
+    const xlm = freeXlm(account);
     if (xlm < this.minXlm && Date.now() - this.lastLowBalanceAlert > REALERT_MS) {
       this.lastLowBalanceAlert = Date.now();
       securityEvent(
@@ -167,15 +167,15 @@ export class PlatformMonitorService implements OnApplicationBootstrap, OnModuleD
   /**
    * Alerts when the Pollar funding wallet is running out. Every new account
    * gets its first XLM from it, so once it is empty new users get a wallet
-   * that cannot enable USDC, and nobody hears about it. Returns its XLM, or
-   * null when the check is off.
+   * that cannot enable USDC, and nobody hears about it. Counts the XLM it can
+   * still spend, not its balance: each wallet it activated keeps 1 XLM of it
+   * locked as that wallet's reserve (on Nov 13, 14.5 of its 15.15 XLM).
+   * Returns that XLM, or null when the check is off.
    */
   async checkFundingWallet(): Promise<number | null> {
     if (!this.funding) return null;
     const account = await this.horizon.loadAccount(this.funding.address);
-    const xlm = Number(
-      account.balances.find((balance) => balance.asset_type === 'native')?.balance ?? 0,
-    );
+    const xlm = freeXlm(account);
     if (xlm < this.funding.minXlm && Date.now() - this.lastFundingAlert > REALERT_MS) {
       this.lastFundingAlert = Date.now();
       securityEvent(
@@ -191,4 +191,30 @@ export class PlatformMonitorService implements OnApplicationBootstrap, OnModuleD
     }
     return xlm;
   }
+}
+
+interface ReserveFields {
+  balances: Array<{ asset_type: string; balance: string; selling_liabilities?: string }>;
+  subentry_count?: number;
+  num_sponsoring?: number;
+  num_sponsored?: number;
+}
+
+/**
+ * The XLM an account can still spend: its balance less what the network keeps
+ * locked, two base reserves for the account plus one per trustline or offer
+ * and per entry it sponsors for others, less the entries others sponsor for
+ * it, and less XLM held by open offers. Rounded to the stroop.
+ */
+export function freeXlm(account: ReserveFields): number {
+  const native = account.balances.find((balance) => balance.asset_type === 'native');
+  const balance = Number(native?.balance ?? 0);
+  const held = Number(native?.selling_liabilities ?? 0);
+  const entries =
+    2 +
+    (account.subentry_count ?? 0) +
+    (account.num_sponsoring ?? 0) -
+    (account.num_sponsored ?? 0);
+  const free = balance - held - entries * BASE_RESERVE_XLM;
+  return Math.max(0, Math.round(free * 10_000_000) / 10_000_000);
 }
