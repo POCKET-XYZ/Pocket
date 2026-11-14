@@ -118,9 +118,12 @@ describe('mentionsMoney', () => {
 describe('shareOut', () => {
   it('shares by weight and always adds up to the total', () => {
     expect(shareOut(300, [1, 2, 1])).toEqual([75, 150, 75]);
-    const parts = shareOut(100, [1, 1, 1]);
-    expect(parts).toEqual([33.33, 33.33, 33.34]);
-    expect(Math.round(parts.reduce((a, b) => a + b, 0) * 100)).toBe(10_000);
+    // A whole total is shared in whole USDC, the rest on the last part.
+    expect(shareOut(100, [1, 1, 1])).toEqual([33, 33, 34]);
+    expect(shareOut(700, [1, 3, 2])).toEqual([116, 350, 234]);
+    const parts = shareOut(100.5, [1, 1, 1]);
+    expect(parts).toEqual([33.5, 33.5, 33.5]);
+    expect(Math.round(parts.reduce((a, b) => a + b, 0) * 100)).toBe(10_050);
   });
 
   it('gives nothing to share without weights', () => {

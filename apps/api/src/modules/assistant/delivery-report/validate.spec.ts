@@ -46,6 +46,15 @@ describe('finishReport', () => {
     expect(checkNote(RAW.note, NOTES)).toBe(RAW.note);
   });
 
+  it('drops a note that says the work is as agreed, which is the company\'s call', () => {
+    expect(checkNote('Publiqué los 3 videos según lo acordado.', NOTES)).toBeNull();
+    expect(checkNote('I posted the three videos as agreed.', NOTES)).toBeNull();
+  });
+
+  it('drops a note that adds courtesies the expert never wrote', () => {
+    expect(checkNote('Subí los 3 videos. Quedo a disposición para cualquier consulta.', NOTES)).toBeNull();
+  });
+
   it('drops a note that promises results', () => {
     expect(checkNote('Subí los 3 videos y garantizo que se harán virales.', NOTES)).toBeNull();
   });

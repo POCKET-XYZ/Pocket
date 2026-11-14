@@ -204,7 +204,10 @@ export function shareOut(total: number, weights: number[]): number[] {
   const cents = Math.round(total * 100);
   const sum = weights.reduce((acc, weight) => acc + weight, 0);
   if (weights.length === 0 || sum <= 0) return [];
-  const parts = weights.map((weight) => Math.floor((cents * weight) / sum));
-  parts[parts.length - 1] += cents - parts.reduce((acc, part) => acc + part, 0);
-  return parts.map((part) => part / 100);
+  // A whole total is shared in whole USDC: 117, 350, 233 rather than 116.66.
+  const unit = cents % 100 === 0 ? 100 : 1;
+  const units = cents / unit;
+  const parts = weights.map((weight) => Math.floor((units * weight) / sum));
+  parts[parts.length - 1] += units - parts.reduce((acc, part) => acc + part, 0);
+  return parts.map((part) => (part * unit) / 100);
 }

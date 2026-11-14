@@ -49,13 +49,44 @@ behave differently, and `pricing.ts` needs its price.
 `done` with the whole draft (amounts, KPIs, notes) or `questions` (one round
 at most, not counted). A refused request gets a plain JSON error instead.
 
+## Delivery reports
+
+`POST /api/assistant/delivery-report` (the hired expert, on an active
+contract, for a milestone waiting for its delivery): the expert's notes in,
+the note for the company and every KPI's result out, streamed the same way
+(`part` `note`, then `report`). A value counts only when the notes give that
+number on its own (`numbers.ts textGivesNumber`): not computed, not one end
+of a range, not a percentage unless the KPI is one. A KPI without it stays
+empty with a note. A note that says a number the notes do not, or promises a
+result, is asked once more and otherwise left out. The milestone's criteria
+are context, never facts of the delivery.
+
 ## Records
 
 `assistant_suggestions`: one row per request, with the instructions version
-(`job_draft@1`), real tokens, cost, time, calls, and, once the job is posted,
+(`job_draft@2`, `delivery_report@2`), real tokens, cost, time, calls, and, once the job is posted,
 each part's outcome (`POST /api/assistant/suggestions/:id/outcome`), compared
 in the API against what was shown. Deleting an account clears its texts and
 keeps the numbers.
+
+## The team's page
+
+`GET /api/manager/assistant/usage?month=AAAA-MM` (managers) and
+`/manager/assistant` in the web: the month's spend against the budget, what
+was shown, failed or refused (by reason), people, average cost and time, and
+the share of parts accepted, edited or discarded, by part and by version of
+the instructions. Upkeep every 6 hours (`AssistantAdminService.sweep`, off
+with `PLATFORM_MONITOR=off`): a suggestion shown a week ago with no job or
+delivery is marked `no_outcome`, apart from discarded parts; texts older than
+a year are cleared.
+
+## Eval set
+
+`e2e-local/assistant-eval/` (job drafts and delivery reports, traps
+included) and `e2e-local/assistant-eval.ts`, which runs them through the same
+service with the real model and an in-memory database. Run it after any
+change to the instructions, the checks or the model; runs are kept in
+`local/eval-runs/`. Never reuse a case as an example in the instructions.
 
 ## Spend
 

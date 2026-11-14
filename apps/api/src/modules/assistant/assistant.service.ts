@@ -245,9 +245,6 @@ ${followUp.answers}` : request;
     const milestone = await this.prisma.milestone.findUnique({
       where: { id: dto.milestoneId },
       select: {
-        title: true,
-        description: true,
-        acceptanceCriteria: true,
         status: true,
         contract: {
           select: {
@@ -276,11 +273,6 @@ ${followUp.answers}` : request;
     const kpis = milestone.contract.job.kpis;
     const userMessage = deliveryReportUserMessage({
       notes,
-      milestone: {
-        title: milestone.title,
-        description: milestone.description,
-        acceptanceCriteria: milestone.acceptanceCriteria,
-      },
       kpis: kpis.map((kpi) => ({
         kpi_id: kpi.id,
         name: kpi.name,

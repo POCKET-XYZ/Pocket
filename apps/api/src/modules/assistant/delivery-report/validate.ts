@@ -43,10 +43,19 @@ export interface DeliveryReport {
  * The note as the form takes it, or null when it says a number the notes do
  * not hold, or promises a result.
  */
+// Saying the work matches what was asked is the company's call, not the note's.
+const CLAIMS_AGREED =
+  /seg[uú]n lo (?:acordado|pedido|solicitado)|como (?:se )?acord|tal como (?:se )?pidi|cumpl\w* (?:con )?(?:todos )?los criterios|as agreed|as requested|meets? (?:all )?the criteria|conforme (?:o )?combinado|como combinado/i;
+// Courtesies the expert never wrote: offers to help, thanks.
+const ADDED_COURTESY =
+  /a (?:su|tu|vuestra) disposici[oó]n|a disposici[oó]n|cualquier (?:consulta|duda)|no dud(?:e|es) en|feel free|don't hesitate|let me know if|fico [àa] disposi[cç][aã]o|qualquer d[uú]vida|gracias por la confianza|thank you for/i;
+
 export function checkNote(note: string, notes: string): string | null {
   const fitted = fitLength(note, ...NOTE_LIMITS);
   if (fitted === null) return null;
   if (textProblem(fitted) === 'promise') return null;
+  if (CLAIMS_AGREED.test(fitted) && !CLAIMS_AGREED.test(notes)) return null;
+  if (ADDED_COURTESY.test(fitted) && !ADDED_COURTESY.test(notes)) return null;
   const invented = findNumbers(fitted).some((found) => !textHasNumber(notes, found.value));
   return invented ? null : fitted;
 }
