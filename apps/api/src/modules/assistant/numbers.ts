@@ -74,6 +74,35 @@ export function textHasNumber(text: string, value: number): boolean {
   return findNumbers(text).some((found) => Math.abs(found.value - value) < 1e-9);
 }
 
+// One end of a range: "entre 300 y 400", "de 300 a 400", "300-400", "between
+// 300 and 400". A list ("5 mil, 3 mil y 2 mil") is not a range.
+const RANGE_OPEN_BEFORE = /(?:entre|between|de|from|desde)\s*$/i;
+const RANGE_JOIN_AFTER = /^\s*(?:mil|k)?\s*(?:y|a|and|to|e|até|hasta)\s*\d/i;
+const RANGE_CLOSE_BEFORE =
+  /(?:entre|between|de|from|desde)\s+\d[\d.,]*\s*(?:mil|k)?\s*(?:y|a|and|to|e|até|hasta)\s*$/i;
+const HYPHEN_AFTER = /^\s*[-–]\s*\d/;
+const HYPHEN_BEFORE = /\d\s*[-–]\s*$/;
+const PERCENT_AFTER = /^\s*(?:%|por ciento|percent|por cento)/i;
+
+/**
+ * Whether the text gives this number on its own, as a result: not as one end
+ * of a range, and not as a percentage unless a percentage is what is asked.
+ */
+export function textGivesNumber(text: string, value: number, percentAsked = false): boolean {
+  return findNumbers(text).some((found) => {
+    if (Math.abs(found.value - value) >= 1e-9) return false;
+    const before = text.slice(Math.max(0, found.start - 30), found.start);
+    const after = text.slice(found.end, found.end + 20);
+    const inRange =
+      (RANGE_OPEN_BEFORE.test(before) && RANGE_JOIN_AFTER.test(after)) ||
+      RANGE_CLOSE_BEFORE.test(before) ||
+      HYPHEN_AFTER.test(after) ||
+      HYPHEN_BEFORE.test(before);
+    if (inRange) return false;
+    return percentAsked || !PERCENT_AFTER.test(after);
+  });
+}
+
 // What marks an amount as money paid in dollars, which Pocket pays in USDC.
 const DOLLAR_BEFORE = /(?:us\$|\$|usdc|usd)\s*$/i;
 const DOLLAR_AFTER = /^\s*(?:usdc|usd|us\$|\$|dólares|dolares|dólar|dolar|dollars|dollar|dls)\b/i;

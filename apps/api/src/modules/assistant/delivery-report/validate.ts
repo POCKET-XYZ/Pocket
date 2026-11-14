@@ -1,4 +1,4 @@
-import { findNumbers, textHasNumber } from '../numbers';
+import { findNumbers, textGivesNumber, textHasNumber } from '../numbers';
 import { fitLength, textProblem } from '../text-checks';
 import type { RawDeliveryReport } from './schema';
 
@@ -70,7 +70,10 @@ export function finishReport(
     kpis: kpis.map((kpi) => {
       const given = raw.kpi_values.find((entry) => entry.kpi_id === kpi.id);
       const value =
-        given && given.value !== null && Number.isFinite(given.value) && textHasNumber(notes, given.value)
+        given &&
+        given.value !== null &&
+        Number.isFinite(given.value) &&
+        textGivesNumber(notes, given.value, (kpi.unit ?? '').includes('%'))
           ? given.value
           : null;
       return {

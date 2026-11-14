@@ -57,6 +57,12 @@ describe('finishReport', () => {
     expect(reportHasContent(report)).toBe(true);
   });
 
+  it('leaves empty a KPI the notes give only as a range or a percentage', () => {
+    const notes = 'Entre 300 y 400 clics. Tasa de instalación del 15%. 9.500 vistas.';
+    const raw = { ...RAW, kpi_values: [{ kpi_id: 'k-views', value: 9500 }, { kpi_id: 'k-clicks', value: 300 }, { kpi_id: 'k-installs', value: 15 }] };
+    expect(finishReport(raw, null, notes, KPIS).kpis.map((k) => k.value)).toEqual([9500, null, null]);
+  });
+
   it('answers in the language of the notes', () => {
     const report = finishReport({ ...RAW, language: 'pt' }, null, NOTES, KPIS);
     expect(report.kpis[2].warning).toBe('Não encontrei este dado nas suas notas.');

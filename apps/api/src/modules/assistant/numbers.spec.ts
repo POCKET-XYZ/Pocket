@@ -1,4 +1,12 @@
-import { findNumbers, mentionsMoney, parseDigits, readBudget, shareOut, textHasNumber } from './numbers';
+import {
+  findNumbers,
+  mentionsMoney,
+  parseDigits,
+  readBudget,
+  shareOut,
+  textGivesNumber,
+  textHasNumber,
+} from './numbers';
 
 describe('parseDigits', () => {
   it.each([
@@ -34,6 +42,25 @@ describe('findNumbers', () => {
     expect(textHasNumber('llegó a 12k', 12_000)).toBe(true);
     expect(textHasNumber('llegó a 12 mil', 12_000)).toBe(true);
     expect(textHasNumber('llegó a 12 mil', 1_200)).toBe(false);
+  });
+});
+
+describe('textGivesNumber', () => {
+  it('takes a number given on its own', () => {
+    expect(textGivesNumber('las vistas del primero fueron 9.500', 9500)).toBe(true);
+    expect(textGivesNumber('el primero 5 mil, el segundo 3 mil y el tercero 2 mil', 2000)).toBe(true);
+  });
+
+  it('does not take either end of a range', () => {
+    expect(textGivesNumber('Entre 300 y 400 clics al enlace', 300)).toBe(false);
+    expect(textGivesNumber('Entre 300 y 400 clics al enlace', 400)).toBe(false);
+    expect(textGivesNumber('de 300 a 400 clics', 400)).toBe(false);
+    expect(textGivesNumber('300-400 clics', 300)).toBe(false);
+  });
+
+  it('takes a percentage only where one is asked', () => {
+    expect(textGivesNumber('tasa de respuesta del 15%', 15)).toBe(false);
+    expect(textGivesNumber('tasa de respuesta del 15%', 15, true)).toBe(true);
   });
 });
 
