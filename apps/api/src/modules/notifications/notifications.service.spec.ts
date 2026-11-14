@@ -11,10 +11,9 @@ const paid: NotificationEvent = {
   amount: '100.5',
 };
 
-function serviceWith(
-  values: Record<string, string>,
-  prisma: { verificationRequest: { findMany: jest.Mock } },
-) {
+type PrismaMock = { verificationRequest: { findMany: jest.Mock } };
+
+function serviceWith(values: Record<string, string>, prisma: PrismaMock) {
   const config = { get: (key: string) => values[key] } as unknown as ConfigService;
   return new NotificationsService(prisma as unknown as PrismaService, config);
 }
@@ -28,13 +27,15 @@ const ON = {
 describe('NotificationsService', () => {
   let fetchMock: jest.SpyInstance;
   let warn: jest.SpyInstance;
-  let prisma: { verificationRequest: { findMany: jest.Mock } };
+  let log: jest.SpyInstance;
+  let prisma: PrismaMock;
 
   beforeEach(() => {
     fetchMock = jest
       .spyOn(global, 'fetch')
       .mockResolvedValue(new Response('{"id":"email-1"}', { status: 200 }));
     warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    log = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
     jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
     prisma = {
       verificationRequest: {
@@ -78,10 +79,21 @@ describe('NotificationsService', () => {
     });
   });
 
-  it('sends nothing to a user without a verified contact email', async () => {
+  it('logs the id Resend gives the email, never the address', async () => {
+    await serviceWith(ON, prisma).sendToUsers(['specialist-1'], paid);
+    expect(log).toHaveBeenCalledWith(
+      'Email milestone_paid to user specialist-1 accepted by Resend: email-1',
+    );
+    expect(JSON.stringify(log.mock.calls)).not.toContain('ana@example.com');
+  });
+
+  it('sends nothing to a user without a verified contact email, and says so in the logs', async () => {
     prisma.verificationRequest.findMany.mockResolvedValue([]);
     await serviceWith(ON, prisma).sendToUsers(['startup-1'], paid);
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(
+      'Email milestone_paid to user startup-1 not sent: no email on file',
+    );
   });
 
   it('sends nothing at all without an API key', async () => {
