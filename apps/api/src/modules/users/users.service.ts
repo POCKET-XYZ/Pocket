@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { LEGAL_VERSION } from '@pocket/shared';
+import { Prisma } from '@prisma/client';
 import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
 import { termsAccepted } from '../auth/auth.service';
@@ -142,6 +143,12 @@ export class UsersService {
       await tx.specialistProfile.deleteMany({ where: { userId: id } });
       await tx.startupProfile.deleteMany({ where: { userId: id } });
       await tx.verificationRequest.deleteMany({ where: { userId: id } });
+      // What they wrote to the assistant goes; its tokens and cost stay, since
+      // the month's spend is counted from them.
+      await tx.assistantSuggestion.updateMany({
+        where: { userId: id },
+        data: { inputText: null, outputJson: Prisma.DbNull, finalTexts: Prisma.DbNull },
+      });
 
       await tx.user.update({
         where: { id },

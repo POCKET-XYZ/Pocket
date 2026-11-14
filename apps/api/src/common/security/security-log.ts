@@ -18,7 +18,8 @@ export type SecurityEventName =
   | 'data_exported'
   | 'kyc_decision'
   | 'kyc_webhook_refused'
-  | 'kyc_unavailable';
+  | 'kyc_unavailable'
+  | 'assistant_budget';
 
 type Fields = Record<string, string | number | boolean | null | undefined>;
 
