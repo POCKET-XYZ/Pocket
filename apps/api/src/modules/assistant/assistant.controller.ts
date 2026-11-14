@@ -6,6 +6,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { RateLimit } from '../../common/rate-limit/rate-limit.decorator';
 import type { AuthUser } from '../../common/types/auth';
 import { AssistantService, type AssistantEvent } from './assistant.service';
+import { DeliveryReportDto } from './dto/delivery-report.dto';
 import { JobDraftDto } from './dto/job-draft.dto';
 import { OutcomeDto } from './dto/outcome.dto';
 
@@ -36,7 +37,22 @@ export class AssistantController {
     await stream(res, (emit) => this.assistant.jobDraft(user, dto, emit));
   }
 
-  /** How a suggestion ended up, sent with the job it became. */
+  /**
+   * A delivery report from the expert's notes, streamed like the job draft:
+   * the note once it passes its checks, then every KPI's result.
+   */
+  @Roles('specialist')
+  @RateLimit(ASSISTANT_RATE_LIMIT)
+  @Post('delivery-report')
+  async deliveryReport(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: DeliveryReportDto,
+    @Res() res: Response,
+  ) {
+    await stream(res, (emit) => this.assistant.deliveryReport(user, dto, emit));
+  }
+
+  /** How a suggestion ended up, sent with the job or the delivery it became. */
   @HttpCode(204)
   @Post('suggestions/:id/outcome')
   outcome(

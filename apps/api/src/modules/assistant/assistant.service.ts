@@ -1,11 +1,32 @@
 import { partialParse } from '@anthropic-ai/sdk/_vendor/partial-json-parser/parser';
-import { HttpException, HttpStatus, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma, type AssistantKind } from '@prisma/client';
+import { Prisma, type AssistantKind, type UserRole } from '@prisma/client';
 import { securityEvent } from '../../common/security/security-log';
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CleanKpi } from '../jobs/kpis';
+import {
+  DELIVERY_REPORT_PROMPT_VERSION,
+  DELIVERY_REPORT_SYSTEM,
+  deliveryReportUserMessage,
+} from './delivery-report/prompt';
+import { DELIVERY_REPORT_SCHEMA, type RawDeliveryReport } from './delivery-report/schema';
+import {
+  checkNote,
+  finishReport,
+  reportHasContent,
+  reportNeedsRetry,
+  type DeliveryReport,
+} from './delivery-report/validate';
+import type { DeliveryReportDto } from './dto/delivery-report.dto';
 import type { JobDraftDto } from './dto/job-draft.dto';
 import type { OutcomeDto } from './dto/outcome.dto';
 import { JOB_DRAFT_PROMPT_VERSION, JOB_DRAFT_SYSTEM, jobDraftUserMessage } from './job-draft/prompt';
@@ -42,9 +63,10 @@ const PER_MINUTE = 5;
 /** What the stream sends the web, one JSON object per line. */
 export type AssistantEvent =
   | { type: 'status'; stage: 'writing' | 'adjusting' }
-  | { type: 'part'; key: PartKey; value: unknown }
+  | { type: 'part'; key: PartKey | 'note'; value: unknown }
   | { type: 'questions'; suggestionId: string; questions: string[] }
   | { type: 'done'; suggestionId: string; draft: JobDraft; remainingToday: number }
+  | { type: 'report'; suggestionId: string; report: DeliveryReport; remainingToday: number }
   | { type: 'error'; message: string };
 
 export interface Quota {
@@ -109,7 +131,7 @@ export class AssistantService {
     if (!this.on() || (await this.monthSpend(now)) >= this.monthlyBudgetUsd) {
       return { available: false, message: MESSAGES.unavailable, ...base };
     }
-    if (!(await this.isVerifiedStartup(user.sub))) {
+    if (!(await this.isVerified(user.sub))) {
       return { available: false, message: MESSAGES.notVerified, ...base };
     }
     if (remainingToday === 0) return { available: false, message: MESSAGES.daily(now), ...base };
@@ -140,7 +162,7 @@ ${followUp.answers}` : request;
       estimatedInputTokens: Math.ceil(
         (JOB_DRAFT_SYSTEM.length + written.length + TEMPLATES_ALLOWANCE_CHARS) / 3,
       ),
-      requireStartup: true,
+      role: 'startup',
     });
     const templates = await loading;
     const userMessage = jobDraftUserMessage({
@@ -210,6 +232,103 @@ ${followUp.answers}` : request;
   }
 
   /**
+   * A delivery report from the expert's notes: the note for the company and
+   * the result of each of the job's KPIs, a number only when the notes hold
+   * it. Only the hired expert, on an active contract, for a milestone waiting
+   * for its delivery.
+   */
+  async deliveryReport(
+    user: AuthUser,
+    dto: DeliveryReportDto,
+    emit: (event: AssistantEvent) => void,
+  ): Promise<void> {
+    const milestone = await this.prisma.milestone.findUnique({
+      where: { id: dto.milestoneId },
+      select: {
+        title: true,
+        description: true,
+        acceptanceCriteria: true,
+        status: true,
+        contract: {
+          select: {
+            specialistId: true,
+            status: true,
+            job: {
+              select: {
+                kpis: { orderBy: { position: 'asc' }, select: { id: true, name: true, unit: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    // Someone else's milestone answers as if it did not exist.
+    if (!milestone || milestone.contract.specialistId !== user.sub) {
+      throw new NotFoundException('No encontramos ese hito');
+    }
+    if (
+      milestone.contract.status !== 'active' ||
+      (milestone.status !== 'pending' && milestone.status !== 'changes_requested')
+    ) {
+      throw new BadRequestException('Este hito no está esperando una entrega');
+    }
+    const notes = maskPersonalData(dto.notes);
+    const kpis = milestone.contract.job.kpis;
+    const userMessage = deliveryReportUserMessage({
+      notes,
+      milestone: {
+        title: milestone.title,
+        description: milestone.description,
+        acceptanceCriteria: milestone.acceptanceCriteria,
+      },
+      kpis: kpis.map((kpi) => ({
+        kpi_id: kpi.id,
+        name: kpi.name,
+        ...(kpi.unit ? { unit: kpi.unit } : {}),
+      })),
+    });
+    const row = await this.begin(user, 'delivery_report', DELIVERY_REPORT_PROMPT_VERSION, {
+      inputText: notes,
+      milestoneId: dto.milestoneId,
+      estimatedInputTokens: Math.ceil((DELIVERY_REPORT_SYSTEM.length + userMessage.length) / 3),
+      role: 'specialist',
+    });
+    emit({ type: 'status', stage: 'writing' });
+
+    let noteSent = false;
+    const ask = (onText?: (snapshot: string) => void) =>
+      this.model.generate({
+        system: DELIVERY_REPORT_SYSTEM,
+        user: userMessage,
+        schema: DELIVERY_REPORT_SCHEMA,
+        onText,
+      });
+    const first = await ask((snapshot) => {
+      // The note is done once the KPI list has started.
+      if (noteSent || !snapshot.includes('"kpi_values":')) return;
+      noteSent = true;
+      const partial = (partialParse(snapshot) ?? {}) as Partial<RawDeliveryReport>;
+      const note = typeof partial.note === 'string' ? checkNote(partial.note, notes) : null;
+      if (note) emit({ type: 'part', key: 'note', value: note });
+    });
+    const calls: ModelResult[] = [first];
+    if (!first.ok) return this.fail(row, calls, first.reason, emit);
+    const raw = first.json as RawDeliveryReport;
+    let retry: RawDeliveryReport | null = null;
+    if (reportNeedsRetry(raw, notes)) {
+      emit({ type: 'status', stage: 'adjusting' });
+      const again = await ask();
+      calls.push(again);
+      if (again.ok) retry = again.json as RawDeliveryReport;
+    }
+    const report = finishReport(raw, retry, notes, kpis);
+    if (!reportHasContent(report)) return this.fail(row, calls, 'validation', emit);
+    await this.finish(row, calls, { output: report, counts: true });
+    const remainingToday = Math.max(0, this.dailyLimit - (await this.usedToday(user.sub, new Date())));
+    emit({ type: 'report', suggestionId: row.id, report, remainingToday });
+  }
+
+  /**
    * How a suggestion ended up, sent when the job is posted or the delivery
    * sent: each part accepted as it was, edited, or discarded. Compared here
    * against what was shown, never taken from the browser.
@@ -219,7 +338,7 @@ ${followUp.answers}` : request;
     if (!suggestion || suggestion.userId !== user.sub) {
       throw new NotFoundException('No encontramos esa sugerencia');
     }
-    const output = suggestion.outputJson as unknown as JobDraft | null;
+    const output = suggestion.outputJson as unknown as JobDraft | DeliveryReport | null;
     const outcomes: Record<string, 'accepted' | 'edited' | 'discarded'> = {};
     const finalTexts: Record<string, string> = {};
     for (const part of dto.parts) {
@@ -261,7 +380,14 @@ ${followUp.answers}` : request;
     user: AuthUser,
     kind: AssistantKind,
     promptVersion: string,
-    options: { inputText: string; jobId?: string; estimatedInputTokens: number; requireStartup: boolean },
+    options: {
+      inputText: string;
+      jobId?: string;
+      milestoneId?: string;
+      estimatedInputTokens: number;
+      /** Who may ask for this kind of suggestion. */
+      role: UserRole;
+    },
   ) {
     const now = new Date();
     const refuse = async (reason: string, status: HttpStatus, message: string): Promise<never> => {
@@ -281,7 +407,7 @@ ${followUp.answers}` : request;
     if (!this.on()) return refuse('disabled', HttpStatus.SERVICE_UNAVAILABLE, MESSAGES.unavailable);
     // Read together, judged in order: the first that fails is the one said.
     const [verified, lastMinute, usedToday, spent] = await Promise.all([
-      options.requireStartup ? this.isVerifiedStartup(user.sub) : Promise.resolve(true),
+      this.isVerified(user.sub, options.role),
       this.prisma.assistantSuggestion.count({
         where: {
           userId: user.sub,
@@ -312,6 +438,7 @@ ${followUp.answers}` : request;
         userId: user.sub,
         kind,
         jobId: options.jobId,
+        milestoneId: options.milestoneId,
         inputText: options.inputText,
         promptVersion,
         model: this.model.model,
@@ -322,13 +449,15 @@ ${followUp.answers}` : request;
     });
   }
 
-  private async isVerifiedStartup(userId: string): Promise<boolean> {
+  /** An approved account, of the given role when one is asked for. */
+  private async isVerified(userId: string, role?: UserRole): Promise<boolean> {
     const account = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { role: true, verificationStatus: true, deletedAt: true },
     });
     return (
-      account?.role === 'startup' &&
+      account !== null &&
+      (role === undefined || account.role === role) &&
       account.verificationStatus === 'approved' &&
       account.deletedAt === null
     );
@@ -483,7 +612,14 @@ export function completedParts(snapshot: string, shown: Set<PartKey>): Assistant
 }
 
 /** A part of a shown draft as one text, its fields one per line, to compare with the final one. */
-export function partText(draft: JobDraft, key: string): string | null {
+export function partText(output: JobDraft | DeliveryReport, key: string): string | null {
+  if ('note' in output) {
+    if (key === 'note') return output.note;
+    const [kind, index] = key.split(':');
+    const kpi = kind === 'kpi' ? output.kpis[Number(index)] : undefined;
+    return kpi && kpi.value !== null ? String(kpi.value) : null;
+  }
+  const draft = output;
   if (key === 'title' || key === 'description' || key === 'deliverables') return draft[key];
   const [kind, index] = key.split(':');
   if (kind === 'milestone') {

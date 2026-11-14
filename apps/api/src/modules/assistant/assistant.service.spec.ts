@@ -41,6 +41,7 @@ describe('AssistantService', () => {
   let prisma: {
     user: { findUnique: jest.Mock };
     kpiTemplate: { findMany: jest.Mock };
+    milestone: { findUnique: jest.Mock };
     assistantSuggestion: {
       create: jest.Mock;
       update: jest.Mock;
@@ -87,6 +88,7 @@ describe('AssistantService', () => {
         }),
       },
       kpiTemplate: { findMany: jest.fn().mockResolvedValue([]) },
+      milestone: { findUnique: jest.fn() },
       assistantSuggestion: {
         create: jest.fn().mockResolvedValue({ id: 'sug-1' }),
         update: jest.fn(),
@@ -270,6 +272,76 @@ describe('AssistantService', () => {
     const sent = model.generate.mock.calls[0][0].user as string;
     expect(sent).not.toMatch(/ana@gmail|71234567/);
     expect(sent).toContain('[correo]');
+  });
+
+  describe('deliveryReport', () => {
+    const EXPERT = { sub: 'expert-1', role: 'specialist' as const, stellarAddress: 'G...' };
+    const NOTES = 'Subí los 3 videos. El primero llegó a 12 mil vistas y hubo 340 clics al link.';
+    const MILESTONE = {
+      title: 'Videos',
+      description: 'Los tres videos publicados',
+      acceptanceCriteria: '- Tres videos verticales',
+      status: 'pending',
+      contract: {
+        specialistId: 'expert-1',
+        status: 'active',
+        job: {
+          kpis: [
+            { id: 'k-views', name: 'Vistas', unit: 'vistas' },
+            { id: 'k-installs', name: 'Instalaciones', unit: null },
+          ],
+        },
+      },
+    };
+    const report = (dto = { milestoneId: 'ms-1', notes: NOTES }) =>
+      service().deliveryReport(EXPERT, dto, emit);
+
+    beforeEach(() => {
+      prisma.milestone.findUnique.mockResolvedValue(MILESTONE);
+      prisma.user.findUnique.mockResolvedValue({ role: 'specialist', verificationStatus: 'approved', deletedAt: null });
+      model.generate.mockResolvedValue(
+        ok({
+          language: 'es',
+          note: 'Publiqué los 3 videos: el primero llegó a 12 mil vistas.',
+          kpi_values: [
+            { kpi_id: 'k-views', value: 12000 },
+            { kpi_id: 'k-installs', value: 40 },
+          ],
+        }),
+      );
+    });
+
+    it('reads each KPI from the notes, and leaves empty what they do not give', async () => {
+      await report();
+      const done = events.at(-1) as Extract<AssistantEvent, { type: 'report' }>;
+      expect(done.type).toBe('report');
+      expect(done.report.kpis.map((kpi) => kpi.value)).toEqual([12000, null]);
+      expect(done.report.kpis[1].warning).toBe('No encontré este dato en tus notas.');
+      expect(prisma.assistantSuggestion.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ kind: 'delivery_report', milestoneId: 'ms-1' }),
+      });
+    });
+
+    it("answers someone else's milestone as if it did not exist, without a row", async () => {
+      prisma.milestone.findUnique.mockResolvedValue({
+        ...MILESTONE,
+        contract: { ...MILESTONE.contract, specialistId: 'expert-2' },
+      });
+      await expect(report()).rejects.toThrow('No encontramos ese hito');
+      expect(prisma.assistantSuggestion.create).not.toHaveBeenCalled();
+      expect(model.generate).not.toHaveBeenCalled();
+    });
+
+    it('refuses a milestone that is not waiting for its delivery', async () => {
+      prisma.milestone.findUnique.mockResolvedValue({ ...MILESTONE, status: 'approved' });
+      await expect(report()).rejects.toThrow('Este hito no está esperando una entrega');
+      expect(model.generate).not.toHaveBeenCalled();
+    });
+
+    it('is for experts: a startup account is refused before the model', async () => {
+      prisma.user.findUnique.mockResolvedValue({ role: 'startup', verificationStatus: 'approved', deletedAt: null });
+      await refusedWith(report(), 403, 'not_verified');
+    });
   });
 
   describe('outcome', () => {
