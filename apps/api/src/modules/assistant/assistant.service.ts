@@ -71,6 +71,11 @@ export type AssistantEvent =
 
 export interface Quota {
   available: boolean;
+  /**
+   * Why not: off for everyone (switched off, or the month's budget spent), so
+   * the screen hides it; or not for this person (not verified, today's limit).
+   */
+  reason?: 'off' | 'not_verified' | 'daily';
   /** Why not, in words for the screen. */
   message?: string;
   remainingToday: number;
@@ -129,12 +134,14 @@ export class AssistantService {
     const remainingToday = Math.max(0, this.dailyLimit - used);
     const base = { remainingToday, dailyLimit: this.dailyLimit };
     if (!this.on() || (await this.monthSpend(now)) >= this.monthlyBudgetUsd) {
-      return { available: false, message: MESSAGES.unavailable, ...base };
+      return { available: false, reason: 'off', message: MESSAGES.unavailable, ...base };
     }
     if (!(await this.isVerified(user.sub))) {
-      return { available: false, message: MESSAGES.notVerified, ...base };
+      return { available: false, reason: 'not_verified', message: MESSAGES.notVerified, ...base };
     }
-    if (remainingToday === 0) return { available: false, message: MESSAGES.daily(now), ...base };
+    if (remainingToday === 0) {
+      return { available: false, reason: 'daily', message: MESSAGES.daily(now), ...base };
+    }
     return { available: true, ...base };
   }
 

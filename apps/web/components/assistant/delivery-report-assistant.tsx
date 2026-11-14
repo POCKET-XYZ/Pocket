@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SparklesIcon } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -58,8 +59,10 @@ export function DeliveryReportAssistant({
     queryKey: ['assistant', 'quota'],
     queryFn: () => api<Quota>('/assistant/quota'),
     staleTime: 60_000,
-    enabled: phase.kind !== 'closed',
   });
+
+  // Switched off for everyone, or not answering: the delivery form alone.
+  if (!quota.data || quota.data.reason === 'off') return null;
 
   if (phase.kind === 'closed') {
     return (
@@ -183,7 +186,12 @@ export function DeliveryReportAssistant({
             onChange={(event) => setNotes(event.target.value)}
           />
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span>No pegues datos personales ni contraseñas.</span>
+            <span>
+              No pegues datos personales ni contraseñas.{' '}
+              <Link href="/privacy" className="underline">
+                Cómo usamos lo que escribes
+              </Link>
+            </span>
             <span>
               {notes.length.toLocaleString('es')} / {MAX_CHARS.toLocaleString('es')}
             </span>

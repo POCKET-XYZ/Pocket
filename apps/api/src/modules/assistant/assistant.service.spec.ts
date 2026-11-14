@@ -157,6 +157,18 @@ describe('AssistantService', () => {
     await refusedWith(service({ 'assistant.enabled': false }).jobDraft(USER, { text: 'Tres videos' }, emit), 503, 'disabled');
   });
 
+  it('tells the screen it is off for everyone, so the panel hides', async () => {
+    const quota = await service({ 'assistant.enabled': false }).quota(USER);
+    expect(quota).toEqual(expect.objectContaining({ available: false, reason: 'off' }));
+  });
+
+  it('tells a person why it is not for them yet', async () => {
+    prisma.user.findUnique.mockResolvedValue({ role: 'startup', verificationStatus: 'pending', deletedAt: null });
+    expect(await service().quota(USER)).toEqual(
+      expect.objectContaining({ available: false, reason: 'not_verified' }),
+    );
+  });
+
   it('is off without a key or a known price', async () => {
     model.usable = false;
     await refusedWith(ask(), 503, 'disabled');

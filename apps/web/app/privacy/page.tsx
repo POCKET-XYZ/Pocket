@@ -99,6 +99,11 @@ export default function PrivacyPage() {
           Pocket que la resuelve, que también puede escribirte en un chat privado. Los
           mensajes no se editan ni se borran, para que sirvan de registro del contrato.
         </li>
+        <li>
+          <strong>Lo que le escribes al Asistente de Pocket:</strong> si decides usarlo,
+          lo que describes para publicar un trabajo o las notas de una entrega, lo que el
+          asistente te propuso y qué partes usaste, cambiaste o descartaste.
+        </li>
       </ul>
       <h3>Lo que recopilamos de forma automática</h3>
       <ul>
@@ -152,7 +157,10 @@ export default function PrivacyPage() {
           <tbody className="align-top [&_td]:py-2 [&_td]:pr-4 [&_tr]:border-b [&_tr]:border-border">
             <tr>
               <td>Dirección de wallet, rol, correo y proveedor de Pollar</td>
-              <td>Crear y proteger tu cuenta, e iniciar tu sesión</td>
+              <td>
+                Crear y proteger tu cuenta, iniciar tu sesión y, mientras no nos des un
+                correo de contacto, avisarte por correo de tu actividad en Pocket
+              </td>
               <td>Nuestro contrato contigo</td>
             </tr>
             <tr>
@@ -202,6 +210,14 @@ export default function PrivacyPage() {
               <td>Interés legítimo; obligaciones legales</td>
             </tr>
             <tr>
+              <td>Lo que le escribes al Asistente de Pocket</td>
+              <td>
+                Proponerte el borrador de un trabajo o el reporte de una entrega, y medir
+                si las sugerencias sirven
+              </td>
+              <td>Nuestro contrato; nuestro interés legítimo en mejorar el servicio</td>
+            </tr>
+            <tr>
               <td>Registros de consentimiento</td>
               <td>Demostrar qué aceptaste y cuándo</td>
               <td>Obligación legal; defensa ante reclamos legales</td>
@@ -240,6 +256,10 @@ export default function PrivacyPage() {
         crees que alguna te afectó por error, escribe a {PRIVACY_EMAIL} y una persona la
         revisará.
       </p>
+      <p>
+        El Asistente de Pocket solo propone textos: no publica, no entrega, no aprueba ni
+        rechaza nada, y no mueve dinero. Todo lo decides tú.
+      </p>
 
       <h2>4. Perfiles públicos y datos sensibles</h2>
       <p>
@@ -277,13 +297,19 @@ export default function PrivacyPage() {
           <strong>Proveedores</strong> que tratan datos siguiendo nuestras instrucciones:
           Supabase (base de datos, Estados Unidos), Railway (servidor de la API y sus
           registros), Vercel (servidor del sitio web), Sentry (reportes de errores,
-          Estados Unidos), Resend (envía las notificaciones a tu correo de contacto,
-          Estados Unidos), Didit (verifica tu identidad con tu documento, tu selfie y tu
-          prueba de vida, y nos devuelve el resultado) y Trustless Work (arma las
-          transacciones de los contratos, con direcciones de wallet, montos e hitos).
-          Nuestras alertas privadas de seguridad, que llegan a un canal de Discord, solo
-          tienen datos técnicos de la cuenta de Pocket, nunca tu nombre, tu correo ni tu
-          wallet.
+          Estados Unidos), Resend (envía las notificaciones a tu correo de contacto o, si
+          todavía no nos diste uno, al correo con el que entras, Estados Unidos), Didit
+          (verifica tu identidad con tu documento, tu selfie y tu prueba de vida, y nos
+          devuelve el resultado), Trustless Work (arma las transacciones de los contratos,
+          con direcciones de wallet, montos e hitos) y Anthropic (el modelo de lenguaje
+          del Asistente de Pocket, Estados Unidos: recibe lo que le escribes al asistente,
+          la categoría del trabajo y los nombres de tus plantillas de KPI o de los KPIs
+          del trabajo, después de que ocultamos correos, teléfonos y direcciones de
+          wallet; nunca tu nombre, tu correo, tu wallet ni tus datos de verificación de
+          identidad. No lo usa para entrenar sus modelos y lo borra a los 30 días, salvo
+          que lo marque por incumplir sus políticas de uso). Nuestras alertas privadas de
+          seguridad, que llegan a un canal de Discord, solo tienen datos técnicos de la
+          cuenta de Pocket, nunca tu nombre, tu correo ni tu wallet.
         </li>
         <li>
           <strong>Terceros independientes</strong> con sus propias políticas de
@@ -361,6 +387,11 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Reportes de errores:</strong> hasta 90 días, en Sentry.
+        </li>
+        <li>
+          <strong>Lo que le escribes al Asistente de Pocket:</strong> 12 meses, o hasta
+          que elimines tu cuenta si es antes. Después guardamos solo cuántas sugerencias
+          hubo, su costo y cuáles se usaron, sin el texto.
         </li>
         <li>
           <strong>Retos de inicio de sesión:</strong> minutos. Se borran al usarse o al

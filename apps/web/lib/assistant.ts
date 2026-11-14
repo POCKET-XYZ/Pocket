@@ -66,6 +66,8 @@ export interface SuggestedReport {
 
 export interface Quota {
   available: boolean;
+  /** off: switched off for everyone, so nothing is shown. */
+  reason?: 'off' | 'not_verified' | 'daily';
   message?: string;
   remainingToday: number;
   dailyLimit: number;

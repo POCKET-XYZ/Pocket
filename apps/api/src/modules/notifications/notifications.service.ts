@@ -32,7 +32,10 @@ export class NotificationsService {
     this.webUrl = config.get<string>('email.webPublicUrl') ?? '';
   }
 
-  /** Email each user at their verified contact email. Users without one get nothing. */
+  /**
+   * Email each user at their verified contact email, or else at the email
+   * they signed in with. Users with neither get nothing.
+   */
   notifyUsers(userIds: string[], event: NotificationEvent): void {
     void this.sendToUsers(userIds, event);
   }
@@ -49,7 +52,7 @@ export class NotificationsService {
       return;
     }
     try {
-      const emails = await contactEmails(this.prisma, userIds);
+      const emails = await this.emailsOf(userIds);
       await Promise.all(
         userIds.map((userId) => {
           const to = emails.get(userId);
@@ -96,6 +99,27 @@ export class NotificationsService {
     } catch (error) {
       this.logger.warn(`Email ${event.type}${who} not sent: ${describe(error)}`);
     }
+  }
+
+  /**
+   * Where to email each user. The contact email of their verification comes
+   * first. Without one (a specialist can apply and get offers before sending
+   * their details), the email they signed in with, which the login provider
+   * already verified. Only for these emails: the other party of a contract is
+   * shown the contact email alone.
+   */
+  private async emailsOf(userIds: string[]): Promise<Map<string, string>> {
+    const emails = await contactEmails(this.prisma, userIds);
+    const missing = userIds.filter((userId) => !emails.has(userId));
+    if (missing.length === 0) return emails;
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: missing }, email: { not: null }, deletedAt: null },
+      select: { id: true, email: true },
+    });
+    for (const user of users) {
+      if (user.email) emails.set(user.id, user.email);
+    }
+    return emails;
   }
 }
 

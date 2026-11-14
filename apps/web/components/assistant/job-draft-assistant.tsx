@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SparklesIcon } from 'lucide-react';
+import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { useConfirm } from '@/components/confirm-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -112,6 +113,8 @@ export function JobDraftAssistant({
   const busy = phase.kind === 'writing';
   const unavailable =
     quota.data && !quota.data.available ? quota.data.message : undefined;
+  // Switched off for everyone, or not answering: the form is shown alone.
+  const hidden = !quota.data || quota.data.reason === 'off';
 
   function track(nextUsed: Map<string, number | null>, nextDiscarded: Set<string>) {
     setUsed(nextUsed);
@@ -281,6 +284,8 @@ export function JobDraftAssistant({
     Omit<SuggestedMilestone, 'amount'> & { amount?: number | null }
   > = draft ? draft.milestones : streamed.milestones;
 
+  if (hidden) return null;
+
   return (
     <Card>
       <CardHeader>
@@ -309,7 +314,12 @@ export function JobDraftAssistant({
                 onChange={(event) => setText(event.target.value)}
               />
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span>No pegues datos personales ni contraseñas.</span>
+                <span>
+                  No pegues datos personales ni contraseñas.{' '}
+                  <Link href="/privacy" className="underline">
+                    Cómo usamos lo que escribes
+                  </Link>
+                </span>
                 <span>
                   {text.length.toLocaleString('es')} / {MAX_CHARS.toLocaleString('es')}
                 </span>
