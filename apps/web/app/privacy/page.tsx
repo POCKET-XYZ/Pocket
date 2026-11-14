@@ -152,7 +152,10 @@ export default function PrivacyPage() {
           <tbody className="align-top [&_td]:py-2 [&_td]:pr-4 [&_tr]:border-b [&_tr]:border-border">
             <tr>
               <td>Dirección de wallet, rol, correo y proveedor de Pollar</td>
-              <td>Crear y proteger tu cuenta, e iniciar tu sesión</td>
+              <td>
+                Crear y proteger tu cuenta, iniciar tu sesión y, mientras no nos des un
+                correo de contacto, avisarte por correo de tu actividad en Pocket
+              </td>
               <td>Nuestro contrato contigo</td>
             </tr>
             <tr>
@@ -277,8 +280,8 @@ export default function PrivacyPage() {
           <strong>Proveedores</strong> que tratan datos siguiendo nuestras instrucciones:
           Supabase (base de datos, Estados Unidos), Railway (servidor de la API y sus
           registros), Vercel (servidor del sitio web), Sentry (reportes de errores,
-          Estados Unidos), Resend (envía las notificaciones a tu correo de contacto,
-          Estados Unidos), Didit (verifica tu identidad con tu documento, tu selfie y tu
+          Estados Unidos), Resend (envía las notificaciones a tu correo de contacto o,
+          si todavía no nos diste uno, al correo con el que entras, Estados Unidos), Didit (verifica tu identidad con tu documento, tu selfie y tu
           prueba de vida, y nos devuelve el resultado) y Trustless Work (arma las
           transacciones de los contratos, con direcciones de wallet, montos e hitos).
           Nuestras alertas privadas de seguridad, que llegan a un canal de Discord, solo

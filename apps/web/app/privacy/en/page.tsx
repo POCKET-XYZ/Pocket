@@ -147,7 +147,10 @@ export default function PrivacyPageEn() {
           <tbody className="align-top [&_td]:py-2 [&_td]:pr-4 [&_tr]:border-b [&_tr]:border-border">
             <tr>
               <td>Wallet address, role, Pollar email and provider</td>
-              <td>Create and secure your account, and sign you in</td>
+              <td>
+                Create and secure your account, sign you in and, until you give us a
+                contact email, email you about your activity on Pocket
+              </td>
               <td>Our contract with you</td>
             </tr>
             <tr>
@@ -268,7 +271,8 @@ export default function PrivacyPageEn() {
           <strong>Service providers</strong> that process data on our instructions:
           Supabase (database, United States), Railway (API hosting and its logs), Vercel
           (website hosting), Sentry (error reports, United States), Resend (sends
-          notification emails to your contact email, United States), Didit (verifies your
+          notification emails to your contact email or, if you have not given us one
+          yet, to the email you sign in with, United States), Didit (verifies your
           identity with your ID, selfie and liveness check, and sends us the result) and
           Trustless Work (builds the escrow transactions, with wallet addresses, amounts
           and milestones). Our private security alerts, sent to a Discord channel, contain
