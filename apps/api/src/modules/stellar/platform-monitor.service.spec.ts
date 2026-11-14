@@ -9,7 +9,12 @@ const OTHER = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
 const USDC_ISSUER = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
 
 /** A Horizon stand-in that serves `pages` of operations in order. */
-function fakeHorizon(pages: object[][], xlm = '100', trustsUsdc = true) {
+function fakeHorizon(
+  pages: object[][],
+  xlm = '100',
+  trustsUsdc = true,
+  reserves: { subentry_count?: number; num_sponsoring?: number; num_sponsored?: number } = {},
+) {
   const queue = [...pages];
   const builder = {
     forAccount: () => builder,
@@ -22,6 +27,8 @@ function fakeHorizon(pages: object[][], xlm = '100', trustsUsdc = true) {
     operations: () => builder,
     loadAccount: jest.fn(() =>
       Promise.resolve({
+        subentry_count: trustsUsdc ? 1 : 0,
+        ...reserves,
         balances: [
           { asset_type: 'native', balance: xlm },
           ...(trustsUsdc
@@ -99,8 +106,9 @@ describe('PlatformMonitorService', () => {
     );
   });
 
-  it('alerts once when the XLM for fees runs low', async () => {
-    const service = monitor(fakeHorizon([], '5.5'));
+  it('alerts once when the XLM for fees runs low, counting what it can spend', async () => {
+    // 7 XLM, of which 1.5 are locked: the account and its USDC trustline.
+    const service = monitor(fakeHorizon([], '7'));
     await expect(service.checkBalance()).resolves.toBe(5.5);
     await service.checkBalance();
     expect(alerts).toHaveBeenCalledTimes(1);
@@ -139,7 +147,7 @@ describe('PlatformMonitorService', () => {
     });
 
     it('alerts once when it runs low, with how many new accounts it still covers', async () => {
-      const service = monitor(fakeHorizon([], '7.4'), SETTINGS);
+      const service = monitor(fakeHorizon([], '8.9'), SETTINGS);
       await expect(service.checkFundingWallet()).resolves.toBe(7.4);
       await service.checkFundingWallet();
       expect(alerts).toHaveBeenCalledTimes(1);
@@ -153,6 +161,18 @@ describe('PlatformMonitorService', () => {
     it('stays quiet while it has enough', async () => {
       await monitor(fakeHorizon([], '40'), SETTINGS).checkFundingWallet();
       expect(alerts).not.toHaveBeenCalled();
+    });
+
+    it('counts the reserves it holds for the wallets it activated, as on Nov 13', async () => {
+      // 15.148 XLM looked like plenty, but 26 sponsored reserves locked 13 of it.
+      const horizon = fakeHorizon([], '15.1480514', true, { num_sponsoring: 26 });
+      const service = monitor(horizon, SETTINGS);
+      await expect(service.checkFundingWallet()).resolves.toBe(0.6480514);
+      expect(alerts).toHaveBeenCalledWith(
+        'funding_wallet_low',
+        expect.objectContaining({ xlm: 0.6480514, newAccountsLeft: 0 }),
+        'alert',
+      );
     });
   });
 });

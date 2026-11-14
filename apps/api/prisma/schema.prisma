@@ -88,6 +88,7 @@ model User {
   contractMessages      ContractMessage[]
   chatReadStates        ChatReadState[]
   chainOperations       ChainOperation[]
+  assistantSuggestions  AssistantSuggestion[]
 
   @@map("users")
 }
@@ -821,4 +822,88 @@ model ChatReadState {
   @@id([userId, contractId, channel])
   @@index([contractId])
   @@map("chat_read_states")
+}
+
+// ---------------------------------------------------------------------------
+// The Pocket assistant
+// ---------------------------------------------------------------------------
+
+// What the assistant was asked to write.
+enum AssistantKind {
+  // A job post from what the startup describes.
+  job_draft
+  // A delivery's note and KPI results from the specialist's notes.
+  delivery_report
+  // A delivery read against its milestone's criteria, for the startup.
+  delivery_review
+}
+
+enum AssistantStatus {
+  // Generated, checked, and shown.
+  shown
+  // Asked of the model, but nothing usable came back.
+  failed
+  // Refused before the model was asked: off, not allowed, or over a limit.
+  rejected_precheck
+}
+
+// Whether the suggestion led anywhere: posted or delivered, or abandoned.
+enum AssistantOutcome {
+  resolved
+  no_outcome
+}
+
+// One request to the assistant, kept to count limits and spend, and to measure
+// how many suggestions people accept, edit or discard. Costs come from the
+// tokens the API reported, never from estimates. The texts are cleared after a
+// year and when the account is deleted; the numbers stay.
+// job, milestone and deliverable are plain ids, not relations: a suggestion
+// stays on record after a draft it was for is deleted.
+model AssistantSuggestion {
+  id                String            @id @default(uuid()) @db.Uuid
+  userId            String            @map("user_id") @db.Uuid
+  kind              AssistantKind
+  jobId             String?           @map("job_id") @db.Uuid
+  milestoneId       String?           @map("milestone_id") @db.Uuid
+  deliverableId     String?           @map("deliverable_id") @db.Uuid
+  // What the person wrote, after personal data was masked.
+  inputText         String?           @map("input_text")
+  // What was shown, after the checks in code.
+  outputJson        Json?             @map("output_json")
+  // The instructions it was written with, e.g. "job_draft@1".
+  promptVersion     String            @map("prompt_version")
+  model             String
+  inputTokens       Int               @default(0) @map("input_tokens")
+  outputTokens      Int               @default(0) @map("output_tokens")
+  cacheReadTokens   Int               @default(0) @map("cache_read_tokens")
+  cacheWriteTokens  Int               @default(0) @map("cache_write_tokens")
+  costUsd           Decimal           @default(0) @map("cost_usd") @db.Decimal(10, 6)
+  latencyMs         Int               @default(0) @map("latency_ms")
+  // How many calls it took: 2 when a failed check asked the model again.
+  attempts          Int               @default(1)
+  status            AssistantStatus
+  // refusal, truncated, timeout, validation, api_error, or why it was refused
+  // before asking: disabled, not_verified, per_minute, daily, monthly_budget.
+  failureReason     String?           @map("failure_reason")
+  // Only a suggestion that was shown counts toward the daily limit.
+  countsTowardLimit Boolean           @default(false) @map("counts_toward_limit")
+  // A question back instead of a draft: shown, but not counted.
+  askedQuestions    Boolean           @default(false) @map("asked_questions")
+  // Per field: accepted, edited or discarded, compared when posting.
+  fieldOutcomes     Json?             @map("field_outcomes")
+  // The final text of each edited field.
+  finalTexts        Json?             @map("final_texts")
+  outcome           AssistantOutcome?
+  // For a delivery review: whether it helped, and what the startup did next.
+  reviewFeedback    String?           @map("review_feedback")
+  reviewAction      String?           @map("review_action")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  resolvedAt        DateTime?         @map("resolved_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@index([deliverableId])
+  @@map("assistant_suggestions")
 }

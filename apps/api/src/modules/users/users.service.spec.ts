@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { LEGAL_VERSION } from '@pocket/shared';
+import { Prisma } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
 import { UsersService } from './users.service';
 
@@ -20,6 +21,7 @@ describe('UsersService', () => {
     specialistProfile: { deleteMany: jest.Mock };
     startupProfile: { deleteMany: jest.Mock };
     verificationRequest: { deleteMany: jest.Mock };
+    assistantSuggestion: { updateMany: jest.Mock };
     $transaction: jest.Mock;
   };
   let service: UsersService;
@@ -46,6 +48,7 @@ describe('UsersService', () => {
       specialistProfile: { deleteMany: jest.fn() },
       startupProfile: { deleteMany: jest.fn() },
       verificationRequest: { deleteMany: jest.fn() },
+      assistantSuggestion: { updateMany: jest.fn() },
       $transaction: jest.fn(),
     };
     // An interactive transaction runs its callback with the client itself.
@@ -98,6 +101,14 @@ describe('UsersService', () => {
           deletedAt: expect.any(Date),
           tokenVersion: { increment: 1 },
         }),
+      });
+    });
+
+    it("clears what they wrote to the assistant, keeping the month's spend", async () => {
+      await service.deleteAccount('user-1');
+      expect(prisma.assistantSuggestion.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        data: { inputText: null, outputJson: Prisma.DbNull, finalTexts: Prisma.DbNull },
       });
     });
 

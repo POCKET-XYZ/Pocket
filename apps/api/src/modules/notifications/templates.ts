@@ -56,7 +56,7 @@ interface Content {
 
 /** Who wrote, as a chat email names them. */
 const CHAT_AUTHORS = {
-  startup: 'La startup',
+  startup: 'La empresa',
   specialist: 'El experto',
   manager: 'Un manager de Pocket',
 } as const;
@@ -81,7 +81,7 @@ function content(event: NotificationEvent): Content {
           };
     case 'application_received':
       return {
-        subject: `Nueva postulación: ${event.jobTitle}`,
+        subject: `Alguien se postuló a "${event.jobTitle}"`,
         paragraphs: [
           `Un experto se postuló a "${event.jobTitle}" con su propuesta y su precio. Revísala y, si te convence, contrátalo.`,
         ],
@@ -91,21 +91,21 @@ function content(event: NotificationEvent): Content {
       return {
         subject: `Tu postulación a "${event.jobTitle}"`,
         paragraphs: [
-          `La startup eligió a otra persona para "${event.jobTitle}". Gracias por postularte: hay más trabajos abiertos esperando tu propuesta.`,
+          `La empresa eligió a otra persona para "${event.jobTitle}". Gracias por postularte: hay más trabajos abiertos esperando tu propuesta.`,
         ],
         button: { label: 'Ver trabajos', path: '/jobs' },
       };
     case 'offer_received':
       return {
-        subject: `Nueva oferta: ${event.jobTitle}`,
+        subject: `Te quieren contratar para "${event.jobTitle}"`,
         paragraphs: [
-          `Una startup quiere contratarte para "${event.jobTitle}". Revisa los hitos y acepta o rechaza los términos.`,
+          `Una empresa quiere contratarte para "${event.jobTitle}". Revisa los hitos y los montos, y acepta o rechaza los términos.`,
         ],
-        button: { label: 'Revisar la oferta', path: `/contracts/${event.contractId}` },
+        button: { label: 'Ver los términos', path: `/contracts/${event.contractId}` },
       };
     case 'offer_declined':
       return {
-        subject: `El experto rechazó tu oferta: ${event.jobTitle}`,
+        subject: `El experto no aceptó los términos de "${event.jobTitle}"`,
         paragraphs: [
           `El experto no aceptó los términos para "${event.jobTitle}". Tu trabajo sigue abierto: puedes elegir a otro postulante.`,
         ],
@@ -113,15 +113,15 @@ function content(event: NotificationEvent): Content {
       };
     case 'offer_withdrawn':
       return {
-        subject: `La startup retiró su oferta: ${event.jobTitle}`,
+        subject: `La empresa retiró los términos de "${event.jobTitle}"`,
         paragraphs: [
-          `La startup retiró los términos que te envió para "${event.jobTitle}". Tu postulación sigue en pie, y si te manda nuevos términos te avisamos.`,
+          `La empresa retiró los términos que te envió para "${event.jobTitle}". Tu postulación sigue en pie, y si te manda nuevos términos te avisamos.`,
         ],
         button: { label: 'Ver mis postulaciones', path: '/applications' },
       };
     case 'terms_accepted':
       return {
-        subject: `Términos aceptados: ${event.jobTitle}`,
+        subject: `El experto aceptó tus términos para "${event.jobTitle}"`,
         paragraphs: [
           `El experto aceptó tus términos para "${event.jobTitle}". Deposita el pago en el contrato para que empiece el trabajo.`,
         ],
@@ -131,13 +131,13 @@ function content(event: NotificationEvent): Content {
       return {
         subject: 'El pago está depositado: ya puedes empezar',
         paragraphs: [
-          'La startup depositó el pago en tu contrato. El dinero queda guardado de forma segura: ya puedes empezar a trabajar.',
+          'La empresa depositó el pago en tu contrato. El dinero queda guardado en el contrato y se libera con cada hito aprobado: ya puedes empezar a trabajar.',
         ],
         button: { label: 'Ver el contrato', path: `/contracts/${event.contractId}` },
       };
     case 'milestone_delivered':
       return {
-        subject: `Hito entregado: ${event.milestoneTitle}`,
+        subject: `El experto entregó "${event.milestoneTitle}"`,
         paragraphs: [
           `El experto entregó "${event.milestoneTitle}". Revísalo y aprueba el pago o pide cambios.`,
         ],
@@ -145,9 +145,9 @@ function content(event: NotificationEvent): Content {
       };
     case 'changes_requested':
       return {
-        subject: `Cambios pedidos: ${event.milestoneTitle}`,
+        subject: `Te pidieron cambios en "${event.milestoneTitle}"`,
         paragraphs: [
-          `La startup pidió cambios en "${event.milestoneTitle}":`,
+          `La empresa pidió cambios en "${event.milestoneTitle}":`,
           event.feedback,
         ],
         button: { label: 'Ver el contrato', path: `/contracts/${event.contractId}` },
@@ -156,13 +156,13 @@ function content(event: NotificationEvent): Content {
       return {
         subject: `Te pagaron ${event.amount} USDC`,
         paragraphs: [
-          `La startup aprobó "${event.milestoneTitle}" y se liberó el pago de ${event.amount} USDC a tu wallet.`,
+          `La empresa aprobó "${event.milestoneTitle}" y se liberó el pago de ${event.amount} USDC a tu wallet.`,
         ],
         button: { label: 'Ver el contrato', path: `/contracts/${event.contractId}` },
       };
     case 'dispute_opened':
       return {
-        subject: `Disputa abierta: ${event.milestoneTitle}`,
+        subject: `Abrieron una disputa sobre "${event.milestoneTitle}"`,
         paragraphs: [
           `La otra parte abrió una disputa sobre "${event.milestoneTitle}". Los fondos del hito se quedan en el contrato hasta que un manager decida. Agrega tu evidencia.`,
         ],
@@ -170,16 +170,16 @@ function content(event: NotificationEvent): Content {
       };
     case 'dispute_resolved':
       return {
-        subject: `Disputa resuelta: ${event.milestoneTitle}`,
+        subject: `Se resolvió la disputa sobre "${event.milestoneTitle}"`,
         paragraphs: [
           `Un manager resolvió la disputa sobre "${event.milestoneTitle}".`,
-          `El experto recibe ${event.specialistAmount} USDC y la startup recibe ${event.startupAmount} USDC.`,
+          `El experto recibe ${event.specialistAmount} USDC y la empresa recibe ${event.startupAmount} USDC.`,
         ],
         button: { label: 'Ver la decisión', path: `/disputes/${event.disputeId}` },
       };
     case 'chat_message':
       return {
-        subject: `Tienes mensajes nuevos: ${event.jobTitle}`,
+        subject: `Te escribieron en el chat de "${event.jobTitle}"`,
         paragraphs: [
           `${CHAT_AUTHORS[event.from]} te escribió en el chat de "${event.jobTitle}".`,
         ],
@@ -187,7 +187,7 @@ function content(event: NotificationEvent): Content {
       };
     case 'report_ready':
       return {
-        subject: `Reporte de resultados: ${event.jobTitle}`,
+        subject: `El reporte de "${event.jobTitle}" está listo`,
         paragraphs: [
           `El contrato "${event.jobTitle}" terminó. Su reporte ya está listo: cada meta contra su resultado, cada hito contra su fecha y cada pago comprobable en Stellar.`,
         ],

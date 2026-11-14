@@ -1,3 +1,4 @@
+import * as securityLog from '../../common/security/security-log';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { PollarClient } from './pollar.client';
 import { PollarWalletsService } from './pollar-wallets.service';
@@ -60,6 +61,21 @@ describe('PollarWalletsService', () => {
       .mockRejectedValueOnce(new Error('Pollar could not fund the wallet: 504'));
     await expect(service.activate('user-1')).resolves.toBe(true);
     expect(pollar.fundWallet).toHaveBeenCalledTimes(3);
+  });
+
+  it('tells the team at once when Pollar says the funding wallet is short, and stops retrying', async () => {
+    const alerts = jest.spyOn(securityLog, 'securityEvent').mockImplementation(() => undefined);
+    pollar.fundWallet.mockRejectedValue(new Error('Pollar could not fund the wallet: TX_LOW_RESERVE'));
+    await expect(service.activate('user-1')).resolves.toBe(false);
+    await service.activate('user-1');
+    expect(pollar.fundWallet).toHaveBeenCalledTimes(2);
+    expect(alerts).toHaveBeenCalledTimes(1);
+    expect(alerts).toHaveBeenCalledWith(
+      'funding_wallet_low',
+      expect.objectContaining({ waitingWallet: 'GPOLLARWALLET' }),
+      'alert',
+    );
+    alerts.mockRestore();
   });
 
   it('gives up after three attempts, and a later one starts over', async () => {

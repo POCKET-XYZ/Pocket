@@ -194,7 +194,7 @@ describe('templates', () => {
       { type: 'offer_received', contractId: 'c-1', jobTitle: 'Growth\nplan' },
       'https://pocket.example',
     );
-    expect(email.subject).toBe('Nueva oferta: Growth plan');
+    expect(email.subject).toBe('Te quieren contratar para "Growth plan"');
   });
 
   it('escapes every HTML special character', () => {

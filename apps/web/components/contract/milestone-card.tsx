@@ -11,7 +11,12 @@ import type {
 } from '@pocket/shared';
 import { CheckIcon, ExternalLinkIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import {
+  DeliveryReportAssistant,
+  reportOutcomeParts,
+  type ReportTracking,
+} from '@/components/assistant/delivery-report-assistant';
 import { formValues } from '@/components/form';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -433,8 +438,15 @@ function Version({
  * number, shown against the target as it is typed, or that it cannot be
  * measured yet; a KPI that is only tracked takes free text.
  */
-function KpiResultField({ kpi }: { kpi: JobKpi }) {
-  const [value, setValue] = useState('');
+function KpiResultField({
+  kpi,
+  value,
+  onValue,
+}: {
+  kpi: JobKpi;
+  value: string;
+  onValue: (value: string) => void;
+}) {
   const [unmeasured, setUnmeasured] = useState(false);
   const numeric = kpi.targetValue !== null;
 
@@ -458,7 +470,7 @@ function KpiResultField({ kpi }: { kpi: JobKpi }) {
               required={!unmeasured}
               disabled={unmeasured}
               value={unmeasured ? '' : value}
-              onChange={(event) => setValue(event.target.value)}
+              onChange={(event) => onValue(event.target.value)}
               placeholder={kpi.unit ? `Resultado en ${kpi.unit}` : 'Resultado'}
               className="w-44"
             />
@@ -482,6 +494,8 @@ function KpiResultField({ kpi }: { kpi: JobKpi }) {
           name={`result-${kpi.id}`}
           required
           maxLength={120}
+          value={value}
+          onChange={(event) => onValue(event.target.value)}
           placeholder='Resultado, por ejemplo 48, o "Todavía no se puede medir"'
         />
       )}
@@ -513,9 +527,21 @@ function DeliverDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [note, setNote] = useState('');
+  const [results, setResults] = useState<Record<string, string>>({});
+  // The assistant's report and what was taken from it, reported on sending.
+  const tracking = useRef<ReportTracking | null>(null);
   const deliver = useContractAction(
     contractId,
-    async ({ body, file }: { body: DeliveryInput; file: File | null }) => {
+    async ({
+      body,
+      file,
+      sent,
+    }: {
+      body: DeliveryInput;
+      file: File | null;
+      sent: { note: string; results: Record<string, string> };
+    }) => {
       const deliverable = await api<Deliverable>(
         `/milestones/${milestoneId}/deliveries`,
         {
@@ -523,6 +549,9 @@ function DeliverDialog({
           body,
         },
       );
+      // Right away: once delivered, this dialog leaves the page.
+      reportDeliveryOutcome(tracking.current, sent);
+      tracking.current = null;
       if (!file) return;
       try {
         await upload(`/deliverables/${deliverable.id}/attachment`, 'file', file, '5 MB');
@@ -572,11 +601,13 @@ function DeliverDialog({
         : {}),
     };
     deliver.mutate(
-      { body, file },
+      { body, file, sent: { note, results } },
       {
         onSuccess: () => {
           setOpen(false);
           setFile(null);
+          setNote('');
+          setResults({});
         },
       },
     );
@@ -602,6 +633,25 @@ function DeliverDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-3">
+          <DeliveryReportAssistant
+            milestoneId={milestoneId}
+            onUseNote={(text, focus) => {
+              setNote(text);
+              if (focus) {
+                requestAnimationFrame(() =>
+                  document
+                    .querySelector<HTMLTextAreaElement>('textarea[name="note"]')
+                    ?.focus(),
+                );
+              }
+            }}
+            onUseResult={(kpiId, value) =>
+              setResults((current) => ({ ...current, [kpiId]: String(value) }))
+            }
+            onTracking={(next) => {
+              tracking.current = next;
+            }}
+          />
           <UrlInput
             name="url"
             required
@@ -610,6 +660,8 @@ function DeliverDialog({
           />
           <Textarea
             name="note"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
             maxLength={2000}
             placeholder={
               again
@@ -623,7 +675,14 @@ function DeliverDialog({
             <fieldset className="space-y-3">
               <legend className="text-sm font-semibold text-navy">Resultados</legend>
               {kpis.map((kpi) => (
-                <KpiResultField key={kpi.id} kpi={kpi} />
+                <KpiResultField
+                  key={kpi.id}
+                  kpi={kpi}
+                  value={results[kpi.id] ?? ''}
+                  onValue={(value) =>
+                    setResults((current) => ({ ...current, [kpi.id]: value }))
+                  }
+                />
               ))}
             </fieldset>
           ) : null}
@@ -663,6 +722,18 @@ function DeliverDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Sent once the delivery went through; a failure here never bothers the expert. */
+function reportDeliveryOutcome(
+  tracking: ReportTracking | null,
+  sent: { note: string; results: Record<string, string> },
+): void {
+  if (!tracking) return;
+  void api(`/assistant/suggestions/${tracking.suggestionId}/outcome`, {
+    method: 'POST',
+    body: { parts: reportOutcomeParts(tracking, sent) },
+  }).catch(() => undefined);
 }
 
 function RequestChangesDialog({

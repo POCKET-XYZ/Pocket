@@ -71,6 +71,21 @@ export interface AppConfig {
     /** Signs Didit's webhooks; shown once when the destination is created. */
     diditWebhookSecret: string;
   };
+  /**
+   * The Pocket assistant, on Claude. Off unless ASSISTANT_ENABLED is true and
+   * a key is set; the rest of the API runs the same either way.
+   */
+  assistant: {
+    apiKey: string;
+    enabled: boolean;
+    model: string;
+    /** Suggestions a person can get a day, counted from midnight UTC. */
+    dailyLimit: number;
+    /** What the assistant may spend in a calendar month (UTC), in USD. */
+    monthlyBudgetUsd: number;
+    /** The delivery review, an extra beyond the job draft and the report. */
+    reviewEnabled: boolean;
+  };
 }
 
 const REQUIRED = [
@@ -119,6 +134,15 @@ const DEFAULT_HORIZON: Record<StellarNetwork, string> = {
   testnet: 'https://horizon-testnet.stellar.org',
   mainnet: 'https://horizon.stellar.org',
 };
+
+/** The model the assistant uses unless ASSISTANT_MODEL names another. */
+const DEFAULT_ASSISTANT_MODEL = 'claude-haiku-5-5';
+
+/** A positive number from the environment, or the fallback when unset or not one. */
+function positiveNumber(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return value && Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 /** Fail fast at boot when a required variable is missing. */
 /** A comma-separated list of Stellar accounts, without blanks. */
@@ -265,6 +289,15 @@ export default (): AppConfig => {
       diditApiKey: process.env.DIDIT_API_KEY ?? '',
       diditWorkflowId: process.env.DIDIT_WORKFLOW_ID ?? '',
       diditWebhookSecret: process.env.DIDIT_WEBHOOK_SECRET ?? '',
+    },
+    assistant: {
+      // Optional: without it the assistant is off and says so.
+      apiKey: process.env.ANTHROPIC_API_KEY ?? '',
+      enabled: process.env.ASSISTANT_ENABLED === 'true',
+      model: process.env.ASSISTANT_MODEL || DEFAULT_ASSISTANT_MODEL,
+      dailyLimit: positiveNumber(process.env.ASSISTANT_DAILY_LIMIT, 20),
+      monthlyBudgetUsd: positiveNumber(process.env.ASSISTANT_MONTHLY_BUDGET_USD, 20),
+      reviewEnabled: process.env.ASSISTANT_REVIEW_ENABLED === 'true',
     },
   };
 };
