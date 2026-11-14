@@ -53,7 +53,11 @@ export class NotificationsService {
       await Promise.all(
         userIds.map((userId) => {
           const to = emails.get(userId);
-          return to ? this.send(to, event, userId) : Promise.resolve();
+          if (!to) {
+            this.logger.log(`Email ${event.type} to user ${userId} not sent: no email on file`);
+            return Promise.resolve();
+          }
+          return this.send(to, event, userId);
         }),
       );
     } catch (error) {
@@ -84,7 +88,11 @@ export class NotificationsService {
         this.logger.warn(
           `Email ${event.type}${who} refused by Resend: HTTP ${response.status}`,
         );
+        return;
       }
+      // Resend's id finds the email, and what became of it, in its dashboard.
+      const { id } = (await response.json().catch(() => ({}))) as { id?: string };
+      this.logger.log(`Email ${event.type}${who} accepted by Resend: ${id ?? 'no id'}`);
     } catch (error) {
       this.logger.warn(`Email ${event.type}${who} not sent: ${describe(error)}`);
     }
