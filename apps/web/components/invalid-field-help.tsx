@@ -6,6 +6,8 @@ import { date } from '@/lib/format';
 
 type Control = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
+const INVALID_TOAST = 'invalid-field';
+
 /**
  * Safari on iPhone can stop a form over a field that breaks one of its rules
  * (empty, too short, a date before today) without scrolling to that field or
@@ -37,10 +39,18 @@ export function InvalidFieldHelp() {
       field.scrollIntoView({ block: 'center', behavior: 'smooth' });
       field.focus({ preventScroll: true });
       // One message at a time: a second check replaces it instead of stacking.
-      toast.error(problemOf(field), { id: 'invalid-field' });
+      toast.error(problemOf(field), { id: INVALID_TOAST });
+    }
+    // Once a form gets through, what it said to fix no longer applies.
+    function onSubmit() {
+      toast.dismiss(INVALID_TOAST);
     }
     document.addEventListener('invalid', onInvalid, true);
-    return () => document.removeEventListener('invalid', onInvalid, true);
+    document.addEventListener('submit', onSubmit, true);
+    return () => {
+      document.removeEventListener('invalid', onInvalid, true);
+      document.removeEventListener('submit', onSubmit, true);
+    };
   }, []);
   return null;
 }
