@@ -4,6 +4,7 @@ import {
   type OnApplicationBootstrap,
   type OnModuleDestroy,
 } from '@nestjs/common';
+import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PollarClient } from './pollar.client';
 
@@ -12,6 +13,9 @@ const SWEEP_MS = 5 * 60_000;
 
 /** Wallets one sweep activates at most, so a backlog never floods Pollar. */
 const SWEEP_BATCH = 20;
+
+/** The team hears again that the funding wallet is short after this long. */
+const SHORT_ALERT_EVERY_MS = 6 * 60 * 60 * 1000;
 
 /**
  * Deferred funding. A Pollar wallet is created at login without its XLM, and
@@ -36,6 +40,7 @@ export class PollarWalletsService implements OnApplicationBootstrap, OnModuleDes
    */
   private readonly running = new Map<string, Promise<boolean>>();
   private timer?: NodeJS.Timeout;
+  private lastShortAlert = 0;
 
   /** Waits between attempts: Pollar has timed out once and answered the next call. */
   retryDelaysMs = [2_000, 5_000];
@@ -125,13 +130,31 @@ export class PollarWalletsService implements OnApplicationBootstrap, OnModuleDes
         return true;
       } catch (error) {
         const last = attempt === attempts;
+        const message = (error as Error).message;
         this.logger[last ? 'error' : 'warn'](
-          `Could not fund ${address} (attempt ${attempt} of ${attempts}): ${(error as Error).message}`,
+          `Could not fund ${address} (attempt ${attempt} of ${attempts}): ${message}`,
         );
+        // Pollar's own answer that the funding wallet cannot cover another
+        // reserve: new accounts stay without a wallet until someone tops it up.
+        if (message.includes('TX_LOW_RESERVE')) {
+          this.alertShort(address);
+          return false;
+        }
         if (!last) await sleep(this.retryDelaysMs[attempt - 1]);
       }
     }
     return false;
+  }
+
+  /** Tells the team the funding wallet is short, at most every six hours. */
+  private alertShort(waitingWallet: string): void {
+    if (Date.now() - this.lastShortAlert < SHORT_ALERT_EVERY_MS) return;
+    this.lastShortAlert = Date.now();
+    securityEvent(
+      'funding_wallet_low',
+      { reason: 'Pollar answered TX_LOW_RESERVE', waitingWallet, needs: 'XLM in the funding wallet' },
+      'alert',
+    );
   }
 }
 
