@@ -41,8 +41,28 @@ export type AssistantEvent =
       value: Omit<SuggestedMilestone, 'amount'>;
     }
   | { type: 'questions'; suggestionId: string; questions: string[] }
+  | { type: 'part'; key: 'note'; value: string }
   | { type: 'done'; suggestionId: string; draft: SuggestedJob; remainingToday: number }
+  | {
+      type: 'report';
+      suggestionId: string;
+      report: SuggestedReport;
+      remainingToday: number;
+    }
   | { type: 'error'; message: string };
+
+/** A KPI's result read from the expert's notes; empty when they do not give it. */
+export interface SuggestedResult {
+  kpiId: string;
+  name: string;
+  value: number | null;
+  warning: string | null;
+}
+
+export interface SuggestedReport {
+  note: string | null;
+  kpis: SuggestedResult[];
+}
 
 export interface Quota {
   available: boolean;
@@ -63,14 +83,30 @@ export interface JobDraftRequest {
  * arrives. A request the API refuses (off, not verified, over a limit)
  * throws an ApiError with its message, before any event.
  */
-export async function streamJobDraft(
+export function streamJobDraft(
   body: JobDraftRequest,
+  onEvent: (event: AssistantEvent) => void,
+): Promise<void> {
+  return streamAssistant('/assistant/job-draft', body, onEvent);
+}
+
+/** Ask for a delivery report from the expert's notes, streamed the same way. */
+export function streamDeliveryReport(
+  body: { milestoneId: string; notes: string },
+  onEvent: (event: AssistantEvent) => void,
+): Promise<void> {
+  return streamAssistant('/assistant/delivery-report', body, onEvent);
+}
+
+async function streamAssistant(
+  path: string,
+  body: unknown,
   onEvent: (event: AssistantEvent) => void,
 ): Promise<void> {
   const token = getToken();
   let response: Response;
   try {
-    response = await fetch(`${API_URL}/assistant/job-draft`, {
+    response = await fetch(`${API_URL}${path}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
