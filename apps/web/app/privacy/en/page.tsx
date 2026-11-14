@@ -95,6 +95,11 @@ export default function PrivacyPageEn() {
           the Pocket team resolving it, which may also write to you in a private chat.
           Messages are not edited or deleted, so they stand as a record of the contract.
         </li>
+        <li>
+          <strong>What you write to the Pocket assistant:</strong> if you choose to use
+          it, what you describe to post a job or the notes of a delivery, what the
+          assistant suggested and which parts you used, changed or discarded.
+        </li>
       </ul>
       <h3>What we collect automatically</h3>
       <ul>
@@ -199,6 +204,14 @@ export default function PrivacyPageEn() {
               <td>Legitimate interest; legal obligations</td>
             </tr>
             <tr>
+              <td>What you write to the Pocket assistant</td>
+              <td>
+                Suggest a draft of your job or the report of a delivery, and measure
+                whether the suggestions help
+              </td>
+              <td>Our contract; our legitimate interest in improving the service</td>
+            </tr>
+            <tr>
               <td>Consent records</td>
               <td>Prove what you accepted and when</td>
               <td>Legal obligation; defence of legal claims</td>
@@ -236,6 +249,10 @@ export default function PrivacyPageEn() {
         limits. If you think any of them affected you wrongly, write to {PRIVACY_EMAIL}{' '}
         and a person will review it.
       </p>
+      <p>
+        The Pocket assistant only suggests text: it does not post, deliver, approve or
+        refuse anything, and it does not move money. You decide everything.
+      </p>
 
       <h2>4. Public profiles and sensitive data</h2>
       <p>
@@ -271,13 +288,18 @@ export default function PrivacyPageEn() {
           <strong>Service providers</strong> that process data on our instructions:
           Supabase (database, United States), Railway (API hosting and its logs), Vercel
           (website hosting), Sentry (error reports, United States), Resend (sends
-          notification emails to your contact email or, if you have not given us one
-          yet, to the email you sign in with, United States), Didit (verifies your
-          identity with your ID, selfie and liveness check, and sends us the result) and
-          Trustless Work (builds the escrow transactions, with wallet addresses, amounts
-          and milestones). Our private security alerts, sent to a Discord channel, contain
-          only technical data about Pocket&apos;s own account, never your name, email or
-          wallet.
+          notification emails to your contact email or, if you have not given us one yet,
+          to the email you sign in with, United States), Didit (verifies your identity
+          with your ID, selfie and liveness check, and sends us the result) and Trustless
+          Work (builds the escrow transactions, with wallet addresses, amounts and
+          milestones) and Anthropic (the language model behind the Pocket assistant,
+          United States: it receives what you write to the assistant, the job&apos;s
+          category and the names of your KPI templates or of the job&apos;s KPIs, after we
+          mask emails, phone numbers and wallet addresses; never your name, email, wallet
+          or identity check data. It does not use it to train its models and deletes it
+          after 30 days, unless it flags it for breaking its usage policies). Our private
+          security alerts, sent to a Discord channel, contain only technical data about
+          Pocket&apos;s own account, never your name, email or wallet.
         </li>
         <li>
           <strong>Independent parties</strong> with their own privacy policies: Pollar,
@@ -351,6 +373,11 @@ export default function PrivacyPageEn() {
         </li>
         <li>
           <strong>Error reports:</strong> up to 90 days, in Sentry.
+        </li>
+        <li>
+          <strong>What you write to the Pocket assistant:</strong> 12 months, or until you
+          delete your account if that comes first. After that we keep only how many
+          suggestions there were, their cost and which were used, without the text.
         </li>
         <li>
           <strong>Sign-in challenges:</strong> minutes. They are deleted once used or
