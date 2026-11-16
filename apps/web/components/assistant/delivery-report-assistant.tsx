@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SparklesIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { EditInPlace, type EditField } from '@/components/assistant/edit-in-place';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -55,6 +56,8 @@ export function DeliveryReportAssistant({
   const [streamedNote, setStreamedNote] = useState<string | null>(null);
   const [used, setUsed] = useState<Set<string>>(new Set());
   const [discarded, setDiscarded] = useState<Set<string>>(new Set());
+  // The note as edited in its card, when it was.
+  const [editedNote, setEditedNote] = useState<string | null>(null);
   const quota = useQuery({
     queryKey: ['assistant', 'quota'],
     queryFn: () => api<Quota>('/assistant/quota'),
@@ -98,6 +101,7 @@ export function DeliveryReportAssistant({
     setStreamedNote(null);
     setUsed(new Set());
     setDiscarded(new Set());
+    setEditedNote(null);
     onTracking(null);
     const onEvent = (event: AssistantEvent) => {
       if (event.type === 'status') {
@@ -131,9 +135,9 @@ export function DeliveryReportAssistant({
     }
   }
 
-  function applyNote(focus: boolean) {
-    if (!report?.note) return;
-    onUseNote(report.note, focus);
+  function applyNote(focus: boolean, value = editedNote ?? report?.note) {
+    if (!value) return;
+    onUseNote(value, focus);
     track(new Set(used).add('note'));
   }
 
@@ -148,7 +152,7 @@ export function DeliveryReportAssistant({
     if (!report) return;
     const next = new Set(used);
     if (report.note && !discarded.has('note')) {
-      onUseNote(report.note, false);
+      onUseNote(editedNote ?? report.note, false);
       next.add('note');
     }
     report.kpis.forEach((result, index) => {
@@ -229,11 +233,25 @@ export function DeliveryReportAssistant({
           label="Nota para la empresa"
           inForm={used.has('note')}
           actions={report !== null}
+          edited={editedNote !== null}
           onUse={() => applyNote(false)}
-          onEdit={() => applyNote(true)}
+          edit={{
+            fields: [
+              {
+                key: 'note',
+                label: 'Nota para la empresa',
+                value: editedNote ?? note,
+                multiline: true,
+              },
+            ],
+            onDone: (values) => {
+              setEditedNote(values.note);
+              applyNote(false, values.note);
+            },
+          }}
           onDiscard={() => setDiscarded(new Set(discarded).add('note'))}
         >
-          <p className="whitespace-pre-line">{note}</p>
+          <p className="whitespace-pre-line">{editedNote ?? note}</p>
         </ReportPart>
       ) : null}
 
@@ -270,36 +288,60 @@ export function DeliveryReportAssistant({
 function ReportPart({
   label,
   inForm,
+  edited = false,
   actions,
   onUse,
-  onEdit,
+  edit,
   onDiscard,
   children,
 }: {
   label: string;
   inForm: boolean;
+  edited?: boolean;
   actions: boolean;
   onUse: () => void;
-  onEdit?: () => void;
+  /** "Editar" opens these fields right in the card; "Listo" puts them in the form. */
+  edit?: { fields: EditField[]; onDone: (values: Record<string, string>) => void };
   onDiscard: () => void;
   children: React.ReactNode;
 }) {
+  const [editing, setEditing] = useState(false);
   return (
     <div className="rounded-lg bg-muted/50 p-3 text-sm">
       <div className="mb-1 flex items-start justify-between gap-2">
         <p className="font-semibold text-navy">{label}</p>
         <Badge variant={inForm ? 'secondary' : 'outline'}>
-          {inForm ? 'En el formulario' : 'Sugerido'}
+          {inForm
+            ? edited
+              ? 'Editado, en el formulario'
+              : 'En el formulario'
+            : 'Sugerido'}
         </Badge>
       </div>
-      {children}
-      {actions ? (
+      {editing && edit ? (
+        <EditInPlace
+          fields={edit.fields}
+          onDone={(values) => {
+            edit.onDone(values);
+            setEditing(false);
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      ) : (
+        children
+      )}
+      {actions && !editing ? (
         <div className="mt-2 flex flex-wrap gap-2">
           <Button type="button" size="sm" variant="outline" onClick={onUse}>
             Usar
           </Button>
-          {onEdit ? (
-            <Button type="button" size="sm" variant="outline" onClick={onEdit}>
+          {edit ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setEditing(true)}
+            >
               Editar
             </Button>
           ) : null}

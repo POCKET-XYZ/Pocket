@@ -74,6 +74,11 @@ each part's outcome (`POST /api/assistant/suggestions/:id/outcome`), compared
 in the API against what was shown. Deleting an account clears its texts and
 keeps the numbers.
 
+In the web, each part's "Editar" opens it in its own card (the text, or a
+milestone's title, description, criteria and amount); "Listo" puts the edited
+version in the form without moving the page, and "Usar todo" keeps it. A part
+saved different from what was shown counts as edited.
+
 ## The team's page
 
 `GET /api/manager/assistant/usage?month=AAAA-MM` (managers) and
