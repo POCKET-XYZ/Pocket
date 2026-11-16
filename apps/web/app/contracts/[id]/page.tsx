@@ -19,6 +19,7 @@ import { MoneyStepStatus, stageLabel } from '@/components/contract/money-step-st
 import { ResultsCard } from '@/components/contract/results';
 import { sentStep } from '@/components/contract/sent-step';
 import { WorkHistory } from '@/components/contract/work-history';
+import { EmailText } from '@/components/email-text';
 import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { ReportTemplateButton } from '@/components/report-template';
 import { RequireAuth } from '@/components/require-auth';
@@ -118,11 +119,10 @@ function Contract({ user }: { user: User }) {
         ) : null}
 
         <Card>
-          {/* Four columns only without the chat beside: next to it they are too
-              narrow for an email. */}
-          <CardContent
-            className={cn('grid gap-4 pt-6 sm:grid-cols-2', !hasChat && 'lg:grid-cols-4')}
-          >
+          {/* One row on a computer. The total takes only what it needs, so
+              the two emails get the most room, and they wrap at their dots
+              and before the @ instead of running into each other. */}
+          <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)]">
             <Detail label="Total">{usdc(data.amount)}</Detail>
             <Detail label="Pago protegido">
               {protectionText(data, now)}
@@ -139,10 +139,18 @@ function Contract({ user }: { user: User }) {
             </Detail>
             {/* Contacts are shared once the specialist accepts the terms. */}
             <Detail label={`Contacto de ${startupName}`}>
-              {data.contacts.startup ?? contactPending}
+              {data.contacts.startup ? (
+                <EmailText email={data.contacts.startup} />
+              ) : (
+                contactPending
+              )}
             </Detail>
             <Detail label={`Contacto de ${specialistName}`}>
-              {data.contacts.specialist ?? contactPending}
+              {data.contacts.specialist ? (
+                <EmailText email={data.contacts.specialist} />
+              ) : (
+                contactPending
+              )}
             </Detail>
           </CardContent>
         </Card>
