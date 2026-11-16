@@ -1,9 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect } from 'react';
 import { toast } from 'sonner';
-import { cn } from 'cn';
 import { date } from '@/lib/format';
 
 type Control = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
@@ -23,29 +21,27 @@ function isControl(target: EventTarget | null): target is Control {
  * (empty, too short, a date before today) without scrolling to that field or
  * saying what is wrong: the submit button just seems dead. So every form in
  * the app gets the same help, in place of the browser's own bubble: every
- * refused field turns red, the first one is brought into view and focused,
- * and a note under it says what to fix. The note follows what the person
- * types ("Lleva 12") and goes away, with the red, once the field is right.
+ * refused field turns red with a note right under it saying what to fix, and
+ * the first one is brought into view and focused. A note follows what the
+ * person types ("Lleva 12") and goes, with the red, once the field is right.
  *
  * A field that shows its own message (UrlInput) is marked with
  * `data-own-message` and only gets the scroll and the focus.
  */
 export function InvalidFieldHelp() {
-  const [note, setNote] = useState<{ field: Control; message: string } | null>(null);
-  const clear = useCallback(() => setNote(null), []);
-
   useEffect(() => {
     // The browser fires `invalid` at every refused field of a form at once:
-    // all of them turn red, only the first is pointed at.
+    // all of them get their note, only the first is scrolled to.
     let pointed = false;
-    // What each marked field had as aria-invalid before, to put it back.
-    const marked = new Map<Control, string | null>();
+    // Each refused field, with its note and what it had before.
+    const marked = new Map<Control, Mark>();
 
     function unmark(field: Control) {
-      if (!marked.has(field)) return;
-      const before = marked.get(field) ?? null;
-      if (before === null) field.removeAttribute('aria-invalid');
-      else field.setAttribute('aria-invalid', before);
+      const mark = marked.get(field);
+      if (!mark) return;
+      mark.note.remove();
+      restore(field, 'aria-invalid', mark.invalid);
+      restore(field, 'aria-describedby', mark.describedBy);
       marked.delete(field);
     }
 
@@ -53,13 +49,10 @@ export function InvalidFieldHelp() {
       const field = event.target;
       if (!isControl(field)) return;
       event.preventDefault();
-      // Fields of a dialog that closed are gone: forget them.
-      for (const old of [...marked.keys()]) if (!old.isConnected) marked.delete(old);
       const own = field.hasAttribute('data-own-message');
-      if (!own) {
-        if (!marked.has(field)) marked.set(field, field.getAttribute('aria-invalid'));
-        field.setAttribute('aria-invalid', 'true');
-      }
+      // Out of sight (a folded section): there is nowhere to show it yet.
+      const hidden = field.getClientRects().length === 0;
+      if (!own && !hidden) noteUnder(field, marked);
       if (pointed) return;
       pointed = true;
       setTimeout(() => {
@@ -67,17 +60,8 @@ export function InvalidFieldHelp() {
       }, 0);
       field.scrollIntoView({ block: 'center', behavior: 'smooth' });
       field.focus({ preventScroll: true });
-      if (own) {
-        toast.dismiss(INVALID_TOAST);
-        setNote(null);
-      } else if (field.getClientRects().length === 0) {
-        // Not on screen (a folded section): a message at the top instead.
-        toast.error(problemOf(field), { id: INVALID_TOAST });
-        setNote(null);
-      } else {
-        toast.dismiss(INVALID_TOAST);
-        setNote({ field, message: problemOf(field) });
-      }
+      if (hidden && !own) toast.error(problemOf(field), { id: INVALID_TOAST });
+      else toast.dismiss(INVALID_TOAST);
     }
 
     // As the person fixes things, the notes keep up; a field that is right
@@ -89,183 +73,100 @@ export function InvalidFieldHelp() {
       if (marked.size === 0) return;
       clearTimeout(recheck);
       recheck = window.setTimeout(() => {
-        for (const field of [...marked.keys()]) {
-          if (!field.isConnected) marked.delete(field);
-          else if (field.validity.valid) unmark(field);
+        for (const [field, mark] of [...marked]) {
+          if (!field.isConnected || field.validity.valid) unmark(field);
+          else mark.note.textContent = problemOf(field);
         }
-        setNote((current) => {
-          if (!current) return current;
-          if (!marked.has(current.field)) return null;
-          const message = problemOf(current.field);
-          return message === current.message
-            ? current
-            : { field: current.field, message };
-        });
       }, 0);
     }
 
-    // Moving on to another field hides the note; the red stays until fixed.
-    function onFocus(event: Event) {
-      const target = event.target;
-      if (!isControl(target)) return;
-      setNote((current) => (current && current.field !== target ? null : current));
-    }
+    // A field taken off the page (a milestone removed, a dialog closed)
+    // takes its note with it.
+    const observer = new MutationObserver(() => {
+      for (const field of [...marked.keys()]) if (!field.isConnected) unmark(field);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
 
     // Once a form gets through, what it said to fix no longer applies.
     function onSubmit() {
       toast.dismiss(INVALID_TOAST);
-      setNote(null);
       for (const field of [...marked.keys()]) unmark(field);
     }
 
     document.addEventListener('invalid', onInvalid, true);
     document.addEventListener('input', onEdit, true);
     document.addEventListener('change', onEdit, true);
-    document.addEventListener('focusin', onFocus, true);
     document.addEventListener('submit', onSubmit, true);
     return () => {
       clearTimeout(recheck);
+      observer.disconnect();
       document.removeEventListener('invalid', onInvalid, true);
       document.removeEventListener('input', onEdit, true);
       document.removeEventListener('change', onEdit, true);
-      document.removeEventListener('focusin', onFocus, true);
       document.removeEventListener('submit', onSubmit, true);
     };
   }, []);
-
-  return note ? (
-    <FieldNote field={note.field} message={note.message} onGone={clear} />
-  ) : null;
+  return null;
 }
 
-interface Place {
-  top: number;
-  left: number;
-  width: number;
-  /** Where the arrow sits, from the note's left edge. */
-  arrow: number;
-  above: boolean;
-  shown: boolean;
+interface Mark {
+  note: HTMLParagraphElement;
+  invalid: string | null;
+  describedBy: string | null;
 }
 
-/**
- * The note under a refused field, with an arrow pointing at it. It lives on
- * top of everything (dialogs included) and follows the field as the page or
- * a dialog scrolls; it goes over the field when there is no room below, as
- * with the phone's keyboard open, and hides while the field is scrolled out
- * of sight.
- */
-function FieldNote({
-  field,
-  message,
-  onGone,
-}: {
-  field: Control;
-  message: string;
-  onGone: () => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [place, setPlace] = useState<Place | null>(null);
+let notes = 0;
 
-  useLayoutEffect(() => {
-    let frame = 0;
-    let last = '';
-    function follow() {
-      if (!field.isConnected) {
-        onGone();
-        return;
-      }
-      // A field hidden for screen readers only (a file picker inside its
-      // button) is pointed at through what wraps it.
-      let anchor: Element = field;
-      while (anchor.parentElement && anchor.getBoundingClientRect().width < 4) {
-        anchor = anchor.parentElement;
-      }
-      const box = anchor.getBoundingClientRect();
-      const view = window.visualViewport;
-      const viewTop = view?.offsetTop ?? 0;
-      const viewBottom = viewTop + (view?.height ?? window.innerHeight);
-      const viewWidth = document.documentElement.clientWidth;
-      const height = ref.current?.offsetHeight ?? 40;
-      const above =
-        box.bottom + 8 + height > viewBottom && box.top - 8 - height > viewTop;
-      const width = Math.min(Math.max(box.width, 240), viewWidth - 16);
-      const left = Math.min(Math.max(box.left, 8), viewWidth - 8 - width);
-      const next: Place = {
-        top: above ? box.top - 8 : box.bottom + 8,
-        left,
-        width,
-        // Under the field's left edge, where its text starts.
-        arrow: Math.min(Math.max(box.left - left + 16, 12), width - 24),
-        above,
-        shown: inSight(anchor, box, viewTop, viewBottom),
-      };
-      const key = JSON.stringify(next);
-      if (key !== last) {
-        last = key;
-        setPlace(next);
-      }
-      frame = requestAnimationFrame(follow);
-    }
-    follow();
-    return () => cancelAnimationFrame(frame);
-  }, [field, onGone]);
-
-  return createPortal(
-    <div
-      ref={ref}
-      role="alert"
-      data-field-note=""
-      style={{
-        top: place?.top ?? -9999,
-        left: place?.left ?? 0,
-        maxWidth: place?.width,
-        transform: place?.above ? 'translateY(-100%)' : undefined,
-      }}
-      className={cn(
-        'pointer-events-none fixed z-[100] flex w-max items-start gap-2 rounded-lg border border-destructive/40 bg-popover px-3 py-2 text-sm text-foreground shadow-lg transition-opacity',
-        place?.shown ? 'opacity-100' : 'opacity-0',
-      )}
-    >
-      <span
-        aria-hidden="true"
-        className="mt-px flex size-4 shrink-0 items-center justify-center rounded-full bg-destructive text-[11px] font-bold leading-none text-white"
-      >
-        !
-      </span>
-      <span>{message}</span>
-      <span
-        aria-hidden="true"
-        style={{ left: place?.arrow ?? 16 }}
-        className={cn(
-          'absolute size-2.5 rotate-45 border-destructive/40 bg-popover',
-          place?.above
-            ? '-bottom-[6px] border-r border-b'
-            : '-top-[6px] border-l border-t',
-        )}
-      />
-    </div>,
-    document.body,
-  );
-}
-
-/** Whether the middle of the field shows on screen and in every box that scrolls around it. */
-function inSight(
-  anchor: Element,
-  box: DOMRect,
-  viewTop: number,
-  viewBottom: number,
-): boolean {
-  const x = box.left + box.width / 2;
-  const y = box.top + Math.min(box.height / 2, 12);
-  if (y < viewTop || y > viewBottom) return false;
-  for (let parent = anchor.parentElement; parent; parent = parent.parentElement) {
-    const style = getComputedStyle(parent);
-    if (style.overflowX === 'visible' && style.overflowY === 'visible') continue;
-    const clip = parent.getBoundingClientRect();
-    if (x < clip.left || x > clip.right || y < clip.top || y > clip.bottom) return false;
+/** The field in red, with a note under it saying what to fix. */
+function noteUnder(field: Control, marked: Map<Control, Mark>) {
+  const existing = marked.get(field);
+  if (existing) {
+    existing.note.textContent = problemOf(field);
+    return;
   }
-  return true;
+  const note = document.createElement('p');
+  note.id = `field-note-${++notes}`;
+  note.dataset.fieldNote = '';
+  note.className = 'text-sm text-destructive';
+  note.textContent = problemOf(field);
+  marked.set(field, {
+    note,
+    invalid: field.getAttribute('aria-invalid'),
+    describedBy: field.getAttribute('aria-describedby'),
+  });
+  field.setAttribute('aria-invalid', 'true');
+  field.setAttribute(
+    'aria-describedby',
+    [field.getAttribute('aria-describedby'), note.id].filter(Boolean).join(' '),
+  );
+  // Under the field, or under the row it shares with others (amount and
+  // date side by side), never beside it.
+  let anchor: Element = field;
+  while (anchor.parentElement && sideBySide(anchor.parentElement)) {
+    anchor = anchor.parentElement;
+  }
+  anchor.insertAdjacentElement('afterend', note);
+  // Close under it, whatever space the form leaves between its rows.
+  const parent = anchor.parentElement;
+  const rowGap = parent ? parseFloat(getComputedStyle(parent).rowGap) || 0 : 0;
+  const margin = parseFloat(getComputedStyle(anchor).marginBottom) || 0;
+  note.style.marginTop = `${4 - margin - rowGap}px`;
+}
+
+/** Whether a box lays its children out in a row, where a note would land beside the field. */
+function sideBySide(box: HTMLElement): boolean {
+  if (box.tagName === 'LABEL') return true;
+  const style = getComputedStyle(box);
+  if (style.display.startsWith('inline')) return true;
+  if (style.display.includes('flex')) return !style.flexDirection.startsWith('column');
+  if (style.display.includes('grid'))
+    return style.gridTemplateColumns.trim().split(/\s+/).length > 1;
+  return false;
+}
+
+function restore(field: Control, name: string, value: string | null) {
+  if (value === null) field.removeAttribute(name);
+  else field.setAttribute(name, value);
 }
 
 /** What is wrong with the field, in words, naming it as its label does. */
