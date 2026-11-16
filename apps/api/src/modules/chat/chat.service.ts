@@ -20,6 +20,19 @@ import {
 /** The newest messages a chat shows. Older ones stay stored. */
 const MESSAGES_SHOWN = 500;
 
+/**
+ * A contract that ended, paid out or cancelled, keeps its chats as a record:
+ * they can be read, no longer written in.
+ */
+function closedOf(status: string): ContractChat['closed'] {
+  return status === 'completed' || status === 'cancelled' ? status : null;
+}
+
+const CLOSED_MESSAGE = {
+  completed: 'Este contrato terminó: su chat queda solo para leer',
+  cancelled: 'Este contrato se canceló: su chat queda solo para leer',
+} as const;
+
 const AUTHOR = {
   select: {
     id: true,
@@ -75,6 +88,7 @@ export class ChatService {
       this.prisma.chatReadState.findMany({ where: { userId: user.sub, contractId } }),
     ]);
     const messages = rows.reverse();
+    const closed = closedOf(contract.status);
     const threads: ChatThread[] = channels.map((channel) => {
       const readAt = states.find((state) => state.channel === channel)?.lastReadAt;
       const own = messages.filter((message) => message.channel === channel);
@@ -84,11 +98,11 @@ export class ChatService {
           (message) =>
             message.authorId !== user.sub && (!readAt || message.createdAt > readAt),
         ).length,
-        canWrite: contract.status !== 'cancelled',
+        canWrite: closed === null,
         messages: own.map(toMessage),
       };
     });
-    return { hasDispute, threads };
+    return { hasDispute, closed, threads };
   }
 
   /** Write in one of the contract's chats, and tell the others by email. */
@@ -102,11 +116,8 @@ export class ChatService {
     if (!channels.includes(channel)) {
       throw new ForbiddenException('No puedes escribir en este chat');
     }
-    if (contract.status === 'cancelled') {
-      throw new BadRequestException(
-        'Este contrato se canceló: su chat queda solo para leer',
-      );
-    }
+    const closed = closedOf(contract.status);
+    if (closed) throw new BadRequestException(CLOSED_MESSAGE[closed]);
     const row = await this.prisma.contractMessage.create({
       data: { contractId, channel, authorId: user.sub, body },
       include: { author: AUTHOR },

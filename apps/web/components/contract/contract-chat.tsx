@@ -115,7 +115,9 @@ export function ContractChat({
             <Composer contractId={contractId} channel={thread.channel} />
           ) : (
             <p className="border-t border-border bg-muted/40 px-4 py-3 text-center text-xs text-muted-foreground">
-              Este contrato se canceló: su chat queda solo para leer.
+              {chat.data?.closed === 'cancelled'
+                ? 'Este contrato se canceló: el chat queda como registro y ya no se pueden enviar mensajes.'
+                : 'Este contrato terminó: el chat queda como registro y ya no se pueden enviar mensajes.'}
             </p>
           )}
         </>
@@ -171,7 +173,7 @@ function who(channel: ChatChannel, user: User, names: Names) {
   if (channel === 'contract') {
     if (user.role === 'manager') {
       return {
-        name: 'Chat del contrato',
+        name: 'Ambas partes',
         detail: `${startup} y ${specialist}`,
         avatar: 'Pocket',
       };
@@ -179,7 +181,7 @@ function who(channel: ChatChannel, user: User, names: Names) {
     const isStartup = user.role === 'startup';
     return {
       name: isStartup ? specialist : startup,
-      detail: isStartup ? 'Experto · Chat del contrato' : 'Startup · Chat del contrato',
+      detail: isStartup ? 'Experto' : 'Startup',
       avatar: isStartup ? specialist : startup,
     };
   }
@@ -228,9 +230,15 @@ function ThreadTabs({
   names: Names;
   onChoose: (channel: ChatChannel) => void;
 }) {
+  // Each tab says who is on the other side, not which chat it is.
   const label = (channel: ChatChannel): string => {
-    if (channel === 'contract') return 'Contrato';
-    if (user.role !== 'manager') return 'Con Pocket';
+    if (channel === 'contract') {
+      if (user.role === 'manager') return 'Ambas partes';
+      return user.role === 'startup'
+        ? (names.specialistName ?? 'El experto')
+        : (names.startupName ?? 'La startup');
+    }
+    if (user.role !== 'manager') return 'Equipo de Pocket';
     return channel === 'manager_startup'
       ? (names.startupName ?? 'La startup')
       : (names.specialistName ?? 'El experto');
@@ -303,9 +311,11 @@ function Messages({ thread, user }: { thread: ChatThread; user: User }) {
         </span>
         <div>
           <p className="font-heading font-bold text-navy">Todavía no hay mensajes</p>
-          <p className="mt-1 max-w-64 text-sm text-muted-foreground">
-            {hint(thread.channel, user)}
-          </p>
+          {hint(thread.channel, user) ? (
+            <p className="mt-1 max-w-64 text-sm text-muted-foreground">
+              {hint(thread.channel, user)}
+            </p>
+          ) : null}
         </div>
       </div>
     );
@@ -313,9 +323,11 @@ function Messages({ thread, user }: { thread: ChatThread; user: User }) {
 
   return (
     <div className="flex-1 space-y-1 overflow-y-auto bg-muted/30 px-4 py-4">
-      <p className="mb-3 text-center text-xs text-muted-foreground">
-        {hint(thread.channel, user)}
-      </p>
+      {hint(thread.channel, user) ? (
+        <p className="mb-3 text-center text-xs text-muted-foreground">
+          {hint(thread.channel, user)}
+        </p>
+      ) : null}
       {thread.messages.map((message, index) => {
         const before = thread.messages[index - 1];
         const newDay =
@@ -375,11 +387,16 @@ function Messages({ thread, user }: { thread: ChatThread; user: User }) {
   );
 }
 
-function hint(channel: ChatChannel, user: User): string {
+/**
+ * Who else reads a chat, when it is not plain from the header: the private
+ * chats, and for a manager the shared one. Between the two sides there is
+ * nothing to add.
+ */
+function hint(channel: ChatChannel, user: User): string | null {
   if (channel === 'contract') {
     return user.role === 'manager'
       ? 'Lo ven la startup, el experto y el equipo de Pocket.'
-      : 'Habla aquí con la otra parte. Si hay una disputa, también lo lee el equipo de Pocket.';
+      : null;
   }
   return user.role === 'manager'
     ? 'Privado: solo lo ven esta parte y el equipo de Pocket.'

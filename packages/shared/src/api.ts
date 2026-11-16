@@ -1229,6 +1229,11 @@ export interface ChatThread {
 export interface ContractChat {
   /** Managers take part only while the contract has a dispute. */
   hasDispute: boolean;
+  /**
+   * Why nobody can write any more: the contract was paid out or cancelled.
+   * Its chats stay to be read. Null while it is under way.
+   */
+  closed: 'completed' | 'cancelled' | null;
   threads: ChatThread[];
 }
 
@@ -1405,7 +1410,12 @@ export interface AdminOverview {
   }[];
   counts: {
     contracts: Record<ContractStatus, number>;
-    users: { startups: number; specialists: number; managers: number; notApproved: number };
+    users: {
+      startups: number;
+      specialists: number;
+      managers: number;
+      notApproved: number;
+    };
     jobs: { open: number; total: number };
   };
 }

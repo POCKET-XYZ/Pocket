@@ -4,6 +4,7 @@ import {
   DisputeOutcome,
   POCKET_FEE_PERCENT,
   TRUSTLESS_WORK_FEE_PERCENT,
+  type ContractDetail,
   type DisputeDetail,
   type User,
 } from '@pocket/shared';
@@ -52,6 +53,14 @@ function DisputeView({ user }: { user: User }) {
   const dispute = useQuery({
     queryKey: ['disputes', id],
     queryFn: () => api<DisputeDetail>(`/disputes/${id}`),
+  });
+  // The parties' names, so each chat tab says who it is with. The same query
+  // as the contract's page, so it is often already there.
+  const contractId = dispute.data?.milestone.contract.id;
+  const parties = useQuery({
+    queryKey: ['contracts', contractId],
+    queryFn: () => api<ContractDetail>(`/contracts/${contractId}`),
+    enabled: Boolean(contractId),
   });
 
   if (dispute.isLoading) return <Loading />;
@@ -188,7 +197,14 @@ function DisputeView({ user }: { user: User }) {
         </Card>
 
         {/* The manager talks with both sides here, and with each one in private. */}
-        <ContractChat contractId={data.milestone.contract.id} user={user} />
+        <ContractChat
+          contractId={data.milestone.contract.id}
+          user={user}
+          startupName={parties.data?.startup.startupProfile?.companyName ?? undefined}
+          specialistName={
+            parties.data?.specialist.specialistProfile?.displayName ?? undefined
+          }
+        />
       </div>
 
       <aside>
