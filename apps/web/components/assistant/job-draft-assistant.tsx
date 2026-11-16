@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SparklesIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
+import { EditInPlace, type EditField } from '@/components/assistant/edit-in-place';
 import { useConfirm } from '@/components/confirm-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -106,6 +107,8 @@ export function JobDraftAssistant({
   const [streamed, setStreamed] = useState<Streamed>({ texts: {}, milestones: [] });
   const [used, setUsed] = useState<Map<string, number | null>>(new Map());
   const [discarded, setDiscarded] = useState<Set<string>>(new Set());
+  // Parts edited in their card: what went to the form instead of the suggestion.
+  const [edits, setEdits] = useState<Map<string, Record<string, string>>>(new Map());
   const [announcement, setAnnouncement] = useState('');
   const questionsAsked = useRef<string[] | null>(null);
   const milestonesSeen = useRef(0);
@@ -135,6 +138,7 @@ export function JobDraftAssistant({
     milestonesSeen.current = 0;
     setUsed(new Map());
     setDiscarded(new Set());
+    setEdits(new Map());
     onTracking(null);
     const slow = setTimeout(
       () =>
@@ -210,15 +214,38 @@ export function JobDraftAssistant({
 
   const draft = phase.kind === 'done' ? phase.draft : null;
 
-  function applyText(key: TextKey, focus: boolean) {
-    const value = draft?.[key];
+  /** A text part as it goes to the form: edited in its card, or as suggested. */
+  function textOf(key: TextKey): string | undefined {
+    return edits.get(key)?.text ?? draft?.[key] ?? undefined;
+  }
+
+  /** A milestone as it goes to the form: edited in its card, or as suggested. */
+  function milestoneOf(index: number): SuggestedMilestone | undefined {
+    const milestone = draft?.milestones[index];
+    const edit = edits.get(`milestone:${index}`);
+    return milestone && edit ? withEdit(milestone, edit) : milestone;
+  }
+
+  function applyText(key: TextKey, focus: boolean, value = textOf(key)) {
     if (!value) return;
     bridge.setText(key, value, focus);
     track(new Map(used).set(key, null), withoutKey(discarded, key));
   }
 
-  function applyMilestone(index: number, focus: boolean) {
+  /** Edited in its card: kept for the card and for "Usar todo", and put in the form. */
+  function saveTextEdit(key: TextKey, values: Record<string, string>) {
+    setEdits(new Map(edits).set(key, values));
+    applyText(key, false, values.text);
+  }
+
+  function saveMilestoneEdit(index: number, values: Record<string, string>) {
+    setEdits(new Map(edits).set(`milestone:${index}`, values));
     const milestone = draft?.milestones[index];
+    if (milestone) applyMilestone(index, false, withEdit(milestone, values));
+  }
+
+  function applyMilestone(index: number, focus: boolean, chosen = milestoneOf(index)) {
+    const milestone = chosen;
     if (!milestone) return;
     const row = bridge.putMilestone(milestone, focus);
     track(
@@ -257,11 +284,11 @@ export function JobDraftAssistant({
     }
     const nextUsed = new Map(used);
     for (const key of texts) {
-      bridge.setText(key, draft[key] as string, false);
+      bridge.setText(key, textOf(key) as string, false);
       nextUsed.set(key, null);
     }
     const milestones = draft.milestones
-      .map((milestone, index) => ({ milestone, index }))
+      .map((_, index) => ({ milestone: milestoneOf(index) as SuggestedMilestone, index }))
       .filter(({ index }) => !discarded.has(`milestone:${index}`));
     if (milestones.length > 0) {
       bridge.replaceMilestones(milestones.map(({ milestone }) => milestone));
@@ -408,16 +435,27 @@ export function JobDraftAssistant({
             )}
 
             {(['title', 'description', 'deliverables'] as const).map((key) => {
-              const value = shownTexts(key);
+              const value = edits.get(key)?.text ?? shownTexts(key);
               if (!value || discarded.has(key)) return null;
               return (
                 <SuggestionPart
                   key={key}
                   label={TEXT_LABELS[key]}
                   inForm={used.has(key)}
+                  edited={edits.has(key)}
                   actions={draft !== null}
                   onUse={() => applyText(key, false)}
-                  onEdit={() => applyText(key, true)}
+                  edit={{
+                    fields: [
+                      {
+                        key: 'text',
+                        label: TEXT_LABELS[key],
+                        value,
+                        multiline: key !== 'title',
+                      },
+                    ],
+                    onDone: (values) => saveTextEdit(key, values),
+                  }}
                   onDiscard={() => discard(key)}
                 >
                   <p className="whitespace-pre-line">{value}</p>
@@ -425,15 +463,21 @@ export function JobDraftAssistant({
               );
             })}
 
-            {shownMilestones.map((milestone, index) =>
-              discarded.has(`milestone:${index}`) ? null : (
+            {shownMilestones.map((suggested, index) => {
+              if (discarded.has(`milestone:${index}`)) return null;
+              const milestone = (draft ? milestoneOf(index) : undefined) ?? suggested;
+              return (
                 <SuggestionPart
                   key={`milestone:${index}`}
                   label={`Hito ${index + 1}: ${milestone.title}`}
                   inForm={used.has(`milestone:${index}`)}
+                  edited={edits.has(`milestone:${index}`)}
                   actions={draft !== null}
                   onUse={() => applyMilestone(index, false)}
-                  onEdit={() => applyMilestone(index, true)}
+                  edit={{
+                    fields: milestoneFields(milestone),
+                    onDone: (values) => saveMilestoneEdit(index, values),
+                  }}
                   onDiscard={() => discard(`milestone:${index}`)}
                 >
                   <p className="whitespace-pre-line">{milestone.description}</p>
@@ -447,8 +491,8 @@ export function JobDraftAssistant({
                     </p>
                   ) : null}
                 </SuggestionPart>
-              ),
-            )}
+              );
+            })}
             {writing ? (
               <p className="text-sm text-muted-foreground">
                 {shownMilestones.length === 0
@@ -507,39 +551,108 @@ export function JobDraftAssistant({
   );
 }
 
+/** A suggested milestone with the values edited in its card. */
+function withEdit(
+  milestone: SuggestedMilestone,
+  edit: Record<string, string>,
+): SuggestedMilestone {
+  const amount = edit.amount.trim() === '' ? null : Number(edit.amount);
+  return {
+    ...milestone,
+    title: edit.title,
+    description: edit.description,
+    acceptanceCriteria: edit.acceptanceCriteria,
+    amount: amount !== null && Number.isFinite(amount) ? amount : null,
+  };
+}
+
+/** A milestone's fields, as the card's editor shows them. */
+function milestoneFields(
+  milestone: Omit<SuggestedMilestone, 'amount'> & { amount?: number | null },
+): EditField[] {
+  return [
+    { key: 'title', label: 'Título del hito', value: milestone.title },
+    {
+      key: 'description',
+      label: 'Qué se entrega',
+      value: milestone.description,
+      multiline: true,
+    },
+    {
+      key: 'acceptanceCriteria',
+      label: 'Para aprobarlo',
+      value: milestone.acceptanceCriteria,
+      multiline: true,
+    },
+    {
+      key: 'amount',
+      label: 'Monto (USDC)',
+      value:
+        milestone.amount !== null && milestone.amount !== undefined
+          ? String(milestone.amount)
+          : '',
+      numeric: true,
+    },
+  ];
+}
+
 function SuggestionPart({
   label,
   inForm,
+  edited = false,
   actions,
   onUse,
-  onEdit,
+  edit,
   onDiscard,
   children,
 }: {
   label: string;
   inForm: boolean;
+  edited?: boolean;
   actions: boolean;
   onUse: () => void;
-  onEdit?: () => void;
+  /** "Editar" opens these fields right in the card; "Listo" puts them in the form. */
+  edit?: { fields: EditField[]; onDone: (values: Record<string, string>) => void };
   onDiscard: () => void;
   children: React.ReactNode;
 }) {
+  const [editing, setEditing] = useState(false);
   return (
     <div className="rounded-xl border border-border p-3 text-sm">
       <div className="mb-1 flex items-start justify-between gap-2">
         <p className="font-semibold text-navy">{label}</p>
         <Badge variant={inForm ? 'secondary' : 'outline'}>
-          {inForm ? 'En el formulario' : 'Sugerido'}
+          {inForm
+            ? edited
+              ? 'Editado, en el formulario'
+              : 'En el formulario'
+            : 'Sugerido'}
         </Badge>
       </div>
-      {children}
-      {actions ? (
+      {editing && edit ? (
+        <EditInPlace
+          fields={edit.fields}
+          onDone={(values) => {
+            edit.onDone(values);
+            setEditing(false);
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      ) : (
+        children
+      )}
+      {actions && !editing ? (
         <div className="mt-2 flex flex-wrap gap-2">
           <Button type="button" size="sm" variant="outline" onClick={onUse}>
             Usar
           </Button>
-          {onEdit ? (
-            <Button type="button" size="sm" variant="outline" onClick={onEdit}>
+          {edit ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setEditing(true)}
+            >
               Editar
             </Button>
           ) : null}
