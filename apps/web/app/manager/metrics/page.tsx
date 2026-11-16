@@ -14,7 +14,7 @@ import { ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatTile } from '@/components/stat-tile';
-import { WeeklyBars, WeeksTable, weekLabel } from '@/components/charts/weekly-bars';
+import { ChartOrTable, WeeklyBars, weekLabel } from '@/components/charts/weekly-bars';
 import { api } from '@/lib/api';
 import { dateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -444,7 +444,7 @@ function WeeklyLine({
       </figcaption>
 
       {weeks.length > 0 ? (
-        <>
+        <ChartOrTable title={title} weeks={weeks} values={values} format={format}>
           <div className="relative mt-4 h-20" onMouseLeave={() => setSelected(null)}>
             <svg
               role="img"
@@ -535,10 +535,8 @@ function WeeklyLine({
               <span className="font-medium text-navy">{format(values[latest])}</span>
             </span>
           </div>
-        </>
+        </ChartOrTable>
       ) : null}
-
-      <WeeksTable title={title} weeks={weeks} values={values} format={format} />
     </figure>
   );
 }
