@@ -10,7 +10,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, Trash2Icon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useKycEnabled } from '@/components/activation';
 import { Button } from '@/components/ui/button';
@@ -145,6 +145,22 @@ export function HireDialog({
   );
   const remaining = priceUnits - total;
 
+  // Milestones that do not add up to the price stop the form at the last
+  // amount, so the tap on the button says what is missing right there
+  // (InvalidFieldHelp) instead of a button that does nothing.
+  const amountFields = useRef<(HTMLInputElement | null)[]>([]);
+  useLayoutEffect(() => {
+    const fields = amountFields.current.slice(0, milestones.length);
+    const last = fields[fields.length - 1];
+    const message =
+      remaining === BigInt(0) || priceUnits < toUnits('1')
+        ? ''
+        : remaining > BigInt(0)
+          ? `Faltan ${usdc(fromUnits(remaining))} por asignar: los hitos tienen que sumar ${usdc(fromUnits(priceUnits))}.`
+          : `Los hitos pasan por ${usdc(fromUnits(-remaining))} el precio que ofreces (${usdc(fromUnits(priceUnits))}).`;
+    for (const field of fields) field?.setCustomValidity(field === last ? message : '');
+  }, [remaining, priceUnits, milestones.length]);
+
   function changePrice(next: string) {
     setPrice(next);
     // The milestones follow a price that can be paid; a half-typed one waits.
@@ -202,14 +218,8 @@ export function HireDialog({
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (priceUnits < toUnits('1')) {
-      toast.error('El precio debe ser de al menos 1 USDC');
-      return;
-    }
-    if (remaining !== BigInt(0)) {
-      toast.error(`Los hitos deben sumar ${usdc(fromUnits(priceUnits))}`);
-      return;
-    }
+    // The fields already stop the form on these (min price, amounts that add up).
+    if (priceUnits < toUnits('1') || remaining !== BigInt(0)) return;
     hire.mutate();
   }
 
@@ -295,6 +305,7 @@ export function HireDialog({
               </div>
               <Input
                 placeholder="Título"
+                aria-label={`Título del hito ${index + 1}`}
                 required
                 minLength={3}
                 maxLength={120}
@@ -303,6 +314,7 @@ export function HireDialog({
               />
               <Textarea
                 placeholder="Qué se tiene que entregar"
+                aria-label={`Qué se entrega en el hito ${index + 1}`}
                 required
                 minLength={10}
                 maxLength={2000}
@@ -312,6 +324,8 @@ export function HireDialog({
               />
               <Textarea
                 placeholder="Qué debe cumplir para aprobarse"
+                aria-label={`Qué debe cumplir el hito ${index + 1}`}
+                minLength={10}
                 maxLength={2000}
                 rows={2}
                 value={milestone.acceptanceCriteria}
@@ -321,8 +335,12 @@ export function HireDialog({
               />
               <div className="grid grid-cols-2 gap-3">
                 <Input
+                  ref={(field) => {
+                    amountFields.current[index] = field;
+                  }}
                   type="number"
                   placeholder="Monto (USDC)"
+                  aria-label={`Monto del hito ${index + 1}`}
                   required
                   min={1}
                   step="any"
@@ -331,6 +349,7 @@ export function HireDialog({
                 />
                 <Input
                   type="date"
+                  aria-label={`Fecha de entrega del hito ${index + 1}`}
                   required
                   min={todayIso()}
                   value={milestone.dueDate}
@@ -390,12 +409,7 @@ export function HireDialog({
           ) : null}
 
           <DialogFooter>
-            <Button
-              type="submit"
-              disabled={
-                hire.isPending || remaining !== BigInt(0) || priceUnits < toUnits('1')
-              }
-            >
+            <Button type="submit" disabled={hire.isPending}>
               {hire.isPending
                 ? 'Enviando...'
                 : counteroffer

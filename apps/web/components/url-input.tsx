@@ -56,6 +56,8 @@ export function UrlInput({
         inputMode="url"
         autoComplete="url"
         pattern={HTTPS_LINK}
+        // It names its own problem under the field (InvalidFieldHelp leaves it be).
+        data-own-message=""
         aria-invalid={problem ? true : undefined}
         aria-describedby={problem ? messageId : props['aria-describedby']}
         onBlur={(event) => {
