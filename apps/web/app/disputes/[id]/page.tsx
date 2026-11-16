@@ -73,7 +73,7 @@ function DisputeView({ user }: { user: User }) {
         : 'Manager';
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="space-y-6">
         <PageHeader
           title={`Disputa: ${data.milestone.title}`}
@@ -176,7 +176,7 @@ function DisputeView({ user }: { user: User }) {
                     className="mt-1 inline-flex items-center gap-1 break-all underline"
                   >
                     {item.url} <ExternalLinkIcon className="size-3 shrink-0" />
-                    <span className="text-xs text-muted-foreground no-underline">
+                    <span className="max-w-full shrink-0 text-xs text-muted-foreground no-underline">
                       ({linkHost(item.url)})
                     </span>
                   </a>

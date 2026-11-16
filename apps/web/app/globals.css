@@ -106,6 +106,22 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* A long email, link or name breaks inside its box instead of pushing
+       the box wider or spilling over its neighbours. Words that fit are
+       never split. */
+    overflow-wrap: anywhere;
+  }
+  /* Tables keep whole words and scroll sideways when they do not fit. */
+  table {
+    overflow-wrap: normal;
+  }
+  /* A grid with no column template (on a phone, most of them: "grid
+     md:grid-cols-3") gets one column that can be narrower than its content,
+     like grid-cols-1. Otherwise one line that cannot wrap, such as a long
+     link that truncates, sets the width of the whole page. Any grid-cols-*
+     utility still wins, since utilities come after the base layer. */
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
   }
   html {
     @apply font-sans;

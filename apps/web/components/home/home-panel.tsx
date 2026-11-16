@@ -913,7 +913,7 @@ function RankedBars({
       {rows.map((row) => (
         <li
           key={row.label}
-          className="grid grid-cols-[7rem_1fr_auto] items-center gap-3 text-sm"
+          className="grid grid-cols-[7rem_minmax(0,1fr)_auto] items-center gap-3 text-sm"
         >
           <span className="truncate text-navy">{row.label}</span>
           <span className="h-3 overflow-hidden rounded-r bg-transparent">

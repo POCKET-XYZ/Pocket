@@ -118,7 +118,11 @@ function Contract({ user }: { user: User }) {
         ) : null}
 
         <Card>
-          <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Four columns only without the chat beside: next to it they are too
+              narrow for an email. */}
+          <CardContent
+            className={cn('grid gap-4 pt-6 sm:grid-cols-2', !hasChat && 'lg:grid-cols-4')}
+          >
             <Detail label="Total">{usdc(data.amount)}</Detail>
             <Detail label="Pago protegido">
               {protectionText(data, now)}
@@ -379,7 +383,9 @@ function NextStep({
                 disabled={decline.isPending || accept.isPending}
                 onClick={async () => {
                   const confirmed = await confirm({
-                    title: asked ? '¿Rechazar la contraoferta?' : '¿Rechazar estos términos?',
+                    title: asked
+                      ? '¿Rechazar la contraoferta?'
+                      : '¿Rechazar estos términos?',
                     description: asked
                       ? 'Tu postulación a este trabajo se cierra y la startup podrá elegir a otra persona. Si quieres proponer otro precio, escríbele antes por el chat.'
                       : 'La startup podrá elegir a otra persona.',

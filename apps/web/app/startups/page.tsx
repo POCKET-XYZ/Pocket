@@ -67,7 +67,7 @@ export default function StartupsPage() {
               <div className="mt-4 flex flex-wrap gap-1.5">
                 <Badge
                   variant="secondary"
-                  className="border-0 bg-celeste-light text-navy"
+                  className="h-auto max-w-full whitespace-normal border-0 bg-celeste-light text-navy"
                 >
                   {startup.sector}
                 </Badge>

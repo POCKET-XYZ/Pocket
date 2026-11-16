@@ -127,7 +127,7 @@ export function MilestoneCard({
     <Card id={`hito-${milestone.position + 1}`} className="scroll-mt-24">
       <CardContent className="space-y-4 pt-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Hito {milestone.position + 1} · fecha de entrega: {date(milestone.dueDate)}
             </p>
@@ -418,7 +418,9 @@ function Version({
         <p className="mt-1 whitespace-pre-line text-foreground/80">
           {/* A note in points starts under the label. */}
           <span className="font-medium text-navy">
-            {deliverable.note.includes('\n') ? 'Nota del experto:\n' : 'Nota del experto: '}
+            {deliverable.note.includes('\n')
+              ? 'Nota del experto:\n'
+              : 'Nota del experto: '}
           </span>
           {deliverable.note}
         </p>
