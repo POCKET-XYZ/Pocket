@@ -152,9 +152,19 @@ describe('ContractsService', () => {
   });
 
   describe('create', () => {
+    // The amount the contract was written with.
+    function createdAmount(): string {
+      const [args] = prisma.contract.create.mock.calls[0] as [
+        { data: { amount: Prisma.Decimal } },
+      ];
+      return args.data.amount.toString();
+    }
+
     it('hires the applicant with milestones in order and puts the job in progress', async () => {
       await service.create(startup, dto);
 
+      // No price sent: the applicant's own.
+      expect(createdAmount()).toBe('450.5');
       expect(prisma.contract.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -200,6 +210,32 @@ describe('ContractsService', () => {
           milestones: [{ ...dto.milestones[0], amount: 450.4 }],
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.contract.create).not.toHaveBeenCalled();
+    });
+
+    it('sends a counteroffer at the startup\'s own price, and tells the applicant', async () => {
+      await service.create(startup, {
+        ...dto,
+        price: 105,
+        milestones: [
+          { ...dto.milestones[0], amount: 55 },
+          { ...dto.milestones[1], amount: 50 },
+        ],
+      });
+
+      expect(createdAmount()).toBe('105');
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(['specialist-1'], {
+        type: 'offer_received',
+        contractId: 'contract-1',
+        jobTitle: 'Growth plan',
+        counteroffer: { offered: '105', asked: '450.5' },
+      });
+    });
+
+    it('requires the milestones to add up to the price offered', async () => {
+      await expect(service.create(startup, { ...dto, price: 105 })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
       expect(prisma.contract.create).not.toHaveBeenCalled();
     });
 

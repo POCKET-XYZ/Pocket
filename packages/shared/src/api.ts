@@ -639,6 +639,8 @@ export interface PreparedTransaction {
 /** POST /contracts: hire an applicant. Amounts are in USDC and add up to their price. */
 export interface ContractInput {
   applicationId: string;
+  /** USDC. The startup's counteroffer; left out, the applicant's own price. */
+  price?: number;
   milestones: {
     title: string;
     description: string;
@@ -809,6 +811,8 @@ export interface ContractDetail extends Contract {
     | 'kpis'
     | 'reportTemplate'
   >;
+  /** What the specialist asked for: a contract amount other than this is a counteroffer. */
+  application: { price: string };
   startup: {
     id: string;
     stellarAddress: string;

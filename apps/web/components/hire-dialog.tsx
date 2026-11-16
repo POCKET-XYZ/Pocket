@@ -73,9 +73,46 @@ function planFrom(job: JobListing | undefined, price: string): MilestoneDraft[] 
 }
 
 /**
+ * The milestones at a new price: each keeps its share and the last one
+ * absorbs the rounding. The shares are the job's own amounts, or the ones the
+ * startup typed, never amounts already rounded to another price, so going
+ * from 175 to 140 and back to 105 lands on the job's 55 and 50 again. With no
+ * shares, the price is split evenly.
+ */
+function spread(
+  milestones: MilestoneDraft[],
+  shares: bigint[],
+  price: string,
+): MilestoneDraft[] {
+  const target = toUnits(price);
+  const weights =
+    shares.length === milestones.length
+      ? shares
+      : milestones.map((milestone) => toUnits(milestone.amount));
+  const current = weights.reduce((sum, weight) => sum + weight, BigInt(0));
+  const count = BigInt(milestones.length);
+  let assigned = BigInt(0);
+  return milestones.map((milestone, index) => {
+    const share =
+      index === milestones.length - 1
+        ? target - assigned
+        : current === BigInt(0)
+          ? target / count
+          : (weights[index] * target) / current;
+    assigned += share;
+    return { ...milestone, amount: fromUnits(share) };
+  });
+}
+
+const amountsOf = (milestones: MilestoneDraft[]) =>
+  milestones.map((milestone) => toUnits(milestone.amount));
+
+/**
  * The startup hires an applicant. The milestones come from the job, so the
  * terms are the ones both sides already read; they can still be adjusted if
- * the two of them negotiated something else.
+ * the two of them negotiated something else. The price starts as the one the
+ * applicant asked for; the startup can offer its own instead, and the
+ * applicant accepts or declines it like any terms.
  */
 export function HireDialog({
   applicant,
@@ -87,15 +124,38 @@ export function HireDialog({
   const router = useRouter();
   const kyc = useKycEnabled();
   const [open, setOpen] = useState(false);
+  const [price, setPrice] = useState(applicant.price);
   const [milestones, setMilestones] = useState<MilestoneDraft[]>(() =>
     planFrom(job, applicant.price),
   );
+  // Each milestone's part of the price, as the job set it or the startup typed it.
+  const [shares, setShares] = useState<bigint[]>(() =>
+    job && job.milestones.length > 0
+      ? job.milestones.map((milestone) => toUnits(milestone.amount))
+      : [],
+  );
 
+  const name = applicant.specialist?.displayName ?? 'el experto';
+  const priceUnits = toUnits(price);
+  const counteroffer = priceUnits !== toUnits(applicant.price);
+  const budget = job ? fromUnits(toUnits(String(job.budget))) : null;
   const total = milestones.reduce(
     (sum, milestone) => sum + toUnits(milestone.amount),
     BigInt(0),
   );
-  const remaining = toUnits(applicant.price) - total;
+  const remaining = priceUnits - total;
+
+  function changePrice(next: string) {
+    setPrice(next);
+    // The milestones follow a price that can be paid; a half-typed one waits.
+    if (toUnits(next) >= toUnits('1')) setMilestones(spread(milestones, shares, next));
+  }
+
+  /** A milestone added, removed or with an amount typed: its shares are the new ones. */
+  function reshape(next: MilestoneDraft[]) {
+    setMilestones(next);
+    setShares(amountsOf(next));
+  }
 
   const queryClient = useQueryClient();
   const hire = useMutation({
@@ -104,6 +164,8 @@ export function HireDialog({
         method: 'POST',
         body: {
           applicationId: applicant.id,
+          // Sent only as a counteroffer: otherwise the applicant's own price.
+          ...(counteroffer ? { price: Number(fromUnits(priceUnits)) } : {}),
           milestones: milestones.map((milestone) => ({
             title: milestone.title.trim(),
             description: milestone.description.trim(),
@@ -116,7 +178,11 @@ export function HireDialog({
         },
       }),
     onSuccess: async (contract) => {
-      toast.success('Condiciones enviadas. El experto tiene que aceptarlas.');
+      toast.success(
+        counteroffer
+          ? 'Contraoferta enviada. El experto tiene que aceptarla.'
+          : 'Condiciones enviadas. El experto tiene que aceptarlas.',
+      );
       // The job is no longer open and the application is taken.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['jobs'] }),
@@ -129,15 +195,19 @@ export function HireDialog({
   });
 
   function update(index: number, patch: Partial<MilestoneDraft>) {
-    setMilestones((current) =>
-      current.map((m, i) => (i === index ? { ...m, ...patch } : m)),
-    );
+    const next = milestones.map((m, i) => (i === index ? { ...m, ...patch } : m));
+    if (patch.amount === undefined) setMilestones(next);
+    else reshape(next);
   }
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (priceUnits < toUnits('1')) {
+      toast.error('El precio debe ser de al menos 1 USDC');
+      return;
+    }
     if (remaining !== BigInt(0)) {
-      toast.error(`Los hitos deben sumar ${usdc(applicant.price)}`);
+      toast.error(`Los hitos deben sumar ${usdc(fromUnits(priceUnits))}`);
       return;
     }
     hire.mutate();
@@ -154,14 +224,59 @@ export function HireDialog({
             Contratar a {applicant.specialist?.displayName ?? 'este experto'}
           </DialogTitle>
           <DialogDescription>
-            Divide los {usdc(applicant.price)} acordados en hitos. Cada uno se paga cuando
-            apruebas su entrega.
+            Elige el precio y divídelo en hitos. Cada hito se paga cuando apruebas su
+            entrega.
             {kyc && !applicant.identityVerified
               ? ' Antes de aceptar, el experto verifica su identidad con Pocket.'
               : ''}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-2 rounded-xl border border-border p-4">
+            <label htmlFor="hire-price" className="text-sm font-semibold text-navy">
+              Precio que ofreces (USDC)
+            </label>
+            <Input
+              id="hire-price"
+              type="number"
+              inputMode="decimal"
+              required
+              min={1}
+              step="any"
+              value={price}
+              onChange={(event) => changePrice(event.target.value)}
+            />
+            <p className="text-sm text-muted-foreground">
+              {name} pidió {usdc(applicant.price)}
+              {budget !== null ? ` y tu presupuesto era de ${usdc(budget)}` : ''}.{' '}
+              {counteroffer
+                ? `Le llega como contraoferta: ${name} la acepta o la rechaza.`
+                : 'Puedes ofrecerle otro precio: le llega como contraoferta.'}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {budget !== null && toUnits(budget) !== priceUnits ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => changePrice(budget)}
+                >
+                  Ofrecer mi presupuesto ({usdc(budget)})
+                </Button>
+              ) : null}
+              {counteroffer ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => changePrice(applicant.price)}
+                >
+                  Volver a su precio ({usdc(applicant.price)})
+                </Button>
+              ) : null}
+            </div>
+          </div>
+
           {milestones.map((milestone, index) => (
             <div key={index} className="space-y-3 rounded-xl border border-border p-4">
               <div className="flex items-center justify-between">
@@ -172,9 +287,7 @@ export function HireDialog({
                     variant="ghost"
                     size="icon-sm"
                     aria-label="Quitar hito"
-                    onClick={() =>
-                      setMilestones((current) => current.filter((_, i) => i !== index))
-                    }
+                    onClick={() => reshape(milestones.filter((_, i) => i !== index))}
                   >
                     <Trash2Icon />
                   </Button>
@@ -232,8 +345,8 @@ export function HireDialog({
               type="button"
               variant="outline"
               onClick={() =>
-                setMilestones((current) => [
-                  ...current,
+                reshape([
+                  ...milestones,
                   {
                     title: '',
                     description: '',
@@ -255,18 +368,18 @@ export function HireDialog({
             )}
           >
             {remaining === BigInt(0)
-              ? 'Los hitos suman el precio acordado.'
+              ? 'Los hitos suman el precio que ofreces.'
               : remaining > BigInt(0)
                 ? `Faltan ${usdc(fromUnits(remaining))} por asignar.`
-                : `${usdc(fromUnits(-remaining))} por encima del precio acordado.`}
+                : `${usdc(fromUnits(-remaining))} por encima del precio que ofreces.`}
           </p>
 
           {remaining === BigInt(0) ? (
             <p className="rounded-lg bg-celeste-light/40 px-3 py-2 text-sm text-muted-foreground">
-              Tú depositas el total de {usdc(applicant.price)}. Trustless Work, que opera
-              el contrato, se queda con el {TRUSTLESS_WORK_FEE_PERCENT}% de cada pago y
-              Pocket con el {POCKET_FEE_PERCENT}%, así que{' '}
-              {applicant.specialist?.displayName ?? 'el experto'} recibe{' '}
+              Si {name} acepta, depositas el total de {usdc(fromUnits(priceUnits))}.
+              Trustless Work, que opera el contrato, se queda con el{' '}
+              {TRUSTLESS_WORK_FEE_PERCENT}% de cada pago y Pocket con el{' '}
+              {POCKET_FEE_PERCENT}%, así que {name} recibe{' '}
               {usdc(
                 totalAfterFees(
                   milestones.map((milestone) => fromUnits(toUnits(milestone.amount))),
@@ -277,8 +390,17 @@ export function HireDialog({
           ) : null}
 
           <DialogFooter>
-            <Button type="submit" disabled={hire.isPending || remaining !== BigInt(0)}>
-              {hire.isPending ? 'Enviando...' : 'Enviar condiciones'}
+            <Button
+              type="submit"
+              disabled={
+                hire.isPending || remaining !== BigInt(0) || priceUnits < toUnits('1')
+              }
+            >
+              {hire.isPending
+                ? 'Enviando...'
+                : counteroffer
+                  ? 'Enviar contraoferta'
+                  : 'Enviar condiciones'}
             </Button>
           </DialogFooter>
         </form>

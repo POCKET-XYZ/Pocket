@@ -197,6 +197,20 @@ describe('templates', () => {
     expect(email.subject).toBe('Te quieren contratar para "Growth plan"');
   });
 
+  it('tells the specialist when the price offered is not the one they asked', () => {
+    const email = render(
+      {
+        type: 'offer_received',
+        contractId: 'c-1',
+        jobTitle: 'Growth plan',
+        counteroffer: { offered: '105', asked: '175' },
+      },
+      'https://pocket.example',
+    );
+    expect(email.text).toContain('te ofrece 105 USDC. Tú pediste 175 USDC.');
+    expect(email.text).toContain('chat del contrato');
+  });
+
   it('escapes every HTML special character', () => {
     expect(escapeHtml(`<a href="x">'&'</a>`)).toBe(
       '&lt;a href=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/a&gt;',

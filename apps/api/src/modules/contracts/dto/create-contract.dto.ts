@@ -51,11 +51,27 @@ export class MilestoneInputDto {
   dueDate: string;
 }
 
-/** The startup picks an applicant and splits the agreed price into milestones. */
+/**
+ * The startup picks an applicant and splits a price into milestones: the one
+ * the applicant asked for, or its own counteroffer, which the applicant then
+ * accepts or declines.
+ */
 export class CreateContractDto {
   @ApiProperty()
   @IsUUID()
   applicationId: string;
+
+  @ApiPropertyOptional({
+    description:
+      "The price offered, in USDC. Left out, it is the applicant's own price.",
+    example: 105,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 7 })
+  @Min(1)
+  @Max(1_000_000)
+  price?: number;
 
   @ApiProperty({ type: [MilestoneInputDto], minItems: 1, maxItems: 5 })
   @IsArray()

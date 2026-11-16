@@ -9,7 +9,13 @@ export type NotificationEvent =
   | { type: 'verification_approved'; identityChecked?: boolean }
   | { type: 'application_received'; jobId: string; jobTitle: string }
   | { type: 'application_not_selected'; jobTitle: string }
-  | { type: 'offer_received'; contractId: string; jobTitle: string }
+  | {
+      type: 'offer_received';
+      contractId: string;
+      jobTitle: string;
+      /** The startup offers a price other than the one the specialist asked. */
+      counteroffer?: { offered: string; asked: string };
+    }
   | { type: 'offer_declined'; contractId: string; jobTitle: string }
   | { type: 'offer_withdrawn'; jobTitle: string }
   | { type: 'terms_accepted'; contractId: string; jobTitle: string }
@@ -98,9 +104,14 @@ function content(event: NotificationEvent): Content {
     case 'offer_received':
       return {
         subject: `Te quieren contratar para "${event.jobTitle}"`,
-        paragraphs: [
-          `Una empresa quiere contratarte para "${event.jobTitle}". Revisa los hitos y los montos, y acepta o rechaza los términos.`,
-        ],
+        paragraphs: event.counteroffer
+          ? [
+              `Una empresa quiere contratarte para "${event.jobTitle}" y te ofrece ${event.counteroffer.offered} USDC. Tú pediste ${event.counteroffer.asked} USDC.`,
+              'Revisa los hitos y los montos, y acepta o rechaza los términos. Si quieres hablar el precio, escríbele a la empresa por el chat del contrato.',
+            ]
+          : [
+              `Una empresa quiere contratarte para "${event.jobTitle}". Revisa los hitos y los montos, y acepta o rechaza los términos.`,
+            ],
         button: { label: 'Ver los términos', path: `/contracts/${event.contractId}` },
       };
     case 'offer_declined':

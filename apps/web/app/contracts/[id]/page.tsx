@@ -211,6 +211,12 @@ function headerStatus(contract: ContractDetail, now: number): string {
   return contract.status;
 }
 
+/** What the specialist asked for, when the startup offered another price. */
+function askedPrice(contract: ContractDetail): string | null {
+  const asked = contract.application?.price;
+  return asked && Number(asked) !== Number(contract.amount) ? asked : null;
+}
+
 /** Where the money stands, in words instead of a network address. */
 function protectionText(contract: ContractDetail, now: number): string {
   switch (contract.status) {
@@ -311,13 +317,16 @@ function NextStep({
     }
     const preparing = accept.isPending || deploying;
     const identityChecked = user.verificationStatus === 'approved';
+    const asked = askedPrice(contract);
     return (
       <Card className="border-warning">
         <CardHeader>
           <CardTitle>
             {preparing
               ? 'Preparando tu contrato'
-              : 'Tu siguiente paso: revisa los hitos y acepta los términos'}
+              : asked
+                ? 'Tu siguiente paso: revisa la contraoferta de la empresa'
+                : 'Tu siguiente paso: revisa los hitos y acepta los términos'}
           </CardTitle>
           <CardDescription>
             {preparing
@@ -326,6 +335,13 @@ function NextStep({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {asked && !preparing ? (
+            <p className="rounded-lg bg-celeste-light/40 px-3 py-2 text-sm">
+              Pediste <strong>{usdc(asked)}</strong> y la empresa te ofrece{' '}
+              <strong>{usdc(contract.amount)}</strong>. Si quieres hablar el precio,
+              escríbele por el chat del contrato antes de responder.
+            </p>
+          ) : null}
           <FeeBreakdown
             amounts={amounts}
             totalLabel="Monto del contrato"
@@ -363,8 +379,10 @@ function NextStep({
                 disabled={decline.isPending || accept.isPending}
                 onClick={async () => {
                   const confirmed = await confirm({
-                    title: '¿Rechazar estos términos?',
-                    description: 'La startup podrá elegir a otra persona.',
+                    title: asked ? '¿Rechazar la contraoferta?' : '¿Rechazar estos términos?',
+                    description: asked
+                      ? 'Tu postulación a este trabajo se cierra y la startup podrá elegir a otra persona. Si quieres proponer otro precio, escríbele antes por el chat.'
+                      : 'La startup podrá elegir a otra persona.',
                     confirmText: 'Rechazar',
                     destructive: true,
                   });
@@ -604,11 +622,20 @@ function WithdrawOffer({ contract, now }: { contract: ContractDetail; now: numbe
     );
   }
 
+  const asked = askedPrice(contract);
   return (
     <Alert className="border-celeste bg-celeste-light/40">
       <AlertTitle>Esperando al experto</AlertTitle>
       <AlertDescription>
-        <p>El experto revisa los hitos y acepta o rechaza los términos.</p>
+        {asked ? (
+          <p>
+            Le ofreciste {usdc(contract.amount)} y había pedido {usdc(asked)}. El experto
+            acepta o rechaza tu contraoferta. Si acuerdan otro precio por el chat, retira
+            esta oferta y envía una nueva.
+          </p>
+        ) : (
+          <p>El experto revisa los hitos y acepta o rechaza los términos.</p>
+        )}
         <Button
           size="sm"
           variant="outline"

@@ -4,8 +4,8 @@ A contract is what a startup and a specialist agree on once the startup picks an
 
 ## Hiring
 
-1. The startup picks an application and splits its price into 1 to 5 milestones, each with a title, a description, an amount and a due date. The amounts must add up to the price exactly. The job stops taking applications.
-2. The specialist reviews the terms:
+1. The startup picks an application and splits a price into 1 to 5 milestones, each with a title, a description, an amount and a due date. The price is the one the applicant asked for, or the startup's own counteroffer (`price` in `POST /contracts`); the amounts must add up to it exactly. The job stops taking applications.
+2. The specialist reviews the terms. A counteroffer is told as one, in the email and on the contract (the detail carries `application.price`, what they asked for); they can talk it over in the contract's chat, and the startup can withdraw the terms and send new ones.
    - **Accepts:** Pocket deploys the escrow. The applicants who were on hold are turned down.
    - **Declines:** the contract is cancelled and the job opens again, so the startup can pick another applicant.
 3. The startup funds the escrow with the full amount. The contract is active and the specialist can start.
