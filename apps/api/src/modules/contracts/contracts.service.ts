@@ -34,6 +34,8 @@ const DETAIL_INCLUDE = {
       reportTemplate: { select: REPORT_TEMPLATE_INFO },
     },
   },
+  // What the specialist asked for, to tell a counteroffer apart.
+  application: { select: { price: true } },
   startup: {
     select: {
       id: true,
@@ -84,10 +86,11 @@ export class ContractsService {
   ) {}
 
   /**
-   * The startup chooses an applicant and splits the agreed price into
-   * milestones. The job stops taking applications; the other applicants stay
-   * on hold until the specialist accepts, so the startup can pick someone else
-   * if they decline.
+   * The startup chooses an applicant and splits a price into milestones: the
+   * one the applicant asked for or its own counteroffer, which the applicant
+   * accepts or declines like any terms. The job stops taking applications;
+   * the other applicants stay on hold until the specialist accepts, so the
+   * startup can pick someone else if they decline.
    */
   async create(user: AuthUser, dto: CreateContractDto): Promise<Contract> {
     const application = await this.prisma.application.findUnique({
@@ -111,13 +114,15 @@ export class ContractsService {
         'La fecha de entrega de un hito no puede estar en el pasado',
       );
     }
+    const price =
+      dto.price === undefined ? application.price : new Prisma.Decimal(dto.price);
     const total = dto.milestones.reduce(
       (sum, milestone) => sum.plus(milestone.amount),
       new Prisma.Decimal(0),
     );
-    if (!total.equals(application.price)) {
+    if (!total.equals(price)) {
       throw new BadRequestException(
-        `Los hitos suman ${total.toString()} USDC, pero el precio acordado es ${application.price.toString()} USDC`,
+        `Los hitos suman ${total.toString()} USDC, pero el precio que ofreces es ${price.toString()} USDC`,
       );
     }
 
@@ -143,7 +148,7 @@ export class ContractsService {
           applicationId: application.id,
           startupId: user.sub,
           specialistId: application.specialistId,
-          amount: application.price,
+          amount: price,
           milestones: {
             create: dto.milestones.map((milestone, position) => ({
               ...milestone,
@@ -159,6 +164,15 @@ export class ContractsService {
       type: 'offer_received',
       contractId: created.id,
       jobTitle: job.title,
+      // A price other than theirs is told in the email itself.
+      ...(price.equals(application.price)
+        ? {}
+        : {
+            counteroffer: {
+              offered: price.toString(),
+              asked: application.price.toString(),
+            },
+          }),
     });
     return created;
   }
