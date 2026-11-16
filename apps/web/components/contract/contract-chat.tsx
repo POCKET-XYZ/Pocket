@@ -12,6 +12,7 @@ import { LockIcon, MessageCircleIcon, SendIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Avatar } from '@/components/avatar';
+import { isNotAvailable } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,7 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { ApiError, api, errorMessage } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 /** How often an open chat asks for new messages. */
@@ -86,7 +87,8 @@ export function ContractChat({
       .catch(() => undefined);
   }, [channelHere, unreadHere, contractId, queryClient]);
 
-  if (chat.error instanceof ApiError && chat.error.status === 403) return null;
+  // No chat to show (a manager before any dispute, or not the user's contract).
+  if (isNotAvailable(chat.error)) return null;
 
   return (
     <section

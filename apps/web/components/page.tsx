@@ -1,4 +1,5 @@
-import { Loader2Icon, RotateCwIcon } from 'lucide-react';
+import { Loader2Icon, LockIcon, RotateCwIcon } from 'lucide-react';
+import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ApiError, errorMessage } from '@/lib/api';
@@ -38,8 +39,38 @@ export function Loading({ label = 'Cargando' }: { label?: string }) {
 }
 
 /**
+ * In place of a page that does not exist or is not the visitor's: the same
+ * words either way, so a link says nothing about what is there or whose it is.
+ */
+export function NotAvailable() {
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center py-16 text-center">
+      <span className="flex size-12 items-center justify-center rounded-full bg-celeste-light text-navy">
+        <LockIcon className="size-5" />
+      </span>
+      <h1 className="mt-4 font-heading text-2xl font-bold text-navy">
+        No puedes ver esta página
+      </h1>
+      <p className="mt-2 text-muted-foreground">
+        No existe o no es de la cuenta con la que entraste. Si te pasaron el enlace,
+        revisa que estés en la cuenta correcta.
+      </p>
+      <Button asChild className="mt-6">
+        <Link href="/">Ir al inicio</Link>
+      </Button>
+    </div>
+  );
+}
+
+/** A page the API said is missing or not the user's: shown the same way. */
+export function isNotAvailable(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 403 || error.status === 404);
+}
+
+/**
  * An error in place of what a page could not load. With `onRetry`, a button
- * asks for it again, for when the connection or the API comes back.
+ * asks for it again, for when the connection or the API comes back. Something
+ * missing or not the user's shows NotAvailable instead of the API's words.
  */
 export function ErrorAlert({
   error,
@@ -50,6 +81,7 @@ export function ErrorAlert({
   title?: string;
   onRetry?: () => void;
 }) {
+  if (isNotAvailable(error)) return <NotAvailable />;
   // Asking again only helps when the connection or the server failed: a
   // missing contract or a refused page answers the same every time.
   const retryable =

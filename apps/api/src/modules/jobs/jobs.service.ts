@@ -246,12 +246,14 @@ export class JobsService {
     }
   }
 
-  /** A job the signed-in startup owns, or an error. */
+  /**
+   * A job the signed-in startup owns. Another startup's job is answered as
+   * missing, so an id says nothing about what exists or whose it is.
+   */
   async ownedJob(user: AuthUser, jobId: string): Promise<Job> {
     const job = await this.prisma.job.findUnique({ where: { id: jobId } });
-    if (!job) throw new NotFoundException('No encontramos el trabajo');
-    if (job.startupId !== user.sub) {
-      throw new ForbiddenException('Este trabajo es de otra startup');
+    if (!job || job.startupId !== user.sub) {
+      throw new NotFoundException('No encontramos el trabajo');
     }
     return job;
   }

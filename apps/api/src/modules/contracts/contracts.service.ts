@@ -562,7 +562,10 @@ export class ContractsService {
   }
 }
 
-/** Parties see their own contracts; managers see every contract. */
+/**
+ * Parties see their own contracts; managers see every contract. Anyone else
+ * is told it does not exist, as for an id that matches nothing.
+ */
 export function assertCanView(
   user: AuthUser,
   contract: Pick<Contract, 'startupId' | 'specialistId'>,
@@ -572,6 +575,6 @@ export function assertCanView(
     contract.startupId !== user.sub &&
     contract.specialistId !== user.sub
   ) {
-    throw new ForbiddenException('No eres parte de este contrato');
+    throw new NotFoundException('No encontramos el contrato');
   }
 }

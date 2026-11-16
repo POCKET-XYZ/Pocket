@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -269,7 +270,7 @@ describe('ContractsService', () => {
         status: 'open',
       });
       await expect(service.create(startup, dto)).rejects.toBeInstanceOf(
-        ForbiddenException,
+        NotFoundException,
       );
     });
 

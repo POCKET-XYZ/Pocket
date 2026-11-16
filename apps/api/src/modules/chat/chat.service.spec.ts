@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { AuthUser } from '../../common/types/auth';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { NotificationsService } from '../notifications/notifications.service';
@@ -136,7 +140,7 @@ describe('ChatService', () => {
 
   it('keeps out anyone who is not part of the contract', async () => {
     await expect(service.chat(stranger, 'contract-1')).rejects.toBeInstanceOf(
-      ForbiddenException,
+      NotFoundException,
     );
   });
 

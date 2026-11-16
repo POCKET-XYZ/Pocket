@@ -47,7 +47,11 @@ describe('ApplicationsService', () => {
       job: {
         findUnique: jest
           .fn()
-          .mockResolvedValue({ status: 'open', title: 'Growth plan', startupId: 'startup-1' }),
+          .mockResolvedValue({
+            status: 'open',
+            title: 'Growth plan',
+            startupId: 'startup-1',
+          }),
       },
       application: {
         create: jest.fn(),
@@ -171,7 +175,7 @@ describe('ApplicationsService', () => {
     it("hides another startup's applicants", async () => {
       prisma.job.findUnique.mockResolvedValue({ id: 'job-1', startupId: 'startup-2' });
       await expect(service.forJob(startup, 'job-1')).rejects.toBeInstanceOf(
-        ForbiddenException,
+        NotFoundException,
       );
       expect(prisma.application.findMany).not.toHaveBeenCalled();
     });
@@ -223,7 +227,7 @@ describe('ApplicationsService', () => {
         status: 'submitted',
       });
       await expect(service.withdraw(specialist, 'app-1')).rejects.toBeInstanceOf(
-        ForbiddenException,
+        NotFoundException,
       );
     });
   });

@@ -433,7 +433,7 @@ describe('JobsService', () => {
         status: 'open',
       });
       await expect(service.close(startup, 'job-1')).rejects.toBeInstanceOf(
-        ForbiddenException,
+        NotFoundException,
       );
     });
 
@@ -542,7 +542,7 @@ describe('JobsService', () => {
       it("refuses another startup's draft", async () => {
         prisma.job.findUnique.mockResolvedValue({ ...draft, startupId: 'startup-2' });
         await expect(service.update(startup, 'job-1', dto)).rejects.toBeInstanceOf(
-          ForbiddenException,
+          NotFoundException,
         );
       });
 
@@ -598,7 +598,7 @@ describe('JobsService', () => {
       it("refuses another startup's draft", async () => {
         prisma.job.findUnique.mockResolvedValue({ ...draft, startupId: 'startup-2' });
         await expect(service.publish(startup, 'job-1')).rejects.toBeInstanceOf(
-          ForbiddenException,
+          NotFoundException,
         );
       });
     });
@@ -625,7 +625,7 @@ describe('JobsService', () => {
       it("refuses another startup's draft", async () => {
         prisma.job.findUnique.mockResolvedValue({ ...draft, startupId: 'startup-2' });
         await expect(service.remove(startup, 'job-1')).rejects.toBeInstanceOf(
-          ForbiddenException,
+          NotFoundException,
         );
       });
     });

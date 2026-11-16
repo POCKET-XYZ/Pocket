@@ -143,9 +143,9 @@ describe('ReportTemplatesService', () => {
       ['another startup', otherStartup],
       ['a specialist', specialist],
       ['a manager', manager],
-    ])('refuses %s', async (_label, user) => {
+    ])('answers %s as if there were no such job', async (_label, user) => {
       await expect(service.save(user, 'job-1', upload(xlsx()))).rejects.toBeInstanceOf(
-        ForbiddenException,
+        NotFoundException,
       );
     });
 
@@ -177,7 +177,7 @@ describe('ReportTemplatesService', () => {
 
     it('refuses another startup', async () => {
       await expect(service.remove(otherStartup, 'job-1')).rejects.toBeInstanceOf(
-        ForbiddenException,
+        NotFoundException,
       );
       expect(prisma.jobReportTemplate.deleteMany).not.toHaveBeenCalled();
     });
@@ -209,11 +209,14 @@ describe('ReportTemplatesService', () => {
       });
     });
 
-    it.each([
-      ['another startup', otherStartup],
-      ['a specialist who never sent their details', unverified],
-    ])('refuses %s', async (_label, user) => {
-      await expect(service.fileOf(user, 'job-1')).rejects.toBeInstanceOf(
+    it('answers another startup as if there were no such job', async () => {
+      await expect(service.fileOf(otherStartup, 'job-1')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('refuses a specialist who never sent their details', async () => {
+      await expect(service.fileOf(unverified, 'job-1')).rejects.toBeInstanceOf(
         ForbiddenException,
       );
     });
@@ -221,7 +224,7 @@ describe('ReportTemplatesService', () => {
     it('does not tell another startup whether there is a file', async () => {
       job('open', null);
       await expect(service.fileOf(otherStartup, 'job-1')).rejects.toBeInstanceOf(
-        ForbiddenException,
+        NotFoundException,
       );
     });
 
