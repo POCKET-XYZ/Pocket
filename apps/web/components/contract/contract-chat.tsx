@@ -311,9 +311,11 @@ function Messages({ thread, user }: { thread: ChatThread; user: User }) {
         </span>
         <div>
           <p className="font-heading font-bold text-navy">Todavía no hay mensajes</p>
-          <p className="mt-1 max-w-64 text-sm text-muted-foreground">
-            {hint(thread.channel, user)}
-          </p>
+          {hint(thread.channel, user) ? (
+            <p className="mt-1 max-w-64 text-sm text-muted-foreground">
+              {hint(thread.channel, user)}
+            </p>
+          ) : null}
         </div>
       </div>
     );
@@ -321,9 +323,11 @@ function Messages({ thread, user }: { thread: ChatThread; user: User }) {
 
   return (
     <div className="flex-1 space-y-1 overflow-y-auto bg-muted/30 px-4 py-4">
-      <p className="mb-3 text-center text-xs text-muted-foreground">
-        {hint(thread.channel, user)}
-      </p>
+      {hint(thread.channel, user) ? (
+        <p className="mb-3 text-center text-xs text-muted-foreground">
+          {hint(thread.channel, user)}
+        </p>
+      ) : null}
       {thread.messages.map((message, index) => {
         const before = thread.messages[index - 1];
         const newDay =
@@ -383,11 +387,16 @@ function Messages({ thread, user }: { thread: ChatThread; user: User }) {
   );
 }
 
-function hint(channel: ChatChannel, user: User): string {
+/**
+ * Who else reads a chat, when it is not plain from the header: the private
+ * chats, and for a manager the shared one. Between the two sides there is
+ * nothing to add.
+ */
+function hint(channel: ChatChannel, user: User): string | null {
   if (channel === 'contract') {
     return user.role === 'manager'
       ? 'Lo ven la startup, el experto y el equipo de Pocket.'
-      : 'Habla aquí con la otra parte. Si hay una disputa, también lo lee el equipo de Pocket.';
+      : null;
   }
   return user.role === 'manager'
     ? 'Privado: solo lo ven esta parte y el equipo de Pocket.'
