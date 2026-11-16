@@ -219,10 +219,35 @@ describe('ChatService', () => {
 
   it('leaves the chat of a cancelled contract for reading', async () => {
     prisma.contract.findUnique.mockResolvedValue(contract({ status: 'cancelled' }));
+    await expect(service.send(startup, 'contract-1', 'contract', 'Hola')).rejects.toThrow(
+      'Este contrato se canceló',
+    );
+    const chat = await service.chat(startup, 'contract-1');
+    expect(chat.closed).toBe('cancelled');
+    expect(chat.threads[0].canWrite).toBe(false);
+  });
+
+  it('leaves every chat of a finished contract for reading, the private ones too', async () => {
+    prisma.contract.findUnique.mockResolvedValue(
+      contract({ status: 'completed', milestones: [{ _count: { disputes: 1 } }] }),
+    );
     await expect(
-      service.send(startup, 'contract-1', 'contract', 'Hola'),
+      service.send(startup, 'contract-1', 'contract', 'Gracias'),
+    ).rejects.toThrow('Este contrato terminó');
+    await expect(
+      service.send(manager, 'contract-1', 'manager_startup', 'Hola'),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect((await service.chat(startup, 'contract-1')).threads[0].canWrite).toBe(false);
+    expect(prisma.contractMessage.create).not.toHaveBeenCalled();
+    const chat = await service.chat(startup, 'contract-1');
+    expect(chat.closed).toBe('completed');
+    expect(chat.threads.map((thread) => thread.canWrite)).toEqual([false, false]);
+  });
+
+  it('lets both sides write while the contract is under way', async () => {
+    prisma.contract.findUnique.mockResolvedValue(contract({ status: 'active' }));
+    const chat = await service.chat(startup, 'contract-1');
+    expect(chat.closed).toBeNull();
+    expect(chat.threads[0].canWrite).toBe(true);
   });
 
   it('counts unread messages per contract', async () => {

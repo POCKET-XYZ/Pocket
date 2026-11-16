@@ -115,7 +115,9 @@ export function ContractChat({
             <Composer contractId={contractId} channel={thread.channel} />
           ) : (
             <p className="border-t border-border bg-muted/40 px-4 py-3 text-center text-xs text-muted-foreground">
-              Este contrato se canceló: su chat queda solo para leer.
+              {chat.data?.closed === 'cancelled'
+                ? 'Este contrato se canceló: el chat queda como registro y ya no se pueden enviar mensajes.'
+                : 'Este contrato terminó: el chat queda como registro y ya no se pueden enviar mensajes.'}
             </p>
           )}
         </>
@@ -171,7 +173,7 @@ function who(channel: ChatChannel, user: User, names: Names) {
   if (channel === 'contract') {
     if (user.role === 'manager') {
       return {
-        name: 'Chat del contrato',
+        name: 'Ambas partes',
         detail: `${startup} y ${specialist}`,
         avatar: 'Pocket',
       };
@@ -179,7 +181,7 @@ function who(channel: ChatChannel, user: User, names: Names) {
     const isStartup = user.role === 'startup';
     return {
       name: isStartup ? specialist : startup,
-      detail: isStartup ? 'Experto · Chat del contrato' : 'Startup · Chat del contrato',
+      detail: isStartup ? 'Experto' : 'Startup',
       avatar: isStartup ? specialist : startup,
     };
   }
@@ -228,9 +230,15 @@ function ThreadTabs({
   names: Names;
   onChoose: (channel: ChatChannel) => void;
 }) {
+  // Each tab says who is on the other side, not which chat it is.
   const label = (channel: ChatChannel): string => {
-    if (channel === 'contract') return 'Contrato';
-    if (user.role !== 'manager') return 'Con Pocket';
+    if (channel === 'contract') {
+      if (user.role === 'manager') return 'Ambas partes';
+      return user.role === 'startup'
+        ? (names.specialistName ?? 'El experto')
+        : (names.startupName ?? 'La startup');
+    }
+    if (user.role !== 'manager') return 'Equipo de Pocket';
     return channel === 'manager_startup'
       ? (names.startupName ?? 'La startup')
       : (names.specialistName ?? 'El experto');

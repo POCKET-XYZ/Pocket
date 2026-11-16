@@ -14,6 +14,10 @@ The specialist's wallet must trust USDC before accepting, and the startup's befo
 
 Once there is a contract, each party sees the other's contact email, since they talk outside the platform.
 
+## Chat
+
+Each contract has a chat between the startup and the specialist, from the offer on. Once a milestone is disputed, managers join it, and each side also gets a private chat with them (`manager_startup`, `manager_specialist`); managers see nothing of a contract without a dispute. A completed or cancelled contract keeps its chats to be read: `GET /contracts/:id/chat` says why in `closed`, and sending answers 400. Each new message is emailed to the other side, at most one email per chat every 15 minutes.
+
 ## Milestones
 
 1. The specialist delivers: a link, an optional note and a result for each of the job's KPIs. Every version is kept.
@@ -58,28 +62,32 @@ A manager resolves it with one of three outcomes, and a note both parties see:
 
 Steps that need a signature come in pairs: `prepare` returns `{ operationId, xdr, networkPassphrase }` for the wallet to sign, and the next call takes `{ signedXdr }`.
 
-| Endpoint                               | Who                   | What it does                                                                    |
-| -------------------------------------- | --------------------- | ------------------------------------------------------------------------------- |
-| `POST /contracts`                      | Approved startups     | Hires: `{ applicationId, milestones }`.                                         |
-| `GET /contracts/mine`                  | Startups, specialists | The user's contracts.                                                           |
-| `GET /contracts/:id`                   | Parties, managers     | Milestones, deliveries, disputes, contacts and confirmed on-chain transactions. |
-| `GET /contracts/:id/report`            | Parties, managers     | The [results report](reports.md). `/report/csv` has its payments as a CSV.      |
-| `POST /contracts/:id/accept`           | The specialist        | Accepts the terms; deploys the escrow.                                          |
-| `POST /contracts/:id/decline`          | The specialist        | Declines the terms.                                                             |
-| `POST /contracts/:id/fund/prepare`     | The startup           | Funding transaction to sign.                                                    |
-| `POST /contracts/:id/fund/submit`      | The startup           | Broadcasts it and activates the contract once the escrow is funded.             |
-| `POST /contracts/:id/fund/sync`        | The startup           | Checks the escrow again, when the deposit took a moment to show.                |
-| `POST /milestones/:id/deliveries`      | The specialist        | Delivers: `{ url, note?, results? }`. One result per KPI of the job.            |
-| `POST /milestones/:id/request-changes` | The startup           | Sends it back: `{ feedback }`.                                                  |
-| `POST /milestones/:id/approve/prepare` | The startup           | Approval transaction to sign.                                                   |
-| `POST /milestones/:id/approve/submit`  | The startup           | Broadcasts it; Pocket then pays the milestone.                                  |
-| `POST /milestones/:id/release`         | The startup, managers | Retries the payment of an approved milestone.                                   |
-| `POST /milestones/:id/dispute/prepare` | Either party          | Dispute transaction to sign.                                                    |
-| `POST /milestones/:id/dispute`         | Either party          | Broadcasts it: `{ signedXdr, reason }`.                                         |
-| `GET /disputes/:id`                    | Parties, managers     | The dispute with its evidence and the milestone's deliveries.                   |
-| `POST /disputes/:id/evidence`          | Parties, managers     | Adds `{ url?, comment }`.                                                       |
-| `GET /manager/disputes`                | Managers              | Queue, oldest first. `status` defaults to `open`.                               |
-| `POST /manager/disputes/:id/resolve`   | Managers              | `{ outcome, specialistAmount?, note }`.                                         |
+| Endpoint                                 | Who                   | What it does                                                                    |
+| ---------------------------------------- | --------------------- | ------------------------------------------------------------------------------- |
+| `POST /contracts`                        | Approved startups     | Hires: `{ applicationId, milestones }`.                                         |
+| `GET /contracts/mine`                    | Startups, specialists | The user's contracts.                                                           |
+| `GET /contracts/:id`                     | Parties, managers     | Milestones, deliveries, disputes, contacts and confirmed on-chain transactions. |
+| `GET /contracts/:id/report`              | Parties, managers     | The [results report](reports.md). `/report/csv` has its payments as a CSV.      |
+| `POST /contracts/:id/accept`             | The specialist        | Accepts the terms; deploys the escrow.                                          |
+| `POST /contracts/:id/decline`            | The specialist        | Declines the terms.                                                             |
+| `POST /contracts/:id/fund/prepare`       | The startup           | Funding transaction to sign.                                                    |
+| `POST /contracts/:id/fund/submit`        | The startup           | Broadcasts it and activates the contract once the escrow is funded.             |
+| `POST /contracts/:id/fund/sync`          | The startup           | Checks the escrow again, when the deposit took a moment to show.                |
+| `POST /milestones/:id/deliveries`        | The specialist        | Delivers: `{ url, note?, results? }`. One result per KPI of the job.            |
+| `POST /milestones/:id/request-changes`   | The startup           | Sends it back: `{ feedback }`.                                                  |
+| `POST /milestones/:id/approve/prepare`   | The startup           | Approval transaction to sign.                                                   |
+| `POST /milestones/:id/approve/submit`    | The startup           | Broadcasts it; Pocket then pays the milestone.                                  |
+| `POST /milestones/:id/release`           | The startup, managers | Retries the payment of an approved milestone.                                   |
+| `POST /milestones/:id/dispute/prepare`   | Either party          | Dispute transaction to sign.                                                    |
+| `POST /milestones/:id/dispute`           | Either party          | Broadcasts it: `{ signedXdr, reason }`.                                         |
+| `GET /contracts/:id/chat`                | Parties, managers     | The chats the user sees, with their messages and unread counts.                 |
+| `POST /contracts/:id/chat/:channel`      | Parties, managers     | Sends `{ body }`. Refused once the contract is completed or cancelled.          |
+| `POST /contracts/:id/chat/:channel/read` | Parties, managers     | Marks the chat read up to now.                                                  |
+| `GET /chat/unread`                       | Parties, managers     | Messages waiting, per contract.                                                 |
+| `GET /disputes/:id`                      | Parties, managers     | The dispute with its evidence and the milestone's deliveries.                   |
+| `POST /disputes/:id/evidence`            | Parties, managers     | Adds `{ url?, comment }`.                                                       |
+| `GET /manager/disputes`                  | Managers              | Queue, oldest first. `status` defaults to `open`.                               |
+| `POST /manager/disputes/:id/resolve`     | Managers              | `{ outcome, specialistAmount?, note }`.                                         |
 
 ## Wallet
 
