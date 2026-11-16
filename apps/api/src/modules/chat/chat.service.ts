@@ -192,7 +192,8 @@ export class ChatService {
     });
     if (!contract) throw new NotFoundException('No encontramos el contrato');
     const party = partyOf(user, contract);
-    if (!party) throw new ForbiddenException('No eres parte de este contrato');
+    // Not a party: answered as missing, like the contract itself.
+    if (!party) throw new NotFoundException('No encontramos el contrato');
     const hasDispute = contract.milestones.some((m) => m._count.disputes > 0);
     const channels = channelsFor(party, hasDispute);
     if (channels.length === 0) {

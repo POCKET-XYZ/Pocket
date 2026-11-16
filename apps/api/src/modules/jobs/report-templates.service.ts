@@ -110,7 +110,8 @@ export class ReportTemplatesService {
         'Completa los datos de tu cuenta para descargar la plantilla de reporte de un trabajo',
       );
     }
-    throw new ForbiddenException('Esta plantilla de reporte es de otra startup');
+    // Another startup's template is answered as missing.
+    throw new NotFoundException('No encontramos el trabajo');
   }
 
   private async openOwnedJob(user: AuthUser, jobId: string): Promise<void> {
@@ -118,9 +119,8 @@ export class ReportTemplatesService {
       where: { id: jobId },
       select: { startupId: true, status: true },
     });
-    if (!job) throw new NotFoundException('No encontramos el trabajo');
-    if (job.startupId !== user.sub) {
-      throw new ForbiddenException('Este trabajo es de otra startup');
+    if (!job || job.startupId !== user.sub) {
+      throw new NotFoundException('No encontramos el trabajo');
     }
     if (job.status !== 'open' && job.status !== 'draft') {
       throw new BadRequestException(

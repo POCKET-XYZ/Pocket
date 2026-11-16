@@ -5,7 +5,13 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { JobForm } from '@/components/job-form';
-import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
+import {
+  EmptyState,
+  ErrorAlert,
+  Loading,
+  NotAvailable,
+  PageHeader,
+} from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
@@ -36,7 +42,9 @@ function EditDraft({ user }: { user: User }) {
       />
     );
   }
-  if (job.data.startupId !== user.id || job.data.status !== 'draft') {
+  // Another startup's job looks like one that does not exist.
+  if (job.data.startupId !== user.id) return <NotAvailable />;
+  if (job.data.status !== 'draft') {
     return (
       <EmptyState title="Este trabajo ya no se puede editar">
         Solo se edita un borrador tuyo. Un trabajo publicado ya no cambia, porque los

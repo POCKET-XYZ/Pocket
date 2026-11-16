@@ -197,10 +197,10 @@ describe('DeliverablesService', () => {
     it.each([
       ['another startup', otherStartup],
       ['another specialist', outsider],
-    ])('refuses %s', async (_label, user) => {
+    ])('answers %s as if there were no such delivery', async (_label, user) => {
       stored(PDF);
       await expect(service.attachmentOf(user, 'deliverable-2')).rejects.toBeInstanceOf(
-        ForbiddenException,
+        NotFoundException,
       );
     });
 
@@ -208,7 +208,7 @@ describe('DeliverablesService', () => {
       stored(null);
       await expect(
         service.attachmentOf(outsider, 'deliverable-2'),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('answers not found when the delivery has no file', async () => {

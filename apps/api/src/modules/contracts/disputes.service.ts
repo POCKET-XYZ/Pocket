@@ -382,6 +382,7 @@ function assertParticipant(
     contract.startupId !== user.sub &&
     contract.specialistId !== user.sub
   ) {
-    throw new ForbiddenException('No eres parte de esta disputa');
+    // Answered as missing: an id says nothing about other people's disputes.
+    throw new NotFoundException('No encontramos la disputa');
   }
 }

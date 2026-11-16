@@ -135,9 +135,9 @@ export class ApplicationsService {
     const application = await this.prisma.application.findUnique({
       where: { id: applicationId },
     });
-    if (!application) throw new NotFoundException('No encontramos la postulación');
-    if (application.specialistId !== user.sub) {
-      throw new ForbiddenException('Esta postulación es de otro experto');
+    // Someone else's application is answered as missing.
+    if (!application || application.specialistId !== user.sub) {
+      throw new NotFoundException('No encontramos la postulación');
     }
     if (application.status !== 'submitted') {
       throw new BadRequestException(

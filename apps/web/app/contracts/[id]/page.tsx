@@ -20,7 +20,13 @@ import { ResultsCard } from '@/components/contract/results';
 import { sentStep } from '@/components/contract/sent-step';
 import { WorkHistory } from '@/components/contract/work-history';
 import { EmailText } from '@/components/email-text';
-import { Detail, ErrorAlert, Loading, PageHeader } from '@/components/page';
+import {
+  Detail,
+  ErrorAlert,
+  Loading,
+  PageHeader,
+  isNotAvailable,
+} from '@/components/page';
 import { ReportTemplateButton } from '@/components/report-template';
 import { RequireAuth } from '@/components/require-auth';
 import { StatusBadge } from '@/components/status-badge';
@@ -65,7 +71,7 @@ function Contract({ user }: { user: User }) {
 
   // A manager sees the chat only during a dispute: otherwise no side column.
   const chat = useContractChat(id);
-  const hasChat = !(chat.error instanceof ApiError && chat.error.status === 403);
+  const hasChat = !isNotAvailable(chat.error);
 
   if (contract.isLoading) return <Loading />;
   if (contract.error || !contract.data)
