@@ -134,6 +134,18 @@
   }
 }
 
+/* A field the form refused is red until it is right (see InvalidFieldHelp).
+   Input and Textarea already do it; this covers the plain selects and
+   checkboxes. Outside the layers, so it wins over their border utilities. */
+select[aria-invalid='true'] {
+  border-color: var(--destructive);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 20%, transparent);
+}
+input[type='checkbox'][aria-invalid='true'] {
+  outline: 2px solid var(--destructive);
+  outline-offset: 2px;
+}
+
 /* A report printed to PDF keeps its badges and stays on white paper. */
 @media print {
   body {
