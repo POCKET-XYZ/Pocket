@@ -52,15 +52,15 @@ export default function StartupProfilePage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <Card>
         <CardContent className="flex flex-col gap-5 pt-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-4">
             <Avatar name={startup.companyName} url={startup.logoUrl} size={80} />
-            <div>
+            <div className="min-w-0">
               <h1 className="text-3xl font-bold text-navy">{startup.companyName}</h1>
               <p className="text-muted-foreground">{startup.oneLiner}</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <Badge
                   variant="secondary"
-                  className="border-0 bg-celeste-light text-navy"
+                  className="h-auto max-w-full whitespace-normal border-0 bg-celeste-light text-navy"
                 >
                   {startup.sector}
                 </Badge>
@@ -69,9 +69,15 @@ export default function StartupProfilePage() {
             </div>
           </div>
           {startup.websiteUrl ? (
-            <Button asChild variant="outline">
-              <a href={safeHref(startup.websiteUrl)} target="_blank" rel="noreferrer">
-                <GlobeIcon className="size-4" /> {linkHost(startup.websiteUrl)}
+            <Button asChild variant="outline" className="max-w-full md:max-w-xs">
+              <a
+                href={safeHref(startup.websiteUrl)}
+                title={linkHost(startup.websiteUrl)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <GlobeIcon className="size-4" />
+                <span className="min-w-0 truncate">{linkHost(startup.websiteUrl)}</span>
               </a>
             </Button>
           ) : null}

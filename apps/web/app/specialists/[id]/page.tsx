@@ -122,9 +122,9 @@ function Header({
   return (
     <Card>
       <CardContent className="flex flex-col gap-5 pt-6 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4">
           <Avatar name={specialist.displayName} size={80} />
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-3xl font-bold text-navy">{specialist.displayName}</h1>
               {identityVerified ? <IdentitySeal /> : null}
@@ -294,8 +294,9 @@ function PastWork({ caseStudies }: { caseStudies: CaseStudy[] }) {
             <TrendingUpIcon className="mt-0.5 size-5 shrink-0 text-navy" />
             <div className="min-w-0">
               <p className="font-medium text-navy">{study.result || 'Ver el trabajo'}</p>
-              <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground group-hover:underline">
-                {study.url} <ExternalLinkIcon className="size-3 shrink-0" />
+              <p className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground group-hover:underline">
+                <span className="truncate">{study.url}</span>
+                <ExternalLinkIcon className="size-3 shrink-0" />
               </p>
             </div>
           </a>
@@ -361,7 +362,12 @@ function Tags({ title, values }: { title: string; values: string[] }) {
       </h3>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {values.map((value) => (
-          <Badge key={value} variant="outline">
+          // Skills can be 60 characters: they wrap instead of widening the page.
+          <Badge
+            key={value}
+            variant="outline"
+            className="h-auto max-w-full whitespace-normal"
+          >
             {value}
           </Badge>
         ))}

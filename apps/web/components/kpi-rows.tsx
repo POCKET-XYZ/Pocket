@@ -111,7 +111,7 @@ export function KpiRows({
               value={kpi.name}
               onChange={(event) => update(index, { name: event.target.value })}
             />
-            <div className="grid gap-2 sm:grid-cols-[11rem_1fr_1fr]">
+            <div className="grid gap-2 sm:grid-cols-[11rem_minmax(0,1fr)_minmax(0,1fr)]">
               <select
                 aria-label={`Cómo se mide el KPI ${index + 1}`}
                 value={kpi.mode}

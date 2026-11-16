@@ -399,15 +399,16 @@ function Share({
   return (
     <div
       className={cn(
-        'rounded-xl p-3',
+        'rounded-xl px-1 py-3 sm:p-3',
         tone === 'good' && 'bg-emerald-50',
         tone === 'neutral' && 'bg-muted/60',
         tone === 'bad' && 'bg-rose-50',
       )}
     >
       <p className="font-heading text-2xl font-bold text-navy">{percent(value, total)}</p>
-      <p className="text-sm text-muted-foreground">
-        {label} ({value})
+      {/* The count goes on its own line on a phone, where three tiles are narrow. */}
+      <p className="text-xs text-muted-foreground sm:text-sm">
+        {label} <span className="block sm:inline">({value})</span>
       </p>
     </div>
   );

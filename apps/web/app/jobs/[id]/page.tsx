@@ -60,7 +60,7 @@ export default function JobPage() {
   const data = job.data;
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div>
         <PageHeader
           title={data.title}
