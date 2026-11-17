@@ -30,7 +30,7 @@
     "@nestjs/platform-express": "^11.2.6",
     "@nestjs/swagger": "^11",
     "@pocket/shared": "workspace:*",
-    "@prisma/client": "^6",
+    "@prisma/client": "^7",
     "@sentry/nestjs": "^11.1.0",
     "@stellar/stellar-sdk": "^17.1.0",
     "class-transformer": "^0.5.1",
