@@ -483,7 +483,27 @@ describe('ContractsService', () => {
       id: 'contract-1',
       startupId: 'startup-1',
       specialistId: 'specialist-1',
+      job: {
+        id: 'job-1',
+        startupProfile: { id: 'acme-2', companyName: 'Acme Two', logoUrl: null },
+      },
+      startup: {
+        id: 'startup-1',
+        startupProfile: { id: 'acme-1', companyName: 'Acme One', logoUrl: null },
+      },
     };
+
+    it("names the job's own startup, not the account's active one", async () => {
+      prisma.contract.findUnique.mockResolvedValue({ ...offer, status: 'active' });
+      const detail = await service.detail(startup, 'contract-1');
+      expect(detail.startup.startupProfile).toEqual({
+        id: 'acme-2',
+        companyName: 'Acme Two',
+        logoUrl: null,
+      });
+      expect(detail.startupProfileId).toBe('acme-2');
+      expect(detail.job).toEqual({ id: 'job-1' });
+    });
 
     it('hides the contact emails while the terms are only an offer', async () => {
       prisma.contract.findUnique.mockResolvedValue({

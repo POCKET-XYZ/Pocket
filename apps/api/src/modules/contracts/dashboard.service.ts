@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { SpecialistDashboard, StartupDashboard, TrackRecord } from '@pocket/shared';
 import type { AuthUser } from '../../common/types/auth';
+import { jobsOfActiveStartup } from '../profiles/active-startup';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ACTIVE_SPECIALIST } from '../users/identity';
 import { DASHBOARD_INCLUDE, specialistDashboard, startupDashboard } from './dashboard';
@@ -12,8 +13,9 @@ export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async startup(user: AuthUser): Promise<StartupDashboard> {
+    // The startup the account acts as now: one account can own several.
     const contracts = await this.prisma.contract.findMany({
-      where: { startupId: user.sub },
+      where: { startupId: user.sub, job: jobsOfActiveStartup(user.sub) },
       include: DASHBOARD_INCLUDE,
     });
     return startupDashboard(contracts, new Date());

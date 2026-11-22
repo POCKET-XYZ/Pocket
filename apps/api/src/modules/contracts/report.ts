@@ -16,6 +16,8 @@ export const REPORT_INCLUDE = {
       title: true,
       category: true,
       kpis: { orderBy: { position: 'asc' } },
+      // The startup the job is for: one account can own several.
+      startupProfile: { select: { companyName: true, sector: true } },
     },
   },
   startup: { select: { id: true, startupProfile: { select: { companyName: true } } } },
@@ -188,7 +190,10 @@ export function buildReport(source: ReportSource, now: Date): ContractReport {
     job: { id: source.job.id, title: source.job.title, category: source.job.category },
     startup: {
       id: source.startup.id,
-      companyName: source.startup.startupProfile?.companyName ?? null,
+      companyName:
+        source.job.startupProfile?.companyName ??
+        source.startup.startupProfile?.companyName ??
+        null,
     },
     specialist: {
       id: source.specialist.id,

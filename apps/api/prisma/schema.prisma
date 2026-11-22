@@ -47,7 +47,15 @@ enum WalletCustody {
 model User {
   id                 String             @id @default(uuid()) @db.Uuid
   stellarAddress     String             @unique @map("stellar_address")
+  // The role the account acts as right now: every permission reads this one.
   role               UserRole
+  // Every role the account has: a startup can also work as a specialist, and
+  // the other way round. Empty on rows from before roles could be combined,
+  // read as [role].
+  roles              UserRole[]         @default([])
+  // The startup the account acts as right now, among the ones it owns. Its
+  // jobs, contracts, dashboard and reports are the ones the account sees.
+  activeStartupId    String?            @map("active_startup_id") @db.Uuid
   verificationStatus VerificationStatus @default(not_submitted) @map("verification_status")
   walletCustody      WalletCustody      @default(external) @map("wallet_custody")
   // Which wallet or login created the address: freighter, google, email...
@@ -73,10 +81,11 @@ model User {
 
   verificationRequests  VerificationRequest[] @relation("VerificationRequests")
   verificationsReviewed VerificationRequest[] @relation("VerificationReviews")
-  startupProfile        StartupProfile?
+  // The active startup. Code that reads "the user's startup" reads this one.
+  startupProfile        StartupProfile?       @relation("ActiveStartup", fields: [activeStartupId], references: [id], onDelete: SetNull)
+  startupProfiles       StartupProfile[]      @relation("StartupOwner")
   specialistProfile     SpecialistProfile?
   cv                    SpecialistCv?
-  logo                  StartupLogo?
   kpiTemplates          KpiTemplate[]
   jobs                  Job[]
   applications          Application[]
@@ -179,9 +188,11 @@ enum ServiceCategory {
 }
 
 // Fixed template every startup fills in, so profiles stay comparable.
+// A company on Pocket. One account can own several and act as one at a time
+// (users.active_startup_id); each job belongs to one of them.
 model StartupProfile {
   id          String       @id @default(uuid()) @db.Uuid
-  userId      String       @unique @map("user_id") @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
   companyName String       @map("company_name")
   // One sentence describing what the company does.
   oneLiner    String       @map("one_liner")
@@ -200,8 +211,12 @@ model StartupProfile {
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User         @relation("StartupOwner", fields: [userId], references: [id], onDelete: Cascade)
+  activeFor User[]       @relation("ActiveStartup")
+  logo      StartupLogo?
+  jobs      Job[]
 
+  @@index([userId])
   @@map("startup_profiles")
 }
 
@@ -209,14 +224,14 @@ model StartupProfile {
 // One per startup, kept in the database like the CVs. Only company logos:
 // people have no profile photo on Pocket.
 model StartupLogo {
-  userId      String   @id @map("user_id") @db.Uuid
-  data        Bytes
+  startupProfileId String   @id @map("startup_profile_id") @db.Uuid
+  data             Bytes
   // The type read from the file's own bytes, served as is.
-  contentType String   @map("content_type")
-  size        Int
-  uploadedAt  DateTime @default(now()) @updatedAt @map("uploaded_at")
+  contentType      String   @map("content_type")
+  size             Int
+  uploadedAt       DateTime @default(now()) @updatedAt @map("uploaded_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startupProfile StartupProfile @relation(fields: [startupProfileId], references: [id], onDelete: Cascade)
 
   @@map("startup_logos")
 }
@@ -301,30 +316,35 @@ enum ApplicationStatus {
 
 // A piece of work a startup posts for specialists to apply to. Budget is in USDC.
 model Job {
-  id              String          @id @default(uuid()) @db.Uuid
-  startupId       String          @map("startup_id") @db.Uuid
-  title           String
-  description     String
-  category        ServiceCategory
+  id               String          @id @default(uuid()) @db.Uuid
+  // The account that posted it: it owns the job and signs its contracts.
+  startupId        String          @map("startup_id") @db.Uuid
+  // Which of that account's startups the job is for. Empty only on jobs whose
+  // startup was deleted.
+  startupProfileId String?         @map("startup_profile_id") @db.Uuid
+  title            String
+  description      String
+  category         ServiceCategory
   // What the startup expects to receive at the end.
-  deliverables    String
-  budget          Decimal         @db.Decimal(20, 7)
-  deadline        DateTime        @db.Date
+  deliverables     String
+  budget           Decimal         @db.Decimal(20, 7)
+  deadline         DateTime        @db.Date
   // How many rounds of changes the price includes.
-  revisionRounds  Int             @default(1) @map("revision_rounds")
+  revisionRounds   Int             @default(1) @map("revision_rounds")
   // Where the work is published or used, e.g. TikTok, LinkedIn, a landing page.
-  channel         String?
+  channel          String?
   // Language of the content itself, not of the conversation.
-  contentLanguage String?         @map("content_language")
+  contentLanguage  String?         @map("content_language")
   // What the startup hands over: script, brand, logo, access to the app.
-  startupProvides String?         @map("startup_provides")
-  status          JobStatus       @default(open)
+  startupProvides  String?         @map("startup_provides")
+  status           JobStatus       @default(open)
   // When it reached the board. Null while it is a draft.
-  publishedAt     DateTime?       @map("published_at")
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+  publishedAt      DateTime?       @map("published_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
 
   startup        User               @relation(fields: [startupId], references: [id], onDelete: Cascade)
+  startupProfile StartupProfile?    @relation(fields: [startupProfileId], references: [id], onDelete: SetNull)
   applications   Application[]
   contracts      Contract[]
   milestones     JobMilestone[]
@@ -333,6 +353,7 @@ model Job {
 
   @@index([status, category])
   @@index([startupId])
+  @@index([startupProfileId])
   @@map("jobs")
 }
 

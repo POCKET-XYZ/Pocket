@@ -7,6 +7,7 @@ import {
 import { Prisma, type Job } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
+import { JOB_COMPANY, jobsOfActiveStartup } from '../profiles/active-startup';
 import { BrowseJobsDto } from './dto/browse-jobs.dto';
 import { CreateJobDto, UpdateJobDto } from './dto/create-job.dto';
 import { canSeeDraft } from './drafts';
@@ -15,9 +16,10 @@ import { REPORT_TEMPLATE_INFO } from './report-template-info';
 
 /** What the board shows about who posted a job. */
 const LISTING_INCLUDE = {
-  startup: {
-    select: { startupProfile: { select: { companyName: true, logoUrl: true } } },
-  },
+  // The job's own startup; the account's active one stands in for a job whose
+  // startup was deleted.
+  startupProfile: JOB_COMPANY,
+  startup: { select: { startupProfile: JOB_COMPANY } },
   _count: { select: { applications: true } },
   milestones: { orderBy: { position: 'asc' } },
   kpis: { orderBy: { position: 'asc' } },
@@ -39,13 +41,15 @@ export class JobsService {
       throw new ForbiddenException('Solo las startups pueden publicar trabajos');
     }
     assertJobFits(dto);
-    await this.assertHasProfile(user);
+    const startupProfileId = await this.activeStartupId(user);
 
     const { draft, ...content } = dto;
     return await this.prisma.job.create({
       data: {
         ...contentData(content),
         startupId: user.sub,
+        // Posted for the startup the account acts as right now.
+        startupProfileId,
         status: draft ? 'draft' : 'open',
         publishedAt: draft ? null : new Date(),
         milestones: { create: milestonesData(content) },
@@ -95,7 +99,12 @@ export class JobsService {
     if (job.status !== 'draft') {
       throw new BadRequestException(ALREADY_POSTED);
     }
-    await this.assertHasProfile(user);
+    // The board shows who hires: the draft's startup must still be there.
+    if (!job.startupProfileId) {
+      throw new BadRequestException(
+        'La startup de este borrador ya no está en Pocket. Publica el trabajo desde otra de tus startups',
+      );
+    }
     const today = todayUtc();
     if (isoDate(job.deadline) < today) {
       throw new BadRequestException(
@@ -147,7 +156,7 @@ export class JobsService {
     const where: Prisma.JobWhereInput = {
       status: 'open',
       ...(query.category ? { category: query.category } : {}),
-      ...(query.startupId ? { startupId: query.startupId } : {}),
+      ...(query.startupId ? ofStartupPage(query.startupId) : {}),
       ...(search
         ? {
             OR: [
@@ -176,10 +185,10 @@ export class JobsService {
     return { items: jobs.map(toListing), total, limit, offset };
   }
 
-  /** Every job the signed-in startup posted, newest first. */
+  /** Every job the signed-in account posted for its active startup, newest first. */
   async mine(user: AuthUser) {
     const jobs = await this.prisma.job.findMany({
-      where: { startupId: user.sub },
+      where: jobsOfActiveStartup(user.sub),
       include: {
         ...LISTING_INCLUDE,
         applications: { where: { status: 'submitted' }, select: { id: true } },
@@ -234,16 +243,18 @@ export class JobsService {
     });
   }
 
-  private async assertHasProfile(user: AuthUser): Promise<void> {
-    const profile = await this.prisma.startupProfile.findUnique({
-      where: { userId: user.sub },
-      select: { id: true },
+  /** The startup the account acts as; a job needs one, since the board shows who hires. */
+  private async activeStartupId(user: AuthUser): Promise<string> {
+    const account = await this.prisma.user.findUnique({
+      where: { id: user.sub },
+      select: { activeStartupId: true },
     });
-    if (!profile) {
+    if (!account?.activeStartupId) {
       throw new BadRequestException(
         'Completa tu perfil de startup antes de publicar un trabajo',
       );
     }
+    return account.activeStartupId;
   }
 
   /**
@@ -259,10 +270,24 @@ export class JobsService {
   }
 }
 
-function toListing({ startup, _count, ...job }: JobWithListing) {
+/**
+ * The jobs a startup's public page lists. The page goes by the startup's own
+ * id; links from before an account could own several startups name the
+ * account, and list its active startup's jobs.
+ */
+function ofStartupPage(id: string): Prisma.JobWhereInput {
+  return {
+    OR: [
+      { startupProfileId: id },
+      { startupId: id, startupProfile: { activeFor: { some: { id } } } },
+    ],
+  };
+}
+
+function toListing({ startup, startupProfile, _count, ...job }: JobWithListing) {
   return {
     ...job,
-    startup: startup.startupProfile,
+    startup: startupProfile ?? startup.startupProfile,
     applicationCount: _count.applications,
   };
 }

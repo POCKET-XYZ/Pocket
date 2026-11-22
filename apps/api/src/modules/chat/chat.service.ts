@@ -46,20 +46,40 @@ type MessageRow = Prisma.ContractMessageGetPayload<{
   include: { author: typeof AUTHOR };
 }>;
 
-function toMessage(row: MessageRow): ChatMessage {
+/** Who the two sides of a contract are, to name each message's author. */
+interface Sides {
+  startupId: string;
+  specialistId: string;
+  job: { startupProfile: { companyName: string } | null };
+}
+
+/**
+ * A message as the chat shows it. The author is named by their side of this
+ * contract, not by the role their account acts as now: one person can be a
+ * startup and a specialist, and own several startups.
+ */
+function toMessage(row: MessageRow, sides: Sides): ChatMessage {
+  const { author } = row;
+  const side =
+    author.id === sides.specialistId
+      ? 'specialist'
+      : author.id === sides.startupId
+        ? 'startup'
+        : author.role;
+  const name =
+    side === 'specialist'
+      ? (author.specialistProfile?.displayName ?? null)
+      : side === 'startup'
+        ? (sides.job.startupProfile?.companyName ??
+          author.startupProfile?.companyName ??
+          null)
+        : null;
   return {
     id: row.id,
     channel: row.channel,
     body: row.body,
     createdAt: row.createdAt.toISOString(),
-    author: {
-      id: row.author.id,
-      role: row.author.role,
-      name:
-        row.author.startupProfile?.companyName ??
-        row.author.specialistProfile?.displayName ??
-        null,
-    },
+    author: { id: author.id, role: side, name },
   };
 }
 
@@ -99,7 +119,7 @@ export class ChatService {
             message.authorId !== user.sub && (!readAt || message.createdAt > readAt),
         ).length,
         canWrite: closed === null,
-        messages: own.map(toMessage),
+        messages: own.map((row) => toMessage(row, contract)),
       };
     });
     return { hasDispute, closed, threads };
@@ -125,7 +145,7 @@ export class ChatService {
     // Whoever writes has read the chat up to their own message.
     await this.markRead(user.sub, contractId, channel, row.createdAt);
     await this.emailOthers(contract, channel, party, user.sub);
-    return toMessage(row);
+    return toMessage(row, contract);
   }
 
   /** The user read a chat up to now. */
@@ -186,7 +206,12 @@ export class ChatService {
         startupId: true,
         specialistId: true,
         status: true,
-        job: { select: { title: true } },
+        job: {
+          select: {
+            title: true,
+            startupProfile: { select: { companyName: true } },
+          },
+        },
         milestones: { select: { _count: { select: { disputes: true } } } },
       },
     });

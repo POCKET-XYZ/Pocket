@@ -57,6 +57,15 @@ export class ProfilesController {
     return this.profiles.saveStartup(user, dto);
   }
 
+  /** Another startup for the account, which then acts as it. */
+  @ApiBearerAuth()
+  @Roles('startup')
+  @Verified()
+  @Post('me/startups')
+  addStartup(@CurrentUser() user: AuthUser, @Body() dto: StartupProfileDto) {
+    return this.profiles.addStartup(user, dto);
+  }
+
   @ApiBearerAuth()
   @Roles('specialist')
   @ActiveAccount()
@@ -102,8 +111,12 @@ export class ProfilesController {
     // A new address for every upload, so browsers that cached the old logo
     // fetch the new one. The query is ignored when serving it.
     const version = Date.now().toString(36);
-    const logoUrl = `${this.publicBase(req)}/profiles/${user.sub}/logo?v=${version}`;
-    return this.profiles.saveLogo(user, file, logoUrl);
+    const base = this.publicBase(req);
+    return this.profiles.saveLogo(
+      user,
+      file,
+      (startupId) => `${base}/profiles/${startupId}/logo?v=${version}`,
+    );
   }
 
   /** Remove the signed-in startup's logo, uploaded or linked. */
@@ -117,9 +130,9 @@ export class ProfilesController {
 
   /** The logo an approved startup uploaded, as the image it is. */
   @Public()
-  @Get(':userId/logo')
-  async logo(@Param('userId', ParseUUIDPipe) userId: string, @Res() res: Response) {
-    const logo = await this.profiles.logoOf(userId);
+  @Get(':id/logo')
+  async logo(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response) {
+    const logo = await this.profiles.logoOf(id);
     res.set({
       'Content-Type': logo.contentType,
       'Content-Disposition': 'inline; filename="logo"',
@@ -165,11 +178,20 @@ export class ProfilesController {
     return this.profiles.browseStartups(query);
   }
 
-  /** Public profile of an approved user. */
+  /**
+   * Public profile of an approved user, or of one startup by its own id. For
+   * an account that is a startup and a specialist, `as` says which side.
+   */
   @Public()
-  @Get(':userId')
-  publicProfile(@Param('userId', ParseUUIDPipe) userId: string) {
-    return this.profiles.publicProfile(userId);
+  @Get(':id')
+  publicProfile(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('as') as?: string,
+  ) {
+    return this.profiles.publicProfile(
+      id,
+      as === 'startup' || as === 'specialist' ? as : undefined,
+    );
   }
 
   /**

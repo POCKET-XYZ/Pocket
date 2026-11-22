@@ -24,7 +24,7 @@ export default function StartupProfilePage() {
   const router = useRouter();
   const profile = useQuery({
     queryKey: ['profiles', id],
-    queryFn: () => api<PublicProfile>(`/profiles/${id}`),
+    queryFn: () => api<PublicProfile>(`/profiles/${id}?as=startup`),
   });
   const jobs = useQuery({
     queryKey: ['jobs', 'by-startup', id],
@@ -149,7 +149,7 @@ export default function StartupProfilePage() {
       <p className="text-xs text-muted-foreground">
         {profile.data.waiting
           ? 'Se registró en la red de pruebas de Pocket y todavía no activa su cuenta aquí.'
-          : `Miembro de Pocket desde el ${date(profile.data.memberSince)}. Wallet ${profile.data.wallet}.`}
+          : `Miembro de Pocket desde el ${date(profile.data.memberSince)}.${profile.data.wallet ? ` Wallet ${profile.data.wallet}.` : ''}`}
       </p>
     </div>
   );

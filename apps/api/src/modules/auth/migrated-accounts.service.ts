@@ -87,22 +87,31 @@ export class MigratedAccountsService {
       const base = this.config.get<string>('apiPublicUrl') ?? '';
       const profile = { ...(waiting.profile as Record<string, unknown>) };
       if (waiting.role === 'startup') {
-        if (waiting.logo && waiting.logoContentType) {
-          await tx.startupLogo.create({
-            data: {
-              userId: created.id,
-              data: waiting.logo,
-              contentType: waiting.logoContentType,
-              size: waiting.logo.length,
-            },
-          });
-          profile.logoUrl = `${base}/profiles/${created.id}/logo?v=${Date.now()}`;
-        } else if (pointsToAnUploadedFile(profile.logoUrl)) {
-          // A link to the testnet API's copy of a file that did not come along.
+        const logo =
+          waiting.logo && waiting.logoContentType
+            ? { data: waiting.logo, contentType: waiting.logoContentType }
+            : null;
+        if (logo || pointsToAnUploadedFile(profile.logoUrl)) {
+          // Set below for a logo that came along; otherwise a link to the
+          // testnet API's copy of a file that did not.
           profile.logoUrl = null;
         }
-        await tx.startupProfile.create({
+        const startup = await tx.startupProfile.create({
           data: { ...(profile as Prisma.StartupProfileUncheckedCreateInput), userId: created.id },
+        });
+        if (logo) {
+          await tx.startupLogo.create({
+            data: { startupProfileId: startup.id, ...logo, size: logo.data.length },
+          });
+          await tx.startupProfile.update({
+            where: { id: startup.id },
+            data: { logoUrl: `${base}/profiles/${startup.id}/logo?v=${Date.now()}` },
+          });
+        }
+        // Its one startup is the one it acts as.
+        await tx.user.update({
+          where: { id: created.id },
+          data: { activeStartupId: startup.id },
         });
       } else {
         if (waiting.cv) {

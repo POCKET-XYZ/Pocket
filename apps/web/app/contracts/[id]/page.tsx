@@ -105,7 +105,10 @@ function Contract({ user }: { user: User }) {
           title={data.job.title}
           description={
             <>
-              <Link href={`/startups/${data.startupId}`} className="underline">
+              <Link
+                href={`/startups/${data.startupProfileId ?? data.startupId}`}
+                className="underline"
+              >
                 {startupName}
               </Link>{' '}
               contrató a{' '}

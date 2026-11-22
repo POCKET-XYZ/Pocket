@@ -10,6 +10,7 @@ import { Prisma } from '@prisma/client';
 import { securityEvent } from '../../common/security/security-log';
 import { PrismaService } from '../../prisma/prisma.service';
 import { termsAccepted } from '../auth/auth.service';
+import { rolesOf, withRole, type MarketRole } from './roles';
 
 /** Contracts that hold, or are about to hold, money in an escrow. */
 const MONEY_IN_PLAY = ['awaiting_funding', 'active'] as const;
@@ -22,6 +23,79 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('No encontramos al usuario');
     return user;
+  }
+
+  /**
+   * The signed-in user, with every role the account has and the startups it
+   * owns, so the client can offer to switch between them.
+   */
+  async me(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        startupProfiles: {
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, companyName: true, logoUrl: true },
+        },
+      },
+    });
+    if (!user) throw new NotFoundException('No encontramos al usuario');
+    const { startupProfiles, ...rest } = user;
+    return { ...rest, roles: rolesOf(user), startups: startupProfiles };
+  }
+
+  /**
+   * Adds the other marketplace role to the account and switches to it: a
+   * startup that also works as a specialist, or the other way round. Same
+   * wallet, same identity check, a profile for each role. A manager stays a
+   * manager.
+   */
+  async addRole(id: string, role: MarketRole) {
+    const user = await this.findById(id);
+    if (user.role === 'manager') {
+      throw new ForbiddenException('Una cuenta de Pocket no puede sumar otro rol');
+    }
+    await this.prisma.user.update({
+      where: { id },
+      data: { roles: withRole(user, role), role },
+    });
+    securityEvent('role_added', { userId: id, role });
+    return this.me(id);
+  }
+
+  /** Switches between the roles the account already has. */
+  async switchRole(id: string, role: MarketRole) {
+    const user = await this.findById(id);
+    if (user.role === 'manager' || !rolesOf(user).includes(role)) {
+      throw new ForbiddenException(
+        role === 'startup'
+          ? 'Tu cuenta todavía no publica trabajos. Actívalo primero'
+          : 'Tu cuenta todavía no trabaja como experto. Actívalo primero',
+      );
+    }
+    if (user.role !== role) {
+      await this.prisma.user.update({ where: { id }, data: { role } });
+    }
+    return this.me(id);
+  }
+
+  /**
+   * Acts as another of the account's own startups. It also switches the
+   * account to its startup role, since a startup is only used as one.
+   */
+  async switchStartup(id: string, startupId: string) {
+    const user = await this.findById(id);
+    const owned = await this.prisma.startupProfile.count({
+      where: { id: startupId, userId: id },
+    });
+    if (user.role === 'manager' || owned === 0 || !rolesOf(user).includes('startup')) {
+      throw new ForbiddenException('Esa startup no es tuya');
+    }
+    await this.prisma.user.update({
+      where: { id },
+      data: { activeStartupId: startupId, role: 'startup' },
+    });
+    return this.me(id);
   }
 
   /**
@@ -49,7 +123,7 @@ export class UsersService {
           omit: { reviewedById: true },
           orderBy: { submittedAt: 'asc' },
         },
-        startupProfile: true,
+        startupProfiles: true,
         specialistProfile: true,
         cv: { select: { size: true, uploadedAt: true } },
         jobs: { include: { milestones: true } },

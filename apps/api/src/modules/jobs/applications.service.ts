@@ -38,6 +38,10 @@ export class ApplicationsService {
     if (!job || job.status === 'draft') {
       throw new NotFoundException('No encontramos el trabajo');
     }
+    // An account that is a startup and a specialist cannot hire itself.
+    if (job.startupId === user.sub) {
+      throw new BadRequestException('No puedes postularte a un trabajo que publicaste tú');
+    }
     if (job.status !== 'open') {
       throw new BadRequestException('Este trabajo ya no recibe postulaciones');
     }

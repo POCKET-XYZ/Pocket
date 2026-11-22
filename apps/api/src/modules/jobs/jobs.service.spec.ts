@@ -65,7 +65,7 @@ describe('JobsService', () => {
     jobMilestone: { deleteMany: jest.Mock; createMany: jest.Mock; findFirst: jest.Mock };
     jobKpi: { deleteMany: jest.Mock; createMany: jest.Mock };
     application: { updateMany: jest.Mock };
-    startupProfile: { findUnique: jest.Mock };
+    user: { findUnique: jest.Mock };
     $transaction: jest.Mock;
   };
   let service: JobsService;
@@ -89,7 +89,8 @@ describe('JobsService', () => {
       },
       jobKpi: { deleteMany: jest.fn(), createMany: jest.fn() },
       application: { updateMany: jest.fn() },
-      startupProfile: { findUnique: jest.fn().mockResolvedValue({ id: 'profile-1' }) },
+      // The startup the account acts as.
+      user: { findUnique: jest.fn().mockResolvedValue({ activeStartupId: 'profile-1' }) },
       // A batch runs its operations; an interactive one runs with the client.
       $transaction: jest.fn((arg: unknown) =>
         typeof arg === 'function' ? (arg as (tx: unknown) => unknown)(prisma) : arg,
@@ -332,7 +333,7 @@ describe('JobsService', () => {
     });
 
     it('requires a startup profile first', async () => {
-      prisma.startupProfile.findUnique.mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValue({ activeStartupId: null });
       await expect(service.create(startup, dto)).rejects.toBeInstanceOf(
         BadRequestException,
       );
@@ -451,6 +452,8 @@ describe('JobsService', () => {
       startupId: 'startup-1',
       status: 'draft',
       deadline: new Date(futureDate(30)),
+      startupProfileId: 'profile-1',
+      startupProfile: { id: 'profile-1', companyName: 'Vaquita', logoUrl: null },
       startup: { startupProfile: { companyName: 'Vaquita', logoUrl: null } },
       _count: { applications: 0 },
       milestones: [],
@@ -588,10 +591,9 @@ describe('JobsService', () => {
         );
       });
 
-      it('requires the startup profile, which the board shows', async () => {
-        prisma.job.findUnique.mockResolvedValue(draft);
-        prisma.startupProfile.findUnique.mockResolvedValue(null);
-        await expect(service.publish(startup, 'job-1')).rejects.toThrow(/perfil/);
+      it('requires its startup, which the board shows', async () => {
+        prisma.job.findUnique.mockResolvedValue({ ...draft, startupProfileId: null });
+        await expect(service.publish(startup, 'job-1')).rejects.toThrow(/startup/);
         expect(prisma.job.updateMany).not.toHaveBeenCalled();
       });
 

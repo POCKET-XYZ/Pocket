@@ -32,6 +32,8 @@ function makeUser(overrides: Partial<User> = {}): User {
     id: 'user-1',
     stellarAddress: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
     role: 'specialist',
+    roles: [],
+    activeStartupId: null,
     verificationStatus: 'not_submitted',
     walletCustody: 'external',
     walletProvider: null,
