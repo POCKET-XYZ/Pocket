@@ -6,6 +6,7 @@ import {
   Contract,
   rpc,
   scValToNative,
+  StrKey,
   TransactionBuilder,
   type xdr,
 } from '@stellar/stellar-sdk';
@@ -96,6 +97,7 @@ export class SorobanReader {
 
   /** The hash of the code a contract runs, in hex. */
   async wasmHash(contractId: string): Promise<string | null> {
+    if (!StrKey.isValidContract(contractId)) return null;
     const { entries } = await this.server.getLedgerEntries(
       new Contract(contractId).getFootprint(),
     );
@@ -136,6 +138,9 @@ export class SorobanReader {
     fn: string,
     ...args: xdr.ScVal[]
   ): Promise<unknown> {
+    // An id that is not a contract address names no contract: a bad value in
+    // the database reads as a missing escrow, not as an error for the page.
+    if (!StrKey.isValidContract(contractId)) return undefined;
     const tx = new TransactionBuilder(this.reader, {
       fee: '100',
       networkPassphrase: this.stellar.networkPassphrase,
