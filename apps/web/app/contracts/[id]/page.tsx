@@ -20,6 +20,7 @@ import { ResultsCard } from '@/components/contract/results';
 import { sentStep } from '@/components/contract/sent-step';
 import { WorkHistory } from '@/components/contract/work-history';
 import { EmailText } from '@/components/email-text';
+import { EditOfferDialog } from '@/components/hire-dialog';
 import {
   Detail,
   ErrorAlert,
@@ -281,7 +282,11 @@ function NextStep({
       // Pocket creates the contract on the network now: guard the page meanwhile.
       accepting.onStage('sending');
       try {
-        return await api(`/contracts/${contract.id}/accept`, { method: 'POST' });
+        // The version read here: terms the startup changed since are refused.
+        return await api(`/contracts/${contract.id}/accept`, {
+          method: 'POST',
+          body: { termsVersion: contract.updatedAt },
+        });
       } finally {
         accepting.done();
       }
@@ -650,30 +655,35 @@ function WithdrawOffer({ contract, now }: { contract: ContractDetail; now: numbe
         {asked ? (
           <p>
             Le ofreciste {usdc(contract.amount)} y había pedido {usdc(asked)}. El experto
-            acepta o rechaza tu contraoferta. Si acuerdan otro precio por el chat, retira
-            esta oferta y envía una nueva.
+            acepta o rechaza tu contraoferta. Si acuerdan otro precio, fecha o hito por el
+            chat, edita la oferta.
           </p>
         ) : (
-          <p>El experto revisa los hitos y acepta o rechaza los términos.</p>
+          <p>
+            El experto revisa los hitos y acepta o rechaza los términos. Si acuerdan otro
+            precio, fecha o hito por el chat, edita la oferta.
+          </p>
         )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="mt-3"
-          disabled={withdraw.isPending}
-          onClick={async () => {
-            const confirmed = await confirm({
-              title: '¿Retirar estos términos?',
-              description:
-                'El trabajo se vuelve a abrir y puedes enviar nuevos términos a este u otro postulante.',
-              confirmText: 'Retirar',
-              destructive: true,
-            });
-            if (confirmed) withdraw.mutate();
-          }}
-        >
-          {withdraw.isPending ? 'Retirando...' : 'Retirar oferta'}
-        </Button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <EditOfferDialog contract={contract} />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={withdraw.isPending}
+            onClick={async () => {
+              const confirmed = await confirm({
+                title: '¿Retirar estos términos?',
+                description:
+                  'El trabajo se vuelve a abrir y puedes enviar nuevos términos a este u otro postulante.',
+                confirmText: 'Retirar',
+                destructive: true,
+              });
+              if (confirmed) withdraw.mutate();
+            }}
+          >
+            {withdraw.isPending ? 'Retirando...' : 'Retirar oferta'}
+          </Button>
+        </div>
       </AlertDescription>
     </Alert>
   );

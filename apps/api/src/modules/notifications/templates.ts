@@ -18,6 +18,7 @@ export type NotificationEvent =
     }
   | { type: 'offer_declined'; contractId: string; jobTitle: string }
   | { type: 'offer_withdrawn'; jobTitle: string }
+  | { type: 'offer_updated'; contractId: string; jobTitle: string }
   | { type: 'terms_accepted'; contractId: string; jobTitle: string }
   | { type: 'escrow_funded'; contractId: string }
   | { type: 'milestone_delivered'; contractId: string; milestoneTitle: string }
@@ -120,7 +121,10 @@ function content(event: NotificationEvent): Content {
         paragraphs: [
           `El experto no aceptó los términos para "${event.jobTitle}". Tu trabajo sigue abierto: puedes elegir a otro postulante.`,
         ],
-        button: { label: 'Elegir a otro postulante', path: `/contracts/${event.contractId}` },
+        button: {
+          label: 'Elegir a otro postulante',
+          path: `/contracts/${event.contractId}`,
+        },
       };
     case 'offer_withdrawn':
       return {
@@ -129,6 +133,14 @@ function content(event: NotificationEvent): Content {
           `La empresa retiró los términos que te envió para "${event.jobTitle}". Tu postulación sigue en pie, y si te manda nuevos términos te avisamos.`,
         ],
         button: { label: 'Ver mis postulaciones', path: '/applications' },
+      };
+    case 'offer_updated':
+      return {
+        subject: `La empresa cambió los términos de "${event.jobTitle}"`,
+        paragraphs: [
+          `La empresa cambió los términos que te envió para "${event.jobTitle}": puede ser el precio, los hitos o las fechas. Revísalos y acepta o rechaza los nuevos.`,
+        ],
+        button: { label: 'Ver los términos', path: `/contracts/${event.contractId}` },
       };
     case 'terms_accepted':
       return {

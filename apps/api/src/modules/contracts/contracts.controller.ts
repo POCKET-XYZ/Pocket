@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Put,
+  Res,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -9,6 +18,7 @@ import { sendPrivateFile } from '../../common/uploads/send-file';
 import { ContractsService } from './contracts.service';
 import { ReportService } from './report.service';
 import { CreateContractDto } from './dto/create-contract.dto';
+import { AcceptTermsDto, UpdateTermsDto } from './dto/update-terms.dto';
 import { SignedTransactionDto } from '../stellar/dto/signed-transaction.dto';
 import {
   ESCROW_RATE_LIMIT,
@@ -68,8 +78,12 @@ export class ContractsController {
   @Verified()
   @RateLimit(ESCROW_RATE_LIMIT)
   @Post(':id/accept')
-  accept(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
-    return this.contracts.accept(user, id);
+  accept(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AcceptTermsDto,
+  ) {
+    return this.contracts.accept(user, id, dto.termsVersion);
   }
 
   // Turning an offer down takes no identity check: only accepting one does.
@@ -78,6 +92,18 @@ export class ContractsController {
   @Post(':id/decline')
   decline(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.contracts.decline(user, id);
+  }
+
+  /** The startup changes terms the specialist has not accepted yet. */
+  @Roles('startup')
+  @Verified()
+  @Put(':id/terms')
+  updateTerms(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateTermsDto,
+  ) {
+    return this.contracts.updateTerms(user, id, dto);
   }
 
   /** The startup takes back terms the specialist has not accepted yet. */

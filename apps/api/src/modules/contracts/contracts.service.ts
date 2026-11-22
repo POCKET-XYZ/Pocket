@@ -16,7 +16,8 @@ import { REPORT_TEMPLATE_INFO } from '../jobs/report-template-info';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PollarWalletsService } from '../pollar/pollar-wallets.service';
 import { contactEmails } from '../users/contact-emails';
-import { CreateContractDto } from './dto/create-contract.dto';
+import { CreateContractDto, MilestoneInputDto } from './dto/create-contract.dto';
+import { UpdateTermsDto } from './dto/update-terms.dto';
 import { DELIVERABLE_REPORT } from './deliverable-report';
 import { POCKET_PLATFORM_FEE_ON_CHAIN } from './escrow-policies';
 import { EscrowService } from './escrow.service';
@@ -71,6 +72,31 @@ const DETAIL_INCLUDE = {
   },
 } satisfies Prisma.ContractInclude;
 
+const TERMS_CHANGED =
+  'La startup cambió los términos mientras los revisabas. Revisa los nuevos antes de aceptar';
+
+/**
+ * Milestones the startup sends: none due in the past, and adding up exactly to
+ * the price offered.
+ */
+function assertTermsAddUp(milestones: MilestoneInputDto[], price: Prisma.Decimal): void {
+  const today = new Date().toISOString().slice(0, 10);
+  if (milestones.some((milestone) => milestone.dueDate < today)) {
+    throw new BadRequestException(
+      'La fecha de entrega de un hito no puede estar en el pasado',
+    );
+  }
+  const total = milestones.reduce(
+    (sum, milestone) => sum.plus(milestone.amount),
+    new Prisma.Decimal(0),
+  );
+  if (!total.equals(price)) {
+    throw new BadRequestException(
+      `Los hitos suman ${total.toString()} USDC, pero el precio que ofreces es ${price.toString()} USDC`,
+    );
+  }
+}
+
 /** Once the hire is final, the parties see each other's contact email. */
 const CONTACT_STATUSES: ContractStatus[] = ['awaiting_funding', 'active', 'completed'];
 
@@ -108,23 +134,9 @@ export class ContractsService {
 
     await this.assertDifferentPeople(user.sub, application.specialistId);
 
-    const today = new Date().toISOString().slice(0, 10);
-    if (dto.milestones.some((milestone) => milestone.dueDate < today)) {
-      throw new BadRequestException(
-        'La fecha de entrega de un hito no puede estar en el pasado',
-      );
-    }
     const price =
       dto.price === undefined ? application.price : new Prisma.Decimal(dto.price);
-    const total = dto.milestones.reduce(
-      (sum, milestone) => sum.plus(milestone.amount),
-      new Prisma.Decimal(0),
-    );
-    if (!total.equals(price)) {
-      throw new BadRequestException(
-        `Los hitos suman ${total.toString()} USDC, pero el precio que ofreces es ${price.toString()} USDC`,
-      );
-    }
+    assertTermsAddUp(dto.milestones, price);
 
     const created = await this.prisma.$transaction(async (tx) => {
       // Claim the job and the application together: of two offers sent at
@@ -296,6 +308,62 @@ export class ContractsService {
     return withdrawn;
   }
 
+  /**
+   * The startup changes terms the specialist has not accepted yet: the price
+   * and the milestones, replaced as a whole. The escrow is deployed only on
+   * acceptance, so nothing on chain changes. The specialist is told, and an
+   * accept sent for the old terms is refused (see accept's termsVersion).
+   */
+  async updateTerms(
+    user: AuthUser,
+    contractId: string,
+    dto: UpdateTermsDto,
+  ): Promise<Contract> {
+    const contract = await this.startupContract(user, contractId);
+    if (contract.status !== 'awaiting_specialist') {
+      throw new BadRequestException(
+        'Solo puedes editar términos que el experto todavía no aceptó',
+      );
+    }
+    const price = new Prisma.Decimal(dto.price);
+    assertTermsAddUp(dto.milestones, price);
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Claim the offer: not while an accept is deploying the escrow with the
+      // milestones it already read. Changing the amount also moves updatedAt,
+      // the version an accept has to match.
+      const claimed = await tx.contract.updateMany({
+        where: { id: contractId, status: 'awaiting_specialist', acceptedAt: null },
+        data: { amount: price },
+      });
+      if (claimed.count !== 1) {
+        throw new ConflictException(
+          'El experto está aceptando estos términos en este momento',
+        );
+      }
+      // Before acceptance a milestone has no delivery, dispute or transaction.
+      await tx.milestone.deleteMany({ where: { contractId } });
+      await tx.milestone.createMany({
+        data: dto.milestones.map((milestone, position) => ({
+          ...milestone,
+          contractId,
+          position,
+          dueDate: new Date(milestone.dueDate),
+        })),
+      });
+      return tx.contract.findUniqueOrThrow({
+        where: { id: contractId },
+        include: { milestones: { orderBy: { position: 'asc' } } },
+      });
+    });
+    this.notifications.notifyUsers([contract.specialistId], {
+      type: 'offer_updated',
+      contractId,
+      jobTitle: await this.jobTitle(contract.jobId),
+    });
+    return updated;
+  }
+
   private async jobTitle(jobId: string): Promise<string> {
     const job = await this.prisma.job.findUnique({
       where: { id: jobId },
@@ -308,22 +376,44 @@ export class ContractsService {
    * The specialist accepts the terms and Pocket deploys the escrow. Their
    * wallet must already trust USDC, or it could not receive the payments.
    */
-  async accept(user: AuthUser, contractId: string): Promise<Contract> {
+  async accept(
+    user: AuthUser,
+    contractId: string,
+    termsVersion?: string,
+  ): Promise<Contract> {
     const contract = await this.specialistContract(user, contractId);
     if (contract.status !== 'awaiting_specialist') {
       throw new BadRequestException(
         'Solo puedes aceptar términos que todavía esperan tu respuesta',
       );
     }
+    const seen = termsVersion ? new Date(termsVersion) : null;
+    if (seen && seen.getTime() !== contract.updatedAt.getTime()) {
+      throw new ConflictException(TERMS_CHANGED);
+    }
     await this.requireUsdcReady(user);
 
-    // Claim the contract so a double click cannot deploy two escrows.
+    // Claim the contract so a double click cannot deploy two escrows, and only
+    // in the version the specialist read: the startup may have just edited it.
     const claimed = await this.prisma.contract.updateMany({
-      where: { id: contractId, status: 'awaiting_specialist', acceptedAt: null },
+      where: {
+        id: contractId,
+        status: 'awaiting_specialist',
+        acceptedAt: null,
+        ...(seen ? { updatedAt: seen } : {}),
+      },
       data: { acceptedAt: new Date() },
     });
     if (claimed.count !== 1) {
-      throw new ConflictException('Este contrato ya se está aceptando');
+      const now = await this.prisma.contract.findUnique({
+        where: { id: contractId },
+        select: { acceptedAt: true },
+      });
+      throw new ConflictException(
+        seen && now && !now.acceptedAt
+          ? TERMS_CHANGED
+          : 'Este contrato ya se está aceptando',
+      );
     }
 
     const full = await this.prisma.contract.findUniqueOrThrow({
@@ -346,9 +436,10 @@ export class ContractsService {
         specialistAddress: user.stellarAddress,
       });
     } catch (error) {
+      // Back to the version the specialist read, so they can try again.
       await this.prisma.contract.update({
         where: { id: contractId },
-        data: { acceptedAt: null },
+        data: { acceptedAt: null, updatedAt: contract.updatedAt },
       });
       throw error;
     }
