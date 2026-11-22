@@ -52,7 +52,13 @@ jobs:
       # typescript-eslint, shadcn, the Sentry build plugin) and unstorage's
       # fixed ignore list. No glob ever comes from a user. Drop the ignore
       # once a fix ships.
-      - run: bun audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm --ignore GHSA-fc5q-39xc-vjpf
+      # GHSA-7589-6fvf-x4pw (effect, ReDoS in Schema.TemplateLiteral): effect
+      # comes only with the Prisma CLI (@prisma/config pins 3.21.0, and its
+      # latest release still ships an affected version). The CLI only reads
+      # Pocket's own schema and settings, never user input, and the running
+      # API does not load effect.
+      # Drop the ignore once Prisma ships a fixed effect.
+      - run: bun audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm --ignore GHSA-fc5q-39xc-vjpf --ignore GHSA-7589-6fvf-x4pw
 
   secrets:
     runs-on: ubuntu-latest
