@@ -262,7 +262,7 @@ function Verification({ user }: { user: User }) {
           <AlertDescription>
             <p>
               {duplicate
-                ? 'Este documento o esta cara ya se verificaron en otra cuenta de Pocket, y cada persona puede tener una sola. Cierra sesión y entra con esa cuenta: ahí puedes ser startup y experto, y tener varias startups.'
+                ? 'Este documento o esta cara ya se verificaron en otra cuenta de Pocket, y cada persona puede tener una sola. Cierra sesión y entra con esa cuenta: ahí puedes ser startup y experto, y tener varias startups. Si prefieres quedarte con esta, entra a la otra, elimínala desde "Tu cuenta y tus datos" y vuelve aquí a verificarte.'
                 : turnedDown}
             </p>
             {duplicate ? (

@@ -27,9 +27,9 @@ export const KYC_DUPLICATE_NOTE =
   'Este documento o esta cara ya se verificaron en otra cuenta de Pocket. Cada persona puede tener una sola cuenta. Si la otra cuenta es tuya, entra con ella; si crees que es un error, escríbenos.';
 
 /**
- * Whether the request was turned down because the person already has another
- * live account on Pocket, or is on Didit's blocklist. Trying again would only
- * pay for another check with the same outcome.
+ * Whether the request was turned down because the person had another live
+ * account on Pocket, or is on Didit's blocklist. See stillDuplicate for
+ * whether that still holds.
  */
 export function turnedDownForGood(
   request: Pick<VerificationRequest, 'status' | 'reviewNote'> | null,
@@ -104,11 +104,12 @@ export class VerificationService {
         'El nombre de la empresa es obligatorio para las startups',
       );
     }
-    // One person, one account: someone already verified on another account
-    // does not start a new identity check here.
+    // One person, one account: someone still verified on another account
+    // does not start a new identity check here, which would only pay Didit
+    // for the same outcome.
     if (
       user.verificationStatus === 'rejected' &&
-      turnedDownForGood(await this.latestFor(userId))
+      (await this.stillDuplicate(await this.latestFor(userId)))
     ) {
       throw new BadRequestException(KYC_DUPLICATE_NOTE);
     }
@@ -158,7 +159,27 @@ export class VerificationService {
    */
   async mine(userId: string) {
     const request = await this.latestFor(userId);
-    return request ? { ...request, duplicate: turnedDownForGood(request) } : null;
+    return request ? { ...request, duplicate: await this.stillDuplicate(request) } : null;
+  }
+
+  /**
+   * Whether a request turned down as a duplicate still is one: the other
+   * account is still live, or the person is on Didit's blocklist. Once the
+   * other account is deleted, the person can verify this one. Reading the
+   * session's decision again costs nothing; when it cannot be read, the
+   * account stays turned down.
+   */
+  private async stillDuplicate(request: VerificationRequest | null): Promise<boolean> {
+    if (!request || !turnedDownForGood(request)) return false;
+    if (!request.kycSessionId || !this.kycEnabled) return true;
+    try {
+      const decision = await this.didit.decision(request.kycSessionId);
+      return (
+        decision.blocklisted || (await this.onAnotherLiveAccount(decision.sharedWith))
+      );
+    } catch {
+      return true;
+    }
   }
 
   /**

@@ -37,7 +37,7 @@ The webhook is only trusted to be authentic (Didit's `X-Signature-V2` over the c
 
 ### One person, one account
 
-Didit matches IDs and faces across sessions. An approval whose ID or face also appears on another live Pocket account, or on Didit's blocklist, is turned down with a note that says why. Matches against deleted accounts, or against sessions that are not Pocket users, do not count. Such an account cannot try again, since another check would cost the same and end the same: `POST /verification` refuses it, and `GET /verification/me` says so in `duplicate`, so the page offers to sign out and enter with the other account instead of the form.
+Didit matches IDs and faces across sessions. An approval whose ID or face also appears on another live Pocket account, or on Didit's blocklist, is turned down with a note that says why. Matches against deleted accounts, or against sessions that are not Pocket users, do not count. Such an account cannot try again while the other account is live, since another check would cost the same and end the same: `POST /verification` refuses it, and `GET /verification/me` says so in `duplicate`, so the page offers to sign out and enter with the other account instead of the form. Whether it still holds is read again from the rejected session's decision (free), so once the other account is deleted the person can verify this one.
 
 ### Consent
 
