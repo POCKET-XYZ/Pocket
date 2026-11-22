@@ -12,7 +12,7 @@ import {
   type VerificationRequest,
 } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDownIcon } from 'lucide-react';
+import { ChevronDownIcon, PencilIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useRef, useState } from 'react';
@@ -21,6 +21,8 @@ import { Field, compact, formValues } from '@/components/form';
 import { Loading, PageHeader } from '@/components/page';
 import { Onboarding } from '@/components/onboarding';
 import { RequireAuth } from '@/components/require-auth';
+import { SpecialistProfileView } from '@/components/profile/specialist-profile-view';
+import { StartupProfileView } from '@/components/profile/startup-profile-view';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -63,6 +65,13 @@ function Profile({ user }: { user: User }) {
   });
   const known = verification.data ?? null;
 
+  // The profile opens as others see it; the form only on "Editar perfil",
+  // or the first time, when there is nothing to show yet.
+  const [editing, setEditing] = useState(false);
+  const hasProfile = Boolean(profile.data);
+  const showForm = adding || !hasProfile || editing;
+  const cancel = hasProfile && !adding ? () => setEditing(false) : undefined;
+
   const router = useRouter();
   const addStartup = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -86,7 +95,10 @@ function Profile({ user }: { user: User }) {
       // Editing it later stays on the page.
       const firstTime = !profile.data;
       await queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      // The public view below reads it too.
+      await queryClient.invalidateQueries({ queryKey: ['profiles'] });
       if (!firstTime) {
+        setEditing(false);
         toast.success('Perfil guardado');
         return;
       }
@@ -102,18 +114,34 @@ function Profile({ user }: { user: User }) {
   });
 
   return (
-    <div className="mx-auto max-w-2xl">
+    // The form reads best narrow; the profile as others see it, at its own width.
+    <div className={cn('mx-auto', showForm ? 'max-w-2xl' : 'max-w-4xl')}>
       <Onboarding className="mb-6" />
       <PageHeader
-        title={adding ? 'Nueva startup' : 'Mi perfil'}
+        title={adding ? 'Nueva startup' : editing ? 'Editar perfil' : 'Mi perfil'}
         description={
           adding
             ? 'Otra startup en tu misma cuenta, con tu misma billetera y tu misma verificación. Al crearla pasas a usar Pocket como ella; cambias de una a otra desde el menú de tu cuenta.'
-            : 'Todos los perfiles siguen la misma estructura, así startups y expertos pueden compararlos de un vistazo.'
+            : showForm
+              ? 'Todos los perfiles siguen la misma estructura, así startups y expertos pueden compararlos de un vistazo.'
+              : 'Así ven tu perfil las startups y los expertos.'
+        }
+        actions={
+          !showForm && !profile.isLoading ? (
+            <Button onClick={() => setEditing(true)}>
+              <PencilIcon /> Editar perfil
+            </Button>
+          ) : null
         }
       />
       {profile.isLoading || verification.isLoading ? (
         <Loading />
+      ) : !showForm ? (
+        user.role === 'startup' ? (
+          <StartupProfileView id={(profile.data as StartupProfile).id} />
+        ) : (
+          <SpecialistProfileView id={user.id} />
+        )
       ) : (
         <Card>
           <CardContent className="pt-6">
@@ -132,6 +160,7 @@ function Profile({ user }: { user: User }) {
                 initial={profile.data as StartupProfile | null}
                 saving={save.isPending}
                 onSave={save.mutate}
+                onCancel={cancel}
               />
             ) : (
               <SpecialistForm
@@ -139,12 +168,13 @@ function Profile({ user }: { user: User }) {
                 initial={profile.data as SpecialistProfile | null}
                 saving={save.isPending}
                 onSave={save.mutate}
+                onCancel={cancel}
               />
             )}
           </CardContent>
         </Card>
       )}
-      {user.role === 'startup' && !adding ? (
+      {user.role === 'startup' && !showForm ? (
         <Card className="mt-6">
           <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -188,9 +218,39 @@ interface FormProps<T> {
   known: VerificationRequest | null;
   saving: boolean;
   onSave: (body: Record<string, unknown>) => void;
+  /** Leaves the form without saving, back to the profile as others see it. */
+  onCancel?: () => void;
 }
 
-function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfile>) {
+/** Save, and leave without saving when there is a profile to go back to. */
+function FormActions({ saving, onCancel }: { saving: boolean; onCancel?: () => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button type="submit" size="lg" disabled={saving}>
+        {saving ? 'Guardando...' : 'Guardar perfil'}
+      </Button>
+      {onCancel ? (
+        <Button
+          type="button"
+          size="lg"
+          variant="outline"
+          disabled={saving}
+          onClick={onCancel}
+        >
+          Cancelar
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function StartupForm({
+  initial,
+  known,
+  saving,
+  onSave,
+  onCancel,
+}: FormProps<StartupProfile>) {
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const values = formValues(event.currentTarget);
@@ -318,9 +378,7 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
           />
         </Field>
       </div>
-      <Button type="submit" size="lg" disabled={saving}>
-        {saving ? 'Guardando...' : 'Guardar perfil'}
-      </Button>
+      <FormActions saving={saving} onCancel={onCancel} />
     </form>
   );
 }
@@ -470,6 +528,7 @@ function SpecialistForm({
   known,
   saving,
   onSave,
+  onCancel,
 }: FormProps<SpecialistProfile>) {
   const [categories, setCategories] = useState<ServiceCategory[]>(
     initial?.categories ?? [],
@@ -823,9 +882,7 @@ function SpecialistForm({
           </>
         ) : null}
       </div>
-      <Button type="submit" size="lg" disabled={saving}>
-        {saving ? 'Guardando...' : 'Guardar perfil'}
-      </Button>
+      <FormActions saving={saving} onCancel={onCancel} />
     </form>
   );
 }
