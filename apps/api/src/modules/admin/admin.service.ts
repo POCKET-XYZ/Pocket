@@ -220,6 +220,7 @@ export class AdminService {
         startup: {
           select: { id: true, startupProfile: { select: { companyName: true } } },
         },
+        startupProfile: { select: { companyName: true } },
         applications: { select: { status: true } },
         contracts: {
           orderBy: { createdAt: 'desc' },
@@ -237,7 +238,10 @@ export class AdminService {
         status: row.status,
         startup: {
           id: row.startup.id,
-          name: row.startup.startupProfile?.companyName ?? null,
+          name:
+            row.startupProfile?.companyName ??
+            row.startup.startupProfile?.companyName ??
+            null,
         },
         budget: row.budget.toString(),
         applications: {

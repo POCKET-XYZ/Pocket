@@ -49,7 +49,7 @@ export default function StartupsPage() {
           {directory.data.items.map((startup) => (
             <Link
               key={startup.id}
-              href={`/startups/${startup.userId}`}
+              href={`/startups/${startup.id}`}
               className="group flex flex-col rounded-2xl border border-border bg-card p-5 transition hover:border-celeste hover:shadow-sm"
             >
               <div className="flex items-center gap-3">

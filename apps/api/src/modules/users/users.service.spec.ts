@@ -19,7 +19,7 @@ describe('UsersService', () => {
     };
     specialistCv: { deleteMany: jest.Mock };
     specialistProfile: { deleteMany: jest.Mock };
-    startupProfile: { deleteMany: jest.Mock };
+    startupProfile: { deleteMany: jest.Mock; count: jest.Mock };
     verificationRequest: { deleteMany: jest.Mock };
     assistantSuggestion: { updateMany: jest.Mock };
     $transaction: jest.Mock;
@@ -46,7 +46,7 @@ describe('UsersService', () => {
       },
       specialistCv: { deleteMany: jest.fn() },
       specialistProfile: { deleteMany: jest.fn() },
-      startupProfile: { deleteMany: jest.fn() },
+      startupProfile: { deleteMany: jest.fn(), count: jest.fn().mockResolvedValue(1) },
       verificationRequest: { deleteMany: jest.fn() },
       assistantSuggestion: { updateMany: jest.fn() },
       $transaction: jest.fn(),
@@ -164,6 +164,76 @@ describe('UsersService', () => {
       prisma.user.findUnique.mockResolvedValue({ ...USER, deletedAt: new Date() });
       await service.deleteAccount('user-1');
       expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('roles and startups', () => {
+    const both = { ...USER, role: 'specialist', roles: ['startup', 'specialist'] };
+
+    it('adds the specialist role to a startup and switches to it', async () => {
+      prisma.user.findUnique
+        .mockResolvedValueOnce({ ...USER, roles: [] })
+        .mockResolvedValue({ ...both, startupProfiles: [] });
+      const me = await service.addRole('user-1', 'specialist');
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { roles: ['startup', 'specialist'], role: 'specialist' },
+      });
+      expect(me.roles).toEqual(['startup', 'specialist']);
+    });
+
+    it('never adds a role to a manager', async () => {
+      prisma.user.findUnique.mockResolvedValue({ ...USER, role: 'manager', roles: [] });
+      await expect(service.addRole('user-1', 'startup')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('switches only to a role the account has', async () => {
+      prisma.user.findUnique.mockResolvedValue({ ...USER, role: 'specialist', roles: [] });
+      await expect(service.switchRole('user-1', 'startup')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      prisma.user.findUnique.mockResolvedValue({ ...both, startupProfiles: [] });
+      await service.switchRole('user-1', 'startup');
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { role: 'startup' },
+      });
+    });
+
+    it('acts as another of its own startups, in its startup role', async () => {
+      prisma.user.findUnique.mockResolvedValue({ ...both, startupProfiles: [] });
+      await service.switchStartup('user-1', 'startup-2');
+      expect(prisma.startupProfile.count).toHaveBeenCalledWith({
+        where: { id: 'startup-2', userId: 'user-1' },
+      });
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { activeStartupId: 'startup-2', role: 'startup' },
+      });
+    });
+
+    it("never acts as someone else's startup", async () => {
+      prisma.user.findUnique.mockResolvedValue({ ...both, startupProfiles: [] });
+      prisma.startupProfile.count.mockResolvedValue(0);
+      await expect(service.switchStartup('user-1', 'theirs')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('lists every role and every startup of the account', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        ...USER,
+        roles: [],
+        startupProfiles: [{ id: 's-1', companyName: 'Acme', logoUrl: null }],
+      });
+      await expect(service.me('user-1')).resolves.toMatchObject({
+        roles: ['startup'],
+        startups: [{ id: 's-1', companyName: 'Acme', logoUrl: null }],
+      });
     });
   });
 });

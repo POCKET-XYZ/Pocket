@@ -19,10 +19,27 @@ import type {
 /** ISO-8601 timestamp as serialized by the API. */
 export type IsoDate = string;
 
+/** One of the startups an account owns, as the account menu lists it. */
+export interface OwnStartup {
+  id: string;
+  companyName: string;
+  logoUrl: string | null;
+}
+
 export interface User {
   id: string;
   stellarAddress: string;
+  /** The role the account acts as now: everything on screen is this role's. */
   role: UserRole;
+  /**
+   * Every role the account has: one account can be a startup and a
+   * specialist. GET /users/me sends it; other answers may not.
+   */
+  roles?: UserRole[];
+  /** The startup the account acts as, among the ones it owns. */
+  activeStartupId?: string | null;
+  /** Every startup the account owns, oldest first (GET /users/me). */
+  startups?: OwnStartup[];
   verificationStatus: VerificationStatus;
   /** Whether the wallet is the user's own or one they use through Pollar. */
   walletCustody: WalletCustody;
@@ -261,6 +278,8 @@ export interface SpecialistProfile {
 /** GET /profiles/:userId */
 export interface PublicProfile {
   userId: string;
+  /** On a startup's page: the startup's own id, since an account can own several. */
+  startupId?: string;
   role: UserRole;
   /**
    * The wallet shortened (GABC...WXYZ): enough to recognise it, not to look up
@@ -441,7 +460,10 @@ export interface JobReportTemplate {
 
 export interface Job {
   id: string;
+  /** The account that posted it. */
   startupId: string;
+  /** Which of that account's startups it is for; its page is /startups/<this id>. */
+  startupProfileId: string | null;
   title: string;
   description: string;
   category: ServiceCategory;
@@ -827,6 +849,8 @@ export interface ContractDetail extends Contract {
   chainOperations: ChainOperation[];
   /** Each party's contact email, visible once there is a contract. */
   contacts: { startup: string | null; specialist: string | null };
+  /** The startup the job is for, whose page is /startups/<this id>. */
+  startupProfileId: string | null;
 }
 
 /** GET /manager/disputes */

@@ -67,7 +67,7 @@ export default function JobPage() {
           description={
             data.startup ? (
               <Link
-                href={`/startups/${data.startupId}`}
+                href={`/startups/${data.startupProfileId ?? data.startupId}`}
                 className="inline-flex items-center gap-2 underline"
               >
                 <Avatar

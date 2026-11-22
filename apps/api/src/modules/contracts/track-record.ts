@@ -48,14 +48,14 @@ export function trackRecordOf(sources: TrackRecordSource[], now: Date): TrackRec
         best: best
           ? {
               ...best,
-              sector: source.startup.startupProfile?.sector ?? null,
+              sector: (source.job.startupProfile ?? source.startup.startupProfile)?.sector ?? null,
               reportedAt: best.reportedAt ?? source.completedAt!.toISOString(),
             }
           : null,
         job: {
           contractId: source.id,
           title: source.job.title,
-          sector: source.startup.startupProfile?.sector ?? null,
+          sector: (source.job.startupProfile ?? source.startup.startupProfile)?.sector ?? null,
           category: source.job.category,
           completedAt: source.completedAt!.toISOString(),
           kpis: judgedKpis(report),

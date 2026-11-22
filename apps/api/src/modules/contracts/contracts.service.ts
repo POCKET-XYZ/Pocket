@@ -21,6 +21,7 @@ import { UpdateTermsDto } from './dto/update-terms.dto';
 import { DELIVERABLE_REPORT } from './deliverable-report';
 import { POCKET_PLATFORM_FEE_ON_CHAIN } from './escrow-policies';
 import { EscrowService } from './escrow.service';
+import { JOB_COMPANY, jobsOfActiveStartup } from '../profiles/active-startup';
 
 const DETAIL_INCLUDE = {
   job: {
@@ -31,6 +32,7 @@ const DETAIL_INCLUDE = {
       deadline: true,
       status: true,
       revisionRounds: true,
+      startupProfile: JOB_COMPANY,
       kpis: { orderBy: { position: 'asc' } },
       reportTemplate: { select: REPORT_TEMPLATE_INFO },
     },
@@ -193,7 +195,9 @@ export class ContractsService {
   mine(user: AuthUser) {
     return this.prisma.contract.findMany({
       where:
-        user.role === 'startup' ? { startupId: user.sub } : { specialistId: user.sub },
+        user.role === 'startup'
+          ? { startupId: user.sub, job: jobsOfActiveStartup(user.sub) }
+          : { specialistId: user.sub },
       orderBy: { createdAt: 'desc' },
       include: {
         job: { select: { id: true, title: true, category: true } },
@@ -223,8 +227,14 @@ export class ContractsService {
     const contacts = hired
       ? await this.contactEmails([contract.startupId, contract.specialistId])
       : new Map<string, string>();
+    const { job, startup, ...rest } = contract;
+    const { startupProfile, ...jobFields } = job;
     return {
-      ...contract,
+      ...rest,
+      job: jobFields,
+      // The startup the job is for: one account can own several.
+      startup: { ...startup, startupProfile: startupProfile ?? startup.startupProfile },
+      startupProfileId: startupProfile?.id ?? null,
       contacts: {
         startup: contacts.get(contract.startupId) ?? null,
         specialist: contacts.get(contract.specialistId) ?? null,

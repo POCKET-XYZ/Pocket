@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { accountBadgeStatus } from '@/components/activation';
 import { useAuth } from '@/components/auth-provider';
+import { AccountSwitchItems, activeModeName } from '@/components/role-switch';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -158,7 +159,14 @@ export function SiteHeader() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-60">
                 <DropdownMenuLabel className="flex items-center justify-between gap-2">
-                  <span>{ROLE_LABELS[user.role]}</span>
+                  <span className="min-w-0">
+                    {ROLE_LABELS[user.role]}
+                    {activeModeName(user) ? (
+                      <span className="block truncate text-xs font-normal text-muted-foreground">
+                        {activeModeName(user)}
+                      </span>
+                    ) : null}
+                  </span>
                   {user.role !== 'manager' ? (
                     <StatusBadge feminine status={accountBadgeStatus(user)} />
                   ) : null}
@@ -184,6 +192,8 @@ export function SiteHeader() {
                     </DropdownMenuItem>
                   </>
                 ) : null}
+                <AccountSwitchItems user={user} />
+                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/account">Tu cuenta y tus datos</Link>
                 </DropdownMenuItem>

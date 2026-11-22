@@ -14,13 +14,14 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronDownIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Field, compact, formValues } from '@/components/form';
 import { Loading, PageHeader } from '@/components/page';
 import { Onboarding } from '@/components/onboarding';
 import { RequireAuth } from '@/components/require-auth';
+import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/components/confirm-dialog';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,15 +35,21 @@ import { cn } from '@/lib/utils';
 import { UrlInput } from '@/components/url-input';
 
 export default function ProfilePage() {
+  // ?nueva=1 opens an empty form for another startup of the account.
   return (
-    <RequireAuth roles={['startup', 'specialist']} verified>
-      {(user) => <Profile user={user} />}
-    </RequireAuth>
+    <Suspense fallback={<Loading />}>
+      <RequireAuth roles={['startup', 'specialist']} verified>
+        {(user) => <Profile user={user} />}
+      </RequireAuth>
+    </Suspense>
   );
 }
 
 function Profile({ user }: { user: User }) {
   const queryClient = useQueryClient();
+  const { refreshUser } = useAuth();
+  // Another startup for the same account: an empty form, created apart.
+  const adding = useSearchParams().get('nueva') === '1' && user.role === 'startup';
   const profile = useQuery({
     queryKey: ['profile', 'me'],
     queryFn: () => api<StartupProfile | SpecialistProfile | null>('/profiles/me'),
@@ -57,6 +64,20 @@ function Profile({ user }: { user: User }) {
   const known = verification.data ?? null;
 
   const router = useRouter();
+  const addStartup = useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      api<StartupProfile>('/profiles/me/startups', { method: 'POST', body }),
+    onSuccess: async (created) => {
+      // The account acts as the new startup now: nothing cached is its.
+      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'auth' });
+      await refreshUser();
+      toast.success(
+        `${created.companyName} está lista. Ahora publica su primer trabajo.`,
+      );
+      router.push('/jobs/new');
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       api(`/profiles/me/${user.role}`, { method: 'PUT', body }),
@@ -84,16 +105,29 @@ function Profile({ user }: { user: User }) {
     <div className="mx-auto max-w-2xl">
       <Onboarding className="mb-6" />
       <PageHeader
-        title="Mi perfil"
-        description="Todos los perfiles siguen la misma estructura, así startups y expertos pueden compararlos de un vistazo."
+        title={adding ? 'Nueva startup' : 'Mi perfil'}
+        description={
+          adding
+            ? 'Otra startup en tu misma cuenta, con tu misma billetera y tu misma verificación. Al crearla pasas a usar Pocket como ella; cambias de una a otra desde el menú de tu cuenta.'
+            : 'Todos los perfiles siguen la misma estructura, así startups y expertos pueden compararlos de un vistazo.'
+        }
       />
       {profile.isLoading || verification.isLoading ? (
         <Loading />
       ) : (
         <Card>
           <CardContent className="pt-6">
-            {user.role === 'startup' ? (
+            {adding ? (
               <StartupForm
+                key="new"
+                known={null}
+                initial={null}
+                saving={addStartup.isPending}
+                onSave={addStartup.mutate}
+              />
+            ) : user.role === 'startup' ? (
+              <StartupForm
+                key={(profile.data as StartupProfile | null)?.id ?? 'first'}
                 known={known}
                 initial={profile.data as StartupProfile | null}
                 saving={save.isPending}
@@ -110,7 +144,24 @@ function Profile({ user }: { user: User }) {
           </CardContent>
         </Card>
       )}
-      {user.role === 'startup' ? (
+      {user.role === 'startup' && !adding ? (
+        <Card className="mt-6">
+          <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-heading text-lg font-bold text-navy">
+                ¿Tienes otra startup?
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Súmala a tu cuenta y cambia entre ellas desde el menú de tu cuenta.
+              </p>
+            </div>
+            <Button asChild variant="outline">
+              <Link href="/profile?nueva=1">Agregar otra startup</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+      {user.role === 'startup' && !adding ? (
         <Card className="mt-6">
           <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -221,7 +272,7 @@ function StartupForm({ initial, known, saving, onSave }: FormProps<StartupProfil
           defaultValue={initial?.websiteUrl ?? known?.websiteUrl ?? ''}
         />
       </Field>
-      <LogoField initial={initial?.logoUrl} />
+      <LogoField initial={initial?.logoUrl} canUpload={initial !== null} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Razón social"
@@ -282,7 +333,14 @@ const MAX_LOGO_BYTES = 1024 * 1024;
  * with the address Pocket serves it at, and typing another link replaces it
  * when the profile is saved: whichever was set last is the one shown.
  */
-function LogoField({ initial }: { initial: string | null | undefined }) {
+function LogoField({
+  initial,
+  canUpload,
+}: {
+  initial: string | null | undefined;
+  /** An uploaded logo belongs to a startup that is already saved. */
+  canUpload: boolean;
+}) {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [logoUrl, setLogoUrl] = useState(initial ?? '');
@@ -372,18 +430,24 @@ function LogoField({ initial }: { initial: string | null | undefined }) {
             onChange={(event) => setLogoUrl(event.target.value)}
           />
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" disabled={busy !== null} asChild>
-              <label className="cursor-pointer whitespace-nowrap">
-                {busy === 'upload' ? 'Subiendo...' : 'Subir imagen'}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="sr-only"
-                  disabled={busy !== null}
-                  onChange={(event) => void onChosen(event)}
-                />
-              </label>
-            </Button>
+            {canUpload ? (
+              <Button type="button" variant="outline" disabled={busy !== null} asChild>
+                <label className="cursor-pointer whitespace-nowrap">
+                  {busy === 'upload' ? 'Subiendo...' : 'Subir imagen'}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    disabled={busy !== null}
+                    onChange={(event) => void onChosen(event)}
+                  />
+                </label>
+              </Button>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Para subir una imagen, guarda primero el perfil.
+              </p>
+            )}
             {logoUrl || initial ? (
               <Button
                 type="button"

@@ -9,6 +9,7 @@ import { useAuth } from '@/components/auth-provider';
 import { PRIVACY_EMAIL } from '@/components/legal-page';
 import { PageHeader } from '@/components/page';
 import { RequireAuth } from '@/components/require-auth';
+import { RolesCard } from '@/components/role-switch';
 import { useUsdcStatus } from '@/components/usdc-status';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,12 +35,13 @@ import { usdc } from '@/lib/format';
 export default function AccountPage() {
   return (
     <RequireAuth>
-      {() => (
+      {(user) => (
         <div className="mx-auto max-w-3xl space-y-6">
           <PageHeader
             title="Tu cuenta y tus datos"
             description="Descarga todo lo que Pocket guarda sobre ti, o elimina tu cuenta."
           />
+          <RolesCard user={user} />
           <ExportCard />
           <RightsCard />
           <DeleteCard />

@@ -51,11 +51,17 @@ describe('MigratedAccountsService', () => {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         update: jest.fn(),
       },
-      user: { create: jest.fn().mockResolvedValue({ id: NEW_USER_ID, role: 'specialist' }) },
+      user: {
+        create: jest.fn().mockResolvedValue({ id: NEW_USER_ID, role: 'specialist' }),
+        update: jest.fn(),
+      },
       verificationRequest: { create: jest.fn() },
       specialistProfile: { create: jest.fn() },
       specialistCv: { create: jest.fn() },
-      startupProfile: { create: jest.fn() },
+      startupProfile: {
+        create: jest.fn().mockResolvedValue({ id: 'startup-1' }),
+        update: jest.fn(),
+      },
       startupLogo: { create: jest.fn() },
     };
     prisma = {
@@ -163,14 +169,24 @@ describe('MigratedAccountsService', () => {
     );
     tx.user.create.mockResolvedValue({ id: NEW_USER_ID, role: 'startup' });
     await service.claim(session);
+    // The logo belongs to the startup, which the account then acts as.
     expect(tx.startupLogo.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ userId: NEW_USER_ID, contentType: 'image/png', size: 4 }),
+      data: expect.objectContaining({
+        startupProfileId: 'startup-1',
+        contentType: 'image/png',
+        size: 4,
+      }),
     });
     const created = tx.startupProfile.create.mock.calls[0][0].data;
     expect(created.companyName).toBe('Writz');
-    expect(created.logoUrl).toMatch(
-      new RegExp(`^https://api\\.mainnet\\.example/api/profiles/${NEW_USER_ID}/logo\\?v=\\d+$`),
+    const { logoUrl } = tx.startupProfile.update.mock.calls[0][0].data;
+    expect(logoUrl).toMatch(
+      /^https:\/\/api\.mainnet\.example\/api\/profiles\/startup-1\/logo\?v=\d+$/,
     );
+    expect(tx.user.update).toHaveBeenCalledWith({
+      where: { id: NEW_USER_ID },
+      data: { activeStartupId: 'startup-1' },
+    });
   });
 
   it('funds the wallet like any approval does', async () => {

@@ -80,6 +80,8 @@ export async function syncManagers(
       where: { role: 'manager', stellarAddress: { in: demoted } },
       data: {
         role: 'specialist',
+        // A demoted manager keeps no other role it may have had before.
+        roles: [],
         verificationStatus: 'rejected',
         tokenVersion: { increment: 1 },
       },

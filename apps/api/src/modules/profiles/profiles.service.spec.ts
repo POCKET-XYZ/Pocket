@@ -38,6 +38,8 @@ describe('ProfilesService', () => {
   let prisma: {
     startupProfile: {
       upsert: jest.Mock;
+      update: jest.Mock;
+      create: jest.Mock;
       updateMany: jest.Mock;
       findUnique: jest.Mock;
       findMany: jest.Mock;
@@ -50,7 +52,7 @@ describe('ProfilesService', () => {
       findMany: jest.Mock;
       count: jest.Mock;
     };
-    user: { findUnique: jest.Mock };
+    user: { findUnique: jest.Mock; update: jest.Mock };
     specialistCv: { upsert: jest.Mock; findFirst: jest.Mock };
     startupLogo: { upsert: jest.Mock; findFirst: jest.Mock; deleteMany: jest.Mock };
     migratedAccount: { findMany: jest.Mock; findFirst: jest.Mock };
@@ -62,6 +64,8 @@ describe('ProfilesService', () => {
     prisma = {
       startupProfile: {
         upsert: jest.fn(),
+        update: jest.fn(async ({ where }: { where: { id: string } }) => ({ id: where.id })),
+        create: jest.fn(async () => ({ id: 'startup-new' })),
         updateMany: jest.fn(),
         findUnique: jest.fn(),
         findMany: jest.fn().mockResolvedValue([]),
@@ -74,14 +78,23 @@ describe('ProfilesService', () => {
         findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
       },
-      user: { findUnique: jest.fn() },
+      // The startup the account acts as, for the startup side.
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ startupProfile: { id: 'startup-1' } }),
+        update: jest.fn(),
+      },
       specialistCv: { upsert: jest.fn(), findFirst: jest.fn() },
       startupLogo: { upsert: jest.fn(), findFirst: jest.fn(), deleteMany: jest.fn() },
       migratedAccount: {
         findMany: jest.fn().mockResolvedValue([]),
         findFirst: jest.fn().mockResolvedValue(null),
       },
-      $transaction: jest.fn(async (ops: unknown[]) => Promise.all(ops)),
+      // A batch runs its operations; an interactive one runs with the client.
+      $transaction: jest.fn(async (arg: unknown) =>
+        typeof arg === 'function'
+          ? (arg as (tx: unknown) => unknown)(prisma)
+          : Promise.all(arg as unknown[]),
+      ),
     };
     const config = { get: () => 'https://api.example/api' };
     service = new ProfilesService(
@@ -90,12 +103,11 @@ describe('ProfilesService', () => {
     );
   });
 
-  it('saves the startup profile of a startup', async () => {
+  it('saves the startup the account acts as', async () => {
     await service.saveStartup(STARTUP, STARTUP_DTO);
-    expect(prisma.startupProfile.upsert).toHaveBeenCalledWith({
-      where: { userId: 'user-1' },
-      create: { ...STARTUP_DTO, userId: 'user-1' },
-      update: {
+    expect(prisma.startupProfile.update).toHaveBeenCalledWith({
+      where: { id: 'startup-1' },
+      data: {
         ...STARTUP_DTO,
         websiteUrl: null,
         logoUrl: null,
@@ -105,6 +117,47 @@ describe('ProfilesService', () => {
         location: null,
       },
     });
+    expect(prisma.startupProfile.create).not.toHaveBeenCalled();
+  });
+
+  it("creates an account's first startup and acts as it", async () => {
+    prisma.user.findUnique.mockResolvedValue({ startupProfile: null });
+    await service.saveStartup(STARTUP, STARTUP_DTO);
+    expect(prisma.startupProfile.create).toHaveBeenCalledWith({
+      data: { ...STARTUP_DTO, userId: 'user-1' },
+    });
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { activeStartupId: 'startup-new' },
+    });
+  });
+
+  it('adds another startup to the account and acts as it', async () => {
+    prisma.startupProfile.count.mockResolvedValue(1);
+    await expect(service.addStartup(STARTUP, STARTUP_DTO)).resolves.toEqual({
+      id: 'startup-new',
+    });
+    expect(prisma.startupProfile.create).toHaveBeenCalledWith({
+      data: { ...STARTUP_DTO, userId: 'user-1' },
+    });
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { activeStartupId: 'startup-new' },
+    });
+  });
+
+  it('caps how many startups one account owns', async () => {
+    prisma.startupProfile.count.mockResolvedValue(10);
+    await expect(service.addStartup(STARTUP, STARTUP_DTO)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(prisma.startupProfile.create).not.toHaveBeenCalled();
+  });
+
+  it('adds a startup only for an account acting as a startup', async () => {
+    await expect(service.addStartup(SPECIALIST, STARTUP_DTO)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 
   it('empties the optional fields a specialist cleared', async () => {
@@ -260,7 +313,7 @@ describe('ProfilesService', () => {
 
   it('lists only approved startups, with how many jobs each has open', async () => {
     prisma.startupProfile.findMany.mockResolvedValue([
-      { id: 'p-1', companyName: 'North Loop', user: { _count: { jobs: 2 } } },
+      { id: 'p-1', companyName: 'North Loop', _count: { jobs: 2 } },
     ]);
     prisma.startupProfile.count.mockResolvedValue(1);
 
@@ -501,7 +554,9 @@ describe('ProfilesService', () => {
   });
 
   describe('logo', () => {
-    const URL = 'https://api.example/api/profiles/user-1/logo?v=abc';
+    const URL = 'https://api.example/api/profiles/startup-1/logo?v=abc';
+    const ADDRESS = (startupId: string) =>
+      `https://api.example/api/profiles/${startupId}/logo?v=abc`;
     const file = (bytes: Buffer) => ({ buffer: bytes, size: bytes.length });
     const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
     const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46]);
@@ -516,17 +571,17 @@ describe('ProfilesService', () => {
       ['a JPEG', JPEG, 'image/jpeg'],
       ['a WebP', WEBP, 'image/webp'],
     ])('keeps %s with the type read from its bytes', async (_label, bytes, type) => {
-      await expect(service.saveLogo(STARTUP, file(bytes), URL)).resolves.toEqual({
+      await expect(service.saveLogo(STARTUP, file(bytes), ADDRESS)).resolves.toEqual({
         logoUrl: URL,
       });
       expect(prisma.startupLogo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { userId: 'user-1' },
+          where: { startupProfileId: 'startup-1' },
           update: expect.objectContaining({ contentType: type, size: bytes.length }),
         }),
       );
-      expect(prisma.startupProfile.updateMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1' },
+      expect(prisma.startupProfile.update).toHaveBeenCalledWith({
+        where: { id: 'startup-1' },
         data: { logoUrl: URL },
       });
     });
@@ -544,7 +599,7 @@ describe('ProfilesService', () => {
       ['a PDF', Buffer.from('%PDF-1.7 not an image')],
       ['an empty file', Buffer.alloc(0)],
     ])('refuses %s', async (_label, bytes) => {
-      await expect(service.saveLogo(STARTUP, file(bytes), URL)).rejects.toBeInstanceOf(
+      await expect(service.saveLogo(STARTUP, file(bytes), ADDRESS)).rejects.toBeInstanceOf(
         BadRequestException,
       );
       expect(prisma.startupLogo.upsert).not.toHaveBeenCalled();
@@ -552,14 +607,14 @@ describe('ProfilesService', () => {
 
     it('refuses a logo over 1 MB', async () => {
       const big = Buffer.concat([PNG, Buffer.alloc(1024 * 1024)]);
-      await expect(service.saveLogo(STARTUP, file(big), URL)).rejects.toBeInstanceOf(
+      await expect(service.saveLogo(STARTUP, file(big), ADDRESS)).rejects.toBeInstanceOf(
         PayloadTooLargeException,
       );
       expect(prisma.startupLogo.upsert).not.toHaveBeenCalled();
     });
 
     it('only takes a logo from a startup', async () => {
-      await expect(service.saveLogo(SPECIALIST, file(PNG), URL)).rejects.toBeInstanceOf(
+      await expect(service.saveLogo(SPECIALIST, file(PNG), ADDRESS)).rejects.toBeInstanceOf(
         ForbiddenException,
       );
       expect(prisma.startupLogo.upsert).not.toHaveBeenCalled();
@@ -568,10 +623,10 @@ describe('ProfilesService', () => {
     it('removes the uploaded logo and the link to it', async () => {
       await expect(service.removeLogo(STARTUP)).resolves.toEqual({ logoUrl: null });
       expect(prisma.startupLogo.deleteMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1' },
+        where: { startupProfileId: 'startup-1' },
       });
-      expect(prisma.startupProfile.updateMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1' },
+      expect(prisma.startupProfile.update).toHaveBeenCalledWith({
+        where: { id: 'startup-1' },
         data: { logoUrl: null },
       });
     });
@@ -588,8 +643,16 @@ describe('ProfilesService', () => {
         logoUrl: 'https://cdn.example/acme.png',
       });
       expect(prisma.startupLogo.deleteMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1' },
+        where: { startupProfileId: 'startup-1' },
       });
+    });
+
+    it('asks for the startup profile before its first logo', async () => {
+      prisma.user.findUnique.mockResolvedValue({ startupProfile: null });
+      await expect(service.saveLogo(STARTUP, file(PNG), ADDRESS)).rejects.toThrow(
+        /perfil/,
+      );
+      expect(prisma.startupLogo.upsert).not.toHaveBeenCalled();
     });
 
     it('keeps the uploaded logo while the profile still shows it', async () => {
@@ -599,12 +662,19 @@ describe('ProfilesService', () => {
 
     it('serves only the logo of an approved startup, with its real type', async () => {
       prisma.startupLogo.findFirst.mockResolvedValue({ data: new Uint8Array(PNG) });
-      await expect(service.logoOf('user-1')).resolves.toEqual({
+      await expect(service.logoOf('startup-1')).resolves.toEqual({
         data: PNG,
         contentType: 'image/png',
       });
+      // By the startup's id, or by an account's id in a link from before.
       expect(prisma.startupLogo.findFirst).toHaveBeenCalledWith({
-        where: { userId: 'user-1', user: { verificationStatus: 'approved' } },
+        where: {
+          startupProfile: { user: { verificationStatus: 'approved' } },
+          OR: [
+            { startupProfileId: 'startup-1' },
+            { startupProfile: { activeFor: { some: { id: 'startup-1' } } } },
+          ],
+        },
       });
     });
 

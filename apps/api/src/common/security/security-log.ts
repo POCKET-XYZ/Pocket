@@ -15,6 +15,8 @@ export type SecurityEventName =
   | 'platform_usdc_trustline_missing'
   | 'migrated_account_claimed'
   | 'account_deleted'
+  | 'role_added'
+  | 'startup_added'
   | 'data_exported'
   | 'kyc_decision'
   | 'kyc_webhook_refused'

@@ -11,7 +11,14 @@ import { chainCheckOf, fromStroops, toStroops, type Credit } from '../stats/trac
 
 /** What the admin's contract rows and checks are built from. */
 export const ADMIN_CONTRACT_INCLUDE = {
-  job: { select: { title: true, category: true } },
+  job: {
+    select: {
+      title: true,
+      category: true,
+      // The startup the job is for: one account can own several.
+      startupProfile: { select: { companyName: true } },
+    },
+  },
   startup: {
     select: {
       id: true,
@@ -153,7 +160,10 @@ export function contractRow(source: AdminContractSource, now: Date): AdminContra
     status: source.status,
     startup: {
       id: source.startup.id,
-      name: source.startup.startupProfile?.companyName ?? null,
+      name:
+        source.job.startupProfile?.companyName ??
+        source.startup.startupProfile?.companyName ??
+        null,
     },
     specialist: {
       id: source.specialist.id,
@@ -392,7 +402,10 @@ export function contractCheckOf(
     status: source.status,
     startup: {
       id: source.startup.id,
-      name: source.startup.startupProfile?.companyName ?? null,
+      name:
+        source.job.startupProfile?.companyName ??
+        source.startup.startupProfile?.companyName ??
+        null,
       address: source.startup.stellarAddress,
     },
     specialist: {

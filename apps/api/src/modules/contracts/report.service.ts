@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import type { ContractReport, PeriodReport } from '@pocket/shared';
 import type { AuthUser } from '../../common/types/auth';
 import type { PrivateFile } from '../../common/uploads/send-file';
+import { jobsOfActiveStartup } from '../profiles/active-startup';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StellarService } from '../stellar/stellar.service';
 import { assertCanView } from './contracts.service';
@@ -47,8 +49,11 @@ export class ReportService {
       throw new BadRequestException((error as Error).message);
     }
     const role = user.role === 'startup' ? 'startup' : 'specialist';
-    const mine =
-      role === 'startup' ? { startupId: user.sub } : { specialistId: user.sub };
+    // A startup's report covers the startup the account acts as now.
+    const mine: Prisma.ContractWhereInput =
+      role === 'startup'
+        ? { startupId: user.sub, job: jobsOfActiveStartup(user.sub) }
+        : { specialistId: user.sub };
     const unread = await this.prisma.contract.findMany({
       where: {
         ...mine,

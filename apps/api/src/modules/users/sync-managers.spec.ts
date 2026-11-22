@@ -55,6 +55,7 @@ describe('syncManagers', () => {
       where: { role: 'manager', stellarAddress: { in: [FORMER] } },
       data: {
         role: 'specialist',
+        roles: [],
         verificationStatus: 'rejected',
         tokenVersion: { increment: 1 },
       },

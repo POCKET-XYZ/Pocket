@@ -42,7 +42,7 @@ export default function SpecialistProfilePage() {
   const router = useRouter();
   const profile = useQuery({
     queryKey: ['profiles', id],
-    queryFn: () => api<PublicProfile>(`/profiles/${id}`),
+    queryFn: () => api<PublicProfile>(`/profiles/${id}?as=specialist`),
   });
 
   // Startups used to be linked here; send those links to where startups live.

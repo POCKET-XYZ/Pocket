@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { isAccountActive } from '@pocket/shared';
 import { Prisma, type SpecialistProfile, type StartupProfile } from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
+import { securityEvent } from '../../common/security/security-log';
 import {
   isPdf,
   sniffImage,
@@ -136,14 +137,22 @@ export const MAX_CV_BYTES = 4 * 1024 * 1024;
 /** The largest logo Pocket keeps. A logo is shown small; 1 MB is plenty. */
 export const MAX_LOGO_BYTES = 1024 * 1024;
 
+/** A wallet as public pages show it: enough to recognise it, not to look it up. */
+function shortWallet(address: string): string {
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
+}
+
+/** How many startups one account can own. */
+export const MAX_STARTUPS_PER_ACCOUNT = 10;
+
 /**
  * Whether a logo link points at the logo this startup uploaded, served by the
  * API. Anything else is a link the startup pasted.
  */
-function isUploadedLogo(url: string | undefined, userId: string): boolean {
+function isUploadedLogo(url: string | undefined, startupId: string): boolean {
   if (!url) return false;
   try {
-    return new URL(url).pathname.endsWith(`/profiles/${userId}/logo`);
+    return new URL(url).pathname.endsWith(`/profiles/${startupId}/logo`);
   } catch {
     return false;
   }
@@ -169,22 +178,64 @@ export class ProfilesService {
     });
   }
 
-  /** Create or replace the startup profile of the signed-in user. */
+  /**
+   * Save the startup the signed-in account acts as. An account with no
+   * startup yet gets its first one, which becomes its active one.
+   */
   async saveStartup(user: AuthUser, dto: StartupProfileDto): Promise<StartupProfile> {
     if (user.role !== 'startup') {
       throw new ForbiddenException('Solo las startups tienen perfil de startup');
     }
-    const profile = await this.prisma.startupProfile.upsert({
-      where: { userId: user.sub },
-      create: { ...dto, userId: user.sub },
-      update: { ...STARTUP_OPTIONAL, ...given(dto) },
-    });
+    const active = await this.activeStartup(user.sub);
+    const profile = active
+      ? await this.prisma.startupProfile.update({
+          where: { id: active.id },
+          data: { ...STARTUP_OPTIONAL, ...given(dto) },
+        })
+      : await this.createStartup(user.sub, dto);
     // The last logo set wins: a pasted link, or none, replaces the uploaded
     // one, which is then not kept around nor served.
-    if (!isUploadedLogo(dto.logoUrl, user.sub)) {
-      await this.prisma.startupLogo.deleteMany({ where: { userId: user.sub } });
+    if (!isUploadedLogo(dto.logoUrl, profile.id)) {
+      await this.prisma.startupLogo.deleteMany({ where: { startupProfileId: profile.id } });
     }
     return profile;
+  }
+
+  /**
+   * Another startup for the signed-in account, which then acts as it: one
+   * person can run several companies with the same wallet and identity check.
+   */
+  async addStartup(user: AuthUser, dto: StartupProfileDto): Promise<StartupProfile> {
+    if (user.role !== 'startup') {
+      throw new ForbiddenException('Solo las startups tienen perfil de startup');
+    }
+    const owned = await this.prisma.startupProfile.count({ where: { userId: user.sub } });
+    if (owned >= MAX_STARTUPS_PER_ACCOUNT) {
+      throw new BadRequestException(
+        `Una cuenta puede tener hasta ${MAX_STARTUPS_PER_ACCOUNT} startups`,
+      );
+    }
+    const profile = await this.createStartup(user.sub, dto);
+    securityEvent('startup_added', { userId: user.sub, startupId: profile.id });
+    return profile;
+  }
+
+  /** A new startup for the account, made its active one. */
+  private createStartup(userId: string, dto: StartupProfileDto): Promise<StartupProfile> {
+    return this.prisma.$transaction(async (tx) => {
+      const profile = await tx.startupProfile.create({ data: { ...dto, userId } });
+      await tx.user.update({ where: { id: userId }, data: { activeStartupId: profile.id } });
+      return profile;
+    });
+  }
+
+  /** The startup the account acts as, or null when it has none yet. */
+  private async activeStartup(userId: string): Promise<StartupProfile | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { startupProfile: true },
+    });
+    return user?.startupProfile ?? null;
   }
 
   /** Create or replace the specialist profile of the signed-in user. */
@@ -241,9 +292,7 @@ export class ProfilesService {
 
   /** The profile of the signed-in user, or null when it is not filled in yet. */
   async mine(user: AuthUser): Promise<StartupProfile | SpecialistProfile | null> {
-    if (user.role === 'startup') {
-      return this.prisma.startupProfile.findUnique({ where: { userId: user.sub } });
-    }
+    if (user.role === 'startup') return this.activeStartup(user.sub);
     if (user.role === 'specialist') {
       return this.prisma.specialistProfile.findUnique({ where: { userId: user.sub } });
     }
@@ -279,18 +328,15 @@ export class ProfilesService {
         orderBy: { updatedAt: 'desc' },
         take: limit,
         skip: offset,
-        include: {
-          user: {
-            select: { _count: { select: { jobs: { where: { status: 'open' } } } } },
-          },
-        },
+        include: { _count: { select: { jobs: { where: { status: 'open' } } } } },
       }),
       this.prisma.startupProfile.count({ where }),
     ]);
 
-    const items = profiles.map(({ user, ...profile }) => ({
+    // Each startup on its own, even two run by the same person.
+    const items = profiles.map(({ _count, ...profile }) => ({
       ...profile,
-      openJobs: user._count.jobs,
+      openJobs: _count.jobs,
     }));
     // Then the startups still to claim their account from the test network.
     const waiting = (await this.waitingRows('startup'))
@@ -399,9 +445,19 @@ export class ProfilesService {
    * PNG, JPEG or WebP is kept, read from its bytes: never an SVG, which is a
    * document that can carry script. The profile then shows it.
    */
-  async saveLogo(user: AuthUser, file: UploadedBytes | undefined, logoUrl: string) {
+  async saveLogo(
+    user: AuthUser,
+    file: UploadedBytes | undefined,
+    addressOf: (startupId: string) => string,
+  ) {
     if (user.role !== 'startup') {
       throw new ForbiddenException('Solo las startups tienen logo');
+    }
+    const startup = await this.activeStartup(user.sub);
+    if (!startup) {
+      throw new BadRequestException(
+        'Guarda primero el perfil de tu startup y después sube su logo',
+      );
     }
     if (!file?.buffer.length) throw new BadRequestException('Elige un archivo de imagen');
     if (file.buffer.length > MAX_LOGO_BYTES) {
@@ -414,13 +470,14 @@ export class ProfilesService {
       throw new BadRequestException('Sube tu logo como imagen PNG, JPEG o WebP');
     }
     const data = new Uint8Array(file.buffer);
+    const logoUrl = addressOf(startup.id);
     await this.prisma.startupLogo.upsert({
-      where: { userId: user.sub },
-      create: { userId: user.sub, data, contentType, size: data.length },
+      where: { startupProfileId: startup.id },
+      create: { startupProfileId: startup.id, data, contentType, size: data.length },
       update: { data, contentType, size: data.length },
     });
-    await this.prisma.startupProfile.updateMany({
-      where: { userId: user.sub },
+    await this.prisma.startupProfile.update({
+      where: { id: startup.id },
       data: { logoUrl },
     });
     return { logoUrl };
@@ -431,19 +488,33 @@ export class ProfilesService {
     if (user.role !== 'startup') {
       throw new ForbiddenException('Solo las startups tienen logo');
     }
-    await this.prisma.startupLogo.deleteMany({ where: { userId: user.sub } });
-    await this.prisma.startupProfile.updateMany({
-      where: { userId: user.sub },
-      data: { logoUrl: null },
-    });
+    const startup = await this.activeStartup(user.sub);
+    if (startup) {
+      await this.prisma.startupLogo.deleteMany({ where: { startupProfileId: startup.id } });
+      await this.prisma.startupProfile.update({
+        where: { id: startup.id },
+        data: { logoUrl: null },
+      });
+    }
     return { logoUrl: null };
   }
 
-  /** The logo an approved startup uploaded, for anyone to see. */
-  async logoOf(userId: string): Promise<{ data: Buffer; contentType: ImageType }> {
+  /**
+   * The logo an approved startup uploaded, for anyone to see, by the startup's
+   * id. Links saved before an account could own several startups name the
+   * account instead, and get its active startup's logo.
+   */
+  async logoOf(id: string): Promise<{ data: Buffer; contentType: ImageType }> {
     const logo = await this.prisma.startupLogo.findFirst({
-      where: { userId, user: { verificationStatus: 'approved' } },
+      where: {
+        startupProfile: { user: { verificationStatus: 'approved' } },
+        OR: [
+          { startupProfileId: id },
+          { startupProfile: { activeFor: { some: { id } } } },
+        ],
+      },
     });
+    const userId = id;
     // The logo of a startup still to claim its account from the test network.
     const data = logo
       ? Buffer.from(logo.data)
@@ -461,9 +532,17 @@ export class ProfilesService {
 
   /**
    * Public profile of an active user: an approved startup, or a specialist who
-   * sent their account details. Everyone else stays hidden.
+   * sent their account details. Everyone else stays hidden. A startup's own id
+   * shows that startup, since one account can own several. An account that is
+   * both a startup and a specialist shows the side the visitor asked for
+   * (`as`), never both: the two are not tied together in public.
    */
-  async publicProfile(userId: string) {
+  async publicProfile(id: string, as?: 'startup' | 'specialist') {
+    if (as !== 'specialist') {
+      const company = await this.publicStartup(id);
+      if (company) return company;
+    }
+    const userId = id;
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -478,18 +557,64 @@ export class ProfilesService {
       throw new NotFoundException('No encontramos el perfil');
     }
 
-    const profile = user.startupProfile ?? user.specialistProfile;
+    // The side asked for; without one, the side the account acts as now.
+    const startupFirst = as ? as === 'startup' : user.role === 'startup';
+    const profile = startupFirst
+      ? (user.startupProfile ?? user.specialistProfile)
+      : (user.specialistProfile ?? user.startupProfile);
     if (!profile) throw new NotFoundException('No encontramos el perfil');
+    const isSpecialist = profile === user.specialistProfile;
+    // A startup is shown only once it passed the identity check.
+    if (!isSpecialist && user.verificationStatus !== 'approved') {
+      throw new NotFoundException('No encontramos el perfil');
+    }
 
     return {
       userId: user.id,
-      role: user.role,
+      ...(isSpecialist ? {} : { startupId: profile.id }),
+      role: isSpecialist ? 'specialist' : 'startup',
       // Shortened: a public page must not tie a person's name to a wallet
-      // anyone can read the balance and payments of.
-      wallet: `${user.stellarAddress.slice(0, 4)}...${user.stellarAddress.slice(-4)}`,
+      // anyone can read the balance and payments of. Left out for an account
+      // that is a startup and a specialist: its two pages must not be tied.
+      wallet:
+        user.startupProfile && user.specialistProfile ? '' : shortWallet(user.stellarAddress),
       memberSince: user.createdAt,
       identityVerified: identityVerified(user),
-      profile: user.specialistProfile ? publicSpecialist(profile) : profile,
+      profile: isSpecialist ? publicSpecialist(profile) : profile,
+    };
+  }
+
+  /** One startup's public page, by the startup's own id. */
+  private async publicStartup(id: string) {
+    const company = await this.prisma.startupProfile.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            stellarAddress: true,
+            createdAt: true,
+            deletedAt: true,
+            specialistProfile: { select: { id: true } },
+            ...IDENTITY_SELECT,
+          },
+        },
+      },
+    });
+    if (!company) return null;
+    const { user, ...profile } = company;
+    if (user.deletedAt || user.verificationStatus !== 'approved') {
+      throw new NotFoundException('No encontramos el perfil');
+    }
+    return {
+      userId: user.id,
+      startupId: profile.id,
+      role: 'startup' as const,
+      // Not shown for an account that is an expert too: the pages stay apart.
+      wallet: user.specialistProfile ? '' : shortWallet(user.stellarAddress),
+      memberSince: user.createdAt,
+      identityVerified: identityVerified(user),
+      profile,
     };
   }
 
