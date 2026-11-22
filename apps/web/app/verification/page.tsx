@@ -408,6 +408,7 @@ function Verification({ user }: { user: User }) {
   }
 
   function pageDescription(): string {
+    if (duplicate) return 'Esta cuenta no se puede activar: ya tienes otra en Pocket.';
     if (isSpecialist && kyc) {
       return user.verificationStatus === 'pending' ||
         user.verificationStatus === 'approved'

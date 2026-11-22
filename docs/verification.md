@@ -8,12 +8,12 @@ The identity check is on when `DIDIT_API_KEY`, `DIDIT_WORKFLOW_ID` and `DIDIT_WE
 
 A user carries one verification status, shown in `GET /users/me`.
 
-| Status          | Meaning                                                                                              |
-| --------------- | ---------------------------------------------------------------------------------------------------- |
-| `not_submitted` | The account exists but its details were never completed.                                            |
+| Status          | Meaning                                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------------------- |
+| `not_submitted` | The account exists but its details were never completed.                                              |
 | `pending`       | Details sent, identity check not passed yet: not started, in progress, or held for a review in Didit. |
-| `approved`      | Can fill in a profile and operate on the marketplace.                                                |
-| `rejected`      | Didit declined the check, or found the same ID or face on another live account. Can try again.       |
+| `approved`      | Can fill in a profile and operate on the marketplace.                                                 |
+| `rejected`      | Didit declined the check, or found the same ID or face on another live account. Can try again.        |
 
 ## Flow
 
@@ -37,7 +37,7 @@ The webhook is only trusted to be authentic (Didit's `X-Signature-V2` over the c
 
 ### One person, one account
 
-Didit matches IDs and faces across sessions. An approval whose ID or face also appears on another live Pocket account, or on Didit's blocklist, is turned down with a note that says why. Matches against deleted accounts, or against sessions that are not Pocket users, do not count.
+Didit matches IDs and faces across sessions. An approval whose ID or face also appears on another live Pocket account, or on Didit's blocklist, is turned down with a note that says why. Matches against deleted accounts, or against sessions that are not Pocket users, do not count. Such an account cannot try again, since another check would cost the same and end the same: `POST /verification` refuses it, and `GET /verification/me` says so in `duplicate`, so the page offers to sign out and enter with the other account instead of the form.
 
 ### Consent
 
