@@ -5,6 +5,7 @@ import {
   TRUSTLESS_WORK_FEE_PERCENT,
   totalAfterFees,
   type Applicant,
+  type ContractDetail,
   type JobListing,
 } from '@pocket/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -107,6 +108,17 @@ function spread(
 const amountsOf = (milestones: MilestoneDraft[]) =>
   milestones.map((milestone) => toUnits(milestone.amount));
 
+interface TermsBody {
+  price?: number;
+  milestones: {
+    title: string;
+    description: string;
+    acceptanceCriteria?: string;
+    amount: number;
+    dueDate: string;
+  }[];
+}
+
 /**
  * The startup hires an applicant. The milestones come from the job, so the
  * terms are the ones both sides already read; they can still be adjusted if
@@ -123,22 +135,150 @@ export function HireDialog({
 }) {
   const router = useRouter();
   const kyc = useKycEnabled();
-  const [open, setOpen] = useState(false);
-  const [price, setPrice] = useState(applicant.price);
-  const [milestones, setMilestones] = useState<MilestoneDraft[]>(() =>
-    planFrom(job, applicant.price),
-  );
-  // Each milestone's part of the price, as the job set it or the startup typed it.
-  const [shares, setShares] = useState<bigint[]>(() =>
-    job && job.milestones.length > 0
-      ? job.milestones.map((milestone) => toUnits(milestone.amount))
-      : [],
-  );
-
+  const queryClient = useQueryClient();
   const name = applicant.specialist?.displayName ?? 'el experto';
-  const priceUnits = toUnits(price);
-  const counteroffer = priceUnits !== toUnits(applicant.price);
   const budget = job ? fromUnits(toUnits(String(job.budget))) : null;
+
+  return (
+    <TermsDialog
+      trigger={<Button>Contratar</Button>}
+      title={`Contratar a ${applicant.specialist?.displayName ?? 'este experto'}`}
+      description={`Elige el precio y divídelo en hitos. Cada hito se paga cuando apruebas su entrega.${
+        kyc && !applicant.identityVerified
+          ? ' Antes de aceptar, el experto verifica su identidad con Pocket.'
+          : ''
+      }`}
+      name={name}
+      askedPrice={applicant.price}
+      budget={budget}
+      start={() => ({
+        price: applicant.price,
+        milestones: planFrom(job, applicant.price),
+        // Each milestone's part of the price, as the job set it.
+        shares:
+          job && job.milestones.length > 0
+            ? job.milestones.map((milestone) => toUnits(milestone.amount))
+            : [],
+      })}
+      submitLabel={(counteroffer) =>
+        counteroffer ? 'Enviar contraoferta' : 'Enviar condiciones'
+      }
+      pendingLabel="Enviando..."
+      send={async ({ price, milestones }, counteroffer) => {
+        const contract = await api<{ id: string }>('/contracts', {
+          method: 'POST',
+          body: {
+            applicationId: applicant.id,
+            // Sent only as a counteroffer: otherwise the applicant's own price.
+            ...(counteroffer ? { price } : {}),
+            milestones,
+          },
+        });
+        toast.success(
+          counteroffer
+            ? 'Contraoferta enviada. El experto tiene que aceptarla.'
+            : 'Condiciones enviadas. El experto tiene que aceptarlas.',
+        );
+        // The job is no longer open and the application is taken.
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+          queryClient.invalidateQueries({ queryKey: ['contracts', 'mine'] }),
+          queryClient.invalidateQueries({ queryKey: ['applications'] }),
+        ]);
+        router.push(`/contracts/${contract.id}`);
+      }}
+    />
+  );
+}
+
+/**
+ * The startup changes terms the specialist has not accepted yet: the price,
+ * the milestones or their dates. Nothing is on chain before acceptance, so
+ * this replaces the offer in Pocket only, and the specialist is told.
+ */
+export function EditOfferDialog({ contract }: { contract: ContractDetail }) {
+  const queryClient = useQueryClient();
+  const name = contract.specialist.specialistProfile?.displayName ?? 'el experto';
+
+  return (
+    <TermsDialog
+      trigger={
+        <Button size="sm" variant="outline">
+          Editar oferta
+        </Button>
+      }
+      title="Editar oferta"
+      description={`Cambia el precio, los hitos o sus fechas. Le avisamos a ${name}, que revisa los nuevos términos antes de aceptar.`}
+      name={name}
+      askedPrice={contract.application.price}
+      budget={null}
+      start={() => {
+        const milestones = contract.milestones.map((milestone) => ({
+          title: milestone.title,
+          description: milestone.description,
+          acceptanceCriteria: milestone.acceptanceCriteria ?? '',
+          amount: fromUnits(toUnits(milestone.amount)),
+          dueDate: milestone.dueDate.slice(0, 10),
+        }));
+        return {
+          price: fromUnits(toUnits(contract.amount)),
+          milestones,
+          shares: amountsOf(milestones),
+        };
+      }}
+      submitLabel={() => 'Guardar cambios'}
+      pendingLabel="Guardando..."
+      send={async ({ price, milestones }) => {
+        await api(`/contracts/${contract.id}/terms`, {
+          method: 'PUT',
+          body: { price, milestones },
+        });
+        toast.success(`Oferta actualizada. Le avisamos a ${name}.`);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['contracts', contract.id] }),
+          queryClient.invalidateQueries({ queryKey: ['contracts', 'mine'] }),
+        ]);
+      }}
+    />
+  );
+}
+
+/**
+ * The price and its milestones, for a new hire or for an offer being edited.
+ * The form starts over from `start` each time it opens.
+ */
+function TermsDialog({
+  trigger,
+  title,
+  description,
+  name,
+  askedPrice,
+  budget,
+  start,
+  submitLabel,
+  pendingLabel,
+  send,
+}: {
+  trigger: React.ReactNode;
+  title: string;
+  description: string;
+  name: string;
+  askedPrice: string;
+  budget: string | null;
+  start: () => { price: string; milestones: MilestoneDraft[]; shares: bigint[] };
+  submitLabel: (counteroffer: boolean) => string;
+  pendingLabel: string;
+  send: (body: Required<TermsBody>, counteroffer: boolean) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [initial] = useState(start);
+  const [price, setPrice] = useState(initial.price);
+  const [milestones, setMilestones] = useState<MilestoneDraft[]>(initial.milestones);
+  // Each milestone's part of the price, as the job set it or the startup typed it.
+  const [shares, setShares] = useState<bigint[]>(initial.shares);
+
+  const priceUnits = toUnits(price);
+  const counteroffer = priceUnits !== toUnits(askedPrice);
   const total = milestones.reduce(
     (sum, milestone) => sum + toUnits(milestone.amount),
     BigInt(0),
@@ -161,6 +301,17 @@ export function HireDialog({
     for (const field of fields) field?.setCustomValidity(field === last ? message : '');
   }, [remaining, priceUnits, milestones.length]);
 
+  function openChange(next: boolean) {
+    // Each time it opens, the form starts from the terms as they are now.
+    if (next) {
+      const fresh = start();
+      setPrice(fresh.price);
+      setMilestones(fresh.milestones);
+      setShares(fresh.shares);
+    }
+    setOpen(next);
+  }
+
   function changePrice(next: string) {
     setPrice(next);
     // The milestones follow a price that can be paid; a half-typed one waits.
@@ -173,15 +324,11 @@ export function HireDialog({
     setShares(amountsOf(next));
   }
 
-  const queryClient = useQueryClient();
-  const hire = useMutation({
+  const submit = useMutation({
     mutationFn: () =>
-      api<{ id: string }>('/contracts', {
-        method: 'POST',
-        body: {
-          applicationId: applicant.id,
-          // Sent only as a counteroffer: otherwise the applicant's own price.
-          ...(counteroffer ? { price: Number(fromUnits(priceUnits)) } : {}),
+      send(
+        {
+          price: Number(fromUnits(priceUnits)),
           milestones: milestones.map((milestone) => ({
             title: milestone.title.trim(),
             description: milestone.description.trim(),
@@ -192,21 +339,9 @@ export function HireDialog({
             dueDate: milestone.dueDate,
           })),
         },
-      }),
-    onSuccess: async (contract) => {
-      toast.success(
-        counteroffer
-          ? 'Contraoferta enviada. El experto tiene que aceptarla.'
-          : 'Condiciones enviadas. El experto tiene que aceptarlas.',
-      );
-      // The job is no longer open and the application is taken.
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['jobs'] }),
-        queryClient.invalidateQueries({ queryKey: ['contracts', 'mine'] }),
-        queryClient.invalidateQueries({ queryKey: ['applications'] }),
-      ]);
-      router.push(`/contracts/${contract.id}`);
-    },
+        counteroffer,
+      ),
+    onSuccess: () => setOpen(false),
     onError: (error) => toast.error(errorMessage(error)),
   });
 
@@ -220,26 +355,16 @@ export function HireDialog({
     event.preventDefault();
     // The fields already stop the form on these (min price, amounts that add up).
     if (priceUnits < toUnits('1') || remaining !== BigInt(0)) return;
-    hire.mutate();
+    submit.mutate();
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>Contratar</Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={openChange}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>
-            Contratar a {applicant.specialist?.displayName ?? 'este experto'}
-          </DialogTitle>
-          <DialogDescription>
-            Elige el precio y divídelo en hitos. Cada hito se paga cuando apruebas su
-            entrega.
-            {kyc && !applicant.identityVerified
-              ? ' Antes de aceptar, el experto verifica su identidad con Pocket.'
-              : ''}
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2 rounded-xl border border-border p-4">
@@ -257,7 +382,7 @@ export function HireDialog({
               onChange={(event) => changePrice(event.target.value)}
             />
             <p className="text-sm text-muted-foreground">
-              {name} pidió {usdc(applicant.price)}
+              {name} pidió {usdc(askedPrice)}
               {budget !== null ? ` y tu presupuesto era de ${usdc(budget)}` : ''}.{' '}
               {counteroffer
                 ? `Le llega como contraoferta: ${name} la acepta o la rechaza.`
@@ -279,9 +404,9 @@ export function HireDialog({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => changePrice(applicant.price)}
+                  onClick={() => changePrice(askedPrice)}
                 >
-                  Volver a su precio ({usdc(applicant.price)})
+                  Volver a su precio ({usdc(askedPrice)})
                 </Button>
               ) : null}
             </div>
@@ -409,12 +534,8 @@ export function HireDialog({
           ) : null}
 
           <DialogFooter>
-            <Button type="submit" disabled={hire.isPending}>
-              {hire.isPending
-                ? 'Enviando...'
-                : counteroffer
-                  ? 'Enviar contraoferta'
-                  : 'Enviar condiciones'}
+            <Button type="submit" disabled={submit.isPending}>
+              {submit.isPending ? pendingLabel : submitLabel(counteroffer)}
             </Button>
           </DialogFooter>
         </form>

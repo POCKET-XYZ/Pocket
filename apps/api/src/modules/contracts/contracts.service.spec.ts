@@ -66,6 +66,7 @@ describe('ContractsService', () => {
       updateMany: jest.Mock;
       deleteMany: jest.Mock;
     };
+    milestone: { deleteMany: jest.Mock; createMany: jest.Mock };
     verificationRequest: { findMany: jest.Mock };
     chainOperation: { findUnique: jest.Mock };
     user: { findUnique: jest.Mock };
@@ -113,6 +114,10 @@ describe('ContractsService', () => {
         })),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      milestone: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+        createMany: jest.fn().mockResolvedValue({ count: 2 }),
       },
       chainOperation: { findUnique: jest.fn().mockResolvedValue(null) },
       user: { findUnique: jest.fn().mockResolvedValue({ walletCustody: 'pollar' }) },
@@ -199,7 +204,9 @@ describe('ContractsService', () => {
     it('hires once when two offers for the same job arrive together', async () => {
       // The other offer took the job between the read and the write.
       prisma.job.updateMany.mockResolvedValue({ count: 0 });
-      await expect(service.create(startup, dto)).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.create(startup, dto)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
       expect(prisma.contract.create).not.toHaveBeenCalled();
       expect(notifications.notifyUsers).not.toHaveBeenCalled();
     });
@@ -214,7 +221,7 @@ describe('ContractsService', () => {
       expect(prisma.contract.create).not.toHaveBeenCalled();
     });
 
-    it('sends a counteroffer at the startup\'s own price, and tells the applicant', async () => {
+    it("sends a counteroffer at the startup's own price, and tells the applicant", async () => {
       await service.create(startup, {
         ...dto,
         price: 105,
@@ -234,9 +241,9 @@ describe('ContractsService', () => {
     });
 
     it('requires the milestones to add up to the price offered', async () => {
-      await expect(service.create(startup, { ...dto, price: 105 })).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        service.create(startup, { ...dto, price: 105 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
       expect(prisma.contract.create).not.toHaveBeenCalled();
     });
 
@@ -344,7 +351,10 @@ describe('ContractsService', () => {
     });
 
     it('is refused once the specialist accepted', async () => {
-      prisma.contract.findUnique.mockResolvedValue({ ...offer, status: 'awaiting_funding' });
+      prisma.contract.findUnique.mockResolvedValue({
+        ...offer,
+        status: 'awaiting_funding',
+      });
       await expect(service.withdrawOffer(startup, 'contract-1')).rejects.toBeInstanceOf(
         BadRequestException,
       );
@@ -360,25 +370,136 @@ describe('ContractsService', () => {
     });
 
     it('is only for the startup that made it', async () => {
-      prisma.contract.findUnique.mockResolvedValue({ ...offer, startupId: 'someone-else' });
+      prisma.contract.findUnique.mockResolvedValue({
+        ...offer,
+        startupId: 'someone-else',
+      });
       await expect(service.withdrawOffer(startup, 'contract-1')).rejects.toBeInstanceOf(
         ForbiddenException,
       );
     });
   });
 
+  describe('updateTerms', () => {
+    const offer = {
+      id: 'contract-1',
+      jobId: 'job-1',
+      applicationId: 'app-1',
+      startupId: 'startup-1',
+      specialistId: 'specialist-1',
+      status: 'awaiting_specialist',
+    };
+    const terms = { price: 450.5, milestones: dto.milestones };
+
+    beforeEach(() => {
+      prisma.contract.findUnique.mockResolvedValue(offer);
+      prisma.contract.findUniqueOrThrow.mockResolvedValue({ ...offer, milestones: [] });
+    });
+
+    it('replaces the price and the milestones, and tells the specialist', async () => {
+      await service.updateTerms(startup, 'contract-1', terms);
+      expect(prisma.contract.updateMany).toHaveBeenCalledWith({
+        where: { id: 'contract-1', status: 'awaiting_specialist', acceptedAt: null },
+        data: { amount: new Prisma.Decimal('450.5') },
+      });
+      expect(prisma.milestone.deleteMany).toHaveBeenCalledWith({
+        where: { contractId: 'contract-1' },
+      });
+      expect(prisma.milestone.createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({
+            contractId: 'contract-1',
+            position: 0,
+            title: 'Lead list',
+            dueDate: new Date(dto.milestones[0].dueDate),
+          }),
+          expect.objectContaining({
+            contractId: 'contract-1',
+            position: 1,
+            amount: 350.5,
+          }),
+        ],
+      });
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(['specialist-1'], {
+        type: 'offer_updated',
+        contractId: 'contract-1',
+        jobTitle: 'Growth plan',
+      });
+      // Nothing is on chain before acceptance.
+      expect(escrow.deploy).not.toHaveBeenCalled();
+    });
+
+    it('needs milestones that add up to the price', async () => {
+      await expect(
+        service.updateTerms(startup, 'contract-1', { ...terms, price: 400 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.contract.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('refuses a due date in the past', async () => {
+      const past = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10);
+      await expect(
+        service.updateTerms(startup, 'contract-1', {
+          price: 100,
+          milestones: [
+            { title: 'Late', description: 'Already late', amount: 100, dueDate: past },
+          ],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('is refused once the specialist accepted', async () => {
+      prisma.contract.findUnique.mockResolvedValue({
+        ...offer,
+        status: 'awaiting_funding',
+      });
+      await expect(
+        service.updateTerms(startup, 'contract-1', terms),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('is refused while the escrow is being deployed, and changes nothing', async () => {
+      prisma.contract.updateMany.mockResolvedValue({ count: 0 });
+      await expect(
+        service.updateTerms(startup, 'contract-1', terms),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.milestone.deleteMany).not.toHaveBeenCalled();
+      expect(notifications.notifyUsers).not.toHaveBeenCalled();
+    });
+
+    it('is only for the startup that made it', async () => {
+      prisma.contract.findUnique.mockResolvedValue({
+        ...offer,
+        startupId: 'someone-else',
+      });
+      await expect(
+        service.updateTerms(startup, 'contract-1', terms),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
   describe('detail', () => {
-    const offer = { id: 'contract-1', startupId: 'startup-1', specialistId: 'specialist-1' };
+    const offer = {
+      id: 'contract-1',
+      startupId: 'startup-1',
+      specialistId: 'specialist-1',
+    };
 
     it('hides the contact emails while the terms are only an offer', async () => {
-      prisma.contract.findUnique.mockResolvedValue({ ...offer, status: 'awaiting_specialist' });
+      prisma.contract.findUnique.mockResolvedValue({
+        ...offer,
+        status: 'awaiting_specialist',
+      });
       const detail = await service.detail(startup, 'contract-1');
       expect(detail.contacts).toEqual({ startup: null, specialist: null });
       expect(prisma.verificationRequest.findMany).not.toHaveBeenCalled();
     });
 
     it('shows them once the specialist accepted', async () => {
-      prisma.contract.findUnique.mockResolvedValue({ ...offer, status: 'awaiting_funding' });
+      prisma.contract.findUnique.mockResolvedValue({
+        ...offer,
+        status: 'awaiting_funding',
+      });
       const detail = await service.detail(startup, 'contract-1');
       expect(detail.contacts.specialist).toBe('specialist@example.com');
     });
@@ -408,12 +529,14 @@ describe('ContractsService', () => {
   });
 
   describe('accept', () => {
+    const version = new Date('2026-11-22T15:04:05.123Z');
     const waiting = {
       id: 'contract-1',
       jobId: 'job-1',
       startupId: 'startup-1',
       specialistId: 'specialist-1',
       status: 'awaiting_specialist',
+      updatedAt: version,
     };
 
     beforeEach(() => {
@@ -425,7 +548,11 @@ describe('ContractsService', () => {
           startup: { stellarAddress: 'GSTARTUP' },
           milestones: [],
         })
-        .mockResolvedValue({ ...waiting, status: 'awaiting_funding', escrowId: 'CESCROW' });
+        .mockResolvedValue({
+          ...waiting,
+          status: 'awaiting_funding',
+          escrowId: 'CESCROW',
+        });
     });
 
     it('deploys the escrow and turns down the applicants on hold', async () => {
@@ -512,9 +639,43 @@ describe('ContractsService', () => {
       );
       expect(prisma.contract.update).toHaveBeenCalledWith({
         where: { id: 'contract-1' },
-        data: { acceptedAt: null },
+        // Back to the version the specialist read, so the retry matches it.
+        data: { acceptedAt: null, updatedAt: version },
       });
       expect(notifications.notifyUsers).not.toHaveBeenCalled();
+    });
+
+    it('accepts the version of the terms the specialist read', async () => {
+      await service.accept(specialist, 'contract-1', version.toISOString());
+      expect(prisma.contract.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'contract-1',
+          status: 'awaiting_specialist',
+          acceptedAt: null,
+          updatedAt: version,
+        },
+        data: { acceptedAt: expect.any(Date) as Date },
+      });
+      expect(escrow.deploy).toHaveBeenCalled();
+    });
+
+    it('refuses terms the startup changed since the specialist read them', async () => {
+      await expect(
+        service.accept(specialist, 'contract-1', '2026-11-22T14:00:00.000Z'),
+      ).rejects.toThrow('La startup cambió los términos');
+      expect(prisma.contract.updateMany).not.toHaveBeenCalled();
+      expect(escrow.deploy).not.toHaveBeenCalled();
+    });
+
+    it('refuses them when the change lands while accepting', async () => {
+      prisma.contract.updateMany.mockResolvedValue({ count: 0 });
+      prisma.contract.findUnique
+        .mockResolvedValueOnce(waiting)
+        .mockResolvedValueOnce({ acceptedAt: null });
+      await expect(
+        service.accept(specialist, 'contract-1', version.toISOString()),
+      ).rejects.toThrow('La startup cambió los términos');
+      expect(escrow.deploy).not.toHaveBeenCalled();
     });
 
     it('refuses the startup', async () => {
@@ -544,7 +705,9 @@ describe('ContractsService', () => {
 
     it('does not prepare a second deposit when the escrow already holds the money', async () => {
       escrow.isFunded.mockResolvedValue(true);
-      await expect(service.prepareFund(startup, 'contract-1')).rejects.toThrow('ya está depositado');
+      await expect(service.prepareFund(startup, 'contract-1')).rejects.toThrow(
+        'ya está depositado',
+      );
       expect(prisma.contract.updateMany).toHaveBeenCalledWith({
         where: { id: 'contract-1', status: 'awaiting_funding' },
         data: expect.objectContaining({ status: 'active' }),
@@ -554,7 +717,9 @@ describe('ContractsService', () => {
 
     it('does not prepare a second deposit while one is being confirmed', async () => {
       prisma.chainOperation.findUnique.mockResolvedValue({ txHash: 'pending' });
-      await expect(service.prepareFund(startup, 'contract-1')).rejects.toThrow('todavía está confirmando tu depósito');
+      await expect(service.prepareFund(startup, 'contract-1')).rejects.toThrow(
+        'todavía está confirmando tu depósito',
+      );
       expect(escrow.prepareFund).not.toHaveBeenCalled();
     });
 
@@ -612,7 +777,10 @@ describe('ContractsService', () => {
 
     it('tells the specialist once when two syncs activate it together', async () => {
       prisma.contract.findUnique.mockResolvedValue(awaiting);
-      prisma.contract.findUniqueOrThrow.mockResolvedValue({ ...awaiting, status: 'active' });
+      prisma.contract.findUniqueOrThrow.mockResolvedValue({
+        ...awaiting,
+        status: 'active',
+      });
       // The other sync moved it out of awaiting_funding first.
       prisma.contract.updateMany.mockResolvedValue({ count: 0 });
       escrow.isFunded.mockResolvedValue(true);
