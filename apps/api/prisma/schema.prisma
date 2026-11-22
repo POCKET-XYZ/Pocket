@@ -517,6 +517,10 @@ model Contract {
   // Pocket's fee the escrow was deployed with, in basis points (100 = 1%).
   // 0 for escrows deployed before the fee existed and contracts not deployed.
   platformFeeBps Int            @default(0) @map("platform_fee_bps")
+  // Dates, descriptions or criteria the startup changed after the specialist
+  // accepted, not seen by the specialist yet: [{ position, title, field,
+  // before, after, at }]. Shown once on the contract, then cleared.
+  pendingChanges Json?          @map("pending_changes")
   acceptedAt     DateTime?      @map("accepted_at")
   fundedAt       DateTime?      @map("funded_at")
   completedAt    DateTime?      @map("completed_at")

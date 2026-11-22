@@ -856,6 +856,22 @@ export interface ContractDetail extends Contract {
   contacts: { startup: string | null; specialist: string | null };
   /** The startup the job is for, whose page is /startups/<this id>. */
   startupProfileId: string | null;
+  /**
+   * Dates, descriptions or criteria the startup changed after the specialist
+   * accepted and the specialist has not seen yet.
+   */
+  pendingChanges?: MilestoneChange[] | null;
+}
+
+/** One detail of a milestone the startup changed after acceptance. */
+export interface MilestoneChange {
+  position: number;
+  title: string;
+  field: 'dueDate' | 'description' | 'acceptanceCriteria';
+  /** Dates as AAAA-MM-DD; texts as written. */
+  before: string | null;
+  after: string | null;
+  at: IsoDate;
 }
 
 /** GET /manager/disputes */

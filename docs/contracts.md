@@ -10,6 +10,13 @@ A contract is what a startup and a specialist agree on once the startup picks an
    - **Declines:** the contract is cancelled and the job opens again, so the startup can pick another applicant.
 3. The startup funds the escrow with the full amount. The contract is active and the specialist can start.
 
+### Changing the terms after acceptance
+
+The escrow holds the price, each milestone's amount and each milestone's title. Due dates, descriptions and acceptance criteria live in Pocket only.
+
+- **Accepted, not funded** (`awaiting_funding`, the escrow exists and is empty). `PUT /contracts/:id/terms` takes the whole offer again. If the price, an amount, a title or the number of milestones changed, the terms go back to the specialist: the contract returns to `awaiting_specialist`, its `escrowId` is cleared and the empty escrow is left unused (its deploy stays on record with its step key freed, and the contract detail no longer lists it), and the specialist is emailed to accept again, which deploys a new escrow. This is refused once a deposit was sent or the escrow holds any USDC. Any other change is a change of details, below.
+- **Details** (`PUT /contracts/:id/details`, `awaiting_funding` or `active`): due dates, descriptions and acceptance criteria of milestones still `pending` or `changes_requested`. Once funded, a due date only moves later, so a change never leaves the specialist late. The escrow does not change and there is no email: the changes are kept in `contracts.pending_changes` (each field's value before and after), the specialist sees them in a small notice when opening the contract, and `POST /contracts/:id/details/seen` clears them.
+
 The specialist's wallet must trust USDC before accepting, and the startup's before funding. The API answers `USDC_TRUSTLINE_REQUIRED` or `STELLAR_ACCOUNT_NOT_FOUND` in the `code` field so the client can offer the fix (see [Wallet](#wallet)).
 
 Once there is a contract, each party sees the other's contact email, since they talk outside the platform.
