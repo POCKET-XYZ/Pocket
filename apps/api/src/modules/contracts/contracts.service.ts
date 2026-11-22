@@ -6,7 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ApiErrorCode } from '@pocket/shared';
-import { Prisma, type Contract, type ContractStatus } from '@prisma/client';
+import {
+  Prisma,
+  type Contract,
+  type ContractStatus,
+  type MilestoneStatus,
+} from '@prisma/client';
 import type { AuthUser } from '../../common/types/auth';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { PreparedTransaction } from '../stellar/chain-operations.service';
@@ -17,7 +22,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PollarWalletsService } from '../pollar/pollar-wallets.service';
 import { contactEmails } from '../users/contact-emails';
 import { CreateContractDto, MilestoneInputDto } from './dto/create-contract.dto';
-import { UpdateTermsDto } from './dto/update-terms.dto';
+import { UpdateDetailsDto, UpdateTermsDto } from './dto/update-terms.dto';
 import { DELIVERABLE_REPORT } from './deliverable-report';
 import { POCKET_PLATFORM_FEE_ON_CHAIN } from './escrow-policies';
 import { EscrowService } from './escrow.service';
@@ -61,7 +66,12 @@ const DETAIL_INCLUDE = {
     },
   },
   chainOperations: {
-    where: { status: 'confirmed' },
+    // Not the deploy of an escrow left behind when the terms went back to the
+    // specialist: its step was freed, and it is not this contract's escrow.
+    where: {
+      status: 'confirmed',
+      OR: [{ kind: { not: 'deploy' } }, { stepKey: { not: null } }],
+    },
     orderBy: { confirmedAt: 'asc' },
     select: {
       id: true,
@@ -73,6 +83,43 @@ const DETAIL_INCLUDE = {
     },
   },
 } satisfies Prisma.ContractInclude;
+
+/** Milestones whose details can still change: not delivered, paid or disputed. */
+const EDITABLE_MILESTONE: MilestoneStatus[] = ['pending', 'changes_requested'];
+
+/** One detail the startup changed after acceptance, as the specialist reads it. */
+export interface MilestoneChange {
+  position: number;
+  title: string;
+  field: 'dueDate' | 'description' | 'acceptanceCriteria';
+  before: string | null;
+  after: string | null;
+  at: string;
+}
+
+/**
+ * Changes not seen yet plus the new ones. A field changed twice keeps its
+ * first value and its last; one changed back to where it was drops out.
+ */
+export function mergeChanges(
+  seen: MilestoneChange[],
+  added: MilestoneChange[],
+): MilestoneChange[] {
+  const merged = [...seen];
+  for (const change of added) {
+    const index = merged.findIndex(
+      (each) => each.position === change.position && each.field === change.field,
+    );
+    if (index === -1) {
+      merged.push(change);
+      continue;
+    }
+    const first = merged[index];
+    if (first.before === change.after) merged.splice(index, 1);
+    else merged[index] = { ...change, before: first.before };
+  }
+  return merged.sort((a, b) => a.position - b.position);
+}
 
 const TERMS_CHANGED =
   'La startup cambió los términos mientras los revisabas. Revisa los nuevos antes de aceptar';
@@ -319,10 +366,16 @@ export class ContractsService {
   }
 
   /**
-   * The startup changes terms the specialist has not accepted yet: the price
-   * and the milestones, replaced as a whole. The escrow is deployed only on
-   * acceptance, so nothing on chain changes. The specialist is told, and an
-   * accept sent for the old terms is refused (see accept's termsVersion).
+   * The startup changes the price and the milestones as a whole.
+   *
+   * - Before the specialist accepts, nothing is on chain: the terms are
+   *   replaced and the specialist is emailed. An accept sent for the old terms
+   *   is refused (see accept's termsVersion).
+   * - Accepted but not funded, the escrow exists and is empty. A change to
+   *   what it holds (price, amounts, milestone names) sends the terms back to
+   *   the specialist, who accepts again and gets a new escrow; the empty one
+   *   is left unused. Anything else is a change of details (updateDetails).
+   * - Once funded, only the details change.
    */
   async updateTerms(
     user: AuthUser,
@@ -330,28 +383,82 @@ export class ContractsService {
     dto: UpdateTermsDto,
   ): Promise<Contract> {
     const contract = await this.startupContract(user, contractId);
-    if (contract.status !== 'awaiting_specialist') {
+    if (contract.status !== 'awaiting_specialist' && contract.status !== 'awaiting_funding') {
       throw new BadRequestException(
-        'Solo puedes editar términos que el experto todavía no aceptó',
+        contract.status === 'active'
+          ? 'El pago ya está depositado: solo puedes cambiar fechas, descripciones y criterios de los hitos que faltan entregar'
+          : 'Este contrato ya no se puede editar',
       );
     }
     const price = new Prisma.Decimal(dto.price);
     assertTermsAddUp(dto.milestones, price);
 
+    if (contract.status === 'awaiting_funding') {
+      const current = await this.prisma.milestone.findMany({
+        where: { contractId },
+        orderBy: { position: 'asc' },
+      });
+      const escrowChanged =
+        !price.equals(contract.amount) ||
+        dto.milestones.length !== current.length ||
+        dto.milestones.some(
+          (milestone, index) =>
+            !new Prisma.Decimal(milestone.amount).equals(current[index].amount) ||
+            milestone.title !== current[index].title,
+        );
+      if (!escrowChanged) {
+        return this.updateDetails(user, contractId, {
+          milestones: dto.milestones.map((milestone, position) => ({
+            position,
+            dueDate: milestone.dueDate,
+            description: milestone.description,
+            acceptanceCriteria: milestone.acceptanceCriteria,
+          })),
+        });
+      }
+      await this.assertEscrowUntouched(contract);
+    }
+
+    const accepted = contract.status === 'awaiting_funding';
     const updated = await this.prisma.$transaction(async (tx) => {
-      // Claim the offer: not while an accept is deploying the escrow with the
-      // milestones it already read. Changing the amount also moves updatedAt,
-      // the version an accept has to match.
+      // Claim the contract in the state it was read in: not while an accept
+      // is deploying the escrow with the milestones it already read, and not
+      // once a deposit landed. Changing it also moves updatedAt, the version
+      // an accept has to match.
       const claimed = await tx.contract.updateMany({
-        where: { id: contractId, status: 'awaiting_specialist', acceptedAt: null },
-        data: { amount: price },
+        where: accepted
+          ? { id: contractId, status: 'awaiting_funding', fundedAt: null }
+          : { id: contractId, status: 'awaiting_specialist', acceptedAt: null },
+        data: {
+          amount: price,
+          // Back to the specialist, who accepts again and gets a new escrow.
+          ...(accepted
+            ? {
+                status: 'awaiting_specialist',
+                acceptedAt: null,
+                escrowId: null,
+                platformFeeBps: 0,
+                pendingChanges: Prisma.DbNull,
+              }
+            : {}),
+        },
       });
       if (claimed.count !== 1) {
         throw new ConflictException(
-          'El experto está aceptando estos términos en este momento',
+          accepted
+            ? 'El contrato cambió mientras tanto. Actualiza la página'
+            : 'El experto está aceptando estos términos en este momento',
         );
       }
-      // Before acceptance a milestone has no delivery, dispute or transaction.
+      if (accepted) {
+        // The empty escrow's deploy stays on record; its step is free, so
+        // accepting again deploys a new escrow for the new terms.
+        await tx.chainOperation.updateMany({
+          where: { stepKey: `deploy:${contractId}` },
+          data: { stepKey: null },
+        });
+      }
+      // Before the deposit a milestone has no delivery, dispute or payment.
       await tx.milestone.deleteMany({ where: { contractId } });
       await tx.milestone.createMany({
         data: dto.milestones.map((milestone, position) => ({
@@ -372,6 +479,172 @@ export class ContractsService {
       jobTitle: await this.jobTitle(contract.jobId),
     });
     return updated;
+  }
+
+  /**
+   * The startup changes dates, descriptions or criteria of milestones not
+   * delivered yet, once the specialist accepted. None of it is in the escrow,
+   * which stays as it is. Once the deposit is in, a date only moves later, so
+   * a change never leaves the specialist late. The specialist sees what
+   * changed the next time they open the contract (pendingChanges), with no
+   * email and nothing to accept.
+   */
+  async updateDetails(
+    user: AuthUser,
+    contractId: string,
+    dto: UpdateDetailsDto,
+  ): Promise<Contract> {
+    const contract = await this.startupContract(user, contractId);
+    if (contract.status !== 'awaiting_funding' && contract.status !== 'active') {
+      throw new BadRequestException(
+        contract.status === 'awaiting_specialist'
+          ? 'El experto todavía no aceptó: edita la oferta completa'
+          : 'Este contrato ya no se puede editar',
+      );
+    }
+    const funded = contract.status === 'active';
+    const current = await this.prisma.milestone.findMany({
+      where: { contractId },
+      orderBy: { position: 'asc' },
+    });
+    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const changes: MilestoneChange[] = [];
+    const writes: { id: string; data: Prisma.MilestoneUpdateInput }[] = [];
+    const positions = new Set<number>();
+
+    for (const input of dto.milestones) {
+      if (positions.has(input.position)) {
+        throw new BadRequestException('Un hito viene repetido');
+      }
+      positions.add(input.position);
+      const milestone = current.find((each) => each.position === input.position);
+      if (!milestone) throw new BadRequestException('Ese hito no existe en el contrato');
+      const before = {
+        dueDate: milestone.dueDate.toISOString().slice(0, 10),
+        description: milestone.description,
+        acceptanceCriteria: milestone.acceptanceCriteria ?? null,
+      };
+      const after = {
+        dueDate: input.dueDate,
+        description: input.description.trim(),
+        acceptanceCriteria: input.acceptanceCriteria?.trim() || null,
+      };
+      const fields = (['dueDate', 'description', 'acceptanceCriteria'] as const).filter(
+        (field) => before[field] !== after[field],
+      );
+      if (fields.length === 0) continue;
+      const label = `El hito ${milestone.position + 1}`;
+      if (!EDITABLE_MILESTONE.includes(milestone.status)) {
+        throw new BadRequestException(
+          `${label} ya se entregó o se pagó: no se puede cambiar`,
+        );
+      }
+      if (fields.includes('dueDate')) {
+        if (after.dueDate < today) {
+          throw new BadRequestException(
+            'La fecha de entrega de un hito no puede estar en el pasado',
+          );
+        }
+        if (funded && after.dueDate < before.dueDate) {
+          throw new BadRequestException(
+            `${label} ya tiene el pago depositado: su fecha solo puede moverse para más tarde`,
+          );
+        }
+      }
+      for (const field of fields) {
+        changes.push({
+          position: milestone.position,
+          title: milestone.title,
+          field,
+          before: before[field],
+          after: after[field],
+          at: now.toISOString(),
+        });
+      }
+      writes.push({
+        id: milestone.id,
+        data: {
+          dueDate: new Date(after.dueDate),
+          description: after.description,
+          acceptanceCriteria: after.acceptanceCriteria,
+        },
+      });
+    }
+    if (changes.length === 0) {
+      return this.prisma.contract.findUniqueOrThrow({
+        where: { id: contractId },
+        include: { milestones: { orderBy: { position: 'asc' } } },
+      });
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const fresh = await tx.contract.findUnique({
+        where: { id: contractId },
+        select: { pendingChanges: true },
+      });
+      const merged = mergeChanges(
+        (fresh?.pendingChanges as MilestoneChange[] | null) ?? [],
+        changes,
+      );
+      // Claim the contract in the state the rules above were checked for:
+      // a deposit landing meanwhile makes it funded, where dates only move later.
+      const claimed = await tx.contract.updateMany({
+        where: { id: contractId, status: contract.status },
+        data: {
+          pendingChanges:
+            merged.length > 0
+              ? (merged as unknown as Prisma.InputJsonValue)
+              : Prisma.DbNull,
+        },
+      });
+      if (claimed.count !== 1) {
+        throw new ConflictException('El contrato cambió mientras tanto. Actualiza la página');
+      }
+      for (const write of writes) {
+        const done = await tx.milestone.updateMany({
+          where: { id: write.id, status: { in: EDITABLE_MILESTONE } },
+          data: write.data,
+        });
+        if (done.count !== 1) {
+          throw new ConflictException('Un hito cambió mientras tanto. Actualiza la página');
+        }
+      }
+      return tx.contract.findUniqueOrThrow({
+        where: { id: contractId },
+        include: { milestones: { orderBy: { position: 'asc' } } },
+      });
+    });
+  }
+
+  /** The specialist saw what the startup changed: the notice goes away. */
+  async markChangesSeen(user: AuthUser, contractId: string): Promise<void> {
+    await this.specialistContract(user, contractId);
+    await this.prisma.contract.updateMany({
+      where: { id: contractId, specialistId: user.sub },
+      data: { pendingChanges: Prisma.DbNull },
+    });
+  }
+
+  /**
+   * An escrow the terms can leave behind: empty, and no deposit on its way.
+   * Asks the USDC contract itself, so a deposit sent from outside Pocket
+   * counts too.
+   */
+  private async assertEscrowUntouched(contract: Contract): Promise<void> {
+    const deposit = await this.prisma.chainOperation.findUnique({
+      where: { stepKey: `fund:${contract.id}` },
+    });
+    if (deposit) {
+      throw new ConflictException(
+        'Ya hay un depósito en camino: espera a que se confirme antes de editar',
+      );
+    }
+    if (contract.escrowId && (await this.escrow.holdsUsdc(contract))) {
+      throw new ConflictException(
+        'El pago protegido ya tiene fondos: solo puedes cambiar fechas, descripciones y criterios',
+      );
+    }
   }
 
   private async jobTitle(jobId: string): Promise<string> {

@@ -14,6 +14,11 @@ import {
 } from '@/components/contract/contract-chat';
 import { ContractSteps } from '@/components/contract/contract-steps';
 import { FeeBreakdown } from '@/components/contract/fee-breakdown';
+import { ModeSwitchNotice } from '@/components/contract/mode-switch-notice';
+import {
+  ChangesNotice,
+  EditDetailsDialog,
+} from '@/components/contract/milestone-changes';
 import { MilestoneCard } from '@/components/contract/milestone-card';
 import { MoneyStepStatus, stageLabel } from '@/components/contract/money-step-status';
 import { ResultsCard } from '@/components/contract/results';
@@ -92,7 +97,13 @@ function Contract({ user }: { user: User }) {
       ? 'Se comparte cuando se aceptan los términos'
       : 'No indicado';
 
-  const names = { startupName, specialistName };
+  const side =
+    user.id === data.startupId
+      ? ('startup' as const)
+      : user.id === data.specialistId
+        ? ('specialist' as const)
+        : undefined;
+  const names = { startupName, specialistName, side };
   return (
     <div
       className={cn(
@@ -165,14 +176,24 @@ function Contract({ user }: { user: User }) {
           </CardContent>
         </Card>
 
-        <NextStep contract={data} user={user} specialistName={specialistName} />
+        {side && user.role !== 'manager' && user.role !== side ? (
+          <ModeSwitchNotice contract={data} side={side} startupName={startupName} />
+        ) : (
+          <NextStep contract={data} user={user} specialistName={specialistName} />
+        )}
+        {user.id === data.specialistId ? <ChangesNotice contract={data} /> : null}
 
         {data.status === 'active' || data.status === 'completed' ? (
           <ResultsCard contractId={data.id} />
         ) : null}
 
         <section className="space-y-3">
-          <h2 className="text-xl font-bold text-navy">Hitos</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-xl font-bold text-navy">Hitos</h2>
+            {data.status === 'active' && user.id === data.startupId ? (
+              <EditDetailsDialog contract={data} />
+            ) : null}
+          </div>
           {data.job.reportTemplate ? (
             <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-muted-foreground">
@@ -470,6 +491,9 @@ function NextStep({
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
+            {fundingPending || fund.isPending ? null : (
+              <EditOfferDialog contract={contract} />
+            )}
             {fundingPending ? null : (
               <Button disabled={fund.isPending} onClick={() => fund.mutate()}>
                 {funding.stage

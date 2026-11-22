@@ -12,7 +12,7 @@ import type { StellarService } from '../stellar/stellar.service';
 import { JobsService } from '../jobs/jobs.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { PollarWalletsService } from '../pollar/pollar-wallets.service';
-import { ContractsService } from './contracts.service';
+import { ContractsService, mergeChanges } from './contracts.service';
 import type { CreateContractDto } from './dto/create-contract.dto';
 import type { EscrowService } from './escrow.service';
 
@@ -66,14 +66,24 @@ describe('ContractsService', () => {
       updateMany: jest.Mock;
       deleteMany: jest.Mock;
     };
-    milestone: { deleteMany: jest.Mock; createMany: jest.Mock };
+    milestone: {
+      deleteMany: jest.Mock;
+      createMany: jest.Mock;
+      findMany: jest.Mock;
+      updateMany: jest.Mock;
+    };
     verificationRequest: { findMany: jest.Mock };
-    chainOperation: { findUnique: jest.Mock };
+    chainOperation: { findUnique: jest.Mock; updateMany: jest.Mock };
     user: { findUnique: jest.Mock };
     $transaction: jest.Mock;
   };
   let wallets: { activate: jest.Mock };
-  let escrow: { deploy: jest.Mock; isFunded: jest.Mock; prepareFund: jest.Mock };
+  let escrow: {
+    deploy: jest.Mock;
+    isFunded: jest.Mock;
+    holdsUsdc: jest.Mock;
+    prepareFund: jest.Mock;
+  };
   let stellar: { usdcReadiness: jest.Mock; spendableUsdc: jest.Mock };
   let notifications: { notifyUsers: jest.Mock };
   let service: ContractsService;
@@ -118,8 +128,13 @@ describe('ContractsService', () => {
       milestone: {
         deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
         createMany: jest.fn().mockResolvedValue({ count: 2 }),
+        findMany: jest.fn().mockResolvedValue([]),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
-      chainOperation: { findUnique: jest.fn().mockResolvedValue(null) },
+      chainOperation: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
       user: { findUnique: jest.fn().mockResolvedValue({ walletCustody: 'pollar' }) },
       verificationRequest: {
         // Two different people: each account verified with its own email.
@@ -138,6 +153,7 @@ describe('ContractsService', () => {
     escrow = {
       deploy: jest.fn().mockResolvedValue('CESCROW'),
       isFunded: jest.fn(),
+      holdsUsdc: jest.fn().mockResolvedValue(false),
       prepareFund: jest.fn().mockResolvedValue({ operationId: 'op-1' }),
     };
     stellar = {
@@ -448,10 +464,10 @@ describe('ContractsService', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('is refused once the specialist accepted', async () => {
+    it('is refused once the deposit is in, for anything but details', async () => {
       prisma.contract.findUnique.mockResolvedValue({
         ...offer,
-        status: 'awaiting_funding',
+        status: 'active',
       });
       await expect(
         service.updateTerms(startup, 'contract-1', terms),
@@ -475,6 +491,203 @@ describe('ContractsService', () => {
       await expect(
         service.updateTerms(startup, 'contract-1', terms),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('editing once the specialist accepted', () => {
+    const accepted = {
+      id: 'contract-1',
+      jobId: 'job-1',
+      applicationId: 'app-1',
+      startupId: 'startup-1',
+      specialistId: 'specialist-1',
+      status: 'awaiting_funding',
+      escrowId: 'CESCROW',
+      amount: new Prisma.Decimal('450.5'),
+    };
+    const milestones = [
+      {
+        id: 'm-1',
+        position: 0,
+        title: 'Lead list',
+        description: 'A list of leads',
+        acceptanceCriteria: null,
+        amount: new Prisma.Decimal(100),
+        dueDate: new Date(dto.milestones[0].dueDate),
+        status: 'pending',
+      },
+      {
+        id: 'm-2',
+        position: 1,
+        title: 'Report',
+        description: 'A final report',
+        acceptanceCriteria: null,
+        amount: new Prisma.Decimal('350.5'),
+        dueDate: new Date(dto.milestones[1].dueDate),
+        status: 'pending',
+      },
+    ];
+    const later = future(30);
+
+    beforeEach(() => {
+      prisma.contract.findUnique.mockResolvedValue(accepted);
+      prisma.contract.findUniqueOrThrow.mockResolvedValue({ ...accepted, milestones });
+      prisma.milestone.findMany.mockResolvedValue(milestones);
+    });
+
+    it('keeps the escrow when only a date changes before the deposit, with no email', async () => {
+      await service.updateTerms(startup, 'contract-1', {
+        price: 450.5,
+        milestones: [dto.milestones[0], { ...dto.milestones[1], dueDate: later }],
+      });
+      expect(prisma.milestone.updateMany).toHaveBeenCalledWith({
+        where: { id: 'm-2', status: { in: ['pending', 'changes_requested'] } },
+        data: expect.objectContaining({ dueDate: new Date(later) }) as object,
+      });
+      const pending = prisma.contract.updateMany.mock.calls[0][0].data.pendingChanges;
+      expect(pending).toEqual([
+        expect.objectContaining({
+          position: 1,
+          field: 'dueDate',
+          before: dto.milestones[1].dueDate,
+          after: later,
+        }),
+      ]);
+      expect(prisma.milestone.deleteMany).not.toHaveBeenCalled();
+      expect(notifications.notifyUsers).not.toHaveBeenCalled();
+    });
+
+    it('sends the terms back to the specialist when an amount changes before the deposit', async () => {
+      await service.updateTerms(startup, 'contract-1', {
+        price: 450.5,
+        milestones: [
+          { ...dto.milestones[0], amount: 150 },
+          { ...dto.milestones[1], amount: 300.5 },
+        ],
+      });
+      expect(prisma.contract.updateMany).toHaveBeenCalledWith({
+        where: { id: 'contract-1', status: 'awaiting_funding', fundedAt: null },
+        data: expect.objectContaining({
+          status: 'awaiting_specialist',
+          acceptedAt: null,
+          escrowId: null,
+        }) as object,
+      });
+      // The empty escrow's deploy no longer blocks a new one.
+      expect(prisma.chainOperation.updateMany).toHaveBeenCalledWith({
+        where: { stepKey: 'deploy:contract-1' },
+        data: { stepKey: null },
+      });
+      expect(prisma.milestone.createMany).toHaveBeenCalled();
+      expect(notifications.notifyUsers).toHaveBeenCalledWith(
+        ['specialist-1'],
+        expect.objectContaining({ type: 'offer_updated' }),
+      );
+    });
+
+    it('never leaves behind an escrow that holds money', async () => {
+      escrow.holdsUsdc.mockResolvedValue(true);
+      await expect(
+        service.updateTerms(startup, 'contract-1', {
+          price: 500,
+          milestones: [
+            { ...dto.milestones[0], amount: 150 },
+            { ...dto.milestones[1], amount: 350 },
+          ],
+        }),
+      ).rejects.toThrow('ya tiene fondos');
+      expect(prisma.contract.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('waits for a deposit on its way', async () => {
+      prisma.chainOperation.findUnique.mockResolvedValue({ stepKey: 'fund:contract-1' });
+      await expect(
+        service.updateTerms(startup, 'contract-1', {
+          price: 500,
+          milestones: [
+            { ...dto.milestones[0], amount: 150 },
+            { ...dto.milestones[1], amount: 350 },
+          ],
+        }),
+      ).rejects.toThrow('depósito en camino');
+      expect(prisma.contract.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('once funded, refuses amounts and moves dates only later', async () => {
+      prisma.contract.findUnique.mockResolvedValue({ ...accepted, status: 'active' });
+      await expect(
+        service.updateTerms(startup, 'contract-1', {
+          price: 450.5,
+          milestones: dto.milestones,
+        }),
+      ).rejects.toThrow('solo puedes cambiar fechas');
+      const earlier = future(5);
+      await expect(
+        service.updateDetails(startup, 'contract-1', {
+          milestones: [{ position: 1, dueDate: earlier, description: 'A final report' }],
+        }),
+      ).rejects.toThrow('solo puede moverse para más tarde');
+      await service.updateDetails(startup, 'contract-1', {
+        milestones: [{ position: 1, dueDate: later, description: 'A final report' }],
+      });
+      expect(prisma.milestone.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: 'm-2' }) as object,
+        }),
+      );
+    });
+
+    it('leaves a delivered milestone as it is', async () => {
+      prisma.contract.findUnique.mockResolvedValue({ ...accepted, status: 'active' });
+      prisma.milestone.findMany.mockResolvedValue([
+        { ...milestones[0], status: 'delivered' },
+        milestones[1],
+      ]);
+      await expect(
+        service.updateDetails(startup, 'contract-1', {
+          milestones: [{ position: 0, dueDate: later, description: 'A list of leads' }],
+        }),
+      ).rejects.toThrow('ya se entregó');
+    });
+
+    it('lets the specialist clear the notice, and nobody else', async () => {
+      await service.markChangesSeen(specialist, 'contract-1');
+      expect(prisma.contract.updateMany).toHaveBeenCalledWith({
+        where: { id: 'contract-1', specialistId: 'specialist-1' },
+        data: { pendingChanges: Prisma.DbNull },
+      });
+      await expect(service.markChangesSeen(startup, 'contract-1')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+  });
+
+  describe('mergeChanges', () => {
+    const change = (field: 'dueDate' | 'description', before: string, after: string) => ({
+      position: 0,
+      title: 'Lead list',
+      field,
+      before,
+      after,
+      at: '2026-11-22T00:00:00.000Z',
+    });
+
+    it('keeps the first value and the last of a field changed twice', () => {
+      expect(
+        mergeChanges(
+          [change('dueDate', '2026-12-01', '2026-12-05')],
+          [change('dueDate', '2026-12-05', '2026-12-09')],
+        ),
+      ).toEqual([change('dueDate', '2026-12-01', '2026-12-09')]);
+    });
+
+    it('drops a field changed back to where it was', () => {
+      expect(
+        mergeChanges(
+          [change('dueDate', '2026-12-01', '2026-12-05')],
+          [change('dueDate', '2026-12-05', '2026-12-01')],
+        ),
+      ).toEqual([]);
     });
   });
 

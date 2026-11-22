@@ -283,6 +283,79 @@ describe('VerificationService', () => {
           id: 'req-4',
         });
       });
+
+      it('is not sent again by someone verified on another account', async () => {
+        prisma.user.findUnique.mockResolvedValue(
+          makeUser({ verificationStatus: 'rejected' }),
+        );
+        prisma.verificationRequest.findFirst.mockResolvedValue({
+          id: 'req-3',
+          status: 'rejected',
+          reviewNote: KYC_DUPLICATE_NOTE,
+        });
+        await expect(service.submit('user-1', SUBMISSION)).rejects.toThrow(
+          'ya se verificaron en otra cuenta',
+        );
+        // No new request, so no new identity check to pay for.
+        expect(prisma.verificationRequest.create).not.toHaveBeenCalled();
+        expect(prisma.user.updateMany).not.toHaveBeenCalled();
+      });
+
+      it('can try again once the other account is deleted', async () => {
+        didit.enabled = true;
+        prisma.user.findUnique.mockResolvedValue(
+          makeUser({ verificationStatus: 'rejected' }),
+        );
+        prisma.verificationRequest.findFirst.mockResolvedValue({
+          id: 'req-3',
+          status: 'rejected',
+          reviewNote: KYC_DUPLICATE_NOTE,
+          kycSessionId: 'sess-3',
+        });
+        didit.decision.mockResolvedValue({ sharedWith: [OTHER_USER], blocklisted: false });
+        // The other account was deleted since.
+        prisma.user.count.mockResolvedValue(0);
+        prisma.verificationRequest.create.mockReturnValue({ id: 'req-4', userId: 'user-1' });
+        await expect(service.submit('user-1', SUBMISSION)).resolves.toMatchObject({
+          id: 'req-4',
+        });
+        await expect(service.mine('user-1')).resolves.toMatchObject({ duplicate: false });
+      });
+
+      it('stays turned down while the other account is live', async () => {
+        didit.enabled = true;
+        prisma.user.findUnique.mockResolvedValue(
+          makeUser({ verificationStatus: 'rejected' }),
+        );
+        prisma.verificationRequest.findFirst.mockResolvedValue({
+          id: 'req-3',
+          status: 'rejected',
+          reviewNote: KYC_DUPLICATE_NOTE,
+          kycSessionId: 'sess-3',
+        });
+        didit.decision.mockResolvedValue({ sharedWith: [OTHER_USER], blocklisted: false });
+        prisma.user.count.mockResolvedValue(1);
+        await expect(service.submit('user-1', SUBMISSION)).rejects.toThrow('otra cuenta');
+        // Didit cannot be read: still turned down, nothing paid.
+        didit.decision.mockRejectedValue(new Error('down'));
+        await expect(service.mine('user-1')).resolves.toMatchObject({ duplicate: true });
+        expect(prisma.verificationRequest.create).not.toHaveBeenCalled();
+      });
+
+      it('tells the page when there is no trying again', async () => {
+        prisma.verificationRequest.findFirst.mockResolvedValue({
+          id: 'req-3',
+          status: 'rejected',
+          reviewNote: KYC_DUPLICATE_NOTE,
+        });
+        await expect(service.mine('user-1')).resolves.toMatchObject({ duplicate: true });
+        prisma.verificationRequest.findFirst.mockResolvedValue({
+          id: 'req-4',
+          status: 'rejected',
+          reviewNote: 'No pudimos verificar tu identidad.',
+        });
+        await expect(service.mine('user-1')).resolves.toMatchObject({ duplicate: false });
+      });
     });
 
     describe('starting it', () => {

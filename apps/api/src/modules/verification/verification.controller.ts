@@ -42,7 +42,7 @@ export class VerificationController {
   /** The signed-in user's latest verification request. */
   @Get('me')
   mine(@CurrentUser() user: AuthUser) {
-    return this.verification.latestFor(user.sub);
+    return this.verification.mine(user.sub);
   }
 
   /** Whether an identity check through Didit activates accounts. */

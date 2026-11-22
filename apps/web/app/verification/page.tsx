@@ -19,6 +19,7 @@ import {
 } from '@/components/activation';
 import { useAuth } from '@/components/auth-provider';
 import { Field, compact, formValues } from '@/components/form';
+import { LEGAL_EMAIL } from '@/components/legal-page';
 import { Loading, PageHeader } from '@/components/page';
 import { Onboarding } from '@/components/onboarding';
 import { RequireAuth } from '@/components/require-auth';
@@ -89,7 +90,7 @@ export default function VerificationPage() {
 }
 
 function Verification({ user }: { user: User }) {
-  const { refreshUser } = useAuth();
+  const { refreshUser, signOut } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const kycSettings = useKycSettings();
@@ -192,9 +193,12 @@ function Verification({ user }: { user: User }) {
     router.replace(to);
   }, [justActivated, returned, next, isSpecialist, hasProfile, router]);
 
+  // Another account of the same person: no new check, it would end the same.
+  const duplicate =
+    user.verificationStatus === 'rejected' && previous?.duplicate === true;
   const canSubmit =
     user.verificationStatus === 'not_submitted' ||
-    user.verificationStatus === 'rejected' ||
+    (user.verificationStatus === 'rejected' && !duplicate) ||
     // Waiting for an identity check that is no longer set up: the form approves.
     (user.verificationStatus === 'pending' && !kyc && !kycLoading);
   const isStartup = user.role === 'startup';
@@ -250,8 +254,32 @@ function Verification({ user }: { user: User }) {
 
       {turnedDown ? (
         <Alert variant="destructive" className="mb-6">
-          <AlertTitle>No pudimos activar tu cuenta</AlertTitle>
-          <AlertDescription>{turnedDown}</AlertDescription>
+          <AlertTitle>
+            {duplicate
+              ? 'Ya tienes una cuenta en Pocket'
+              : 'No pudimos activar tu cuenta'}
+          </AlertTitle>
+          <AlertDescription>
+            <p>
+              {duplicate
+                ? 'Este documento o esta cara ya se verificaron en otra cuenta de Pocket, y cada persona puede tener una sola. Cierra sesión y entra con esa cuenta: ahí puedes ser startup y experto, y tener varias startups. Si prefieres quedarte con esta, entra a la otra, elimínala desde "Tu cuenta y tus datos" y vuelve aquí a verificarte.'
+                : turnedDown}
+            </p>
+            {duplicate ? (
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <Button size="sm" variant="outline" onClick={signOut}>
+                  Cerrar sesión
+                </Button>
+                <span className="text-sm">
+                  ¿Crees que es un error? Escríbenos a{' '}
+                  <a className="underline" href={`mailto:${LEGAL_EMAIL}`}>
+                    {LEGAL_EMAIL}
+                  </a>
+                  .
+                </span>
+              </div>
+            ) : null}
+          </AlertDescription>
         </Alert>
       ) : null}
 
@@ -380,6 +408,7 @@ function Verification({ user }: { user: User }) {
   }
 
   function pageDescription(): string {
+    if (duplicate) return 'Esta cuenta no se puede activar: ya tienes otra en Pocket.';
     if (isSpecialist && kyc) {
       return user.verificationStatus === 'pending' ||
         user.verificationStatus === 'approved'
@@ -398,7 +427,9 @@ function Verification({ user }: { user: User }) {
           ? 'Tu identidad está verificada y tu cuenta está activa. Puedes usar todo el marketplace.'
           : 'Tu cuenta está activa. Puedes usar todo el marketplace.';
       case 'rejected':
-        return 'Revisa tus datos y vuelve a intentarlo.';
+        return duplicate
+          ? 'Ya tienes otra cuenta en Pocket. Entra con esa cuenta para seguir.'
+          : 'Revisa tus datos y vuelve a intentarlo.';
       case 'pending':
         if (!kyc) return 'Confirma tus datos abajo para activar tu cuenta.';
         if (inReview) {

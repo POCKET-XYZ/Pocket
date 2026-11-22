@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Post,
@@ -18,7 +19,7 @@ import { sendPrivateFile } from '../../common/uploads/send-file';
 import { ContractsService } from './contracts.service';
 import { ReportService } from './report.service';
 import { CreateContractDto } from './dto/create-contract.dto';
-import { AcceptTermsDto, UpdateTermsDto } from './dto/update-terms.dto';
+import { AcceptTermsDto, UpdateDetailsDto, UpdateTermsDto } from './dto/update-terms.dto';
 import { SignedTransactionDto } from '../stellar/dto/signed-transaction.dto';
 import {
   ESCROW_RATE_LIMIT,
@@ -104,6 +105,31 @@ export class ContractsController {
     @Body() dto: UpdateTermsDto,
   ) {
     return this.contracts.updateTerms(user, id, dto);
+  }
+
+  /**
+   * The startup changes dates, descriptions or criteria of milestones not
+   * delivered yet, once the specialist accepted. The escrow stays as it is.
+   */
+  @Roles('startup')
+  @Verified()
+  @Put(':id/details')
+  updateDetails(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateDetailsDto,
+  ) {
+    return this.contracts.updateDetails(user, id, dto);
+  }
+
+  /**
+   * The specialist saw what the startup changed. No role guard: an account
+   * that is also a startup may be acting as one when it opens the contract.
+   */
+  @Post(':id/details/seen')
+  @HttpCode(204)
+  async changesSeen(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    await this.contracts.markChangesSeen(user, id);
   }
 
   /** The startup takes back terms the specialist has not accepted yet. */

@@ -20,4 +20,6 @@ export interface AuthUser {
   sub: string;
   role: UserRole;
   stellarAddress: string;
+  /** Every role the account has, when the guard read them (see users.roles). */
+  roles?: UserRole[];
 }

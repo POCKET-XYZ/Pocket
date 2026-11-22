@@ -199,6 +199,8 @@ export function HireDialog({
 export function EditOfferDialog({ contract }: { contract: ContractDetail }) {
   const queryClient = useQueryClient();
   const name = contract.specialist.specialistProfile?.displayName ?? 'el experto';
+  // Accepted already: the escrow exists, empty until the deposit.
+  const accepted = contract.status === 'awaiting_funding';
 
   return (
     <TermsDialog
@@ -208,7 +210,11 @@ export function EditOfferDialog({ contract }: { contract: ContractDetail }) {
         </Button>
       }
       title="Editar oferta"
-      description={`Cambia el precio, los hitos o sus fechas. Le avisamos a ${name}, que revisa los nuevos términos antes de aceptar.`}
+      description={
+        accepted
+          ? `${name} ya aceptó. Si cambias el precio, un monto o el nombre de un hito, la oferta vuelve a ${name} para que la acepte de nuevo. Si solo cambias fechas, qué se entrega o qué debe cumplir, todo sigue igual y ${name} lo ve al abrir el contrato.`
+          : `Cambia el precio, los hitos o sus fechas. Le avisamos a ${name}, que revisa los nuevos términos antes de aceptar.`
+      }
       name={name}
       askedPrice={contract.application.price}
       budget={null}
@@ -229,11 +235,17 @@ export function EditOfferDialog({ contract }: { contract: ContractDetail }) {
       submitLabel={() => 'Guardar cambios'}
       pendingLabel="Guardando..."
       send={async ({ price, milestones }) => {
-        await api(`/contracts/${contract.id}/terms`, {
+        const saved = await api<{ status: string }>(`/contracts/${contract.id}/terms`, {
           method: 'PUT',
           body: { price, milestones },
         });
-        toast.success(`Oferta actualizada. Le avisamos a ${name}.`);
+        toast.success(
+          !accepted
+            ? `Oferta actualizada. Le avisamos a ${name}.`
+            : saved.status === 'awaiting_specialist'
+              ? `La oferta volvió a ${name} para que la acepte de nuevo. Le avisamos por correo.`
+              : `Cambios guardados. ${name} los ve al abrir el contrato.`,
+        );
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['contracts', contract.id] }),
           queryClient.invalidateQueries({ queryKey: ['contracts', 'mine'] }),

@@ -217,6 +217,11 @@ export class EscrowService {
     return balance >= toStroops(contract.amount.toFixed(7));
   }
 
+  /** Whether the escrow holds any USDC at all, asking the USDC contract itself. */
+  async holdsUsdc(contract: Pick<Contract, 'escrowId'>): Promise<boolean> {
+    return (await this.chain.usdcBalance(escrowIdOf(contract))) > 0n;
+  }
+
   /** Approval transaction for the startup to sign. */
   async prepareApprove(
     contract: Pick<Contract, 'id' | 'escrowId'>,
