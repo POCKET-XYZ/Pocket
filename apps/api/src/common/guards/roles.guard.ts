@@ -23,6 +23,16 @@ export class RolesGuard implements CanActivate {
 
     const user = context.switchToHttp().getRequest<{ user?: AuthUser }>().user;
     if (!user || !roles.includes(user.role)) {
+      // An account that is a startup and an expert, acting as the other one:
+      // say how to do it instead of only no.
+      const other = user?.roles?.find((role) => roles.includes(role));
+      if (other === 'startup' || other === 'specialist') {
+        throw new ForbiddenException(
+          other === 'specialist'
+            ? 'Estás usando Pocket como startup. Cambia a experto desde el menú de tu cuenta para hacer esto'
+            : 'Estás usando Pocket como experto. Cambia a tu startup desde el menú de tu cuenta para hacer esto',
+        );
+      }
       throw new ForbiddenException('Tu rol no permite esta acción');
     }
     return true;

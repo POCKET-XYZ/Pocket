@@ -32,6 +32,11 @@ const GROUP_MS = 5 * 60_000;
 interface Names {
   startupName?: string;
   specialistName?: string;
+  /**
+   * The viewer's side in this contract. An account that is a startup and an
+   * expert may be acting as the other one, so its role does not say it.
+   */
+  side?: 'startup' | 'specialist';
 }
 
 /** The contract's chats, shared by every place that shows them or their count. */
@@ -180,7 +185,7 @@ function who(channel: ChatChannel, user: User, names: Names) {
         avatar: 'Pocket',
       };
     }
-    const isStartup = user.role === 'startup';
+    const isStartup = (names.side ?? user.role) === 'startup';
     return {
       name: isStartup ? specialist : startup,
       detail: isStartup ? 'Experto' : 'Startup',
@@ -236,7 +241,7 @@ function ThreadTabs({
   const label = (channel: ChatChannel): string => {
     if (channel === 'contract') {
       if (user.role === 'manager') return 'Ambas partes';
-      return user.role === 'startup'
+      return (names.side ?? user.role) === 'startup'
         ? (names.specialistName ?? 'El experto')
         : (names.startupName ?? 'La startup');
     }

@@ -14,6 +14,7 @@ import {
 } from '@/components/contract/contract-chat';
 import { ContractSteps } from '@/components/contract/contract-steps';
 import { FeeBreakdown } from '@/components/contract/fee-breakdown';
+import { ModeSwitchNotice } from '@/components/contract/mode-switch-notice';
 import {
   ChangesNotice,
   EditDetailsDialog,
@@ -96,7 +97,13 @@ function Contract({ user }: { user: User }) {
       ? 'Se comparte cuando se aceptan los términos'
       : 'No indicado';
 
-  const names = { startupName, specialistName };
+  const side =
+    user.id === data.startupId
+      ? ('startup' as const)
+      : user.id === data.specialistId
+        ? ('specialist' as const)
+        : undefined;
+  const names = { startupName, specialistName, side };
   return (
     <div
       className={cn(
@@ -169,7 +176,11 @@ function Contract({ user }: { user: User }) {
           </CardContent>
         </Card>
 
-        <NextStep contract={data} user={user} specialistName={specialistName} />
+        {side && user.role !== 'manager' && user.role !== side ? (
+          <ModeSwitchNotice contract={data} side={side} startupName={startupName} />
+        ) : (
+          <NextStep contract={data} user={user} specialistName={specialistName} />
+        )}
         {user.id === data.specialistId ? <ChangesNotice contract={data} /> : null}
 
         {data.status === 'active' || data.status === 'completed' ? (

@@ -67,6 +67,7 @@ describe('JwtAuthGuard', () => {
         sub: 'user-1',
         role: 'specialist',
         stellarAddress: 'GUSER',
+        roles: ['specialist'],
       });
     });
 
@@ -95,11 +96,23 @@ describe('JwtAuthGuard', () => {
   it('attaches the user of a valid token', async () => {
     const { ctx, request } = context(`Bearer ${valid()}`);
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    expect(request.user).toEqual({ sub: 'user-1', role: 'specialist', stellarAddress: 'GUSER' });
+    // Every role of the account rides along; an account from before roles
+    // could be combined has its one role.
+    expect(request.user).toEqual({
+      sub: 'user-1',
+      role: 'specialist',
+      stellarAddress: 'GUSER',
+      roles: ['specialist'],
+    });
   });
 
   it('takes the role from the database, not from the token', async () => {
-    const forged = token({ sub: 'user-1', role: 'manager', stellarAddress: 'GUSER', ver: 3 });
+    const forged = token({
+      sub: 'user-1',
+      role: 'manager',
+      stellarAddress: 'GUSER',
+      ver: 3,
+    });
     const { ctx, request } = context(`Bearer ${forged}`);
     await guard.canActivate(ctx);
     expect(request.user?.role).toBe('specialist');
@@ -116,14 +129,18 @@ describe('JwtAuthGuard', () => {
   });
 
   it('refuses a token signed with another secret', async () => {
-    const forged = token({ sub: 'user-1', ver: 3 }, 'another-secret-that-is-long-enough-00');
-    await expect(guard.canActivate(context(`Bearer ${forged}`).ctx)).rejects.toBeInstanceOf(
-      UnauthorizedException,
+    const forged = token(
+      { sub: 'user-1', ver: 3 },
+      'another-secret-that-is-long-enough-00',
     );
+    await expect(
+      guard.canActivate(context(`Bearer ${forged}`).ctx),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('refuses an unsigned token (alg none)', async () => {
-    const encode = (part: object) => Buffer.from(JSON.stringify(part)).toString('base64url');
+    const encode = (part: object) =>
+      Buffer.from(JSON.stringify(part)).toString('base64url');
     const unsigned = `${encode({ alg: 'none', typ: 'JWT' })}.${encode({
       sub: 'user-1',
       role: 'manager',
@@ -132,9 +149,9 @@ describe('JwtAuthGuard', () => {
       aud: OPTIONS.audience,
       iss: OPTIONS.issuer,
     })}.`;
-    await expect(guard.canActivate(context(`Bearer ${unsigned}`).ctx)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      guard.canActivate(context(`Bearer ${unsigned}`).ctx),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('refuses a token from another issuer or for another audience', async () => {
@@ -147,9 +164,9 @@ describe('JwtAuthGuard', () => {
       audience: 'another-app',
     });
     for (const forged of [otherIssuer, otherAudience]) {
-      await expect(guard.canActivate(context(`Bearer ${forged}`).ctx)).rejects.toBeInstanceOf(
-        UnauthorizedException,
-      );
+      await expect(
+        guard.canActivate(context(`Bearer ${forged}`).ctx),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
     }
   });
 
@@ -162,8 +179,8 @@ describe('JwtAuthGuard', () => {
 
   it('refuses a token of a user that no longer exists', async () => {
     prisma.user.findUnique.mockResolvedValue(null);
-    await expect(guard.canActivate(context(`Bearer ${valid()}`).ctx)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      guard.canActivate(context(`Bearer ${valid()}`).ctx),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
