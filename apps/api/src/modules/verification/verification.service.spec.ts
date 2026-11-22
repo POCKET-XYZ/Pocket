@@ -283,6 +283,38 @@ describe('VerificationService', () => {
           id: 'req-4',
         });
       });
+
+      it('is not sent again by someone verified on another account', async () => {
+        prisma.user.findUnique.mockResolvedValue(
+          makeUser({ verificationStatus: 'rejected' }),
+        );
+        prisma.verificationRequest.findFirst.mockResolvedValue({
+          id: 'req-3',
+          status: 'rejected',
+          reviewNote: KYC_DUPLICATE_NOTE,
+        });
+        await expect(service.submit('user-1', SUBMISSION)).rejects.toThrow(
+          'ya se verificaron en otra cuenta',
+        );
+        // No new request, so no new identity check to pay for.
+        expect(prisma.verificationRequest.create).not.toHaveBeenCalled();
+        expect(prisma.user.updateMany).not.toHaveBeenCalled();
+      });
+
+      it('tells the page when there is no trying again', async () => {
+        prisma.verificationRequest.findFirst.mockResolvedValue({
+          id: 'req-3',
+          status: 'rejected',
+          reviewNote: KYC_DUPLICATE_NOTE,
+        });
+        await expect(service.mine('user-1')).resolves.toMatchObject({ duplicate: true });
+        prisma.verificationRequest.findFirst.mockResolvedValue({
+          id: 'req-4',
+          status: 'rejected',
+          reviewNote: 'No pudimos verificar tu identidad.',
+        });
+        await expect(service.mine('user-1')).resolves.toMatchObject({ duplicate: false });
+      });
     });
 
     describe('starting it', () => {

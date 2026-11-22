@@ -186,6 +186,11 @@ export interface VerificationRequest extends VerificationSubmission {
   reviewNote?: string | null;
   reviewedAt?: IsoDate | null;
   submittedAt: IsoDate;
+  /**
+   * Turned down because the same person already has another account (or is
+   * on Didit's blocklist): there is no trying again (GET /verification/me).
+   */
+  duplicate?: boolean;
 }
 
 /** Whether accounts are activated by an identity check through Didit. */

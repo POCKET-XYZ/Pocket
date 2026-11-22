@@ -26,6 +26,17 @@ export const KYC_DECLINED_NOTE =
 export const KYC_DUPLICATE_NOTE =
   'Este documento o esta cara ya se verificaron en otra cuenta de Pocket. Cada persona puede tener una sola cuenta. Si la otra cuenta es tuya, entra con ella; si crees que es un error, escríbenos.';
 
+/**
+ * Whether the request was turned down because the person already has another
+ * live account on Pocket, or is on Didit's blocklist. Trying again would only
+ * pay for another check with the same outcome.
+ */
+export function turnedDownForGood(
+  request: Pick<VerificationRequest, 'status' | 'reviewNote'> | null,
+): boolean {
+  return request?.status === 'rejected' && request.reviewNote === KYC_DUPLICATE_NOTE;
+}
+
 /** The review note an approval by the identity check leaves. */
 export const KYC_APPROVED_NOTE = 'Identidad verificada con Didit.';
 
@@ -84,12 +95,22 @@ export class VerificationService {
       throw new BadRequestException('Tu cuenta ya está verificada');
     }
     if (user.verificationStatus === 'pending' && this.kycEnabled) {
-      throw new BadRequestException('Ya enviaste tus datos: falta verificar tu identidad');
+      throw new BadRequestException(
+        'Ya enviaste tus datos: falta verificar tu identidad',
+      );
     }
     if (user.role === 'startup' && !dto.companyName) {
       throw new BadRequestException(
         'El nombre de la empresa es obligatorio para las startups',
       );
+    }
+    // One person, one account: someone already verified on another account
+    // does not start a new identity check here.
+    if (
+      user.verificationStatus === 'rejected' &&
+      turnedDownForGood(await this.latestFor(userId))
+    ) {
+      throw new BadRequestException(KYC_DUPLICATE_NOTE);
     }
 
     const status = this.kycEnabled ? 'pending' : 'approved';
@@ -129,6 +150,15 @@ export class VerificationService {
       where: { userId },
       orderBy: { submittedAt: 'desc' },
     });
+  }
+
+  /**
+   * The latest request as the user sees it: whether it was turned down for
+   * good (another account of the same person), so the page offers no retry.
+   */
+  async mine(userId: string) {
+    const request = await this.latestFor(userId);
+    return request ? { ...request, duplicate: turnedDownForGood(request) } : null;
   }
 
   /**
@@ -282,7 +312,9 @@ export class VerificationService {
       data: {
         kycStatus: decision.status,
         kycReason:
-          decision.status === 'In Review' ? didit || 'Didit asked for a manual review.' : null,
+          decision.status === 'In Review'
+            ? didit || 'Didit asked for a manual review.'
+            : null,
         kycCheckedAt: checkedAt,
       },
     });
