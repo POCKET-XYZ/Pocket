@@ -32,12 +32,11 @@ const ROLE_LINKS: Record<UserRole, { href: string; label: string }[]> = {
   startup: [
     { href: '/dashboard', label: 'Mis publicaciones' },
     { href: '/contracts', label: 'Contratos' },
-    { href: '/profile', label: 'Perfil' },
   ],
+  // The profile is in the account menu ("Mi perfil"), not here twice.
   specialist: [
     { href: '/applications', label: 'Mis postulaciones' },
     { href: '/contracts', label: 'Contratos' },
-    { href: '/profile', label: 'Perfil' },
   ],
   manager: [
     { href: '/manager/contracts', label: 'Contratos' },

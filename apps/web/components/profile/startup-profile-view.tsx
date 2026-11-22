@@ -1,0 +1,155 @@
+'use client';
+
+import type { JobBoard, PublicProfile, StartupProfile } from '@pocket/shared';
+import { useQuery } from '@tanstack/react-query';
+import { GlobeIcon, LanguagesIcon, MapPinIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { Avatar } from '@/components/avatar';
+import { JobCard } from '@/components/job-card';
+import { Detail, EmptyState, ErrorAlert, Loading } from '@/components/page';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { api } from '@/lib/api';
+import { STAGE_LABELS, date } from '@/lib/format';
+import { linkHost, safeHref } from '@/lib/links';
+
+/**
+ * A startup's public profile. A specialist reads it before applying: who the
+ * company is, what it is looking for, who signs, and what else it is hiring for.
+ */
+export function StartupProfileView({ id }: { id: string }) {
+  const router = useRouter();
+  const profile = useQuery({
+    queryKey: ['profiles', id],
+    queryFn: () => api<PublicProfile>(`/profiles/${id}?as=startup`),
+  });
+  const jobs = useQuery({
+    queryKey: ['jobs', 'by-startup', id],
+    queryFn: () => api<JobBoard>(`/jobs?startupId=${id}&limit=50`),
+  });
+
+  // A specialist's id opened here belongs on the specialist page.
+  const isSpecialist = profile.data?.role === 'specialist';
+  useEffect(() => {
+    if (isSpecialist) router.replace(`/specialists/${id}`);
+  }, [isSpecialist, id, router]);
+
+  if (profile.isLoading || isSpecialist) return <Loading />;
+  if (profile.error || !profile.data)
+    return (
+      <ErrorAlert
+        error={profile.error}
+        onRetry={() => profile.refetch()}
+        title="No se encontró la startup"
+      />
+    );
+
+  const startup = profile.data.profile as StartupProfile;
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      <Card>
+        <CardContent className="flex flex-col gap-5 pt-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <Avatar name={startup.companyName} url={startup.logoUrl} size={80} />
+            <div className="min-w-0">
+              <h1 className="text-3xl font-bold text-navy">{startup.companyName}</h1>
+              <p className="text-muted-foreground">{startup.oneLiner}</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <Badge
+                  variant="secondary"
+                  className="h-auto max-w-full whitespace-normal border-0 bg-celeste-light text-navy"
+                >
+                  {startup.sector}
+                </Badge>
+                <Badge variant="outline">{STAGE_LABELS[startup.stage]}</Badge>
+              </div>
+            </div>
+          </div>
+          {startup.websiteUrl ? (
+            <Button asChild variant="outline" className="max-w-full md:max-w-xs">
+              <a
+                href={safeHref(startup.websiteUrl)}
+                title={linkHost(startup.websiteUrl)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <GlobeIcon className="size-4" />
+                <span className="min-w-0 truncate">{linkHost(startup.websiteUrl)}</span>
+              </a>
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Qué están buscando</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-line text-sm leading-relaxed">
+              {startup.lookingFor}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="h-fit">
+          <CardHeader>
+            <CardTitle>La empresa</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-4">
+              {startup.legalName ? (
+                <Detail label="Razón social">{startup.legalName}</Detail>
+              ) : null}
+              {startup.contactRole ? (
+                <Detail label="Quién firma los contratos">{startup.contactRole}</Detail>
+              ) : null}
+              {startup.location ? (
+                <Detail label="Ubicación">
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPinIcon className="size-3.5" /> {startup.location}
+                  </span>
+                </Detail>
+              ) : null}
+              {startup.languages.length > 0 ? (
+                <Detail label="Idiomas de trabajo">
+                  <span className="inline-flex items-center gap-1.5">
+                    <LanguagesIcon className="size-3.5" /> {startup.languages.join(', ')}
+                  </span>
+                </Detail>
+              ) : null}
+            </dl>
+          </CardContent>
+        </Card>
+      </div>
+
+      <section>
+        <h2 className="mb-3 font-heading text-xl font-bold text-navy">
+          Trabajos abiertos
+        </h2>
+        {jobs.isLoading ? (
+          <Loading />
+        ) : jobs.data && jobs.data.items.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {jobs.data.items.map((job) => (
+              <JobCard key={job.id} job={job} href={`/jobs/${job.id}`} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="Sin trabajos abiertos por ahora">
+            Vuelve más tarde o mira los demás trabajos abiertos.
+          </EmptyState>
+        )}
+      </section>
+
+      <p className="text-xs text-muted-foreground">
+        {profile.data.waiting
+          ? 'Se registró en la red de pruebas de Pocket y todavía no activa su cuenta aquí.'
+          : `Miembro de Pocket desde el ${date(profile.data.memberSince)}.${profile.data.wallet ? ` Wallet ${profile.data.wallet}.` : ''}`}
+      </p>
+    </div>
+  );
+}
