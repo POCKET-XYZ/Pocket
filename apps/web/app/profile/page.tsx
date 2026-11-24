@@ -123,7 +123,7 @@ function Profile({ user }: { user: User }) {
           adding
             ? 'Otra startup en tu misma cuenta, con tu misma billetera y tu misma verificación. Al crearla pasas a usar Pocket como ella; cambias de una a otra desde el menú de tu cuenta.'
             : showForm
-              ? 'Todos los perfiles siguen la misma estructura, así startups y expertos pueden compararlos de un vistazo.'
+              ? 'Lo que ven las startups y los expertos antes de trabajar contigo.'
               : 'Así ven tu perfil las startups y los expertos.'
         }
         actions={
@@ -384,6 +384,8 @@ function StartupForm({
 }
 
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+/** The largest CV Pocket keeps, as the API checks it. */
+const MAX_CV_BYTES = 10 * 1024 * 1024;
 const MAX_LOGO_BYTES = 1024 * 1024;
 
 /**
@@ -558,8 +560,8 @@ function SpecialistForm({
       toast.error('Sube tu CV en PDF');
       return;
     }
-    if (file.size > 4 * 1024 * 1024) {
-      toast.error('El archivo es demasiado grande. El límite es de 4 MB');
+    if (file.size > MAX_CV_BYTES) {
+      toast.error('El archivo es demasiado grande. El límite es de 10 MB');
       return;
     }
     setUploadingCv(true);
@@ -568,6 +570,7 @@ function SpecialistForm({
         '/profiles/me/cv',
         'file',
         file,
+        '10 MB',
       );
       setCvUrl(url);
       toast.success('CV subido');
@@ -593,8 +596,9 @@ function SpecialistForm({
       return;
     }
     const values = formValues(event.currentTarget);
-    if (!isCreator && !values.cvUrl) {
-      toast.error('Agrega tu CV, en PDF o como enlace');
+    // Something a startup can check: the portfolio, the CV or the LinkedIn.
+    if (!isCreator && !values.cvUrl && !values.linkedinUrl && !values.portfolioUrl) {
+      toast.error('Agrega al menos uno: tu portafolio, tu CV o tu LinkedIn');
       return;
     }
     const problem =
@@ -645,12 +649,7 @@ function SpecialistForm({
     </Field>
   );
   const cvField = (
-    <Field
-      label="CV"
-      htmlFor="cvUrl"
-      hint="Súbelo en PDF (hasta 4 MB) o pega un enlace."
-      required={!isCreator}
-    >
+    <Field label="CV" htmlFor="cvUrl" hint="En PDF, hasta 10 MB, o un enlace.">
       <div className="flex flex-col gap-2 sm:flex-row">
         <UrlInput
           id="cvUrl"
@@ -701,7 +700,7 @@ function SpecialistForm({
       <Field
         label="¿A qué te dedicas?"
         htmlFor="headline"
-        hint='En una línea, por ejemplo "Creadora de contenido sobre finanzas personales" o "Experta en outbound para SaaS B2B".'
+        hint='En una línea, por ejemplo "Creadora de contenido sobre finanzas".'
         required
       >
         <Input
@@ -724,7 +723,16 @@ function SpecialistForm({
           defaultValue={initial?.bio}
         />
       </Field>
-      <Field label="Categorías" htmlFor="categories" required>
+      <Field
+        label="Categorías"
+        htmlFor="categories"
+        required
+        hint={
+          isCreator
+            ? undefined
+            : '¿Creas contenido? Elige "Contenido e influencers" para agregar tus redes y seguidores.'
+        }
+      >
         <div id="categories" className="flex flex-wrap gap-2">
           {Object.values(ServiceCategory).map((category) => (
             <button
@@ -779,12 +787,7 @@ function SpecialistForm({
           defaultValue={initial?.skills.join(', ')}
         />
       </Field>
-      <Field
-        label="Idiomas"
-        htmlFor="languages"
-        hint="Separados por comas. Las startups de otros países se fijan en esto."
-        required
-      >
+      <Field label="Idiomas" htmlFor="languages" hint="Separados por comas." required>
         <Input
           id="languages"
           name="languages"
@@ -794,9 +797,9 @@ function SpecialistForm({
         />
       </Field>
       <Field
-        label="Casos de éxito con su resultado"
+        label="Casos de éxito (opcional)"
         htmlFor="caseStudies"
-        hint="Uno por línea, así: enlace | qué logró. El resultado es lo primero que lee una startup."
+        hint="Uno por línea: enlace | qué lograste."
       >
         <Textarea
           id="caseStudies"
@@ -808,6 +811,11 @@ function SpecialistForm({
             .join('\n')}
         />
       </Field>
+      {isCreator ? null : (
+        <p className="text-sm text-muted-foreground">
+          Agrega al menos uno: tu portafolio, tu CV o tu LinkedIn.
+        </p>
+      )}
       <Field label="Portafolio" htmlFor="portfolioUrl">
         <UrlInput
           id="portfolioUrl"

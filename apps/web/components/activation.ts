@@ -38,9 +38,7 @@ function identityNext(kyc: boolean, user: Account): boolean {
 /** What is left to activate an account, in one sentence. */
 export function activationHint(kyc: boolean, user: Account): string {
   if (!identityNext(kyc, user)) {
-    return kyc
-      ? 'Un formulario corto, sin documentos. Al enviarlo tu cuenta queda activa. Tu identidad la verificas cuando aceptes tu primer contrato.'
-      : 'Un formulario corto, sin documentos. Al enviarlo tu cuenta queda activa.';
+    return 'Un formulario corto, sin documentos.';
   }
   if (user.verificationStatus === 'pending') {
     return 'Falta verificar tu identidad con tu documento y una selfie. Toma unos minutos.';
