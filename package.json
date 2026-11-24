@@ -19,8 +19,8 @@
     "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "prettier": "^3.9.8",
-    "turbo": "^2.10.13",
+    "prettier": "^3.10.1",
+    "turbo": "^2.11.13",
     "typescript": "~5.9"
   },
   "overrides": {

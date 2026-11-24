@@ -22,7 +22,7 @@
     "stellar:preflight": "bun scripts/preflight.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.8.0",
+    "@anthropic-ai/sdk": "^1.12.0",
     "@nestjs/common": "^11",
     "@nestjs/config": "^4",
     "@nestjs/core": "^11",
@@ -31,8 +31,8 @@
     "@nestjs/swagger": "^11",
     "@pocket/shared": "workspace:*",
     "@prisma/client": "^6",
-    "@sentry/nestjs": "^11.1.0",
-    "@stellar/stellar-sdk": "^17.1.0",
+    "@sentry/nestjs": "^11.16.0",
+    "@stellar/stellar-sdk": "^17.4.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "helmet": "^8.3.0",
@@ -48,7 +48,7 @@
     "@types/node": "^24",
     "eslint": "^9",
     "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.12.0",
+    "globals": "^17.14.0",
     "jest": "^30",
     "prisma": "^6",
     "ts-jest": "^29",
