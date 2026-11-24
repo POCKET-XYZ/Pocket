@@ -74,7 +74,7 @@ export class ProfilesController {
     return this.profiles.saveSpecialist(user, dto);
   }
 
-  /** Upload the signed-in specialist's CV as a PDF, up to 4 MB. */
+  /** Upload the signed-in specialist's CV as a PDF, up to 10 MB. */
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @Roles('specialist')

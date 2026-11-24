@@ -131,8 +131,8 @@ function given<T extends object>(dto: T): Partial<T> {
   ) as Partial<T>;
 }
 
-/** The largest CV Pocket keeps. */
-export const MAX_CV_BYTES = 4 * 1024 * 1024;
+/** The largest CV Pocket keeps: a designed PDF with images fits. */
+export const MAX_CV_BYTES = 10 * 1024 * 1024;
 
 /** The largest logo Pocket keeps. A logo is shown small; 1 MB is plenty. */
 export const MAX_LOGO_BYTES = 1024 * 1024;

@@ -229,28 +229,31 @@ function Verification({ user }: { user: User }) {
       <Onboarding className="mb-6" />
       <PageHeader title={pageTitle()} description={pageDescription()} />
 
-      <Card className="mb-6">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Estado</CardTitle>
-          <StatusBadge feminine status={accountBadgeStatus(user)} />
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          <p>{statusText()}</p>
-          {user.verificationStatus === 'approved' && next ? (
-            <Button asChild className="mt-4">
-              <Link href={next} onClick={forgetNext}>
-                Volver al contrato
-              </Link>
-            </Button>
-          ) : active && !staysForIdentity ? (
-            <Button asChild className="mt-4">
-              <Link href={hasProfile ? '/' : '/profile'}>
-                {hasProfile ? 'Ir a mi inicio' : 'Crear mi perfil'}
-              </Link>
-            </Button>
-          ) : null}
-        </CardContent>
-      </Card>
+      {/* Before anything was sent the form below says it all. */}
+      {user.verificationStatus === 'not_submitted' ? null : (
+        <Card className="mb-6">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Estado</CardTitle>
+            <StatusBadge feminine status={accountBadgeStatus(user)} />
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            <p>{statusText()}</p>
+            {user.verificationStatus === 'approved' && next ? (
+              <Button asChild className="mt-4">
+                <Link href={next} onClick={forgetNext}>
+                  Volver al contrato
+                </Link>
+              </Button>
+            ) : active && !staysForIdentity ? (
+              <Button asChild className="mt-4">
+                <Link href={hasProfile ? '/' : '/profile'}>
+                  {hasProfile ? 'Ir a mi inicio' : 'Crear mi perfil'}
+                </Link>
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
 
       {turnedDown ? (
         <Alert variant="destructive" className="mb-6">
@@ -416,8 +419,8 @@ function Verification({ user }: { user: User }) {
         : activationHint(kyc, user);
     }
     return kyc
-      ? 'Completa tus datos y verifica tu identidad con tu documento y una selfie. Toma unos minutos, y después puedes usar todo el marketplace.'
-      : 'Un formulario corto, sin documentos. Al enviarlo tu cuenta queda activa y puedes usar todo el marketplace.';
+      ? 'Completa tus datos y verifica tu identidad con tu documento y una selfie. Toma unos minutos.'
+      : 'Tres datos y tu cuenta queda activa.';
   }
 
   function statusText(): string {

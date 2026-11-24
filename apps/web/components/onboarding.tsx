@@ -143,7 +143,11 @@ export function Onboarding({
                 >
                   {step.title}
                 </p>
-                <p className="text-sm text-muted-foreground">{step.text}</p>
+                {/* Only the step to do now says more, and only on the home panel:
+                    on its own page, the page says it. */}
+                {full && step.state === 'current' ? (
+                  <p className="text-sm text-muted-foreground">{step.text}</p>
+                ) : null}
               </div>
               {/* No button to the page you are already on: the form is right below. */}
               {/* On the panel a finished step has nothing left to offer. */}
@@ -219,7 +223,7 @@ function stepsFor(
         : 'Completa tu perfil de experto',
       text: isStartup
         ? 'Qué hace tu empresa, en qué etapa está y en qué necesitas ayuda. Los expertos lo ven en tus trabajos.'
-        : 'A qué te dedicas, tus categorías y tus habilidades. Las startups lo miran para elegir.',
+        : 'Lo que ven las startups antes de contratarte.',
       done: hasProfile,
       action: { label: hasProfile ? 'Editar perfil' : 'Crear perfil', href: '/profile' },
     },
@@ -227,7 +231,7 @@ function stepsFor(
       title: isStartup ? 'Publica tu primer trabajo' : 'Postúlate a un trabajo',
       text: isStartup
         ? 'Describe el trabajo y el presupuesto. Los expertos se postularán y tú eliges a uno.'
-        : 'Los trabajos abiertos están en la sección Trabajos. Postúlate con tu propuesta, tu precio y cuánto tiempo te toma.',
+        : 'Elige un trabajo y manda tu propuesta y tu precio.',
       done: Boolean(progress?.hasStarted) || milestones.length > 0,
       // On the panel, the empty state right below already has this button.
       action: progress
@@ -270,7 +274,7 @@ function stepsFor(
               : []),
             {
               title: 'Haz tu primera entrega',
-              text: 'Cuando una startup te contrata y deposita el pago, entregas cada hito desde el contrato.',
+              text: 'Entregas cada hito desde el contrato.',
               done: anyMilestone(
                 'delivered',
                 'changes_requested',
@@ -282,7 +286,7 @@ function stepsFor(
             },
             {
               title: 'Recibe tu primer pago',
-              text: 'Cuando la startup aprueba un hito, su pago llega a tu wallet.',
+              text: 'Al aprobarse un hito, su pago llega a tu wallet.',
               done: paid,
             },
           ]),
