@@ -45,7 +45,7 @@ export function TrackRecordSection({ userId }: { userId: string }) {
               {[
                 data.bestResult.sector,
                 month(data.bestResult.reportedAt),
-                'Aprobado por la startup',
+                'Aprobado por la empresa',
               ]
                 .filter(Boolean)
                 .join(' · ')}

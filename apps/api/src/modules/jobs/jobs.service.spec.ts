@@ -593,7 +593,7 @@ describe('JobsService', () => {
 
       it('requires its startup, which the board shows', async () => {
         prisma.job.findUnique.mockResolvedValue({ ...draft, startupProfileId: null });
-        await expect(service.publish(startup, 'job-1')).rejects.toThrow(/startup/);
+        await expect(service.publish(startup, 'job-1')).rejects.toThrow(/empresa/);
         expect(prisma.job.updateMany).not.toHaveBeenCalled();
       });
 

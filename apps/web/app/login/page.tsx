@@ -22,7 +22,7 @@ const ROLES: {
 }[] = [
   {
     value: 'startup',
-    title: 'Soy startup',
+    title: 'Soy empresa',
     text: 'Publica trabajos, contrata expertos y paga por hito, con el dinero guardado en un contrato.',
     icon: RocketIcon,
   },

@@ -99,7 +99,7 @@ function Dashboard({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string 
 
       <Section title="Usuarios">
         <StatTile
-          label="Startups"
+          label="Empresas"
           value={count(users.startups.total)}
           hint={`${count(users.startups.newInPeriod)} ${users.startups.newInPeriod === 1 ? 'nueva' : 'nuevas'} ${inPeriod}`}
         />
@@ -210,7 +210,7 @@ function Dashboard({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string 
           hint={`De los contratos que recibieron su depósito ${inPeriod}`}
         />
         <StatTile
-          label="Reembolsado a startups"
+          label="Reembolsado a empresas"
           value={<Usdc amount={money.refunded} />}
           unit="USDC"
           hint={`Por disputas resueltas, ${inPeriod}`}
@@ -300,7 +300,7 @@ function Overview({ data, inPeriod }: { data: ManagerMetrics; inPeriod: string }
         <WeeklyLine
           title="Usuarios nuevos"
           headline={count(users.startups.newInPeriod + users.specialists.newInPeriod)}
-          hint={`Startups y expertos que se registraron ${inPeriod}`}
+          hint={`Empresas y expertos que se registraron ${inPeriod}`}
           weeks={weekly}
           pick={(week) => week.newUsers}
           format={countValue}

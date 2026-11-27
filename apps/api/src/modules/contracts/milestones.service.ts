@@ -188,7 +188,7 @@ export class MilestonesService {
   async retryRelease(user: AuthUser, milestoneId: string) {
     const milestone = await this.load(milestoneId);
     if (user.role !== 'manager' && milestone.contract.startupId !== user.sub) {
-      throw new ForbiddenException('Solo la startup o un manager pueden liberar un pago');
+      throw new ForbiddenException('Solo la empresa o un manager pueden liberar un pago');
     }
     // The approval may have landed on chain after submitApprove gave up waiting.
     if (
@@ -402,7 +402,7 @@ export class MilestonesService {
   ): Promise<MilestoneWithContract> {
     const milestone = await this.load(milestoneId);
     if (milestone.contract.startupId !== user.sub) {
-      throw new ForbiddenException('Solo la startup que contrató puede hacer esto');
+      throw new ForbiddenException('Solo la empresa que contrató puede hacer esto');
     }
     requireActive(milestone.contract);
     return milestone;

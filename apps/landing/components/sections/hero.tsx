@@ -52,7 +52,7 @@ export function Hero() {
     <section ref={root} id="inicio" className="flex min-h-svh items-center pt-20">
       <div className="wrap grid items-center gap-10 py-16 md:grid-cols-[2fr_1fr]">
         <div className="flex flex-col gap-8">
-          <p className="eyebrow intro-fade text-celeste">Talento para startups latinas</p>
+          <p className="eyebrow intro-fade text-celeste">Talento para empresas latinas</p>
           {/* Each word rises out of its own mask; readers get the sentence whole. */}
           <h1 className="headline-xl" aria-label={headline}>
             {headline.split(' ').map((word, i) => (
@@ -84,7 +84,7 @@ export function Hero() {
                 href={links.startup}
                 className="press block rounded-full bg-mandarina px-10 py-5 text-xl font-semibold text-navy shadow-[0_10px_30px_-10px_rgb(255_159_69_/_0.5)]"
               >
-                Soy startup
+                Soy empresa
               </a>
             </Magnetic>
             <Magnetic>

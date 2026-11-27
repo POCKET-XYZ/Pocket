@@ -17,7 +17,7 @@ const questions = [
   },
   {
     q: '¿Pocket puede quedarse con mi dinero?',
-    a: 'No. El pago queda guardado en un contrato en Stellar y solo sale de dos formas: al experto cuando apruebas su entrega, o repartido entre los dos si un manager resuelve una disputa. Pocket solo firma pagos a la startup o al experto de ese contrato, y lo único que recibe es su comisión.',
+    a: 'No. El pago queda guardado en un contrato en Stellar y solo sale de dos formas: al experto cuando apruebas su entrega, o repartido entre los dos si un manager resuelve una disputa. Pocket solo firma pagos a la empresa o al experto de ese contrato, y lo único que recibe es su comisión.',
   },
   {
     q: '¿Cuánto cobra Pocket?',
@@ -25,11 +25,11 @@ const questions = [
   },
   {
     q: '¿Cómo sé con quién estoy trabajando?',
-    a: 'Cada startup y cada experto tiene un perfil con lo que hace, sus enlaces y, en los expertos, su CV. Lo revisas antes de contratar o postularte. Y como el pago solo le llega al experto cuando apruebas su entrega, no arriesgas tu dinero con alguien que no cumple.',
+    a: 'Cada empresa y cada experto tiene un perfil con lo que hace, sus enlaces y, en los expertos, su CV. Lo revisas antes de contratar o postularte. Y como el pago solo le llega al experto cuando apruebas su entrega, no arriesgas tu dinero con alguien que no cumple.',
   },
   {
     q: '¿Cómo cobro si soy experto?',
-    a: 'Cada vez que la startup aprueba una entrega, ese pago llega directo a tu wallet. No tienes que perseguir a nadie.',
+    a: 'Cada vez que la empresa aprueba una entrega, ese pago llega directo a tu wallet. No tienes que perseguir a nadie.',
   },
   {
     q: '¿Ya puedo usarlo con dinero real?',

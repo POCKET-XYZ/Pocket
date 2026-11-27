@@ -27,11 +27,11 @@ type Scenario = (typeof scenarios)[number]['key'];
 const rules = [
   {
     name: 'Sabes con quién trabajas',
-    text: 'Cada startup y cada experto tiene un perfil con lo que hace y sus enlaces.',
+    text: 'Cada empresa y cada experto tiene un perfil con lo que hace y sus enlaces.',
   },
   {
     name: 'Reglas claras',
-    text: 'El dinero solo va al experto o vuelve a la startup.',
+    text: 'El dinero solo va al experto o vuelve a la empresa.',
   },
   { name: 'Pagas por hito', text: 'Cada parte del trabajo se paga cuando la confirmas.' },
 ];
@@ -181,7 +181,7 @@ export function Protected() {
 
           <div data-stage className="relative mt-10">
             <div className="grid grid-cols-3 items-start gap-2">
-              <Node id="startup" render="wallet" name="Startup" note="Deposita el pago" />
+              <Node id="startup" render="wallet" name="Empresa" note="Deposita el pago" />
               <Node
                 id="contract"
                 render="lock"

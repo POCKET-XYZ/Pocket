@@ -101,7 +101,7 @@ export class VerificationService {
     }
     if (user.role === 'startup' && !dto.companyName) {
       throw new BadRequestException(
-        'El nombre de la empresa es obligatorio para las startups',
+        'El nombre de la empresa es obligatorio',
       );
     }
     // One person, one account: someone still verified on another account

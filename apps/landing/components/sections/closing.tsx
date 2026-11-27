@@ -25,7 +25,7 @@ export function Closing() {
                 href={links.startup}
                 className="press block rounded-full bg-mandarina px-10 py-5 text-xl font-semibold text-navy shadow-[0_10px_30px_-10px_rgb(255_159_69_/_0.5)]"
               >
-                Soy startup
+                Soy empresa
               </a>
             </Magnetic>
             <Magnetic>

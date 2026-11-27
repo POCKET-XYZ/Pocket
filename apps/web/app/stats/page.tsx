@@ -85,7 +85,7 @@ function Figures({ data }: { data: PublicStats }) {
           label="USDC depositados en contratos"
           value={money(data.funded)}
           unit="USDC"
-          hint="Todo lo que las startups guardaron para pagar trabajos."
+          hint="Todo lo que las empresas guardaron para pagar trabajos."
         />
         <BigFigure
           icon={HandCoinsIcon}
@@ -116,7 +116,7 @@ function Figures({ data }: { data: PublicStats }) {
         />
         <SmallFigure
           icon={UsersIcon}
-          label="Startups y expertos activos"
+          label="Empresas y expertos activos"
           value={`${count(data.wallets.startups)} y ${count(data.wallets.specialists)}`}
         />
         <SmallFigure
@@ -139,9 +139,9 @@ function Figures({ data }: { data: PublicStats }) {
               las comisiones incluidas.
             </li>
             <li>
-              Las startups activas son las cuentas que depositaron en un contrato; los
+              Las empresas activas son las cuentas que depositaron en un contrato; los
               expertos activos, las que fueron contratadas en uno. Una recontratación es
-              un contrato de una startup que ya había contratado antes.
+              un contrato de una empresa que ya había contratado antes.
             </li>
           </ul>
         </div>

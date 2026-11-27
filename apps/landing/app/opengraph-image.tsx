@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { ImageResponse } from 'next/og';
 
 // The preview shown when the landing is shared (WhatsApp, LinkedIn, X, Slack).
-export const alt = 'Pocket: crece más rápido, paga seguro. Talento para startups latinas';
+export const alt = 'Pocket: crece más rápido, paga seguro. Talento para empresas latinas';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -50,7 +50,7 @@ export default async function Image() {
           Crece más rápido. Paga seguro.
         </div>
         <div style={{ marginTop: 32, fontSize: 32, fontWeight: 500, color: '#86d4e6' }}>
-          Talento para startups latinas
+          Talento para empresas latinas
         </div>
       </div>
       <img

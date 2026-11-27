@@ -207,7 +207,7 @@ export function ChangesNotice({ contract }: { contract: ContractDetail }) {
     <Dialog open={!dismissed} onOpenChange={(next) => (next ? null : close())}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>La startup cambió detalles del contrato</DialogTitle>
+          <DialogTitle>La empresa cambió detalles del contrato</DialogTitle>
           <DialogDescription>
             Los montos y el pago protegido siguen igual. Esto es lo que cambió:
           </DialogDescription>

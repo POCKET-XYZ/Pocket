@@ -118,13 +118,13 @@ function Profile({ user }: { user: User }) {
     <div className={cn('mx-auto', showForm ? 'max-w-2xl' : 'max-w-4xl')}>
       <Onboarding className="mb-6" />
       <PageHeader
-        title={adding ? 'Nueva startup' : editing ? 'Editar perfil' : 'Mi perfil'}
+        title={adding ? 'Nueva empresa' : editing ? 'Editar perfil' : 'Mi perfil'}
         description={
           adding
-            ? 'Otra startup en tu misma cuenta, con tu misma billetera y tu misma verificación. Al crearla pasas a usar Pocket como ella; cambias de una a otra desde el menú de tu cuenta.'
+            ? 'Otra empresa en tu misma cuenta, con tu misma billetera y tu misma verificación. Al crearla pasas a usar Pocket como ella; cambias de una a otra desde el menú de tu cuenta.'
             : showForm
-              ? 'Lo que ven las startups y los expertos antes de trabajar contigo.'
-              : 'Así ven tu perfil las startups y los expertos.'
+              ? 'Lo que ven las empresas y los expertos antes de trabajar contigo.'
+              : 'Así ven tu perfil las empresas y los expertos.'
         }
         actions={
           !showForm && !profile.isLoading ? (
@@ -179,14 +179,14 @@ function Profile({ user }: { user: User }) {
           <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-heading text-lg font-bold text-navy">
-                ¿Tienes otra startup?
+                ¿Tienes otra empresa?
               </h2>
               <p className="text-sm text-muted-foreground">
                 Súmala a tu cuenta y cambia entre ellas desde el menú de tu cuenta.
               </p>
             </div>
             <Button asChild variant="outline">
-              <Link href="/profile?nueva=1">Agregar otra startup</Link>
+              <Link href="/profile?nueva=1">Agregar otra empresa</Link>
             </Button>
           </CardContent>
         </Card>
@@ -269,7 +269,7 @@ function StartupForm({
           defaultValue={initial?.companyName ?? known?.companyName ?? ''}
         />
       </Field>
-      <Field label="Qué hace tu startup, en una frase" htmlFor="oneLiner" required>
+      <Field label="Qué hace tu empresa, en una frase" htmlFor="oneLiner" required>
         <Input
           id="oneLiner"
           name="oneLiner"

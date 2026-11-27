@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 
 /** How each role reads inside a sentence. */
 const ROLE_NAMES: Record<UserRole, string> = {
-  startup: 'startup',
+  startup: 'empresa',
   specialist: 'experto',
   manager: 'manager',
 };

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 const STEPS = {
   specialist: [
     'Aceptas los términos',
-    'La startup deposita el pago',
+    'La empresa deposita el pago',
     'Entregas cada hito y recibes su pago al aprobarse',
     'Contrato completado',
   ],
@@ -18,7 +18,7 @@ const STEPS = {
   ],
   other: [
     'El experto acepta los términos',
-    'La startup deposita el pago',
+    'La empresa deposita el pago',
     'Entregas y pagos por hito',
     'Contrato completado',
   ],

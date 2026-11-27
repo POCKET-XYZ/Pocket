@@ -32,7 +32,7 @@ export default function AdminUsersPage() {
 type Filter = 'all' | 'startup' | 'specialist' | 'pending' | 'manager' | 'deleted';
 
 const ROLE_LABELS: Record<UserRole, string> = {
-  startup: 'Startup',
+  startup: 'Empresa',
   specialist: 'Experto',
   manager: 'Manager',
 };
@@ -42,7 +42,7 @@ const FILTERS: { value: Filter; label: string; keep: (row: AdminUserRow) => bool
     { value: 'all', label: 'Todos', keep: (row) => !row.deletedAt },
     {
       value: 'startup',
-      label: 'Startups',
+      label: 'Empresas',
       keep: (row) => !row.deletedAt && row.role === 'startup',
     },
     {
@@ -194,7 +194,7 @@ function ProfileLink({ row }: { row: AdminUserRow }) {
     row.deletedAt || row.role === 'manager'
       ? null
       : row.role === 'startup'
-        ? `/startups/${row.id}`
+        ? `/empresas/${row.id}`
         : `/specialists/${row.id}`;
   return href && row.name ? (
     <Link

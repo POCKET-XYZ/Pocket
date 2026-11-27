@@ -50,7 +50,7 @@ export function Barrier() {
         <div className="mt-16 grid gap-12 md:grid-cols-2">
           <figure data-fear="startup" className="border-l-4 border-current pl-6">
             <figcaption className="font-medium opacity-70">
-              La startup se pregunta
+              La empresa se pregunta
             </figcaption>
             <blockquote className="headline-lg mt-3">
               ¿Y si pago y no entregan?

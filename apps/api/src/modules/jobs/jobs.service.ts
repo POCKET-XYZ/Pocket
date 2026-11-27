@@ -38,7 +38,7 @@ export class JobsService {
    */
   async create(user: AuthUser, dto: CreateJobDto): Promise<Job> {
     if (user.role !== 'startup') {
-      throw new ForbiddenException('Solo las startups pueden publicar trabajos');
+      throw new ForbiddenException('Solo las empresas pueden publicar trabajos');
     }
     assertJobFits(dto);
     const startupProfileId = await this.activeStartupId(user);
@@ -102,7 +102,7 @@ export class JobsService {
     // The board shows who hires: the draft's startup must still be there.
     if (!job.startupProfileId) {
       throw new BadRequestException(
-        'La startup de este borrador ya no está en Pocket. Publica el trabajo desde otra de tus startups',
+        'La empresa de este borrador ya no está en Pocket. Publica el trabajo desde otra de tus empresas',
       );
     }
     const today = todayUtc();
@@ -251,7 +251,7 @@ export class JobsService {
     });
     if (!account?.activeStartupId) {
       throw new BadRequestException(
-        'Completa tu perfil de startup antes de publicar un trabajo',
+        'Completa tu perfil de empresa antes de publicar un trabajo',
       );
     }
     return account.activeStartupId;

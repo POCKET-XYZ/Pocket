@@ -82,7 +82,7 @@ function Jobs() {
             <SearchBox
               value={query}
               onChange={setQuery}
-              placeholder="Buscar por trabajo o startup"
+              placeholder="Buscar por trabajo o empresa"
             />
           </div>
           {shown.length === 0 ? (
@@ -114,7 +114,7 @@ function Jobs() {
                         {row.title}
                       </Link>
                       <span className="block text-xs text-muted-foreground">
-                        {row.startup.name ?? 'Startup sin nombre'} ·{' '}
+                        {row.startup.name ?? 'Empresa sin nombre'} ·{' '}
                         {CATEGORY_LABELS[row.category]}
                       </span>
                     </TableCell>

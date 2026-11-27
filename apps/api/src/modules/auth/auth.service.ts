@@ -54,7 +54,7 @@ export class AuthService {
       // without asking the wallet to sign again.
       throw new BadRequestException({
         code: ApiErrorCode.RoleRequired,
-        message: 'Elige startup o experto para crear tu cuenta',
+        message: 'Elige empresa o experto para crear tu cuenta',
       });
     }
     // Also before the challenge is used, so the client can resend it.
@@ -146,7 +146,7 @@ export class AuthService {
       if (!dto.role) {
         throw new BadRequestException({
           code: ApiErrorCode.RoleRequired,
-          message: 'Elige startup o experto para crear tu cuenta',
+          message: 'Elige empresa o experto para crear tu cuenta',
         });
       }
       requireTerms(dto.acceptTerms);

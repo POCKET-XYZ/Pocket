@@ -89,7 +89,7 @@ export class UsersService {
       where: { id: startupId, userId: id },
     });
     if (user.role === 'manager' || owned === 0 || !rolesOf(user).includes('startup')) {
-      throw new ForbiddenException('Esa startup no es tuya');
+      throw new ForbiddenException('Esa empresa no es tuya');
     }
     await this.prisma.user.update({
       where: { id },

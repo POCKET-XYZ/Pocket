@@ -524,7 +524,7 @@ function ManagerHome() {
             <StatTile
               label="Cuentas sin verificar"
               value={now.counts.users.notApproved}
-              hint={`${now.counts.users.startups} startups · ${now.counts.users.specialists} expertos`}
+              hint={`${now.counts.users.startups} empresas · ${now.counts.users.specialists} expertos`}
               href="/manager/users"
               icon={UserPlusIcon}
             />

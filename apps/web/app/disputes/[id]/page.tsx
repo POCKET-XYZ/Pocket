@@ -40,7 +40,7 @@ import { UrlInput } from '@/components/url-input';
 
 const OUTCOMES: { value: DisputeOutcome; label: string }[] = [
   { value: DisputeOutcome.PaySpecialist, label: 'Pagar al experto' },
-  { value: DisputeOutcome.RefundStartup, label: 'Reembolsar a la startup' },
+  { value: DisputeOutcome.RefundStartup, label: 'Reembolsar a la empresa' },
   { value: DisputeOutcome.Split, label: 'Repartir entre ambos' },
 ];
 
@@ -76,7 +76,7 @@ function DisputeView({ user }: { user: User }) {
   const { contract } = data.milestone;
   const who = (authorId: string) =>
     authorId === contract.startupId
-      ? 'Startup'
+      ? 'Empresa'
       : authorId === contract.specialistId
         ? 'Experto'
         : 'Manager';
@@ -115,7 +115,7 @@ function DisputeView({ user }: { user: User }) {
               <div className="rounded-xl bg-muted p-3 text-sm">
                 <p className="font-medium text-navy">
                   Decisión: {usdc(data.specialistAmount)} para el experto,{' '}
-                  {usdc(data.startupAmount)} para la startup.
+                  {usdc(data.startupAmount)} para la empresa.
                 </p>
                 {data.resolutionNote ? (
                   <p className="mt-1">{data.resolutionNote}</p>
@@ -295,7 +295,7 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
         );
         return;
       }
-      summary = `${fromUnits(toSpecialist)} USDC para el experto y ${fromUnits(total - toSpecialist)} USDC para la startup`;
+      summary = `${fromUnits(toSpecialist)} USDC para el experto y ${fromUnits(total - toSpecialist)} USDC para la empresa`;
     }
     const confirmed = await confirm({
       title: `¿${summary}?`,
@@ -327,7 +327,7 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
             {dispute.outcome === DisputeOutcome.Split && dispute.specialistAmount
               ? `: ${usdc(dispute.specialistAmount)} para el experto, ${usdc(
                   fromUnits(total - toUnits(dispute.specialistAmount)),
-                )} para la startup`
+                )} para la empresa`
               : ''}
             . La red todavía no la había confirmado. Reintenta para terminarla; si ya se
             ejecutó, Pocket solo la registra.
@@ -386,7 +386,7 @@ function ResolveCard({ dispute }: { dispute: DisputeDetail }) {
             <Field
               label="USDC para el experto"
               htmlFor="specialistAmount"
-              hint={`Más de 0 y menos de ${usdc(dispute.milestone.amount)}. La startup recibe el resto.`}
+              hint={`Más de 0 y menos de ${usdc(dispute.milestone.amount)}. La empresa recibe el resto.`}
               required
             >
               <Input

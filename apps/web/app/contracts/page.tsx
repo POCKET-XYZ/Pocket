@@ -90,7 +90,7 @@ function Contracts({ user }: { user: User }) {
         <EmptyState title="Todavía no tienes contratos">
           {user.role === 'startup'
             ? 'Contrata a un postulante desde uno de tus trabajos.'
-            : 'Postúlate a trabajos; cuando una startup te elija, los términos aparecerán aquí.'}
+            : 'Postúlate a trabajos; cuando una empresa te elija, los términos aparecerán aquí.'}
         </EmptyState>
       )}
     </div>

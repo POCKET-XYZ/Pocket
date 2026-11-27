@@ -23,7 +23,7 @@ function ProfileFirst() {
     return <ErrorAlert error={profile.error} onRetry={() => profile.refetch()} />;
   if (!profile.data) {
     return (
-      <EmptyState title="Primero completa el perfil de tu startup">
+      <EmptyState title="Primero completa el perfil de tu empresa">
         Los expertos lo leen antes de postularse.
         <div>
           <Button asChild className="mt-4">

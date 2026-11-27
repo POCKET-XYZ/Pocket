@@ -112,7 +112,7 @@ export function ResultsCard({ contractId }: { contractId: string }) {
           </ul>
         ) : null}
         <p className="text-xs text-muted-foreground">
-          Cada resultado es el de la última entrega que aprobó la startup.
+          Cada resultado es el de la última entrega que aprobó la empresa.
         </p>
       </CardContent>
     </Card>

@@ -895,7 +895,7 @@ describe('ContractsService', () => {
     it('refuses terms the startup changed since the specialist read them', async () => {
       await expect(
         service.accept(specialist, 'contract-1', '2026-11-22T14:00:00.000Z'),
-      ).rejects.toThrow('La startup cambió los términos');
+      ).rejects.toThrow('La empresa cambió los términos');
       expect(prisma.contract.updateMany).not.toHaveBeenCalled();
       expect(escrow.deploy).not.toHaveBeenCalled();
     });
@@ -907,7 +907,7 @@ describe('ContractsService', () => {
         .mockResolvedValueOnce({ acceptedAt: null });
       await expect(
         service.accept(specialist, 'contract-1', version.toISOString()),
-      ).rejects.toThrow('La startup cambió los términos');
+      ).rejects.toThrow('La empresa cambió los términos');
       expect(escrow.deploy).not.toHaveBeenCalled();
     });
 

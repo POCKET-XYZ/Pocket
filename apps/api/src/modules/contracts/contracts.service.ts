@@ -122,7 +122,7 @@ export function mergeChanges(
 }
 
 const TERMS_CHANGED =
-  'La startup cambió los términos mientras los revisabas. Revisa los nuevos antes de aceptar';
+  'La empresa cambió los términos mientras los revisabas. Revisa los nuevos antes de aceptar';
 
 /**
  * Milestones the startup sends: none due in the past, and adding up exactly to
@@ -855,7 +855,7 @@ export class ContractsService {
     const contract = await this.prisma.contract.findUnique({ where: { id: contractId } });
     if (!contract) throw new NotFoundException('No encontramos el contrato');
     if (contract.startupId !== user.sub) {
-      throw new ForbiddenException('Solo la startup que contrató puede hacer esto');
+      throw new ForbiddenException('Solo la empresa que contrató puede hacer esto');
     }
     return contract;
   }

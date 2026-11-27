@@ -54,7 +54,7 @@ function Applications({ user }: { user: User }) {
       <Onboarding className="mb-6" />
       <PageHeader
         title="Mis postulaciones"
-        description="Cuando una startup te elige, las condiciones aparecen en Contratos para que las aceptes."
+        description="Cuando una empresa te elige, las condiciones aparecen en Contratos para que las aceptes."
         actions={
           <Button asChild variant="outline">
             <Link href="/contracts">Mis contratos</Link>

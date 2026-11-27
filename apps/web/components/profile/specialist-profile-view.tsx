@@ -47,7 +47,7 @@ export function SpecialistProfileView({ id }: { id: string }) {
   // Startups used to be linked here; send those links to where startups live.
   const isStartup = profile.data?.role === 'startup';
   useEffect(() => {
-    if (isStartup) router.replace(`/startups/${id}`);
+    if (isStartup) router.replace(`/empresas/${id}`);
   }, [isStartup, id, router]);
 
   if (profile.isLoading || isStartup) return <Loading />;

@@ -70,7 +70,7 @@ function Report({ user }: { user: User }) {
   const data = report.data;
   const completed = data.contract.status === 'completed';
   const specialist = data.specialist.displayName ?? 'El experto';
-  const startup = data.startup.companyName ?? 'la startup';
+  const startup = data.startup.companyName ?? 'la empresa';
   // A column for refunds only when a dispute gave the startup something back.
   const refunds = data.payments.some((p) => Number(p.breakdown?.startup ?? 0) > 0);
 
@@ -97,7 +97,7 @@ function Report({ user }: { user: User }) {
           <StatusBadge status={data.contract.status} className="px-3 py-1 text-sm" />
         </div>
         <p className="text-muted-foreground">
-          {data.startup.companyName ?? 'Startup'} · {specialist} · Del{' '}
+          {data.startup.companyName ?? 'Empresa'} · {specialist} · Del{' '}
           {day(data.contract.fundedAt ?? data.contract.createdAt)}{' '}
           {data.contract.completedAt ? `al ${day(data.contract.completedAt)}` : 'a hoy'}
         </p>
@@ -141,7 +141,7 @@ function Report({ user }: { user: User }) {
           <Money label="Comisión de Pocket" value={data.money.pocketFee} />
           <Money label="Comisión de Trustless Work" value={data.money.trustlessWorkFee} />
           {Number(data.money.toStartup) > 0 ? (
-            <Money label="Devuelto a la startup" value={data.money.toStartup} />
+            <Money label="Devuelto a la empresa" value={data.money.toStartup} />
           ) : null}
           {Number(data.money.inEscrow) > 0 ? (
             <Money label="Todavía en el contrato" value={data.money.inEscrow} />
@@ -208,7 +208,7 @@ function Report({ user }: { user: User }) {
             </Table>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Cada resultado es el de la última entrega que aprobó la startup
+            Cada resultado es el de la última entrega que aprobó la empresa
             {data.kpis[0]?.result ? ` (${data.kpis[0].result.milestoneTitle})` : ''}.
           </p>
         </Section>
@@ -302,7 +302,7 @@ function Report({ user }: { user: User }) {
                           `Pocket ${amount(payment.breakdown.pocket)}`,
                           `Trustless Work ${amount(payment.breakdown.trustlessWork)}`,
                           ...(Number(payment.breakdown.startup) > 0
-                            ? [`Startup ${amount(payment.breakdown.startup)}`]
+                            ? [`Empresa ${amount(payment.breakdown.startup)}`]
                             : []),
                         ].join(' · ')
                       : 'Leyendo el desglose de Stellar...'}
@@ -329,7 +329,7 @@ function Report({ user }: { user: User }) {
                     <TableHead className="text-right">Pocket</TableHead>
                     <TableHead className="text-right">Trustless Work</TableHead>
                     {refunds ? (
-                      <TableHead className="text-right">Startup</TableHead>
+                      <TableHead className="text-right">Empresa</TableHead>
                     ) : null}
                     <TableHead>Transacción</TableHead>
                   </TableRow>

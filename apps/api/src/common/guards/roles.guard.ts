@@ -29,8 +29,8 @@ export class RolesGuard implements CanActivate {
       if (other === 'startup' || other === 'specialist') {
         throw new ForbiddenException(
           other === 'specialist'
-            ? 'Estás usando Pocket como startup. Cambia a experto desde el menú de tu cuenta para hacer esto'
-            : 'Estás usando Pocket como experto. Cambia a tu startup desde el menú de tu cuenta para hacer esto',
+            ? 'Estás usando Pocket como empresa. Cambia a experto desde el menú de tu cuenta para hacer esto'
+            : 'Estás usando Pocket como experto. Cambia a tu empresa desde el menú de tu cuenta para hacer esto',
         );
       }
       throw new ForbiddenException('Tu rol no permite esta acción');
