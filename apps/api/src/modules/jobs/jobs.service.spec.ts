@@ -8,7 +8,7 @@ import type { PrismaService } from '../../prisma/prisma.service';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { CreateJobDto } from './dto/create-job.dto';
-import { JobsService } from './jobs.service';
+import { IDENTITY_TO_PUBLISH, JobsService } from './jobs.service';
 
 const startup: AuthUser = {
   sub: 'startup-1',
@@ -90,7 +90,7 @@ describe('JobsService', () => {
       jobKpi: { deleteMany: jest.fn(), createMany: jest.fn() },
       application: { updateMany: jest.fn() },
       // The startup the account acts as.
-      user: { findUnique: jest.fn().mockResolvedValue({ activeStartupId: 'profile-1' }) },
+      user: { findUnique: jest.fn().mockResolvedValue({ activeStartupId: 'profile-1', verificationStatus: 'approved' }) },
       // A batch runs its operations; an interactive one runs with the client.
       $transaction: jest.fn((arg: unknown) =>
         typeof arg === 'function' ? (arg as (tx: unknown) => unknown)(prisma) : arg,
@@ -338,6 +338,26 @@ describe('JobsService', () => {
         BadRequestException,
       );
       expect(prisma.job.create).not.toHaveBeenCalled();
+    });
+
+    it('asks a company that has not verified its identity to do it before publishing', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        activeStartupId: 'profile-1',
+        verificationStatus: 'pending',
+      });
+      await expect(service.create(startup, dto)).rejects.toThrow(IDENTITY_TO_PUBLISH);
+      expect(prisma.job.create).not.toHaveBeenCalled();
+    });
+
+    it('lets that company save the job as a draft meanwhile', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        activeStartupId: 'profile-1',
+        verificationStatus: 'pending',
+      });
+      await service.create(startup, { ...dto, draft: true });
+      expect(prisma.job.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ status: 'draft', publishedAt: null }),
+      });
     });
   });
 

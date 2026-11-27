@@ -14,6 +14,10 @@ import { canSeeDraft } from './drafts';
 import { cleanKpis } from './kpis';
 import { REPORT_TEMPLATE_INFO } from './report-template-info';
 
+/** Why a company that has not verified its identity cannot publish yet. */
+export const IDENTITY_TO_PUBLISH =
+  'Para publicar un trabajo, primero verifica tu identidad. Mientras tanto puedes guardarlo como borrador';
+
 /** What the board shows about who posted a job. */
 const LISTING_INCLUDE = {
   // The job's own startup; the account's active one stands in for a job whose
@@ -44,6 +48,7 @@ export class JobsService {
     const startupProfileId = await this.activeStartupId(user);
 
     const { draft, ...content } = dto;
+    if (!draft) await this.assertIdentityChecked(user);
     return await this.prisma.job.create({
       data: {
         ...contentData(content),
@@ -241,6 +246,20 @@ export class JobsService {
       });
       return tx.job.findUniqueOrThrow({ where: { id: jobId } });
     });
+  }
+
+  /**
+   * Publishing a job takes the identity check; preparing one does not, so a
+   * company can write its job (and save it as a draft) before verifying.
+   */
+  private async assertIdentityChecked(user: AuthUser): Promise<void> {
+    const account = await this.prisma.user.findUnique({
+      where: { id: user.sub },
+      select: { verificationStatus: true },
+    });
+    if (account?.verificationStatus !== 'approved') {
+      throw new ForbiddenException(IDENTITY_TO_PUBLISH);
+    }
   }
 
   /** The startup the account acts as; a job needs one, since the board shows who hires. */

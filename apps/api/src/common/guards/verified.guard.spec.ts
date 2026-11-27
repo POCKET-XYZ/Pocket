@@ -37,6 +37,12 @@ describe('VerifiedGuard', () => {
       'specialist',
       'active',
     ],
+    [
+      'a company before the identity check, on an active route',
+      'pending',
+      'startup',
+      'active',
+    ],
   ] as const)('lets %s through', async (_label, verificationStatus, role, level) => {
     const { guard, context } = setup(level, { role, verificationStatus });
     await expect(guard.canActivate(context)).resolves.toBe(true);
@@ -51,10 +57,10 @@ describe('VerifiedGuard', () => {
       'Primero verifica tu identidad',
     ],
     [
-      'a startup before the identity check, on an active route',
+      'a company before the identity check, on an approved route',
       'pending',
       'startup',
-      'active',
+      'approved',
       'Primero verifica tu identidad',
     ],
     [

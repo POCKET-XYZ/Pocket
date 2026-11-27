@@ -28,9 +28,10 @@ export type VerificationStatus =
   (typeof VerificationStatus)[keyof typeof VerificationStatus];
 
 /**
- * Whether an account can use the marketplace. A startup verifies its identity
- * before anything else. A specialist only needs their account details to build
- * a profile and apply, and verifies their identity to accept a contract.
+ * Whether an account can use Pocket. Sending the account details is enough to
+ * build a profile, for a specialist to apply and for a company to prepare its
+ * jobs. The identity check comes later, once: a specialist passes it to accept
+ * a contract, a company to publish a job.
  */
 export function isAccountActive(account: {
   role: UserRole;
@@ -38,7 +39,7 @@ export function isAccountActive(account: {
 }): boolean {
   if (account.verificationStatus === VerificationStatus.Approved) return true;
   return (
-    account.role === UserRole.Specialist &&
+    (account.role === UserRole.Specialist || account.role === UserRole.Startup) &&
     account.verificationStatus === VerificationStatus.Pending
   );
 }

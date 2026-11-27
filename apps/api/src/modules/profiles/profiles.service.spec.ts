@@ -452,11 +452,11 @@ describe('ProfilesService', () => {
     );
   });
 
-  it('hides the profile of a startup that is not approved', async () => {
+  it('hides the profile of a company that never sent its details', async () => {
     prisma.user.findUnique.mockResolvedValue({
       id: 'user-1',
       role: 'startup',
-      verificationStatus: 'pending',
+      verificationStatus: 'not_submitted',
       startupProfile: { id: 'p-1' },
       specialistProfile: null,
     });
@@ -660,7 +660,7 @@ describe('ProfilesService', () => {
       expect(prisma.startupLogo.deleteMany).not.toHaveBeenCalled();
     });
 
-    it('serves only the logo of an approved startup, with its real type', async () => {
+    it('serves only the logo of an active company, with its real type', async () => {
       prisma.startupLogo.findFirst.mockResolvedValue({ data: new Uint8Array(PNG) });
       await expect(service.logoOf('startup-1')).resolves.toEqual({
         data: PNG,
@@ -669,7 +669,7 @@ describe('ProfilesService', () => {
       // By the startup's id, or by an account's id in a link from before.
       expect(prisma.startupLogo.findFirst).toHaveBeenCalledWith({
         where: {
-          startupProfile: { user: { verificationStatus: 'approved' } },
+          startupProfile: { user: { verificationStatus: { in: ['approved', 'pending'] } } },
           OR: [
             { startupProfileId: 'startup-1' },
             { startupProfile: { activeFor: { some: { id: 'startup-1' } } } },

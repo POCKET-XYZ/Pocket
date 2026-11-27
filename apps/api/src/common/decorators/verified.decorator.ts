@@ -15,10 +15,10 @@ export const Verified = () =>
   SetMetadata(VERIFIED_KEY, 'approved' satisfies VerifiedLevel);
 
 /**
- * Restrict a route to active accounts (see `isAccountActive`): for a
- * specialist, sending the account details is enough, so they can build a
- * profile and apply before the identity check that accepting a contract needs.
- * For a startup it is the same as `Verified`.
+ * Restrict a route to active accounts (see `isAccountActive`): sending the
+ * account details is enough. A specialist builds a profile and applies before
+ * the identity check that accepting a contract needs; a company builds its
+ * profile and prepares jobs before the one that publishing a job needs.
  */
 export const ActiveAccount = () =>
   SetMetadata(VERIFIED_KEY, 'active' satisfies VerifiedLevel);

@@ -19,7 +19,7 @@ import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
-import { ActiveAccount, Verified } from '../../common/decorators/verified.decorator';
+import { ActiveAccount } from '../../common/decorators/verified.decorator';
 import type { AuthUser } from '../../common/types/auth';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { BrowseSpecialistsDto } from './dto/browse-specialists.dto';
@@ -51,7 +51,7 @@ export class ProfilesController {
 
   @ApiBearerAuth()
   @Roles('startup')
-  @Verified()
+  @ActiveAccount()
   @Put('me/startup')
   saveStartup(@CurrentUser() user: AuthUser, @Body() dto: StartupProfileDto) {
     return this.profiles.saveStartup(user, dto);
@@ -60,7 +60,7 @@ export class ProfilesController {
   /** Another startup for the account, which then acts as it. */
   @ApiBearerAuth()
   @Roles('startup')
-  @Verified()
+  @ActiveAccount()
   @Post('me/startups')
   addStartup(@CurrentUser() user: AuthUser, @Body() dto: StartupProfileDto) {
     return this.profiles.addStartup(user, dto);
@@ -96,7 +96,7 @@ export class ProfilesController {
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @Roles('startup')
-  @Verified()
+  @ActiveAccount()
   @Post('me/logo')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -122,7 +122,7 @@ export class ProfilesController {
   /** Remove the signed-in startup's logo, uploaded or linked. */
   @ApiBearerAuth()
   @Roles('startup')
-  @Verified()
+  @ActiveAccount()
   @Delete('me/logo')
   removeLogo(@CurrentUser() user: AuthUser) {
     return this.profiles.removeLogo(user);

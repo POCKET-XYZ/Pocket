@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   IDENTITY_FOR_CONTRACT,
+  IDENTITY_FOR_JOB,
   activationAction,
   activationHint,
   useKycSettings,
@@ -210,7 +211,7 @@ function stepsFor(
 
   const steps: (Omit<Step, 'state'> & { done: boolean })[] = [
     {
-      title: kyc && isStartup ? 'Activa tu cuenta' : 'Completa los datos de tu cuenta',
+      title: 'Completa los datos de tu cuenta',
       text: active ? 'Tu cuenta está activa.' : activationHint(kyc, user),
       done: active,
       action: active
@@ -227,6 +228,17 @@ function stepsFor(
       done: hasProfile,
       action: { label: hasProfile ? 'Editar perfil' : 'Crear perfil', href: '/profile' },
     },
+    // A company verifies its identity once, before its first job goes out.
+    ...(isStartup && kyc
+      ? [
+          {
+            title: 'Verifica tu identidad',
+            text: IDENTITY_FOR_JOB,
+            done: user.verificationStatus === 'approved',
+            action: { label: 'Verificar mi identidad', href: '/verification' },
+          },
+        ]
+      : []),
     {
       title: isStartup ? 'Publica tu primer trabajo' : 'Postúlate a un trabajo',
       text: isStartup

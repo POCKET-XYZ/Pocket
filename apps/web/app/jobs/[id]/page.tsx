@@ -11,7 +11,12 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { activationAction, activationHint, useKycEnabled } from '@/components/activation';
+import {
+  IDENTITY_FOR_JOB,
+  activationAction,
+  activationHint,
+  useKycEnabled,
+} from '@/components/activation';
 import { useAuth } from '@/components/auth-provider';
 import { FeeBreakdown } from '@/components/contract/fee-breakdown';
 import { Avatar } from '@/components/avatar';
@@ -223,7 +228,7 @@ export default function JobPage() {
           <ApplyCard job={data} user={user} />
         ) : user.id === data.startupId ? (
           data.status === 'draft' ? (
-            <DraftCard job={data} />
+            <DraftCard job={data} verified={user.verificationStatus === 'approved'} />
           ) : (
             <OwnerCard job={data} />
           )
@@ -476,8 +481,11 @@ function DeadlineNote({ days, deadline }: { days: string; deadline: string }) {
   );
 }
 
-/** What the startup does with its draft: check it, change it, post it or drop it. */
-function DraftCard({ job }: { job: JobListing }) {
+/**
+ * What the startup does with its draft: check it, change it, post it or drop
+ * it. Posting takes the identity check: until then, the button leads there.
+ */
+function DraftCard({ job, verified }: { job: JobListing; verified: boolean }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -517,21 +525,34 @@ function DraftCard({ job }: { job: JobListing }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
-        <Button
-          className="w-full"
-          disabled={busy}
-          onClick={async () => {
-            const confirmed = await confirm({
-              title: '¿Publicar este trabajo?',
-              description:
-                'Los expertos lo verán en Trabajos y podrán postularse. Después ya no se puede editar.',
-              confirmText: 'Publicar',
-            });
-            if (confirmed) publish.mutate();
-          }}
-        >
-          {publish.isPending ? 'Publicando...' : 'Publicar trabajo'}
-        </Button>
+        {verified ? (
+          <Button
+            className="w-full"
+            disabled={busy}
+            onClick={async () => {
+              const confirmed = await confirm({
+                title: '¿Publicar este trabajo?',
+                description:
+                  'Los expertos lo verán en Trabajos y podrán postularse. Después ya no se puede editar.',
+                confirmText: 'Publicar',
+              });
+              if (confirmed) publish.mutate();
+            }}
+          >
+            {publish.isPending ? 'Publicando...' : 'Publicar trabajo'}
+          </Button>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">{IDENTITY_FOR_JOB}</p>
+            <Button asChild className="w-full">
+              <Link
+                href={`/verification?next=${encodeURIComponent(`/jobs/${job.id}`)}`}
+              >
+                Verificar identidad y publicar
+              </Link>
+            </Button>
+          </>
+        )}
         <Button asChild variant="outline" className="w-full">
           <Link href={`/jobs/${job.id}/edit`}>Editar borrador</Link>
         </Button>
