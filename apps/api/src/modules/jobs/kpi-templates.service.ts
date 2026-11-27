@@ -98,7 +98,7 @@ export class KpiTemplatesService {
 
 function assertStartup(user: AuthUser): void {
   if (user.role !== 'startup') {
-    throw new ForbiddenException('Solo las startups pueden guardar plantillas de KPI');
+    throw new ForbiddenException('Solo las empresas pueden guardar plantillas de KPI');
   }
 }
 

@@ -219,11 +219,11 @@ function stepsFor(
     },
     {
       title: isStartup
-        ? 'Completa el perfil de tu startup'
+        ? 'Completa el perfil de tu empresa'
         : 'Completa tu perfil de experto',
       text: isStartup
         ? 'Qué hace tu empresa, en qué etapa está y en qué necesitas ayuda. Los expertos lo ven en tus trabajos.'
-        : 'Lo que ven las startups antes de contratarte.',
+        : 'Lo que ven las empresas antes de contratarte.',
       done: hasProfile,
       action: { label: hasProfile ? 'Editar perfil' : 'Crear perfil', href: '/profile' },
     },

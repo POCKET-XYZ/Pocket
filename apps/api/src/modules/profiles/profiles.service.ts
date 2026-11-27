@@ -184,7 +184,7 @@ export class ProfilesService {
    */
   async saveStartup(user: AuthUser, dto: StartupProfileDto): Promise<StartupProfile> {
     if (user.role !== 'startup') {
-      throw new ForbiddenException('Solo las startups tienen perfil de startup');
+      throw new ForbiddenException('Solo las empresas tienen perfil de empresa');
     }
     const active = await this.activeStartup(user.sub);
     const profile = active
@@ -207,12 +207,12 @@ export class ProfilesService {
    */
   async addStartup(user: AuthUser, dto: StartupProfileDto): Promise<StartupProfile> {
     if (user.role !== 'startup') {
-      throw new ForbiddenException('Solo las startups tienen perfil de startup');
+      throw new ForbiddenException('Solo las empresas tienen perfil de empresa');
     }
     const owned = await this.prisma.startupProfile.count({ where: { userId: user.sub } });
     if (owned >= MAX_STARTUPS_PER_ACCOUNT) {
       throw new BadRequestException(
-        `Una cuenta puede tener hasta ${MAX_STARTUPS_PER_ACCOUNT} startups`,
+        `Una cuenta puede tener hasta ${MAX_STARTUPS_PER_ACCOUNT} empresas`,
       );
     }
     const profile = await this.createStartup(user.sub, dto);
@@ -451,12 +451,12 @@ export class ProfilesService {
     addressOf: (startupId: string) => string,
   ) {
     if (user.role !== 'startup') {
-      throw new ForbiddenException('Solo las startups tienen logo');
+      throw new ForbiddenException('Solo las empresas tienen logo');
     }
     const startup = await this.activeStartup(user.sub);
     if (!startup) {
       throw new BadRequestException(
-        'Guarda primero el perfil de tu startup y después sube su logo',
+        'Guarda primero el perfil de tu empresa y después sube su logo',
       );
     }
     if (!file?.buffer.length) throw new BadRequestException('Elige un archivo de imagen');
@@ -486,7 +486,7 @@ export class ProfilesService {
   /** Take the signed-in startup's logo down, uploaded or linked. */
   async removeLogo(user: AuthUser) {
     if (user.role !== 'startup') {
-      throw new ForbiddenException('Solo las startups tienen logo');
+      throw new ForbiddenException('Solo las empresas tienen logo');
     }
     const startup = await this.activeStartup(user.sub);
     if (startup) {

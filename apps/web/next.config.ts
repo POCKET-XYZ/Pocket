@@ -95,9 +95,14 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }];
   },
-  // The sign-in page used to live at /connect; links already shared keep working.
+  // Links already shared keep working: the sign-in page used to live at
+  // /connect, and the companies' directory at /startups.
   async redirects() {
-    return [{ source: '/connect', destination: '/login', permanent: true }];
+    return [
+      { source: '/connect', destination: '/login', permanent: true },
+      { source: '/startups', destination: '/empresas', permanent: true },
+      { source: '/startups/:id', destination: '/empresas/:id', permanent: true },
+    ];
   },
 };
 

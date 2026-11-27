@@ -29,7 +29,7 @@ describe('RolesGuard', () => {
     };
     expect(guardFor(['specialist'], both)).toThrow('Cambia a experto');
     expect(guardFor(['startup'], { ...both, role: 'specialist' })).toThrow(
-      'Cambia a tu startup',
+      'Cambia a tu empresa',
     );
   });
 

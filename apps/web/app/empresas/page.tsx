@@ -29,8 +29,8 @@ export default function StartupsPage() {
   return (
     <div>
       <PageHeader
-        title="Startups"
-        description="Startups con su perfil completo en Pocket. Mira quiénes son y para qué contratan antes de postularte."
+        title="Empresas"
+        description="Empresas con su perfil completo en Pocket. Mira quiénes son y para qué contratan antes de postularte."
       />
       <div className="mb-6 flex justify-end">
         <Input
@@ -49,7 +49,7 @@ export default function StartupsPage() {
           {directory.data.items.map((startup) => (
             <Link
               key={startup.id}
-              href={`/startups/${startup.id}`}
+              href={`/empresas/${startup.id}`}
               className="group flex flex-col rounded-2xl border border-border bg-card p-5 transition hover:border-celeste hover:shadow-sm"
             >
               <div className="flex items-center gap-3">
@@ -93,12 +93,12 @@ export default function StartupsPage() {
 /** An empty directory and a search that found nothing are not the same news. */
 function NoStartups({ query }: { query: string }) {
   return query ? (
-    <EmptyState title={`Ninguna startup coincide con «${query}»`}>
+    <EmptyState title={`Ninguna empresa coincide con «${query}»`}>
       Prueba con otra búsqueda.
     </EmptyState>
   ) : (
-    <EmptyState title="Todavía no hay startups con su perfil publicado">
-      Cuando una startup activa su cuenta y completa su perfil, aparece aquí.
+    <EmptyState title="Todavía no hay empresas con su perfil publicado">
+      Cuando una empresa activa su cuenta y completa su perfil, aparece aquí.
     </EmptyState>
   );
 }

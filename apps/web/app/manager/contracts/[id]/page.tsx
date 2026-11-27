@@ -54,7 +54,7 @@ const STEP_LABELS: Record<ChainOperationKind, string> = {
   payment: 'Envío de USDC',
 };
 
-const SIGNERS = { startup: 'Startup', specialist: 'Experto', pocket: 'Pocket' };
+const SIGNERS = { startup: 'Empresa', specialist: 'Experto', pocket: 'Pocket' };
 
 const STEP_STATUS = {
   confirmed: { label: 'Confirmado', className: 'bg-emerald-100 text-emerald-800' },
@@ -125,9 +125,9 @@ function Control({
         </div>
         <div className="grid gap-3 text-sm sm:grid-cols-2">
           <Party
-            role="Startup"
+            role="Empresa"
             name={data.startup.name}
-            href={`/startups/${data.startup.id}`}
+            href={`/empresas/${data.startup.id}`}
             address={data.startup.address}
           />
           <Party

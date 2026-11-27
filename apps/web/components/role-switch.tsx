@@ -78,7 +78,7 @@ function useAccountSwitch() {
       if (user.role === role) return;
       await run(
         () => api('/users/me/role', { method: 'PUT', body: { role } }),
-        role === 'specialist' ? 'Ahora estás como experto' : 'Ahora estás como startup',
+        role === 'specialist' ? 'Ahora estás como experto' : 'Ahora estás como empresa',
         '/',
       );
       return;
@@ -90,14 +90,14 @@ function useAccountSwitch() {
           : '¿Quieres publicar trabajos también?',
       description:
         role === 'specialist'
-          ? 'Tu cuenta suma el rol de experto: podrás postularte a trabajos de otras startups con tu misma billetera y tu misma verificación. Cambias entre tus startups y tu perfil de experto desde el menú de tu cuenta. Primero completa tu perfil de experto.'
-          : 'Tu cuenta suma el rol de startup: podrás publicar trabajos y contratar expertos con tu misma billetera. Cambias entre tu perfil de experto y tus startups desde el menú de tu cuenta. Primero completa el perfil de tu startup.',
+          ? 'Tu cuenta suma el rol de experto: podrás postularte a trabajos de otras empresas con tu misma billetera y tu misma verificación. Cambias entre tus empresas y tu perfil de experto desde el menú de tu cuenta. Primero completa tu perfil de experto.'
+          : 'Tu cuenta suma el rol de empresa: podrás publicar trabajos y contratar expertos con tu misma billetera. Cambias entre tu perfil de experto y tus empresas desde el menú de tu cuenta. Primero completa el perfil de tu empresa.',
       confirmText: 'Sí, activarlo',
     });
     if (!ok) return;
     await run(
       () => api('/users/me/roles', { method: 'POST', body: { role } }),
-      role === 'specialist' ? 'Ahora también eres experto' : 'Ahora también eres startup',
+      role === 'specialist' ? 'Ahora también eres experto' : 'Ahora también eres empresa',
       '/profile',
     );
   }
@@ -116,7 +116,7 @@ function useAccountSwitch() {
     if (user.role !== 'startup') {
       await run(
         () => api('/users/me/role', { method: 'PUT', body: { role: 'startup' } }),
-        'Completa el perfil de tu nueva startup',
+        'Completa el perfil de tu nueva empresa',
         '/profile?nueva=1',
       );
       return;
@@ -171,7 +171,7 @@ export function AccountSwitchItems({ user }: { user: User }) {
       ) : null}
       {isStartup ? (
         <DropdownMenuItem disabled={busy} onSelect={() => void addStartup(user)}>
-          <PlusIcon /> Agregar otra startup
+          <PlusIcon /> Agregar otra empresa
         </DropdownMenuItem>
       ) : (
         <DropdownMenuItem disabled={busy} onSelect={() => void toRole(user, 'startup')}>
@@ -200,11 +200,11 @@ export function RolesCard({ user }: { user: User }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Startups y experto en una cuenta</CardTitle>
+        <CardTitle>Empresas y experto en una cuenta</CardTitle>
         <CardDescription>
           {both || startups.length > 1
             ? 'Tu cuenta tiene más de un perfil. Lo que ves y lo que haces es del que está activo: lo cambias desde el menú de tu cuenta, arriba a la derecha. En público cada perfil se ve por separado.'
-            : 'Con la misma billetera y la misma verificación puedes tener varias startups, y también trabajar como experto para otras. En público cada perfil se ve por separado.'}
+            : 'Con la misma billetera y la misma verificación puedes tener varias empresas, y también trabajar como experto para otras. En público cada perfil se ve por separado.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
@@ -215,7 +215,7 @@ export function RolesCard({ user }: { user: User }) {
             disabled={busy}
             onClick={() => void addStartup(user)}
           >
-            <PlusIcon /> Agregar otra startup
+            <PlusIcon /> Agregar otra empresa
           </Button>
         ) : (
           <Button

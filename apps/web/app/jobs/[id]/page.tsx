@@ -71,7 +71,7 @@ export default function JobPage() {
           description={
             data.startup ? (
               <Link
-                href={`/startups/${data.startupProfileId ?? data.startupId}`}
+                href={`/empresas/${data.startupProfileId ?? data.startupId}`}
                 className="inline-flex items-center gap-2 underline"
               >
                 <Avatar
@@ -82,7 +82,7 @@ export default function JobPage() {
                 {data.startup.companyName}
               </Link>
             ) : (
-              'Una startup'
+              'Una empresa'
             )
           }
         />
@@ -127,7 +127,7 @@ export default function JobPage() {
                 <Detail label="Rondas de cambios">{data.revisionRounds}</Detail>
                 {data.startupProvides ? (
                   <div className="col-span-2 sm:col-span-3">
-                    <Detail label="La startup aporta">{data.startupProvides}</Detail>
+                    <Detail label="La empresa aporta">{data.startupProvides}</Detail>
                   </div>
                 ) : null}
               </dl>
@@ -147,7 +147,7 @@ export default function JobPage() {
               <section>
                 <h2 className="text-lg font-semibold text-navy">Plantilla de reporte</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  La startup quiere que se complete y se adjunte a cada entrega.
+                  La empresa quiere que se complete y se adjunte a cada entrega.
                 </p>
                 <div className="mt-3">
                   {status === 'loading' ? null : user &&
@@ -175,7 +175,7 @@ export default function JobPage() {
               <section>
                 <h2 className="text-lg font-semibold text-navy">Plan de pagos</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Cada hito se paga cuando la startup lo aprueba.
+                  Cada hito se paga cuando la empresa lo aprueba.
                 </p>
                 <ol className="mt-3 space-y-3">
                   {data.milestones.map((milestone) => (
@@ -334,7 +334,7 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
         <CardHeader>
           <CardTitle>Crea tu perfil para postularte</CardTitle>
           <CardDescription>
-            Las startups lo leen para elegir a quién contratar. Toma unos minutos.
+            Las empresas lo leen para elegir a quién contratar. Toma unos minutos.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -379,7 +379,7 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
             <UrlInput id="similarWorkUrl" name="similarWorkUrl" placeholder="https://" />
           </Field>
           <Field
-            label="¿Qué necesitas de la startup?"
+            label="¿Qué necesitas de la empresa?"
             htmlFor="needsFromStartup"
             hint="Marca, accesos, un guion: todo lo que necesitas para empezar."
           >
@@ -406,7 +406,7 @@ function ApplyCard({ job, user }: { job: JobListing; user: User }) {
             <Field
               label="Días"
               htmlFor="estimatedDays"
-              hint="Se cuentan desde el día en que la startup deposita el pago en el contrato."
+              hint="Se cuentan desde el día en que la empresa deposita el pago en el contrato."
               required
             >
               <Input
@@ -444,10 +444,10 @@ function PriceNote({ price, budget }: { price: string; budget: string }) {
     <div className="space-y-2 rounded-xl bg-muted/50 p-3">
       <p className="text-sm text-muted-foreground">
         {difference === 0
-          ? `Igual al presupuesto de la startup, ${usdc(budget)}.`
+          ? `Igual al presupuesto de la empresa, ${usdc(budget)}.`
           : `${usdc(Math.abs(difference))} ${
               difference > 0 ? 'por encima' : 'por debajo'
-            } del presupuesto de la startup, ${usdc(budget)}.`}
+            } del presupuesto de la empresa, ${usdc(budget)}.`}
       </p>
       <FeeBreakdown
         amounts={[price]}
@@ -469,7 +469,7 @@ function DeadlineNote({ days, deadline }: { days: string; deadline: string }) {
       <AlertTitle>Terminarías después de la fecha límite</AlertTitle>
       <AlertDescription>
         Si empiezas hoy, con {estimate} {estimate === 1 ? 'día' : 'días'} terminas el{' '}
-        {date(endsOn)}, después del {date(deadline)} que pidió la startup. Igual puedes
+        {date(endsOn)}, después del {date(deadline)} que pidió la empresa. Igual puedes
         postularte, pero explica por qué en tu propuesta.
       </AlertDescription>
     </Alert>

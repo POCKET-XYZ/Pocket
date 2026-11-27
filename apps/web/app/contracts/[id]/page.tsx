@@ -90,7 +90,7 @@ function Contract({ user }: { user: User }) {
     );
   const data = contract.data;
   const isParty = user.id === data.startupId || user.id === data.specialistId;
-  const startupName = data.startup.startupProfile?.companyName ?? 'Startup';
+  const startupName = data.startup.startupProfile?.companyName ?? 'Empresa';
   const specialistName = data.specialist.specialistProfile?.displayName ?? 'Experto';
   const contactPending =
     data.status === 'awaiting_specialist'
@@ -117,7 +117,7 @@ function Contract({ user }: { user: User }) {
           description={
             <>
               <Link
-                href={`/startups/${data.startupProfileId ?? data.startupId}`}
+                href={`/empresas/${data.startupProfileId ?? data.startupId}`}
                 className="underline"
               >
                 {startupName}
@@ -198,7 +198,7 @@ function Contract({ user }: { user: User }) {
             <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-muted-foreground">
                 {user.id === data.specialistId
-                  ? 'Completa la plantilla de reporte de la startup y adjúntala a cada entrega.'
+                  ? 'Completa la plantilla de reporte de la empresa y adjúntala a cada entrega.'
                   : 'El experto completa esta plantilla de reporte y la adjunta a cada entrega.'}
               </p>
               <ReportTemplateButton
@@ -315,7 +315,7 @@ function NextStep({
         accepting.done();
       }
     },
-    'Aceptaste. El pago protegido está listo y espera el depósito de la startup.',
+    'Aceptaste. El pago protegido está listo y espera el depósito de la empresa.',
   );
   const decline = useContractAction(
     contract.id,
@@ -378,7 +378,7 @@ function NextStep({
           <CardDescription>
             {preparing
               ? 'Pocket está creando el pago protegido con estos hitos y con tu wallet como destino de los pagos. Toma unos segundos.'
-              : 'Si aceptas, Pocket crea un pago protegido con estos hitos y con tu wallet como destino de los pagos. Después la startup deposita el pago y empiezas a trabajar.'}
+              : 'Si aceptas, Pocket crea un pago protegido con estos hitos y con tu wallet como destino de los pagos. Después la empresa deposita el pago y empiezas a trabajar.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -430,8 +430,8 @@ function NextStep({
                       ? '¿Rechazar la contraoferta?'
                       : '¿Rechazar estos términos?',
                     description: asked
-                      ? 'Tu postulación a este trabajo se cierra y la startup podrá elegir a otra persona. Si quieres proponer otro precio, escríbele antes por el chat.'
-                      : 'La startup podrá elegir a otra persona.',
+                      ? 'Tu postulación a este trabajo se cierra y la empresa podrá elegir a otra persona. Si quieres proponer otro precio, escríbele antes por el chat.'
+                      : 'La empresa podrá elegir a otra persona.',
                     confirmText: 'Rechazar',
                     destructive: true,
                   });
@@ -456,7 +456,7 @@ function NextStep({
     if (!isStartup) {
       return (
         <Waiting
-          title="Esperando que la startup deposite el pago"
+          title="Esperando que la empresa deposite el pago"
           text="No empieces el trabajo antes de que el pago esté depositado: esta página te avisa cuando pase."
         />
       );
@@ -592,7 +592,7 @@ function activeStep(
     return {
       title: `El pago del hito ${paying.position + 1} se está liberando`,
       text: isSpecialist
-        ? 'La startup aprobó tu entrega. El pago llega a tu wallet en cuanto la red lo confirme.'
+        ? 'La empresa aprobó tu entrega. El pago llega a tu wallet en cuanto la red lo confirme.'
         : 'Tu aprobación ya se envió. El pago se libera solo: no hace falta aprobar de nuevo.',
       href: anchor(paying),
     };
@@ -614,14 +614,14 @@ function activeStep(
           : `Tu siguiente paso: entrega el hito ${toDeliver.position + 1}`,
       text:
         toDeliver.status === 'changes_requested'
-          ? 'La startup pidió cambios. Están arriba de tu última versión.'
+          ? 'La empresa pidió cambios. Están arriba de tu última versión.'
           : 'Cuando lo tengas, compártelo con un enlace y reporta cómo van los KPIs.',
       href: anchor(toDeliver),
     };
   }
   if (isSpecialist && delivered) {
     return {
-      title: `Esperando que la startup revise tu entrega del hito ${delivered.position + 1}`,
+      title: `Esperando que la empresa revise tu entrega del hito ${delivered.position + 1}`,
       text: 'Cuando la apruebe, el pago llega a tu wallet.',
       href: anchor(delivered),
     };

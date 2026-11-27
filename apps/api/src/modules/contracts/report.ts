@@ -269,7 +269,7 @@ export function reportCsv(
     'Tipo',
     'Monto del hito (USDC)',
     'Al experto (USDC)',
-    'Devuelto a la startup (USDC)',
+    'Devuelto a la empresa (USDC)',
     'Comisión de Pocket (USDC)',
     'Comisión de Trustless Work (USDC)',
     'Transacción',

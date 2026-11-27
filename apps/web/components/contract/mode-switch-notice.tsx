@@ -62,7 +62,7 @@ export function ModeSwitchNotice({
       <AlertDescription>
         <p>
           {side === 'specialist'
-            ? 'Ahora estás usando Pocket como startup. Para aceptar, entregar o cobrar aquí, cambia a experto.'
+            ? 'Ahora estás usando Pocket como empresa. Para aceptar, entregar o cobrar aquí, cambia a experto.'
             : `Ahora estás usando Pocket como experto. Para revisar, aprobar o pagar aquí, cambia a ${startupName}.`}
         </p>
         <Button

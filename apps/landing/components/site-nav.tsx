@@ -2,7 +2,7 @@ import { links } from '@/lib/links';
 
 const sections = [
   { href: '#como-funciona', label: 'Cómo funciona' },
-  { href: '#startups', label: 'Para startups' },
+  { href: '#startups', label: 'Para empresas' },
   { href: '#expertos', label: 'Para expertos' },
   { href: '#preguntas', label: 'Preguntas' },
 ];

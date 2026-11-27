@@ -367,7 +367,7 @@ export function splitFor(
   const specialistAmount = new Prisma.Decimal(dto.specialistAmount ?? 0);
   if (specialistAmount.lte(0) || specialistAmount.gte(total)) {
     throw new BadRequestException(
-      `Al repartir, cada parte recibe una porción de los ${total.toString()} USDC. Para darle todo a una sola parte, elige Pagar al experto o Reembolsar a la startup`,
+      `Al repartir, cada parte recibe una porción de los ${total.toString()} USDC. Para darle todo a una sola parte, elige Pagar al experto o Reembolsar a la empresa`,
     );
   }
   return { specialistAmount, startupAmount: total.minus(specialistAmount) };

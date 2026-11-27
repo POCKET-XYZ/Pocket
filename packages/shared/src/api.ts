@@ -467,7 +467,7 @@ export interface Job {
   id: string;
   /** The account that posted it. */
   startupId: string;
-  /** Which of that account's startups it is for; its page is /startups/<this id>. */
+  /** Which of that account's startups it is for; its page is /empresas/<this id>. */
   startupProfileId: string | null;
   title: string;
   description: string;
@@ -854,7 +854,7 @@ export interface ContractDetail extends Contract {
   chainOperations: ChainOperation[];
   /** Each party's contact email, visible once there is a contract. */
   contacts: { startup: string | null; specialist: string | null };
-  /** The startup the job is for, whose page is /startups/<this id>. */
+  /** The startup the job is for, whose page is /empresas/<this id>. */
   startupProfileId: string | null;
   /**
    * Dates, descriptions or criteria the startup changed after the specialist

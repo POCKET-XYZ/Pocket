@@ -160,7 +160,7 @@ export function MilestoneCard({
         {changesAsked && latest ? (
           <div className="space-y-2 rounded-xl border border-warning bg-warning/15 p-3 text-sm">
             <p className="font-semibold text-navy">
-              La startup pidió cambios
+              La empresa pidió cambios
               {latest.feedbackAt ? (
                 <span className="font-normal text-muted-foreground">
                   {' '}
@@ -175,7 +175,7 @@ export function MilestoneCard({
               {roundsLeft
                 ? ''
                 : isSpecialist
-                  ? ' Esta es la última: si la startup no aprueba la nueva versión, la siguiente opción es una disputa.'
+                  ? ' Esta es la última: si la empresa no aprueba la nueva versión, la siguiente opción es una disputa.'
                   : ' Era la última: la próxima versión se aprueba o se lleva a una disputa.'}
             </p>
             {isSpecialist ? (
@@ -224,7 +224,7 @@ export function MilestoneCard({
         {lastDispute?.status === 'resolved' ? (
           <p className="rounded-lg bg-muted px-3 py-2 text-sm">
             Disputa resuelta por un manager: {usdc(lastDispute.specialistAmount)} para el
-            experto y {usdc(lastDispute.startupAmount)} de vuelta a la startup.
+            experto y {usdc(lastDispute.startupAmount)} de vuelta a la empresa.
             {lastDispute.resolutionNote ? ` "${lastDispute.resolutionNote}"` : ''}
           </p>
         ) : null}
@@ -252,7 +252,7 @@ export function MilestoneCard({
         {approving ? (
           <p className="rounded-lg bg-celeste-light/50 px-3 py-2 text-sm text-navy">
             {isSpecialist
-              ? 'La startup aprobó tu entrega. El pago se está liberando a tu wallet.'
+              ? 'La empresa aprobó tu entrega. El pago se está liberando a tu wallet.'
               : 'Tu aprobación se está procesando y el pago se libera solo. No hace falta aprobar de nuevo: esta página se actualiza sola.'}
           </p>
         ) : null}
@@ -567,7 +567,7 @@ function DeliverDialog({
         );
       }
     },
-    'Entrega enviada. La startup la revisará.',
+    'Entrega enviada. La empresa la revisará.',
   );
 
   function onFileChosen(event: React.ChangeEvent<HTMLInputElement>) {
@@ -630,10 +630,10 @@ function DeliverDialog({
           </DialogTitle>
           <DialogDescription>
             {again
-              ? 'Comparte el enlace a la versión con los cambios que pidió la startup.'
+              ? 'Comparte el enlace a la versión con los cambios que pidió la empresa.'
               : 'Comparte un enlace al trabajo: un documento, carpeta, reporte o campaña.'}
             {kpis.length > 0
-              ? ' Luego indica cómo va cada KPI, para que la startup pueda compararlo con la meta.'
+              ? ' Luego indica cómo va cada KPI, para que la empresa pueda compararlo con la meta.'
               : ''}
           </DialogDescription>
         </DialogHeader>
@@ -671,9 +671,9 @@ function DeliverDialog({
             placeholder={
               again
                 ? 'Qué cambiaste en esta versión (opcional)'
-                : 'Una nota para la startup (opcional)'
+                : 'Una nota para la empresa (opcional)'
             }
-            aria-label="Nota para la startup"
+            aria-label="Nota para la empresa"
           />
 
           {kpis.length > 0 ? (
@@ -699,7 +699,7 @@ function DeliverDialog({
             {reportTemplate ? (
               <div className="space-y-2 rounded-xl bg-celeste-light/40 p-3 text-sm">
                 <p>
-                  La startup pidió su plantilla de reporte: descárgala, complétala y
+                  La empresa pidió su plantilla de reporte: descárgala, complétala y
                   adjúntala aquí.
                 </p>
                 <ReportTemplateButton jobId={jobId} template={reportTemplate} />
@@ -714,7 +714,7 @@ function DeliverDialog({
             <p className="text-xs text-muted-foreground">
               Una plantilla de reporte completa, un PDF o una captura de pantalla: Excel
               (.xlsx), Word (.docx), CSV, PDF, PNG, JPEG o WebP, hasta 5 MB. Solo la
-              startup y los managers de Pocket pueden abrirlo.
+              empresa y los managers de Pocket pueden abrirlo.
             </p>
           </div>
 
@@ -907,7 +907,7 @@ function OpenDisputeDialog({
             <DialogTitle>Abrir una disputa</DialogTitle>
             <DialogDescription>
               El dinero de este hito queda congelado en el contrato hasta que un manager
-              de Pocket decida: pagarle al experto, devolvérselo a la startup o
+              de Pocket decida: pagarle al experto, devolvérselo a la empresa o
               repartirlo.
             </DialogDescription>
           </DialogHeader>

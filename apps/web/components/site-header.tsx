@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 const PUBLIC_LINKS = [
   { href: '/jobs', label: 'Trabajos' },
   { href: '/specialists', label: 'Expertos' },
-  { href: '/startups', label: 'Startups' },
+  { href: '/empresas', label: 'Empresas' },
 ];
 
 const ROLE_LINKS: Record<UserRole, { href: string; label: string }[]> = {
@@ -50,7 +50,7 @@ const ROLE_LINKS: Record<UserRole, { href: string; label: string }[]> = {
 
 /** How each role reads in the account menu. */
 const ROLE_LABELS: Record<UserRole, string> = {
-  startup: 'Startup',
+  startup: 'Empresa',
   specialist: 'Experto',
   manager: 'Manager',
 };

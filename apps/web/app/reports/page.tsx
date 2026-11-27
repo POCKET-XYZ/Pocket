@@ -232,7 +232,7 @@ function PeriodPicker({
 
 function ReportBody({ data, user }: { data: PeriodReport; user: User }) {
   const startup = data.party.role === 'startup';
-  const name = data.party.name ?? (startup ? 'Tu startup' : 'Tu perfil');
+  const name = data.party.name ?? (startup ? 'Tu empresa' : 'Tu perfil');
   const refunds = data.payments.some((p) => Number(p.breakdown?.startup ?? 0) > 0);
   const delivery = deliveryWords(data.delivery);
 
@@ -283,7 +283,7 @@ function ReportBody({ data, user }: { data: PeriodReport; user: User }) {
       <Section title="Dinero">
         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
           <Money
-            label={startup ? 'Depositado en contratos' : 'Depositado por las startups'}
+            label={startup ? 'Depositado en contratos' : 'Depositado por las empresas'}
             value={data.money.deposited}
           />
           <Money label="Liberado de los contratos" value={data.money.released} />
@@ -294,7 +294,7 @@ function ReportBody({ data, user }: { data: PeriodReport; user: User }) {
           <Money label="Comisión de Pocket" value={data.money.pocketFee} />
           <Money label="Comisión de Trustless Work" value={data.money.trustlessWorkFee} />
           {Number(data.money.toStartup) > 0 ? (
-            <Money label="Devuelto a la startup" value={data.money.toStartup} />
+            <Money label="Devuelto a la empresa" value={data.money.toStartup} />
           ) : null}
         </dl>
         {!data.money.verified ? (
@@ -316,7 +316,7 @@ function ReportBody({ data, user }: { data: PeriodReport; user: User }) {
               <TableRow>
                 <TableHead>Contrato</TableHead>
                 <TableHead className="hidden sm:table-cell print:table-cell">
-                  {startup ? 'Experto' : 'Startup'}
+                  {startup ? 'Experto' : 'Empresa'}
                 </TableHead>
                 <TableHead>Metas</TableHead>
                 <TableHead className="hidden sm:table-cell print:table-cell">
@@ -410,7 +410,7 @@ function ReportBody({ data, user }: { data: PeriodReport; user: User }) {
                     <TableHead className="text-right">Experto</TableHead>
                     <TableHead className="text-right">Comisiones</TableHead>
                     {refunds ? (
-                      <TableHead className="text-right">Startup</TableHead>
+                      <TableHead className="text-right">Empresa</TableHead>
                     ) : null}
                     <TableHead>Transacción</TableHead>
                   </TableRow>
@@ -482,13 +482,13 @@ function ReportBody({ data, user }: { data: PeriodReport; user: User }) {
 
       <footer className="space-y-1 border-t border-border pt-4 text-xs text-muted-foreground">
         <p>
-          Los resultados los reportó cada experto y la startup los aceptó al aprobar la
+          Los resultados los reportó cada experto y la empresa los aceptó al aprobar la
           entrega. Los pagos se leyeron de la red Stellar: cada uno se puede comprobar con
           su transacción. Las fechas van en UTC.
         </p>
         <p>
           Generado el {dateTime(data.generatedAt)} para{' '}
-          {user.role === 'startup' ? 'la startup' : 'el experto'}.
+          {user.role === 'startup' ? 'la empresa' : 'el experto'}.
         </p>
       </footer>
     </>

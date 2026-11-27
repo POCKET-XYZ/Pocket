@@ -175,7 +175,7 @@ export function ContractChatButton(props: Names & { contractId: string; user: Us
 
 /** Who the selected chat is with, in words and a face. */
 function who(channel: ChatChannel, user: User, names: Names) {
-  const startup = names.startupName ?? 'La startup';
+  const startup = names.startupName ?? 'La empresa';
   const specialist = names.specialistName ?? 'El experto';
   if (channel === 'contract') {
     if (user.role === 'manager') {
@@ -188,7 +188,7 @@ function who(channel: ChatChannel, user: User, names: Names) {
     const isStartup = (names.side ?? user.role) === 'startup';
     return {
       name: isStartup ? specialist : startup,
-      detail: isStartup ? 'Experto' : 'Startup',
+      detail: isStartup ? 'Experto' : 'Empresa',
       avatar: isStartup ? specialist : startup,
     };
   }
@@ -243,11 +243,11 @@ function ThreadTabs({
       if (user.role === 'manager') return 'Ambas partes';
       return (names.side ?? user.role) === 'startup'
         ? (names.specialistName ?? 'El experto')
-        : (names.startupName ?? 'La startup');
+        : (names.startupName ?? 'La empresa');
     }
     if (user.role !== 'manager') return 'Equipo de Pocket';
     return channel === 'manager_startup'
-      ? (names.startupName ?? 'La startup')
+      ? (names.startupName ?? 'La empresa')
       : (names.specialistName ?? 'El experto');
   };
   return (
@@ -299,7 +299,7 @@ function authorName(message: ChatMessage): string {
   if (message.author.role === 'manager') return 'Equipo de Pocket';
   return (
     message.author.name ??
-    (message.author.role === 'startup' ? 'La startup' : 'El experto')
+    (message.author.role === 'startup' ? 'La empresa' : 'El experto')
   );
 }
 
@@ -402,7 +402,7 @@ function Messages({ thread, user }: { thread: ChatThread; user: User }) {
 function hint(channel: ChatChannel, user: User): string | null {
   if (channel === 'contract') {
     return user.role === 'manager'
-      ? 'Lo ven la startup, el experto y el equipo de Pocket.'
+      ? 'Lo ven la empresa, el experto y el equipo de Pocket.'
       : null;
   }
   return user.role === 'manager'

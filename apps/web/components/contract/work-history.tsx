@@ -321,7 +321,7 @@ function historyOf(
         {
           amount: dispute ? `${usdc(dispute.specialistAmount)} para el experto` : null,
           detail: dispute
-            ? `${usdc(dispute.startupAmount)} de vuelta a la startup.${dispute.resolutionNote ? ` «${dispute.resolutionNote}»` : ''}`
+            ? `${usdc(dispute.startupAmount)} de vuelta a la empresa.${dispute.resolutionNote ? ` «${dispute.resolutionNote}»` : ''}`
             : null,
           txHash: op.txHash,
         },

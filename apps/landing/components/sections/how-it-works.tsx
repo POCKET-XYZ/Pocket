@@ -8,7 +8,7 @@ import { gsap, media, useGSAP } from '@/lib/gsap';
 const steps = [
   {
     name: 'Publicar y elegir',
-    who: 'Startup',
+    who: 'Empresa',
     text: 'Publica el resultado que esperas y elige entre expertos seleccionados por Pocket.',
   },
   {
@@ -18,7 +18,7 @@ const steps = [
   },
   {
     name: 'Asegurar',
-    who: 'Startup',
+    who: 'Empresa',
     text: 'El pago se guarda en un contrato antes de empezar.',
   },
   {
@@ -155,7 +155,7 @@ function DemoCard() {
           ))}
           <div className="mt-1 flex flex-wrap gap-2">
             <span data-p2-ok className={`${pill} bg-celeste`}>
-              ✓ Startup aceptó
+              ✓ Empresa aceptó
             </span>
             <span data-p2-ok className={`${pill} bg-celeste`}>
               ✓ Valeria aceptó

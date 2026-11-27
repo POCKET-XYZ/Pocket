@@ -125,7 +125,7 @@ function ContractLine({ row }: { row: AdminContractRow }) {
             <StatusBadge status={row.status} />
           </span>
           <span className="block truncate text-sm text-muted-foreground">
-            {row.startup.name ?? 'Startup sin nombre'} contrató a{' '}
+            {row.startup.name ?? 'Empresa sin nombre'} contrató a{' '}
             {row.specialist.name ?? 'un experto sin nombre'} ·{' '}
             {CATEGORY_LABELS[row.category]}
           </span>

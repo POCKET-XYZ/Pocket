@@ -60,7 +60,7 @@ export class DeliverablesService {
     }
     if (milestone.status !== 'delivered') {
       // Once answered, the startup decided on what it saw: the file stays as it was.
-      throw new BadRequestException('La startup ya respondió a esta entrega');
+      throw new BadRequestException('La empresa ya respondió a esta entrega');
     }
     const latest = await this.prisma.deliverable.findFirst({
       where: { milestoneId: milestone.id },

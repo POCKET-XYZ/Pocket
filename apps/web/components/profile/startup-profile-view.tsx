@@ -42,7 +42,7 @@ export function StartupProfileView({ id }: { id: string }) {
       <ErrorAlert
         error={profile.error}
         onRetry={() => profile.refetch()}
-        title="No se encontró la startup"
+        title="No se encontró la empresa"
       />
     );
 

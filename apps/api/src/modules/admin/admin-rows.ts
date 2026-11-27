@@ -237,7 +237,7 @@ export function attentionOf(
         items.push({
           ...base,
           flag: 'to_review',
-          detail: `El hito ${milestone.position + 1} está entregado y espera a la startup`,
+          detail: `El hito ${milestone.position + 1} está entregado y espera a la empresa`,
           since: (
             milestone.deliverables.at(-1)?.createdAt ?? source.createdAt
           ).toISOString(),
@@ -248,7 +248,7 @@ export function attentionOf(
       items.push({
         ...base,
         flag: 'awaiting_funding',
-        detail: 'El experto aceptó y falta el depósito de la startup',
+        detail: 'El experto aceptó y falta el depósito de la empresa',
         since: (source.acceptedAt ?? source.createdAt).toISOString(),
       });
     }
