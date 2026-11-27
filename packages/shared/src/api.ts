@@ -218,9 +218,13 @@ export interface StartupProfile {
   companyName: string;
   oneLiner: string;
   sector: string;
-  stage: StartupStage;
+  /** No longer asked: only profiles made before have one. */
+  stage?: StartupStage | null;
   lookingFor: string;
   websiteUrl?: string | null;
+  /** The company's main social network, with socialUrl. */
+  socialPlatform?: SocialPlatform | null;
+  socialUrl?: string | null;
   logoUrl?: string | null;
   /** Registered name, when it differs from the trading name. */
   legalName?: string | null;

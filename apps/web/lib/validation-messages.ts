@@ -19,7 +19,6 @@ const LABELS: Record<string, string> = {
   legalName: 'Razón social',
   oneLiner: 'Descripción en una línea',
   sector: 'Sector',
-  stage: 'Etapa',
   lookingFor: 'Qué buscas',
   websiteUrl: 'Sitio web',
   logoUrl: 'Logo',

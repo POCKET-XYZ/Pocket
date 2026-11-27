@@ -2,7 +2,7 @@
 
 import type { JobBoard, PublicProfile, StartupProfile } from '@pocket/shared';
 import { useQuery } from '@tanstack/react-query';
-import { GlobeIcon, LanguagesIcon, MapPinIcon } from 'lucide-react';
+import { AtSignIcon, GlobeIcon, LanguagesIcon, MapPinIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Avatar } from '@/components/avatar';
@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import { STAGE_LABELS, date } from '@/lib/format';
+import { PLATFORM_LABELS, date } from '@/lib/format';
 import { linkHost, safeHref } from '@/lib/links';
 
 /**
@@ -63,22 +63,44 @@ export function StartupProfileView({ id }: { id: string }) {
                 >
                   {startup.sector}
                 </Badge>
-                <Badge variant="outline">{STAGE_LABELS[startup.stage]}</Badge>
               </div>
             </div>
           </div>
-          {startup.websiteUrl ? (
-            <Button asChild variant="outline" className="max-w-full md:max-w-xs">
-              <a
-                href={safeHref(startup.websiteUrl)}
-                title={linkHost(startup.websiteUrl)}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <GlobeIcon className="size-4" />
-                <span className="min-w-0 truncate">{linkHost(startup.websiteUrl)}</span>
-              </a>
-            </Button>
+          {startup.websiteUrl || startup.socialUrl ? (
+            <div className="flex max-w-full flex-col gap-2 md:max-w-xs">
+              {startup.websiteUrl ? (
+                <Button asChild variant="outline" className="max-w-full">
+                  <a
+                    href={safeHref(startup.websiteUrl)}
+                    title={linkHost(startup.websiteUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <GlobeIcon className="size-4" />
+                    <span className="min-w-0 truncate">
+                      {linkHost(startup.websiteUrl)}
+                    </span>
+                  </a>
+                </Button>
+              ) : null}
+              {startup.socialUrl ? (
+                <Button asChild variant="outline" className="max-w-full">
+                  <a
+                    href={safeHref(startup.socialUrl)}
+                    title={startup.socialUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <AtSignIcon className="size-4" />
+                    <span className="min-w-0 truncate">
+                      {startup.socialPlatform && startup.socialPlatform !== 'other'
+                        ? PLATFORM_LABELS[startup.socialPlatform]
+                        : linkHost(startup.socialUrl)}
+                    </span>
+                  </a>
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </CardContent>
       </Card>

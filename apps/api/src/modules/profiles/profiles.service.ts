@@ -38,6 +38,8 @@ export type UploadedPdf = UploadedBytes;
  */
 const STARTUP_OPTIONAL = {
   websiteUrl: null,
+  socialPlatform: null,
+  socialUrl: null,
   logoUrl: null,
   legalName: null,
   contactRole: null,

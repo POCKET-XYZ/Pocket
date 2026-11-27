@@ -3,7 +3,6 @@
 import {
   ServiceCategory,
   SocialPlatform,
-  StartupStage,
   type CaseStudy,
   type SocialAccount,
   type SpecialistProfile,
@@ -31,8 +30,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { api, errorMessage, upload } from '@/lib/api';
 import { imageSrc } from '@/lib/links';
+import { LOGO_MAX_SIDE, shrinkImage } from '@/lib/shrink-image';
 import { TIME_ZONES, guessTimeZone } from '@/lib/timezones';
-import { CATEGORY_LABELS, PLATFORM_LABELS, STAGE_LABELS } from '@/lib/format';
+import { CATEGORY_LABELS, PLATFORM_LABELS } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { UrlInput } from '@/components/url-input';
 
@@ -254,6 +254,8 @@ function StartupForm({
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const values = formValues(event.currentTarget);
+    // A network with no link says nothing: neither is kept.
+    if (!values.socialUrl) delete values.socialPlatform;
     onSave(compact({ ...values, languages: splitList(values.languages, /,/) }));
   }
 
@@ -279,41 +281,21 @@ function StartupForm({
           defaultValue={initial?.oneLiner}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="Sector"
-          htmlFor="sector"
-          hint="Por ejemplo Fintech o Salud."
+      <Field
+        label="Sector"
+        htmlFor="sector"
+        hint="Por ejemplo Restaurantes, Retail, Salud o Fintech."
+        required
+      >
+        <Input
+          id="sector"
+          name="sector"
           required
-        >
-          <Input
-            id="sector"
-            name="sector"
-            required
-            minLength={2}
-            maxLength={80}
-            defaultValue={initial?.sector}
-          />
-        </Field>
-        <Field label="Etapa" htmlFor="stage" required>
-          <select
-            id="stage"
-            name="stage"
-            required
-            defaultValue={initial?.stage ?? ''}
-            className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
-          >
-            <option value="" disabled>
-              Elige una etapa
-            </option>
-            {Object.values(StartupStage).map((stage) => (
-              <option key={stage} value={stage}>
-                {STAGE_LABELS[stage]}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
+          minLength={2}
+          maxLength={80}
+          defaultValue={initial?.sector}
+        />
+      </Field>
       <Field label="En qué necesitas ayuda ahora" htmlFor="lookingFor" required>
         <Textarea
           id="lookingFor"
@@ -324,7 +306,7 @@ function StartupForm({
           defaultValue={initial?.lookingFor}
         />
       </Field>
-      <Field label="Sitio web" htmlFor="websiteUrl">
+      <Field label="Sitio web" htmlFor="websiteUrl" hint="Opcional.">
         <UrlInput
           id="websiteUrl"
           name="websiteUrl"
@@ -332,6 +314,7 @@ function StartupForm({
           defaultValue={initial?.websiteUrl ?? known?.websiteUrl ?? ''}
         />
       </Field>
+      <MainSocialField initial={initial} />
       <LogoField initial={initial?.logoUrl} canUpload={initial !== null} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
@@ -383,6 +366,55 @@ function StartupForm({
   );
 }
 
+/** The networks a company picks its main one from, in the order people look for them. */
+const COMPANY_NETWORKS: SocialPlatform[] = [
+  SocialPlatform.Instagram,
+  SocialPlatform.TikTok,
+  SocialPlatform.X,
+  SocialPlatform.Facebook,
+  SocialPlatform.LinkedIn,
+  SocialPlatform.YouTube,
+  SocialPlatform.Other,
+];
+
+/** The company's main social network and its link: with a link, the network is asked. */
+function MainSocialField({ initial }: { initial: StartupProfile | null | undefined }) {
+  const [url, setUrl] = useState(initial?.socialUrl ?? '');
+  return (
+    <div className="grid gap-4 sm:grid-cols-[12rem_1fr]">
+      <Field label="Red social principal" htmlFor="socialPlatform" required={url !== ''}>
+        <select
+          id="socialPlatform"
+          name="socialPlatform"
+          required={url !== ''}
+          defaultValue={initial?.socialPlatform ?? ''}
+          className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
+        >
+          <option value="">Elige una</option>
+          {COMPANY_NETWORKS.map((platform) => (
+            <option key={platform} value={platform}>
+              {PLATFORM_LABELS[platform]}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field
+        label="Enlace a tu cuenta"
+        htmlFor="socialUrl"
+        hint="Opcional. Por ejemplo instagram.com/tuempresa."
+      >
+        <UrlInput
+          id="socialUrl"
+          name="socialUrl"
+          placeholder="https://"
+          value={url}
+          onChange={(event) => setUrl(event.target.value)}
+        />
+      </Field>
+    </div>
+  );
+}
+
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 /** The largest CV Pocket keeps, as the API checks it. */
 const MAX_CV_BYTES = 10 * 1024 * 1024;
@@ -416,16 +448,18 @@ function LogoField({
       toast.error('Sube tu logo como imagen PNG, JPEG o WebP');
       return;
     }
-    if (file.size > MAX_LOGO_BYTES) {
-      toast.error('El archivo es demasiado grande. El límite es de 1 MB');
-      return;
-    }
     setBusy('upload');
     try {
+      // A photo from a phone weighs several MB: it goes up at the size it is shown.
+      const image = await shrinkImage(file, LOGO_MAX_SIDE, MAX_LOGO_BYTES);
+      if (image.size > MAX_LOGO_BYTES) {
+        toast.error('El archivo es demasiado grande. El límite es de 1 MB');
+        return;
+      }
       const { logoUrl: url } = await upload<{ logoUrl: string }>(
         '/profiles/me/logo',
         'file',
-        file,
+        image,
         '1 MB',
       );
       setLogoUrl(url);
@@ -463,7 +497,7 @@ function LogoField({
     <Field
       label="Logo"
       htmlFor="logoUrl"
-      hint="Pega un enlace o sube una imagen PNG, JPEG o WebP de hasta 1 MB. Se muestra lo último que pongas."
+      hint="Pega un enlace o sube una imagen PNG, JPEG o WebP. Si es muy grande, Pocket la ajusta sola. Se muestra lo último que pongas."
     >
       <div className="flex items-start gap-3">
         <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-white">

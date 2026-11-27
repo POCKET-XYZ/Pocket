@@ -1,0 +1,3 @@
+-- A company's main social network: Instagram, TikTok, X...
+ALTER TABLE "startup_profiles" ADD COLUMN "social_platform" TEXT,
+ADD COLUMN "social_url" TEXT;
