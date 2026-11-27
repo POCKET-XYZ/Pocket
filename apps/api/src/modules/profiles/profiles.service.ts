@@ -500,14 +500,14 @@ export class ProfilesService {
   }
 
   /**
-   * The logo an approved startup uploaded, for anyone to see, by the startup's
+   * The logo of an active company (see isAccountActive), for anyone to see, by the startup's
    * id. Links saved before an account could own several startups name the
    * account instead, and get its active startup's logo.
    */
   async logoOf(id: string): Promise<{ data: Buffer; contentType: ImageType }> {
     const logo = await this.prisma.startupLogo.findFirst({
       where: {
-        startupProfile: { user: { verificationStatus: 'approved' } },
+        startupProfile: { user: { verificationStatus: { in: ['approved', 'pending'] } } },
         OR: [
           { startupProfileId: id },
           { startupProfile: { activeFor: { some: { id } } } },
@@ -531,8 +531,8 @@ export class ProfilesService {
   }
 
   /**
-   * Public profile of an active user: an approved startup, or a specialist who
-   * sent their account details. Everyone else stays hidden. A startup's own id
+   * Public profile of an active user (see isAccountActive): a company or a
+   * specialist who sent their account details. Everyone else stays hidden. A startup's own id
    * shows that startup, since one account can own several. An account that is
    * both a startup and a specialist shows the side the visitor asked for
    * (`as`), never both: the two are not tied together in public.
@@ -564,10 +564,6 @@ export class ProfilesService {
       : (user.specialistProfile ?? user.startupProfile);
     if (!profile) throw new NotFoundException('No encontramos el perfil');
     const isSpecialist = profile === user.specialistProfile;
-    // A startup is shown only once it passed the identity check.
-    if (!isSpecialist && user.verificationStatus !== 'approved') {
-      throw new NotFoundException('No encontramos el perfil');
-    }
 
     return {
       userId: user.id,
@@ -603,7 +599,10 @@ export class ProfilesService {
     });
     if (!company) return null;
     const { user, ...profile } = company;
-    if (user.deletedAt || user.verificationStatus !== 'approved') {
+    if (
+      user.deletedAt ||
+      !(['approved', 'pending'] as string[]).includes(user.verificationStatus)
+    ) {
       throw new NotFoundException('No encontramos el perfil');
     }
     return {

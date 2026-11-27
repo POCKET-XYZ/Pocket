@@ -44,7 +44,7 @@ export class JobsController {
 
   @ApiBearerAuth()
   @Roles('startup')
-  @Verified()
+  @ActiveAccount()
   @Post()
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateJobDto) {
     return this.jobs.create(user, dto);
@@ -78,7 +78,7 @@ export class JobsController {
   /** Replace a draft. A posted job no longer changes. */
   @ApiBearerAuth()
   @Roles('startup')
-  @Verified()
+  @ActiveAccount()
   @Put(':id')
   update(
     @CurrentUser() user: AuthUser,
@@ -120,7 +120,7 @@ export class JobsController {
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @Roles('startup')
-  @Verified()
+  @ActiveAccount()
   @Post(':id/report-template')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -137,7 +137,7 @@ export class JobsController {
 
   @ApiBearerAuth()
   @Roles('startup')
-  @Verified()
+  @ActiveAccount()
   @Delete(':id/report-template')
   removeReportTemplate(
     @CurrentUser() user: AuthUser,

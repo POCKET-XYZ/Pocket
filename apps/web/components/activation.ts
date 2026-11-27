@@ -27,12 +27,12 @@ export function useKycSettings(enabled = true) {
 type Account = Pick<User, 'role' | 'verificationStatus'>;
 
 /**
- * Whether the identity check is what is left to activate this account. A
- * specialist never waits on it: their details activate the account, and the
- * identity check comes when they accept a contract.
+ * Whether the identity check is what is left to activate this account. Neither
+ * side waits on it: their details activate the account, and the identity check
+ * comes later, when a specialist accepts a contract or a company publishes a job.
  */
 function identityNext(kyc: boolean, user: Account): boolean {
-  return kyc && user.role !== 'specialist';
+  return kyc && user.role !== 'specialist' && user.role !== 'startup';
 }
 
 /** What is left to activate an account, in one sentence. */
@@ -55,7 +55,7 @@ export function activationAction(kyc: boolean, user: Account): string {
 }
 
 /**
- * The account's status as its badge shows it: a specialist waiting for the
+ * The account's status as its badge shows it: an account waiting for the
  * identity check is already active.
  */
 export function accountBadgeStatus(user: Account): string {
@@ -67,3 +67,7 @@ export function accountBadgeStatus(user: Account): string {
 /** Why a specialist verifies their identity, where accepting a contract needs it. */
 export const IDENTITY_FOR_CONTRACT =
   'Antes de aceptar tu primer contrato, Pocket verifica tu identidad con tu documento y una selfie. Toma unos minutos y se hace una sola vez.';
+
+/** Why a company verifies its identity, where publishing a job needs it. */
+export const IDENTITY_FOR_JOB =
+  'Antes de publicar tu primer trabajo, Pocket verifica tu identidad con tu documento y una selfie. Toma unos minutos y se hace una sola vez.';

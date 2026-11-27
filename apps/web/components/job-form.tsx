@@ -13,6 +13,8 @@ import { PlusIcon, Trash2Icon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { IDENTITY_FOR_JOB } from '@/components/activation';
+import { useAuth } from '@/components/auth-provider';
 import {
   JobDraftAssistant,
   outcomeParts,
@@ -64,6 +66,17 @@ const EMPTY: MilestoneDraft = {
 /** What the startup chose to do with the form: post it now, or keep it as a draft. */
 type Intent = 'publish' | 'draft';
 
+/**
+ * What happened to it: posted, kept as a draft, or kept as a draft until the
+ * company verifies its identity, which publishing needs.
+ */
+type Outcome = Intent | 'verify';
+
+/** Where a company verifies its identity, coming back to this job after. */
+function verifyThenPublish(id: string): string {
+  return `/verification?next=${encodeURIComponent(`/jobs/${id}`)}`;
+}
+
 /** A stored KPI as the form edits it. */
 function kpiInputsOf(kpis: JobKpi[]): JobKpiInput[] {
   return kpis.map((kpi) => ({
@@ -87,6 +100,9 @@ function kpiInputsOf(kpis: JobKpi[]): JobKpiInput[] {
 export function JobForm({ draft }: { draft?: JobListing }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  // Publishing takes the identity check: until then, "publish" keeps a draft.
+  const mustVerify = Boolean(user) && user?.verificationStatus !== 'approved';
   const [budget, setBudget] = useState(draft ? String(Number(draft.budget)) : '');
   const [milestones, setMilestones] = useState<MilestoneDraft[]>(
     draft && draft.milestones.length > 0
@@ -119,17 +135,18 @@ export function JobForm({ draft }: { draft?: JobListing }) {
       body: Record<string, unknown>;
       intent: Intent;
       saved: SavedForOutcome;
-    }) => {
+    }): Promise<{ id: string; intent: Outcome }> => {
+      const outcome: Outcome = intent === 'publish' && mustVerify ? 'verify' : intent;
       if (draft) {
         await api<Job>(`/jobs/${draft.id}`, { method: 'PUT', body });
-        if (intent === 'publish') {
+        if (outcome === 'publish') {
           await api<Job>(`/jobs/${draft.id}/publish`, { method: 'POST' });
         }
-        return { id: draft.id, intent };
+        return { id: draft.id, intent: outcome };
       }
       const job = await api<Job>('/jobs', {
         method: 'POST',
-        body: { ...body, ...(intent === 'draft' ? { draft: true } : {}) },
+        body: { ...body, ...(outcome !== 'publish' ? { draft: true } : {}) },
       });
       if (reportTemplate) {
         try {
@@ -137,15 +154,23 @@ export function JobForm({ draft }: { draft?: JobListing }) {
         } catch (error) {
           // The job itself is saved; only the file is missing.
           toast.error(
-            `${intent === 'draft' ? 'Borrador guardado' : 'Trabajo publicado'}, pero la plantilla de reporte no se subió: ${errorMessage(error)}. Adjúntala de nuevo desde la página del trabajo.`,
+            `${outcome === 'publish' ? 'Trabajo publicado' : 'Borrador guardado'}, pero la plantilla de reporte no se subió: ${errorMessage(error)}. Adjúntala de nuevo desde la página del trabajo.`,
           );
         }
       }
-      return { id: job.id, intent };
+      return { id: job.id, intent: outcome };
     },
     onSuccess: async ({ id, intent }, { saved }) => {
       reportAssistantOutcome(tracking.current, saved, id);
       tracking.current = null;
+      if (intent === 'verify') {
+        toast.success(
+          'Tu trabajo quedó guardado como borrador. Verifica tu identidad y después lo publicas.',
+        );
+        await queryClient.invalidateQueries({ queryKey: ['jobs'] });
+        router.push(verifyThenPublish(id));
+        return;
+      }
       toast.success(
         intent === 'publish'
           ? 'Trabajo publicado'
@@ -649,10 +674,14 @@ export function JobForm({ draft }: { draft?: JobListing }) {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button type="submit" size="lg" value="publish" disabled={busy}>
                 {busy && intent === 'publish'
-                  ? 'Publicando...'
-                  : draft
-                    ? 'Guardar y publicar'
-                    : 'Publicar trabajo'}
+                  ? mustVerify
+                    ? 'Guardando...'
+                    : 'Publicando...'
+                  : mustVerify
+                    ? 'Verificar identidad y publicar'
+                    : draft
+                      ? 'Guardar y publicar'
+                      : 'Publicar trabajo'}
               </Button>
               <Button
                 type="submit"
@@ -669,9 +698,11 @@ export function JobForm({ draft }: { draft?: JobListing }) {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              {draft
-                ? 'Mientras sea borrador, solo tú lo ves. Los expertos lo ven cuando lo publicas.'
-                : 'Un borrador queda guardado en Mis publicaciones y solo tú lo ves hasta que lo publiques.'}
+              {mustVerify
+                ? `${IDENTITY_FOR_JOB} Tu trabajo queda guardado como borrador mientras tanto.`
+                : draft
+                  ? 'Mientras sea borrador, solo tú lo ves. Los expertos lo ven cuando lo publicas.'
+                  : 'Un borrador queda guardado en Mis publicaciones y solo tú lo ves hasta que lo publiques.'}
             </p>
           </form>
         </CardContent>
