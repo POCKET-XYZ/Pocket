@@ -8,7 +8,7 @@ import {
 } from '@pocket/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { activationAction, activationHint, useKycEnabled } from '@/components/activation';
@@ -39,10 +39,14 @@ import { api, errorMessage } from '@/lib/api';
 import { useMyProfile } from '@/lib/use-my-profile';
 import { CATEGORY_LABELS, date, isoInDays, usdc } from '@/lib/format';
 import { UrlInput } from '@/components/url-input';
+import { SharePostedJobDialog, ShareJobButtons } from '@/components/share-job';
 
 export default function JobPage() {
   const { id } = useParams<{ id: string }>();
   const { user, status } = useAuth();
+  const router = useRouter();
+  // The job form lands here with ?publicado=1 right after posting.
+  const justPosted = useSearchParams().get('publicado') === '1';
   const job = useQuery({
     queryKey: ['jobs', id],
     queryFn: () => api<JobListing>(`/jobs/${id}`),
@@ -225,6 +229,13 @@ export default function JobPage() {
           )
         ) : null}
       </aside>
+      {user?.id === data.startupId && data.status === 'open' ? (
+        <SharePostedJobDialog
+          job={data}
+          open={justPosted}
+          onClose={() => router.replace(`/jobs/${data.id}`, { scroll: false })}
+        />
+      ) : null}
     </div>
   );
 }
@@ -475,6 +486,7 @@ function DraftCard({ job }: { job: JobListing }) {
     onSuccess: async () => {
       toast.success('Trabajo publicado. Los expertos ya pueden postularse.');
       await queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      router.replace(`/jobs/${job.id}?publicado=1`, { scroll: false });
     },
     onError: (error) =>
       toast.error(errorMessage(error), {
@@ -573,6 +585,12 @@ function OwnerCard({ job }: { job: JobListing }) {
         <Button asChild className="w-full">
           <Link href={`/jobs/${job.id}/applicants`}>Revisar postulantes</Link>
         </Button>
+        {job.status === 'open' ? (
+          <div className="space-y-2 border-t border-border pt-3">
+            <p className="text-sm font-medium text-navy">Compartir</p>
+            <ShareJobButtons job={job} />
+          </div>
+        ) : null}
         {job.status === 'open' ? (
           <div className="border-t border-border pt-3">
             <ReportTemplateManager jobId={job.id} template={job.reportTemplate} />

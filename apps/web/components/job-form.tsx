@@ -154,7 +154,8 @@ export function JobForm({ draft }: { draft?: JobListing }) {
             : 'Borrador guardado. Solo tú lo ves hasta que lo publiques.',
       );
       await queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      router.push(`/jobs/${id}`);
+      // Just posted: the job page offers to share it.
+      router.push(intent === 'publish' ? `/jobs/${id}?publicado=1` : `/jobs/${id}`);
     },
     onError: async (error) => {
       // An edit that saved but could not be posted still changed the draft.
