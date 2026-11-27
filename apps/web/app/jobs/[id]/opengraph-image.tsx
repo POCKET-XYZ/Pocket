@@ -171,7 +171,7 @@ function PocketCard({ brand, host }: { brand: string; host: string }) {
           textAlign: 'center',
         }}
       >
-        Expertos en growth, ventas y marketing para tu startup
+        Expertos en growth, ventas y marketing para tu empresa
       </div>
       <div style={{ marginTop: 24, color: CELESTE, fontSize: 24 }}>{host}</div>
     </div>

@@ -26,7 +26,7 @@ export async function publicJob(id: string): Promise<JobListing | null> {
 
 /** Who posted it, for sentences: the company, or a neutral word. */
 export function hirer(job: JobListing): string {
-  return job.startup?.companyName ?? 'Una startup';
+  return job.startup?.companyName ?? 'Una empresa';
 }
 
 /** The category as it reads inside a sentence ("un experto en growth"). */

@@ -3,7 +3,7 @@ import { previewDescription, publicJob } from '@/lib/job-share';
 import { siteOrigin } from '@/lib/site-origin';
 
 /** The line of the card a draft or a broken link gets, the same as its picture. */
-const GENERIC = 'Expertos en growth, ventas y marketing para tu startup, con cada pago protegido por hito.';
+const GENERIC = 'Expertos en growth, ventas y marketing para tu empresa, con cada pago protegido por hito.';
 
 /**
  * What X, LinkedIn, WhatsApp and the rest show when a job link is shared.

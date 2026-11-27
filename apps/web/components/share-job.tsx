@@ -109,7 +109,7 @@ export function SharePostedJobDialog({
           <DialogTitle>Tu trabajo ya está publicado</DialogTitle>
           <DialogDescription>
             Compártelo para que llegue a más expertos. El enlace se ve con el título, tu
-            startup, el presupuesto y la fecha de entrega.
+            empresa, el presupuesto y la fecha de entrega.
           </DialogDescription>
         </DialogHeader>
         <ShareJobButtons job={job} />
