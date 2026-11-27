@@ -110,6 +110,8 @@ describe('ProfilesService', () => {
       data: {
         ...STARTUP_DTO,
         websiteUrl: null,
+        socialPlatform: null,
+        socialUrl: null,
         logoUrl: null,
         legalName: null,
         contactRole: null,

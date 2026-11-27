@@ -4,10 +4,13 @@ import {
   ArrayMaxSize,
   IsArray,
   IsEnum,
+  IsIn,
   IsOptional,
   IsString,
   Length,
+  ValidateIf,
 } from 'class-validator';
+import { SocialPlatform } from '@pocket/shared';
 import { IsHttpsUrl } from '../../../common/decorators/is-https-url.decorator';
 
 /** The fixed template every startup fills in. */
@@ -27,9 +30,11 @@ export class StartupProfileDto {
   @Length(2, 80)
   sector: string;
 
-  @ApiProperty({ enum: StartupStage })
+  /** No longer asked: companies of every kind use Pocket, not only startups. */
+  @ApiPropertyOptional({ enum: StartupStage, deprecated: true })
+  @IsOptional()
   @IsEnum(StartupStage)
-  stage: StartupStage;
+  stage?: StartupStage;
 
   @ApiProperty({ description: 'What the startup needs help with right now' })
   @IsString()
@@ -40,6 +45,19 @@ export class StartupProfileDto {
   @IsOptional()
   @IsHttpsUrl()
   websiteUrl?: string;
+
+  @ApiPropertyOptional({
+    enum: Object.values(SocialPlatform),
+    description: "The company's main social network, sent with socialUrl",
+  })
+  @ValidateIf((dto: StartupProfileDto) => dto.socialUrl !== undefined)
+  @IsIn(Object.values(SocialPlatform), { message: 'Elige cuál es tu red social' })
+  socialPlatform?: SocialPlatform;
+
+  @ApiPropertyOptional({ example: 'https://instagram.com/tuempresa' })
+  @IsOptional()
+  @IsHttpsUrl()
+  socialUrl?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

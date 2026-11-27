@@ -10,7 +10,6 @@ import { EmptyState, ErrorAlert, Loading, PageHeader } from '@/components/page';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api';
-import { STAGE_LABELS } from '@/lib/format';
 
 /** Who is hiring on Pocket, so a specialist can look before applying. */
 export default function StartupsPage() {
@@ -71,7 +70,6 @@ export default function StartupsPage() {
                 >
                   {startup.sector}
                 </Badge>
-                <Badge variant="outline">{STAGE_LABELS[startup.stage]}</Badge>
               </div>
               <p className="mt-3 text-sm text-muted-foreground">
                 {startup.openJobs === 0

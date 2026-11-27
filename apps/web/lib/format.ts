@@ -1,4 +1,4 @@
-import type { ServiceCategory, SocialPlatform, StartupStage } from '@pocket/shared';
+import type { ServiceCategory, SocialPlatform } from '@pocket/shared';
 
 /** USDC amounts come from the API as strings to keep their decimals. */
 export function usdc(amount: string | number | null | undefined): string {
@@ -71,14 +71,6 @@ export const PLATFORM_LABELS: Record<SocialPlatform, string> = {
   facebook: 'Facebook',
   twitch: 'Twitch',
   other: 'Otra',
-};
-
-export const STAGE_LABELS: Record<StartupStage, string> = {
-  idea: 'Idea',
-  pre_seed: 'Pre-seed',
-  seed: 'Seed',
-  series_a: 'Serie A',
-  series_b_plus: 'Serie B+',
 };
 
 /** Link to a transaction on the Stellar explorer of the configured network. */

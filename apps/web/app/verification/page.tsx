@@ -240,7 +240,9 @@ function Verification({ user }: { user: User }) {
             {user.verificationStatus === 'approved' && next ? (
               <Button asChild className="mt-4">
                 <Link href={next} onClick={forgetNext}>
-                  {next.startsWith('/jobs/') ? 'Volver a mi trabajo' : 'Volver al contrato'}
+                  {next.startsWith('/jobs/')
+                    ? 'Volver a mi trabajo'
+                    : 'Volver al contrato'}
                 </Link>
               </Button>
             ) : active && !staysForIdentity ? (
@@ -344,35 +346,21 @@ function Verification({ user }: { user: User }) {
                 />
               </Field>
               {isStartup ? (
-                <>
-                  <Field label="Nombre de la empresa" htmlFor="companyName" required>
-                    <Input
-                      id="companyName"
-                      name="companyName"
-                      required
-                      minLength={2}
-                      maxLength={160}
-                      defaultValue={previous?.companyName}
-                    />
-                  </Field>
-                  <Field
-                    label="Número de registro o identificación fiscal"
-                    htmlFor="companyRegistrationId"
-                    hint="Opcional. Pocket no lo verifica en ningún registro."
-                  >
-                    <Input
-                      id="companyRegistrationId"
-                      name="companyRegistrationId"
-                      minLength={2}
-                      maxLength={80}
-                      defaultValue={previous?.companyRegistrationId}
-                    />
-                  </Field>
-                </>
+                <Field label="Nombre de la empresa" htmlFor="companyName" required>
+                  <Input
+                    id="companyName"
+                    name="companyName"
+                    required
+                    minLength={2}
+                    maxLength={160}
+                    defaultValue={previous?.companyName}
+                  />
+                </Field>
               ) : null}
               <Field
                 label={isStartup ? 'LinkedIn de la empresa' : 'LinkedIn'}
                 htmlFor="linkedinUrl"
+                hint="Opcional."
               >
                 <UrlInput
                   id="linkedinUrl"
@@ -384,6 +372,7 @@ function Verification({ user }: { user: User }) {
               <Field
                 label={isStartup ? 'Sitio web de la empresa' : 'Portafolio'}
                 htmlFor="websiteUrl"
+                hint="Opcional."
               >
                 <UrlInput
                   id="websiteUrl"

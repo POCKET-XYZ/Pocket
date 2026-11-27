@@ -191,25 +191,29 @@ enum ServiceCategory {
 // A company on Pocket. One account can own several and act as one at a time
 // (users.active_startup_id); each job belongs to one of them.
 model StartupProfile {
-  id          String       @id @default(uuid()) @db.Uuid
-  userId      String       @map("user_id") @db.Uuid
-  companyName String       @map("company_name")
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String        @map("user_id") @db.Uuid
+  companyName    String        @map("company_name")
   // One sentence describing what the company does.
-  oneLiner    String       @map("one_liner")
-  sector      String
-  stage       StartupStage
+  oneLiner       String        @map("one_liner")
+  sector         String
+  // No longer asked; kept for the profiles that already have one.
+  stage          StartupStage?
   // What they need help with right now.
-  lookingFor  String       @map("looking_for")
-  websiteUrl  String?      @map("website_url")
-  logoUrl     String?      @map("logo_url")
+  lookingFor     String        @map("looking_for")
+  websiteUrl     String?       @map("website_url")
+  // The company's main social network, and the link to its account there.
+  socialPlatform String?       @map("social_platform")
+  socialUrl      String?       @map("social_url")
+  logoUrl        String?       @map("logo_url")
   // Registered name, when it differs from the trading name.
-  legalName   String?      @map("legal_name")
+  legalName      String?       @map("legal_name")
   // Role of the person who signs the contracts.
-  contactRole String?      @map("contact_role")
-  languages   String[]     @default([])
-  location    String?
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
+  contactRole    String?       @map("contact_role")
+  languages      String[]      @default([])
+  location       String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
   user      User         @relation("StartupOwner", fields: [userId], references: [id], onDelete: Cascade)
   activeFor User[]       @relation("ActiveStartup")
